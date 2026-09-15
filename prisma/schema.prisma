@@ -1,0 +1,770 @@
+// ════════════════════════════════════════════════════════════════════════
+// EduMint24 — Prisma Schema
+// Every field below was verified against actual INSERT/UPDATE/SELECT
+// statements in the original PHP codebase (admin/ecommerce/*.php,
+// shop/*.php, admin/*.php) — not guessed.
+// ════════════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // swap to "mysql" if you want to match the original DB engine exactly
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// SYSTEM / AUTH
+// ─────────────────────────────────────────────────────────────────────────
+
+// Admin/staff accounts. Verified from: admin/user-manager.php
+// INSERT INTO users (username, email, password_hash, role, permissions)
+model User {
+  id            Int      @id @default(autoincrement())
+  username      String   @unique
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  role          String   // e.g. "admin", "staff"
+  permissions   Json     // nested JSON: { dashboard_access: true, ecommerce: { manage_products: true, ... }, blogs: {...}, ... }
+                         // NOTE: dashboard_access is checked at LOGIN time (see login.php) — a user can
+                         // exist without it and simply be denied entry to the admin panel entirely.
+  status        String   @default("active") // "active" | "inactive" — checked on every protected page
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  activityLogs  ActivityLog[]
+  posts         Post[]
+
+  @@map("users")
+}
+
+// Written on nearly every admin mutation — implement as a shared
+// audit-log utility called from every write operation.
+model ActivityLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  actionType  String   @map("action_type") // e.g. "ecom_product_create", "ecom_pos_sale"
+  description String
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
+
+model AppConfig {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+
+  @@map("app_config")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ECOMMERCE — CATALOG
+// ─────────────────────────────────────────────────────────────────────────
+
+model EcomCategory {
+  id               Int      @id @default(autoincrement())
+  name             String
+  slug             String   @unique
+  image            String?
+  metaKeywords     String?  @map("meta_keywords")
+  metaDescription  String?  @map("meta_description") @db.Text
+  status           String   @default("active")
+  serial           Int      @default(0)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  subcategories EcomSubcategory[]
+  products      EcomProduct[]
+  homeSections  EcomHomeSection[]
+  homeSectionItems EcomHomeSectionItem[]
+  coupons       EcomCoupon[]       @relation("CouponCategory")
+  homeCategoryStrip EcomHomeCategoryStrip[]
+
+  @@map("ecom_categories")
+}
+
+model EcomSubcategory {
+  id         Int    @id @default(autoincrement())
+  categoryId Int    @map("category_id")
+  name       String
+  slug       String @unique
+  status     String @default("active")
+
+  category EcomCategory  @relation(fields: [categoryId], references: [id])
+  products EcomProduct[]
+  coupons  EcomCoupon[]  @relation("CouponSubcategory")
+
+  @@map("ecom_subcategories")
+}
+
+model EcomBrand {
+  id        Int     @id @default(autoincrement())
+  name      String
+  slug      String  @unique
+  logo      String?
+  isPopular Boolean @default(false) @map("is_popular")
+  status    String  @default("active")
+
+  products EcomProduct[]
+
+  @@map("ecom_brands")
+}
+
+// Verified from admin/ecommerce/add-product-form.php — full field list
+// including conditional fields for each product_type.
+model EcomProduct {
+  id            Int      @id @default(autoincrement())
+  categoryId    Int?     @map("category_id")
+  subcategoryId Int?     @map("subcategory_id")
+  brandId       Int?     @map("brand_id")
+  name          String
+  slug          String   @unique
+  sku           String?
+  hsnCode       String?  @map("hsn_code")
+  barcode       String?  @unique // duplicate-barcode check enforced at app layer BEFORE insert (see business logic notes)
+  productType   String   @map("product_type") // "physical" | "digital" | "license" | "affiliate"
+  price         Decimal  @db.Decimal(10, 2)
+  salePrice     Decimal? @map("sale_price") @db.Decimal(10, 2)
+  gstRate       Decimal  @map("gst_rate") @db.Decimal(5, 2)
+  stockQty      Int?     @map("stock_qty") // null for non-physical types
+  image         String?
+  description   String?  @db.Text
+  badgeTag      String   @default("none") @map("badge_tag") // "none" | "new" | "best" | "hot" | "featured"
+  itemType      String   @default("normal") @map("item_type")
+  status        String   @default("active") // "active" | "inactive"
+
+  // conditional per product_type
+  downloadLink  String? @map("download_link")  // only for "digital"
+  licenseKey    String? @map("license_key")    // only for "license"
+  affiliateUrl  String? @map("affiliate_url")  // only for "affiliate"
+
+  isCampaign    Boolean @default(false) @map("is_campaign")
+  campaignPrice Decimal? @map("campaign_price") @db.Decimal(10, 2)
+  showOnHome    Boolean @default(false) @map("show_on_home")
+
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  category    EcomCategory?    @relation(fields: [categoryId], references: [id])
+  subcategory EcomSubcategory? @relation(fields: [subcategoryId], references: [id])
+  brand       EcomBrand?       @relation(fields: [brandId], references: [id])
+  images      EcomProductImage[]
+  reviews     EcomProductReview[]
+  orderItems  EcomOrderItem[]
+  wishlists   EcomWishlist[]
+  homeSectionItems EcomHomeSectionItem[]
+  coupons     EcomCoupon[]     @relation("CouponProduct")
+
+  @@map("ecom_products")
+}
+
+model EcomProductImage {
+  id        Int    @id @default(autoincrement())
+  productId Int    @map("product_id")
+  image     String
+  sortOrder Int    @default(0) @map("sort_order")
+
+  product EcomProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("ecom_product_images")
+}
+
+// Badge tags AND item types both live here, distinguished by tagGroup.
+// Verified from admin/ecommerce/product-tags.php, add-brand-ajax.php, add-item-type-ajax.php
+model EcomProductTag {
+  id        Int     @id @default(autoincrement())
+  label     String
+  slug      String
+  tagGroup  String  @map("tag_group") // "badge" | "item_type"
+  color     String? // hex color for badge display, verified from products.php (only used for tag_group="badge")
+  sortOrder Int     @default(0) @map("sort_order")
+  status    String  @default("active")
+
+  @@unique([slug, tagGroup])
+  @@map("ecom_product_tags")
+}
+
+model EcomProductReview {
+  id           Int      @id @default(autoincrement())
+  productId    Int      @map("product_id")
+  customerName String   @map("customer_name") // denormalized at submit time, verified from product.php's INSERT
+  rating       Int      // 1-5
+  reviewText   String?  @map("review_text") @db.Text
+  status       String   @default("pending") // "pending" | "approved" | "rejected"
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  product  EcomProduct    @relation(fields: [productId], references: [id])
+
+  @@map("ecom_product_reviews")
+}
+
+model EcomGstRate {
+  id        Int     @id @default(autoincrement())
+  label     String
+  rate      Decimal @db.Decimal(5, 2)
+  isDefault Boolean @default(false) @map("is_default")
+
+  @@map("ecom_gst_rates")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ECOMMERCE — CUSTOMERS / ORDERS / PAYMENTS
+// ─────────────────────────────────────────────────────────────────────────
+
+// Verified: two creation paths —
+//  (1) shop/register.php: online self-registration (has password, customer_type='online')
+//  (2) admin/ecommerce/billing.php / customers.php: walk-in creation (customer_type='offline', no password)
+model EcomCustomer {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String?  @unique
+  phone        String?
+  password     String?  // only set for customer_type = "online"
+  customerType String   @map("customer_type") // "online" | "offline"
+  address      String?  @db.Text
+  status       String   @default("active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  orders   EcomOrder[]
+  wishlist EcomWishlist[]
+  credits  EcomCredit[]
+
+  @@map("ecom_customers")
+}
+
+// Verified from admin/ecommerce/billing.php checkout logic.
+// order_type distinguishes storefront ("online") vs POS ("offline") sales.
+model EcomOrder {
+  id              Int      @id @default(autoincrement())
+  orderNumber     String   @unique @map("order_number")
+  customerId      Int?     @map("customer_id")
+  customerName    String   @map("customer_name")
+  customerEmail   String?  @map("customer_email")
+  isGuest         Boolean  @default(false) @map("is_guest")
+  shippingAddress String?  @map("shipping_address") @db.Text
+  totalAmount     Decimal  @map("total_amount") @db.Decimal(10, 2)
+  paidAmount      Decimal  @default(0) @map("paid_amount") @db.Decimal(10, 2)
+  subtotalAmount  Decimal  @map("subtotal_amount") @db.Decimal(10, 2)
+  discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  gstAmount       Decimal  @map("gst_amount") @db.Decimal(10, 2)
+  paymentStatus   String   @map("payment_status") // "Paid" | "Unpaid"
+  paymentMethod   String   @map("payment_method")  // "Cash" | "Card" | "UPI" | "Other" | "Split"
+  orderStatus     String   @default("Pending") @map("order_status") // "Pending" | "In Progress" | "Delivered" | "Canceled"
+  orderType       String   @map("order_type") // "online" (storefront) | "offline" (POS)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  customer EcomCustomer?      @relation(fields: [customerId], references: [id])
+  items    EcomOrderItem[]
+  payments EcomOrderPayment[]
+  credits  EcomCredit[]
+
+  @@map("ecom_orders")
+}
+
+// Verified: price/gst/hsn are SNAPSHOT at time of sale (not live product
+// reference) — this is intentional so historical orders stay accurate
+// even if the product's price changes later.
+model EcomOrderItem {
+  id          Int     @id @default(autoincrement())
+  orderId     Int     @map("order_id")
+  productId   Int     @map("product_id")
+  productName String  @map("product_name") // snapshot
+  hsnCode     String? @map("hsn_code")     // snapshot
+  qty         Int
+  price       Decimal @db.Decimal(10, 2)    // unit price at sale time (snapshot)
+  gstRate     Decimal @map("gst_rate") @db.Decimal(5, 2)
+  gstAmount   Decimal @map("gst_amount") @db.Decimal(10, 2)
+
+  order   EcomOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product EcomProduct @relation(fields: [productId], references: [id])
+
+  @@map("ecom_order_items")
+}
+
+// Supports split payments — one order can have multiple payment rows
+// (e.g. ₹500 Cash + ₹300 UPI for one sale).
+model EcomOrderPayment {
+  id            Int      @id @default(autoincrement())
+  orderId       Int      @map("order_id")
+  paymentMethod String   @map("payment_method") // "Cash" | "Card" | "UPI" | "Other"
+  amount        Decimal  @db.Decimal(10, 2)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  order EcomOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("ecom_order_payments")
+}
+
+// Verified from admin/ecommerce/coupons.php.
+// applies_to determines which of product_id/category_id/subcategory_id is used.
+model EcomCoupon {
+  id               Int      @id @default(autoincrement())
+  title            String
+  code             String   @unique
+  numberOfTimes    Int      @map("number_of_times") // usage limit
+  usedCount        Int      @default(0) @map("used_count")
+  discountType     String   @map("discount_type") // "percentage" | "fixed"
+  discountValue    Decimal  @map("discount_value") @db.Decimal(10, 2)
+  appliesTo        String   @map("applies_to") // "all" | "product" | "category" | "subcategory"
+  productId        Int?     @map("product_id")
+  categoryId       Int?     @map("category_id")
+  subcategoryId    Int?     @map("subcategory_id")
+  status           String   @default("active")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  product      EcomProduct?     @relation("CouponProduct", fields: [productId], references: [id])
+  category     EcomCategory?    @relation("CouponCategory", fields: [categoryId], references: [id])
+  subcategory  EcomSubcategory? @relation("CouponSubcategory", fields: [subcategoryId], references: [id])
+
+  @@map("ecom_coupons")
+}
+
+// Auto-created whenever a POS/online sale isn't paid in full.
+// Verified from billing.php: "Auto-create a Due (credit) record".
+model EcomCredit {
+  id            Int      @id @default(autoincrement())
+  orderId       Int      @map("order_id")
+  customerId    Int?     @map("customer_id")
+  customerName  String   @map("customer_name")
+  customerPhone String?  @map("customer_phone")
+  amount        Decimal  @db.Decimal(10, 2)
+  // Verified from admin/dashboard.php: `SUM(amount - amount_paid)` is used to compute
+  // outstanding "Due Promise" — this running total is denormalized here (kept in sync
+  // whenever a EcomCreditPayment row is created) rather than summed on every read.
+  amountPaid    Decimal  @default(0) @map("amount_paid") @db.Decimal(10, 2)
+  promisedDate  DateTime? @map("promised_date")
+  status        String   @default("pending") // "pending" | "paid" | "partial"
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  order    EcomOrder     @relation(fields: [orderId], references: [id])
+  customer EcomCustomer? @relation(fields: [customerId], references: [id])
+  payments EcomCreditPayment[]
+
+  @@map("ecom_credits")
+}
+
+model EcomCreditPayment {
+  id             Int      @id @default(autoincrement())
+  creditId       Int      @map("credit_id")
+  receiptNumber  String   @map("receipt_number") // verified from due.php/record-due-payment.php — can be shared across multiple credits when "combine_receipt" is used
+  amount         Decimal  @db.Decimal(10, 2)
+  paymentMethod  String   @map("payment_method") // "Cash" | "Card" | "UPI" | "Other" (renamed from "method" to match the actual column name)
+  createdBy      Int?     @map("created_by")     // admin user who recorded the payment
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  credit EcomCredit @relation(fields: [creditId], references: [id], onDelete: Cascade)
+
+  @@map("ecom_credit_payments")
+}
+
+model EcomWishlist {
+  id         Int      @id @default(autoincrement())
+  customerId Int      @map("customer_id")
+  productId  Int      @map("product_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  customer EcomCustomer @relation(fields: [customerId], references: [id])
+  product  EcomProduct  @relation(fields: [productId], references: [id])
+
+  @@unique([customerId, productId])
+  @@map("ecom_wishlist")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// ECOMMERCE — SETTINGS / HOMEPAGE BUILDER
+// ─────────────────────────────────────────────────────────────────────────
+
+// Single-row settings table (business info + POS config).
+// JSON fields verified: contact_numbers, invoice_contact_numbers, social_media_json.
+// POS settings verified from billing.php: pos_print_mode, printer_format, keyboard shortcuts.
+model EcomBusinessSettings {
+  id                     Int     @id @default(autoincrement())
+  businessName           String  @map("business_name")
+  tagline                String?
+  seoDescription         String? @map("seo_description") @db.Text
+  address                String? @db.Text
+  location               String?
+  phone                  String? // first entry of contactNumbers, kept denormalized to match the PHP's $phone column
+  contactNumbers         Json?   @map("contact_numbers")          // JSON array of strings
+  invoiceContactNumbers  Json?   @map("invoice_contact_numbers")  // JSON array — subset of contactNumbers chosen for invoices
+  email                  String?
+  websiteUrl             String? @map("website_url")
+  businessHours          String? @map("business_hours")
+  gstin                  String?
+  panNumber              String? @map("pan_number")
+  fssaiNumber            String? @map("fssai_number")
+  state                  String?
+  showGstinOnInvoice     Boolean @default(false) @map("show_gstin_on_invoice")
+  showPanOnInvoice       Boolean @default(false) @map("show_pan_on_invoice")
+  showFssaiOnInvoice     Boolean @default(false) @map("show_fssai_on_invoice")
+  showAddressOnInvoice   Boolean @default(false) @map("show_address_on_invoice")
+  showLocationOnInvoice  Boolean @default(false) @map("show_location_on_invoice")
+  siteHeaderDisplay      String  @default("both") @map("site_header_display") // "title" | "logo" | "both"
+  invoiceDisplay         String  @default("both") @map("invoice_display")     // "logo" | "name" | "both"
+  invoiceTitle           String  @default("Tax Invoice") @map("invoice_title")
+  invoiceFooterNote      String? @map("invoice_footer_note") @db.Text
+  returnPolicy           String? @map("return_policy") @db.Text
+  barcodeFooterText      String? @map("barcode_footer_text")
+  orderIdPrefix          String  @default("ORD") @map("order_id_prefix")
+  orderSequenceNext      Int     @default(1) @map("order_sequence_next")   // verified from generateOrderNumber() in functions.php
+  receiptSequenceNext    Int     @default(1) @map("receipt_sequence_next") // verified from generateReceiptNumber() in functions.php
+  logoDisplayWidth       Int     @default(150) @map("logo_display_width") // clamped 40-400 in the PHP form
+  socialMediaJson        Json?   @map("social_media_json") // JSON array of {platform, url}
+  logo                   String?
+
+  // POS / billing configuration (verified from billing.php + business-settings.php)
+  posPrintMode           String  @default("both") @map("pos_print_mode")      // "thermal" | "a4" | "both"
+  printerFormat          String  @default("a4") @map("printer_format")        // "a4" | "thermal_58" | "thermal_80"
+  shortcutCompleteSale   String  @default("F2") @map("shortcut_complete_sale") // any of F2-F12
+  shortcutPrint          String  @default("F3") @map("shortcut_print")
+  shortcutNewSale        String  @default("F4") @map("shortcut_new_sale")
+
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  @@map("ecom_business_settings")
+}
+
+model EcomPaymentSettings {
+  id        Int     @id @default(autoincrement())
+  methodKey String  @unique @map("method_key") // "cod" | "paytm" | "phonepe" | "razorpay" | "bank_transfer"
+  name      String
+  image     String?
+  text      String? @db.Text // customer-facing instructions/description for this method
+  config    Json?           // arbitrary key-value pairs (API keys, UPI ID, bank details, etc.)
+  isEnabled Boolean @default(false) @map("is_enabled")
+
+  @@map("ecom_payment_settings")
+}
+
+model EcomHomeSlide {
+  id         Int     @id @default(autoincrement())
+  image      String
+  buttonLink String  @default("#") @map("button_link")
+  sortOrder  Int     @default(0) @map("sort_order")
+  status     String  @default("active")
+
+  @@map("ecom_home_slides")
+}
+
+// Verified from homepage-settings.php's add_section action — section_type is one of
+// "category_row" | "product_grid" | "festive_banner" | "manual_products", and the
+// fields actually used vary a lot by type (a festive_banner has banner_text/
+// banner_image, a category_row/product_grid has source_type/product_limit, etc.)
+model EcomHomeSection {
+  id           Int     @id @default(autoincrement())
+  sectionType  String  @map("section_type") // "category_row" | "product_grid" | "festive_banner" | "manual_products"
+  title        String?
+  categoryId   Int?    @map("category_id")   // used when sourceType = "category"
+  sourceType   String  @default("latest") @map("source_type") // "manual" | "category" | "latest"
+  cardDesign   String  @default("design1") @map("card_design") // "design1".."design4" — a storefront visual style, not a DB shape
+  productLimit Int     @default(10) @map("product_limit")
+  bannerText   String? @map("banner_text")
+  bannerImage  String? @map("banner_image") // only used when sectionType = "festive_banner"
+  dismissible  Boolean @default(false)
+  sortOrder    Int     @default(0) @map("sort_order")
+  status       String  @default("active")
+
+  category EcomCategory?          @relation(fields: [categoryId], references: [id])
+  items    EcomHomeSectionItem[]
+
+  @@map("ecom_home_sections")
+}
+
+// Verified from the add_section_item action — a single item can reference EITHER a
+// category OR a product (whichever fits the parent section's purpose), or neither
+// and just be a fully custom card (custom_label + custom_image), unlike the earlier
+// schema's product-only assumption.
+model EcomHomeSectionItem {
+  id           Int     @id @default(autoincrement())
+  sectionId    Int     @map("section_id")
+  categoryId   Int?    @map("category_id")
+  productId    Int?    @map("product_id")
+  customLabel  String? @map("custom_label")
+  customImage  String? @map("custom_image")
+  sortOrder    Int     @default(0) @map("sort_order")
+
+  section  EcomHomeSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  category EcomCategory?   @relation(fields: [categoryId], references: [id])
+  product  EcomProduct?    @relation(fields: [productId], references: [id])
+
+  @@map("ecom_home_section_items")
+}
+
+model EcomHomeCategoryStrip {
+  id         Int @id @default(autoincrement())
+  categoryId Int @map("category_id")
+  sortOrder  Int @default(0) @map("sort_order")
+
+  category EcomCategory @relation(fields: [categoryId], references: [id])
+
+  @@map("ecom_home_category_strip")
+}
+
+// Verified: a generic key-value settings bag (category_strip_mode,
+// category_strip_count, and potentially more in the future) — NOT a single-row
+// settings table like EcomBusinessSettings.
+model EcomHomeSetting {
+  id           Int    @id @default(autoincrement())
+  settingKey   String @unique @map("setting_key")
+  settingValue String @map("setting_value")
+
+  @@map("ecom_home_settings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// BLOG / CONTENT / JOB-PORTAL
+// ─────────────────────────────────────────────────────────────────────────
+
+model Author {
+  id    Int    @id @default(autoincrement())
+  name  String
+  slug  String @unique
+  bio   String? @db.Text
+  image String?
+
+  posts Post[]
+
+  @@map("authors")
+}
+
+model StateEntry {
+  id   Int    @id @default(autoincrement())
+  name String
+  slug String @unique
+
+  posts Post[]
+
+  @@map("states")
+}
+
+model BlogCategory {
+  id     Int    @id @default(autoincrement())
+  name   String
+  slug   String @unique
+  status String @default("active")
+
+  posts PostCategory[]
+
+  @@map("categories")
+}
+
+model Tag {
+  id   Int    @id @default(autoincrement())
+  name String
+  slug String @unique
+
+  posts PostTag[]
+
+  @@map("tags")
+}
+
+// Verified fields include faq_json (FAQ blocks stored as JSON on the post).
+model Post {
+  id              Int       @id @default(autoincrement())
+  title           String
+  slug            String    @unique
+  content         String    @db.Text
+  faqJson         Json?     @map("faq_json") // array of {question, answer}
+  lastDate        DateTime? @map("last_date") // e.g. application deadline for job posts
+  authorId        Int?      @map("author_id")
+  stateId         Int?      @map("state_id")
+  categoryId      Int?      @map("category_id") // primary category shortcut, in addition to the M:N table below
+  status          String    @default("draft")   // "draft" | "published" | "archived"
+  publishAt       DateTime? @map("publish_at")
+  featuredImageId Int?      @map("featured_image_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  createdByUserId Int?     @map("created_by_user_id")
+
+  author        Author?        @relation(fields: [authorId], references: [id])
+  state         StateEntry?    @relation(fields: [stateId], references: [id])
+  featuredImage Media?         @relation(fields: [featuredImageId], references: [id])
+  createdByUser User?          @relation(fields: [createdByUserId], references: [id])
+  categories    PostCategory[]
+  tags          PostTag[]
+  meta          PostMeta[]
+  comments      Comment[]
+  views         PostView[]
+
+  @@map("posts")
+}
+
+model PostCategory {
+  postId     Int @map("post_id")
+  categoryId Int @map("category_id")
+
+  post     Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  category BlogCategory @relation(fields: [categoryId], references: [id])
+
+  @@id([postId, categoryId])
+  @@map("post_categories")
+}
+
+model PostTag {
+  postId Int @map("post_id")
+  tagId  Int @map("tag_id")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id])
+
+  @@id([postId, tagId])
+  @@map("post_tag")
+}
+
+model PostMeta {
+  id     Int    @id @default(autoincrement())
+  postId Int    @map("post_id")
+  key    String
+  value  String @db.Text
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, key])
+  @@map("post_meta")
+}
+
+// Verified: triggers CommentMailer notification email on new comment.
+model Comment {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  parentId  Int?     @map("parent_id") // for threaded replies
+  authorName String  @map("author_name")
+  authorEmail String @map("author_email")
+  content   String   @db.Text
+  status    String   @default("pending") // "pending" | "approved" | "spam"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  post   Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies Comment[] @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+model PostView {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  ipAddress String?  @map("ip_address")
+  viewedAt  DateTime @default(now()) @map("viewed_at")
+
+  post Post @relation(fields: [postId], references: [id])
+
+  @@map("post_views")
+}
+
+model PostStatsDaily {
+  id    Int      @id @default(autoincrement())
+  postId Int     @map("post_id")
+  date  DateTime @db.Date
+  views Int      @default(0)
+
+  @@unique([postId, date])
+  @@map("post_stats_daily")
+}
+
+model VisitorLog {
+  id        Int      @id @default(autoincrement())
+  ipAddress String   @map("ip_address")
+  userAgent String?  @map("user_agent")
+  path      String
+  visitedAt DateTime @default(now()) @map("visited_at")
+
+  @@map("visitor_log")
+}
+
+model AdBlock {
+  id       Int    @id @default(autoincrement())
+  name     String
+  slot     String // e.g. "sidebar", "in-article", "header"
+  codeHtml String @map("code_html") @db.Text // raw ad script/HTML
+  status   String @default("active")
+
+  @@map("ad_blocks")
+}
+
+model Media {
+  id             Int      @id @default(autoincrement())
+  filePath       String   @map("file_path") // verified from file-manager.php — relative path from doc root, e.g. "uploads/foo_64f2a1.jpg"
+  fileType       String   @map("file_type") // "image" | "pdf" | "video" | "audio" | "document" | "archive" | "other"
+  altText        String?  @map("alt_text")
+  title          String?  @default("")
+  caption        String?  @db.Text
+  description    String?  @db.Text
+  responsiveSet  Json?    @map("responsive_set") // JSON array of resized-variant paths, for images
+  uploadedAt     DateTime @default(now()) @map("uploaded_at")
+
+  posts Post[]
+
+  @@map("media")
+}
+
+// Generic static-content page (About Us, Privacy Policy, Terms, Contact, etc.) —
+// a simple, standalone CMS page system, independent of the (out-of-scope) blog
+// module. Each page is just a slug + title + rich-text body + basic SEO fields.
+model Page {
+  id              Int      @id @default(autoincrement())
+  title           String
+  slug            String   @unique
+  content         String   @db.Text
+  metaTitle       String?  @map("meta_title")
+  metaDescription String?  @map("meta_description") @db.Text
+  status          String   @default("published") // "draft" | "published"
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("pages")
+}
+
+model TableTemplate {
+  id      Int    @id @default(autoincrement())
+  name    String
+  content String @db.Text
+
+  @@map("table_templates")
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PUSH NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  endpoint  String   @unique @db.Text
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("push_subscriptions")
+}
+
+model PushCampaign {
+  id        Int      @id @default(autoincrement())
+  title     String
+  body      String
+  url       String?
+  icon      String?
+  status    String   @default("draft") // "draft" | "sending" | "sent" | "failed"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  queueItems PushQueue[]
+
+  @@map("push_campaigns")
+}
+
+model PushQueue {
+  id             Int      @id @default(autoincrement())
+  campaignId     Int      @map("campaign_id")
+  subscriptionId Int      @map("subscription_id")
+  status         String   @default("pending") // "pending" | "sent" | "failed"
+  attemptedAt    DateTime? @map("attempted_at")
+
+  campaign PushCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("push_queue")
+}

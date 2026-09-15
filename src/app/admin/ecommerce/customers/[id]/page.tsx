@@ -1,0 +1,64 @@
+import { notFound, redirect } from "next/navigation";
+import { AdminShell } from "@/components/admin/AdminShell";
+import { CustomerProfileView } from "@/components/admin/CustomerProfileView";
+import { getAdminSession, hasPermission } from "@/lib/admin-auth";
+import { prisma } from "@/lib/db";
+
+interface CustomerProfilePageProps {
+  params: Promise<{ id: string }>;
+}
+
+/** Verified against admin/ecommerce/customer-profile.php. */
+export default async function CustomerProfilePage({ params }: CustomerProfilePageProps) {
+  const session = await getAdminSession();
+  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_customers")) {
+    redirect("/shop/login");
+  }
+
+  const { id } = await params;
+  const customerId = Number(id);
+  if (!Number.isInteger(customerId)) notFound();
+
+  const customer = await prisma.ecomCustomer.findUnique({ where: { id: customerId } });
+  if (!customer) notFound();
+
+  const [orders, credits] = await Promise.all([
+    prisma.ecomOrder.findMany({ where: { customerId }, orderBy: { createdAt: "desc" } }),
+    prisma.ecomCredit.findMany({
+      where: { customerId },
+      include: { order: { select: { orderNumber: true } }, payments: { orderBy: { createdAt: "asc" } } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const totalSpent = orders.reduce((s: number, o: (typeof orders)[number]) => s + Number(o.totalAmount), 0);
+
+  return (
+    <AdminShell
+      siteName="EduMint24"
+      pageTitle={customer.name}
+      pageSubtitle="Customer profile, order history, and due"
+      username={session.username}
+      role={session.role}
+      permissions={session.permissions}
+    >
+      <CustomerProfileView
+        customer={{
+          id: customer.id, name: customer.name, email: customer.email, phone: customer.phone,
+          address: customer.address, customerType: customer.customerType, status: customer.status,
+        }}
+        orders={orders.map((o: (typeof orders)[number]) => ({
+          id: o.id, orderNumber: o.orderNumber, totalAmount: Number(o.totalAmount),
+          paymentStatus: o.paymentStatus, orderStatus: o.orderStatus, createdAt: o.createdAt.toISOString(),
+        }))}
+        credits={credits.map((c: (typeof credits)[number]) => ({
+          id: c.id, orderNumber: c.order?.orderNumber ?? null, amount: Number(c.amount), amountPaid: Number(c.amountPaid),
+          status: c.status, createdAt: c.createdAt.toISOString(),
+          payments: c.payments.map((p: (typeof c.payments)[number]) => ({ paymentMethod: p.paymentMethod, amount: Number(p.amount), createdAt: p.createdAt.toISOString() })),
+        }))}
+        totalSpent={totalSpent}
+        totalOrders={orders.length}
+      />
+    </AdminShell>
+  );
+}

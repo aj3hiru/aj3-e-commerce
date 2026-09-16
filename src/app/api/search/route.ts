@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   const [orders, customers, receipts] = await Promise.all([
     prisma.ecomOrder.findMany({
-      where: { orderNumber: { contains: q, mode: "insensitive" } },
+      where: { orderNumber: { contains: q } },
       orderBy: { createdAt: "desc" },
       take: 5,
       select: { id: true, orderNumber: true, customerName: true, totalAmount: true, orderStatus: true },
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     prisma.ecomCustomer.findMany({
       where: {
         OR: [
-          { name: { contains: q, mode: "insensitive" } },
+          { name: { contains: q } },
           { phone: { contains: q } },
           ...(numericQ !== null ? [{ id: numericQ }] : []),
         ],
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
       take: 5,
     }),
     prisma.ecomCreditPayment.findMany({
-      where: { receiptNumber: { contains: q, mode: "insensitive" } },
+      where: { receiptNumber: { contains: q } },
       orderBy: { createdAt: "desc" },
       take: 5,
       include: { credit: { select: { customerName: true } } },

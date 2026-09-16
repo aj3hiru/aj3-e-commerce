@@ -22,7 +22,7 @@ export default async function ShopHomePage({ searchParams }: ShopHomePageProps) 
   // ── Search mode: simple results grid, no homepage sections ──────────────
   if (query !== "") {
     const products = await prisma.ecomProduct.findMany({
-      where: { status: "active", name: { contains: query, mode: "insensitive" } },
+      where: { status: "active", name: { contains: query } },
       orderBy: { createdAt: "desc" },
       take: 60,
     });

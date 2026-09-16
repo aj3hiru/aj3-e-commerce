@@ -30,7 +30,7 @@ export default async function UserManagerPage({ searchParams }: UserManagerPageP
   const roleFilter = params.role ?? "all";
 
   const where: Record<string, unknown> = {
-    ...(search ? { OR: [{ username: { contains: search, mode: "insensitive" } }, { email: { contains: search, mode: "insensitive" } }] } : {}),
+    ...(search ? { OR: [{ username: { contains: search } }, { email: { contains: search } }] } : {}),
     ...(roleFilter !== "all" ? { role: roleFilter } : {}),
   };
 

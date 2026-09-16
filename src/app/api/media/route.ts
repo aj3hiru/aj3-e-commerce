@@ -66,9 +66,9 @@ export async function GET(req: NextRequest) {
   if (type !== "all") where.fileType = type;
   if (search) {
     where.OR = [
-      { filePath: { contains: search, mode: "insensitive" } },
-      { title: { contains: search, mode: "insensitive" } },
-      { altText: { contains: search, mode: "insensitive" } },
+      { filePath: { contains: search } },
+      { title: { contains: search } },
+      { altText: { contains: search } },
     ];
   }
 

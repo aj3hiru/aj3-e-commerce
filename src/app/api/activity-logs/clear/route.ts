@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
   if (actionFilter !== "all") where.actionType = actionFilter;
   if (search) {
     where.OR = [
-      { description: { contains: search, mode: "insensitive" } },
-      { ipAddress: { contains: search, mode: "insensitive" } },
-      { user: { username: { contains: search, mode: "insensitive" } } },
+      { description: { contains: search } },
+      { ipAddress: { contains: search } },
+      { user: { username: { contains: search } } },
     ];
   }
 

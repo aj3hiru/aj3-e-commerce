@@ -59,7 +59,7 @@ export function CartTable({ items, subtotal }: { items: CartItemRow[]; subtotal:
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -76,7 +76,7 @@ export function CartTable({ items, subtotal }: { items: CartItemRow[]; subtotal:
               <tr key={item.productId} className="border-b border-storefront-border">
                 <td className="py-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-12 h-12 bg-storefront-bg rounded flex items-center justify-center overflow-hidden shrink-0">
+                    <div className="w-[52px] h-[52px] bg-storefront-bg rounded flex items-center justify-center overflow-hidden shrink-0">
                       {item.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={`/${item.image}`} alt="" className="w-full h-full object-cover" />

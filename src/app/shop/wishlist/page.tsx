@@ -32,7 +32,7 @@ export default async function WishlistPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
           {wishlistItems.map((w: (typeof wishlistItems)[number]) => (
             <ProductCard
               key={w.id}

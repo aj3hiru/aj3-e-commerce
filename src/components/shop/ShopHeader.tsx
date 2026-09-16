@@ -40,67 +40,67 @@ function ShopHeaderInner({ business, categories, customer, onOpenMobileMenu }: S
   return (
     <>
       {/* ============ DESKTOP HEADER ============ */}
-      <header className="hidden md:flex items-center gap-4 px-6 py-4 border-b border-storefront-border bg-white">
-        <Link href="/shop" className="flex items-center" aria-label={`${business.businessName} home`}>
+      <header className="hidden md:flex items-center gap-5 px-8 py-3 border-b border-storefront-border bg-white h-[76px]">
+        <Link href="/shop" className="flex items-center gap-1.5 shrink-0" aria-label={`${business.businessName} home`}>
           {business.logo ? (
-            <Image src={`/${business.logo}`} alt={`${business.businessName} logo`} width={140} height={48} className="h-12 w-auto object-contain" />
+            <Image src={`/${business.logo}`} alt={`${business.businessName} logo`} width={150} height={44} className="h-11 w-auto max-w-[150px] object-contain rounded" />
           ) : (
-            <span className="text-xl font-extrabold text-storefront-green-dark">{business.businessName}</span>
+            <span className="text-[26px] font-extrabold text-storefront-green-dark tracking-wide">{business.businessName}</span>
           )}
         </Link>
 
         {business.location && (
-          <div className="flex items-center gap-1.5 text-sm text-storefront-muted">
-            <MapPin className="w-4 h-4 text-storefront-green" />
-            <span className="truncate max-w-[12ch]">{business.location}</span>
+          <div className="flex items-center gap-1.5 px-3 h-11 bg-storefront-green-light rounded-lg text-sm whitespace-nowrap shrink-0">
+            <MapPin className="w-[18px] h-[18px] text-storefront-green shrink-0" />
+            <span className="font-bold">{business.location.length > 12 ? `${business.location.slice(0, 12)}` : business.location}</span>
           </div>
         )}
 
         {business.businessHours && (
-          <div className="flex flex-col text-sm">
-            <span className="text-storefront-muted text-xs">We&apos;re open</span>
-            <div className="flex items-center gap-1.5 font-medium">
-              <Clock className="w-4 h-4" />
+          <div className="text-[13px] whitespace-nowrap shrink-0 text-[#333]">
+            <span className="text-storefront-green font-bold">We&apos;re open</span>
+            <div className="flex items-center gap-1.5 font-bold mt-0.5">
+              <Clock className="w-3.5 h-3.5 text-storefront-orange" />
               {business.businessHours}
             </div>
           </div>
         )}
 
-        <form action="/shop" method="GET" className="flex-1 flex max-w-xl">
+        <form action="/shop" method="GET" className="flex-1 min-w-[200px] flex h-11">
           <input
             type="text"
             name="q"
             placeholder="Search for products"
             defaultValue={currentQ}
-            className="flex-1 border border-storefront-border rounded-l px-4 py-2 focus:outline-none focus:border-storefront-green"
+            className="flex-1 border border-storefront-border border-r-0 rounded-l-md px-4 text-sm outline-none text-[#333] placeholder:text-[#8a8a8a]"
           />
-          <button type="submit" className="bg-storefront-green hover:bg-storefront-green-dark text-white px-5 rounded-r font-semibold text-sm">
+          <button type="submit" className="bg-storefront-green hover:bg-storefront-green-dark text-white px-[26px] rounded-r-md font-bold text-[13px] tracking-wide">
             SEARCH
           </button>
         </form>
 
-        <div className="flex items-center gap-5 ml-auto">
-          <Link href={customer ? "/shop/account" : "/shop/login"} className="flex flex-col items-center text-sm">
-            <User className="w-5 h-5" />
+        <div className="flex items-center gap-[26px] ml-auto whitespace-nowrap shrink-0">
+          <Link href={customer ? "/shop/account" : "/shop/login"} className="flex items-center gap-1.5 text-sm font-semibold text-[#333]">
+            <User className="w-[22px] h-[22px] text-storefront-green shrink-0" strokeWidth={1.8} />
             <span>{customer ? customer.name.split(" ")[0] : "Sign In / Register"}</span>
           </Link>
-          <Link href="/shop/wishlist" aria-label="Wishlist">
-            <Heart className="w-5 h-5" />
+          <Link href="/shop/wishlist" className="flex items-center gap-1.5 text-sm font-semibold text-[#333]" aria-label="Wishlist">
+            <Heart className="w-[22px] h-[22px] text-storefront-green shrink-0" strokeWidth={1.8} />
           </Link>
-          <Link href="/shop/cart" className="flex items-center gap-1.5">
+          <Link href="/shop/cart" className="flex items-center gap-1.5 relative text-sm font-semibold text-[#333]">
             <div className="relative">
-              <ShoppingCart className="w-5 h-5" />
-              <span className="absolute -top-2 -right-2 bg-storefront-orange text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+              <ShoppingCart className="w-[22px] h-[22px] text-storefront-green shrink-0" strokeWidth={1.8} />
+              <span className="absolute -top-[9px] left-[13px] bg-[#fdd835] text-[#333] text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                 {count}
               </span>
             </div>
-            <span className="font-semibold text-sm">₹{total.toLocaleString("en-IN")}</span>
+            <span>₹{total.toLocaleString("en-IN")}</span>
           </Link>
         </div>
       </header>
 
       {/* Category nav bar */}
-      <nav className="hidden md:flex gap-6 px-6 py-3 border-b border-storefront-border bg-white overflow-x-auto">
+      <nav className="hidden md:flex gap-8 px-8 py-3.5 border-b border-storefront-border bg-white overflow-x-auto text-sm font-semibold">
         <Link
           href="/shop"
           className={cn("whitespace-nowrap text-sm font-medium", pathname === "/shop" && !currentSlug ? "text-storefront-green" : "text-storefront-text")}

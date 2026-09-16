@@ -21,7 +21,7 @@ export function ShopLayout({ business, categories, customer, cartCount, cartTota
 
   return (
     <CartProvider initialCount={cartCount} initialTotal={cartTotal}>
-      <div className="min-h-screen flex flex-col bg-storefront-bg">
+      <div className="min-h-screen flex flex-col bg-white">
         <ShopHeader
           business={business}
           categories={categories}
@@ -34,7 +34,7 @@ export function ShopLayout({ business, categories, customer, cartCount, cartTota
           isOpen={drawerOpen}
           onClose={() => setDrawerOpen(false)}
         />
-        <div className="flex-1 max-w-container-lg w-full mx-auto px-4 py-6">
+        <div className="flex-1 max-w-[1360px] w-full mx-auto px-8 py-6">
           {children}
         </div>
         <ShopFooter business={business} />

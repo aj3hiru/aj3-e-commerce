@@ -9,8 +9,16 @@ export interface SlideData {
   buttonLink: string;
 }
 
-/** Verified against the BANNER SLIDER markup in shop/index.php — auto-rotating
- *  slides with dot indicators and a counter. */
+/**
+ * Verified against .banner-slider / .slider-dots CSS in shop-header.php
+ * (lines 253-313) — REBUILT after discovering the first pass overlaid dots
+ * on top of the image (position: absolute), when the real design renders
+ * dots as a SEPARATE static row below the slider (position: static, its own
+ * margin). Also corrected: no fixed aspect-ratio box — the real slide sizes
+ * itself by `height:auto; max-height:340px` on the image, and only one slide
+ * is ever in the DOM as `display:block` at a time rather than all slides
+ * stacked with opacity transitions.
+ */
 export function BannerSlider({ slides }: { slides: SlideData[] }) {
   const [active, setActive] = useState(0);
 
@@ -23,30 +31,34 @@ export function BannerSlider({ slides }: { slides: SlideData[] }) {
   if (slides.length === 0) return null;
 
   return (
-    <div className="relative rounded-lg overflow-hidden mb-4">
-      <div className="relative aspect-[3/1] sm:aspect-[4/1]">
-        {slides.map((slide, i) => (
-          <Link
-            key={slide.id}
-            href={slide.buttonLink || "#"}
-            className={`absolute inset-0 transition-opacity duration-500 ${i === active ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`/${slide.image}`} alt="Banner" className="w-full h-full object-cover" />
-          </Link>
-        ))}
+    <div>
+      <div className="relative mt-4 rounded-xl overflow-hidden" style={{ touchAction: "pan-y" }}>
+        {slides.map((slide, i) =>
+          i === active ? (
+            <div key={slide.id} className="block">
+              <Link href={slide.buttonLink || "#"} className="block leading-none">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/${slide.image}`} alt="Banner" className="w-full h-auto max-h-[340px] object-cover block rounded-xl" />
+              </Link>
+            </div>
+          ) : null
+        )}
       </div>
       {slides.length > 1 && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/30 rounded-full px-2.5 py-1">
+        <div className="static mx-auto mt-3.5 mb-5 flex items-center justify-center gap-2">
           {slides.map((_, i) => (
             <button
               key={i}
               onClick={() => setActive(i)}
-              className={`w-1.5 h-1.5 rounded-full ${i === active ? "bg-white" : "bg-white/40"}`}
+              className="w-[22px] h-[22px] p-0 border-none bg-transparent cursor-pointer flex items-center justify-center"
               aria-label={`Slide ${i + 1}`}
-            />
+            >
+              <span className={`w-2 h-2 rounded-full ${i === active ? "bg-[#333]" : "bg-black/25"}`} />
+            </button>
           ))}
-          <span className="text-white text-[10px] ml-1">{active + 1}/{slides.length}</span>
+          <span className="bg-black/65 text-white text-xs font-bold px-3 py-1 rounded-full">
+            {active + 1}/{slides.length}
+          </span>
         </div>
       )}
     </div>

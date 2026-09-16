@@ -14,11 +14,13 @@ interface ShopMobileDrawerProps {
 }
 
 /**
- * Verified against shop/includes/shop-footer.php lines 18-80: the mobile
- * drawer shows a welcome message (with the customer's first name if logged
- * in), Sign In/Register or Logout, then Home / All Categories / My Orders /
- * Wishlist / My Cart (My Orders + Wishlist only if logged in), then a social
- * links row if any social_media_json entries exist.
+ * Verified against #sidebar CSS + markup in shop-header.php (lines 665-746)
+ * and shop-footer.php (lines 18-80) — REBUILT after discovering the first
+ * pass used the wrong accent color (green instead of the drawer's own
+ * `--drawer-accent:#7c3aed`, a purple distinct from the storefront's main
+ * green) and was missing the dedicated top action-bar row, the exact
+ * avatar/signin-button styling, and the bordered social-link circles
+ * (solid purple background, not an outline).
  */
 export function ShopMobileDrawer({ business, customer, isOpen, onClose }: ShopMobileDrawerProps) {
   return (
@@ -34,61 +36,79 @@ export function ShopMobileDrawer({ business, customer, isOpen, onClose }: ShopMo
         aria-label="Mobile Navigation"
         aria-hidden={!isOpen}
         className={cn(
-          "fixed top-0 left-0 bottom-0 w-[85%] max-w-[320px] bg-white z-[1000] overflow-y-auto transition-transform md:hidden",
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed top-0 left-0 bottom-0 w-[min(380px,88vw)] bg-white z-[1001] flex flex-col md:hidden",
+          "shadow-[0_16px_40px_rgba(124,58,237,0.18)] transition-transform duration-[250ms] ease-out",
+          isOpen ? "translate-x-0" : "-translate-x-[101%]"
         )}
       >
-        <div className="p-4 border-b border-storefront-border">
-          <div className="flex justify-end mb-3">
-            <button onClick={onClose} aria-label="Close menu">
-              <X className="w-5 h-5" />
+        <div className="shrink-0 border-b border-[#ebe5ff]">
+          <div className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-2 px-4 py-3">
+            <button
+              onClick={onClose}
+              aria-label="Close Menu"
+              className="w-[34px] h-[34px] grid place-items-center rounded-full border border-[#ebe5ff] text-[#1d1d1f] hover:text-[#7c3aed] hover:border-[#7c3aed] transition-colors"
+            >
+              <X className="w-5 h-5" strokeWidth={2} />
             </button>
           </div>
-          <div className="flex items-center gap-2 mb-3">
-            <UserCircle className="w-6 h-6 text-storefront-green" />
-            <span className="text-sm">
-              {customer ? `Welcome, ${customer.name.split(" ")[0]}!` : `Welcome to ${business.businessName}!`}
-            </span>
+
+          <div className="px-5 pt-2 pb-4">
+            <div className="flex items-center gap-3 mb-4 text-[15px] font-bold text-[#1d1d1f]">
+              <span className="grid place-items-center shrink-0 w-11 h-11 rounded-full bg-[#f0f0f0] text-[#7c3aed]">
+                <UserCircle className="w-[22px] h-[22px]" strokeWidth={1.8} />
+              </span>
+              <span>{customer ? `Welcome, ${customer.name.split(" ")[0]}!` : `Welcome to ${business.businessName}!`}</span>
+            </div>
+            <Link
+              href={customer ? "/shop/logout" : "/shop/login"}
+              className="block w-full py-3 rounded-lg bg-[#7c3aed] text-white text-[15px] font-bold text-center hover:opacity-90 transition-opacity"
+            >
+              {customer ? "Logout" : "Sign In / Register"}
+            </Link>
           </div>
-          <Link
-            href={customer ? "/shop/logout" : "/shop/login"}
-            className="block text-center bg-storefront-green text-white rounded py-2 text-sm font-semibold"
-          >
-            {customer ? "Logout" : "Sign In / Register"}
-          </Link>
         </div>
 
-        <nav className="p-2" onClick={(e) => {
-          if ((e.target as HTMLElement).closest("a")) onClose();
-        }}>
-          <Link href="/shop" className="flex items-center gap-3 px-3 py-3 text-sm">
-            <LayoutGrid className="w-5 h-5" /> Home
+        <nav
+          className="flex-1 min-h-0 overflow-y-auto py-4 px-3"
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest("a")) onClose();
+          }}
+        >
+          <Link href="/shop" className="flex items-center gap-3 w-full p-3 text-[15px] text-[#1d1d1f] hover:text-[#7c3aed]">
+            <LayoutGrid className="w-[22px] h-[22px] shrink-0" strokeWidth={1.8} /> Home
           </Link>
-          <Link href="/shop#categories" className="flex items-center gap-3 px-3 py-3 text-sm">
-            <LayoutGrid className="w-5 h-5" /> All Categories
+          <Link href="/shop#categories" className="flex items-center gap-3 w-full p-3 text-[15px] text-[#1d1d1f] hover:text-[#7c3aed]">
+            <LayoutGrid className="w-[22px] h-[22px] shrink-0" strokeWidth={1.8} /> All Categories
           </Link>
           {customer && (
             <>
-              <Link href="/shop/account#orders" className="flex items-center gap-3 px-3 py-3 text-sm">
-                <ClipboardList className="w-5 h-5" /> My Orders
+              <Link href="/shop/account#orders" className="flex items-center gap-3 w-full p-3 text-[15px] text-[#1d1d1f] hover:text-[#7c3aed]">
+                <ClipboardList className="w-[22px] h-[22px] shrink-0" strokeWidth={1.8} /> My Orders
               </Link>
-              <Link href="/shop/wishlist" className="flex items-center gap-3 px-3 py-3 text-sm">
-                <Heart className="w-5 h-5" /> Wishlist
+              <Link href="/shop/wishlist" className="flex items-center gap-3 w-full p-3 text-[15px] text-[#1d1d1f] hover:text-[#7c3aed]">
+                <Heart className="w-[22px] h-[22px] shrink-0" strokeWidth={1.8} /> Wishlist
               </Link>
             </>
           )}
-          <Link href="/shop/cart" className="flex items-center gap-3 px-3 py-3 text-sm">
-            <ShoppingCart className="w-5 h-5" /> My Cart
+          <Link href="/shop/cart" className="flex items-center gap-3 w-full p-3 text-[15px] text-[#1d1d1f] hover:text-[#7c3aed]">
+            <ShoppingCart className="w-[22px] h-[22px] shrink-0" strokeWidth={1.8} /> My Cart
           </Link>
         </nav>
 
         {!!business.socialMedia?.length && (
-          <div className="p-4 border-t border-storefront-border">
-            <p className="text-xs text-storefront-muted mb-2">Follow Us on Social Media</p>
-            <div className="flex gap-3">
+          <div className="shrink-0 px-5 pt-3 pb-4 border-t border-[#ebe5ff] bg-[#f7f7f7] text-center">
+            <p className="text-[13px] text-[#555] mb-2">Follow Us on Social Media</p>
+            <div className="flex flex-wrap justify-center gap-2">
               {business.socialMedia.map((s) => (
-                <a key={s.platform} href={s.url} target="_blank" rel="noopener noreferrer" aria-label={s.platform}>
-                  <SocialIcon platform={s.platform} className="w-5 h-5 text-storefront-text" />
+                <a
+                  key={s.platform}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={s.platform}
+                  className="grid place-items-center w-9 h-9 rounded-full bg-[#7c3aed] hover:opacity-85 hover:-translate-y-0.5 transition-all"
+                >
+                  <SocialIcon platform={s.platform} className="w-5 h-5 fill-white text-white" />
                 </a>
               ))}
             </div>

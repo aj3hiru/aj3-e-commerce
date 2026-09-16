@@ -1,15 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { ImageIcon, ShoppingCart } from "lucide-react";
+import { ImageIcon } from "lucide-react";
 import { useAddToCart } from "@/hooks/useAddToCart";
 import type { ProductCardData } from "./ProductCard";
-import { cn } from "@/lib/utils";
 
-/** Verified against renderCard2Product($p, $design) — horizontal image-left,
- *  info-right layout in one of 4 visual designs: design1 = clean minimal,
- *  design2 = ribbon discount badge, design3 = two-tone action strip,
- *  design4 = compact chip. */
+/**
+ * Verified against renderCard2Product() AND its CSS (shop-header.php lines
+ * 570-646) — rebuilt after a careful re-check found several real mismatches
+ * in the first pass:
+ *
+ * 1. Design name mapping was wrong. The admin picker's design3/design4 do NOT
+ *    map to CSS classes "design3"/"design4" — the PHP explicitly remaps them:
+ *    design1→design1, design2→design2, design3→design4 (two-tone), design4→design5
+ *    (compact chip). Using the admin-facing name directly on the CSS class,
+ *    as the first pass did, would have picked the wrong visual style for
+ *    "design3" and "design4".
+ * 2. design2's ribbon shows a PERCENTAGE off ("23% OFF"), not a rupee amount —
+ *    the first pass showed a rupee-amount ribbon.
+ * 3. The bottom row is TWO separate elements — a `qty2` info box (shows
+ *    "In Stock" / "Out of stock", not a quantity stepper despite the class
+ *    name) AND a separate `cart2` add-to-cart button — not one merged button
+ *    as the first pass had it.
+ * 4. The out-of-stock button says "UNAVAILABLE", not the design1 card's
+ *    "OUT OF STOCK" — a small but real copy difference between the two card
+ *    families that's worth preserving.
+ */
 export function Card2Product({ product, design = "design1" }: { product: ProductCardData; design?: "design1" | "design2" | "design3" | "design4" }) {
   const { addToCart, adding } = useAddToCart();
   const price = product.price;
@@ -17,63 +33,107 @@ export function Card2Product({ product, design = "design1" }: { product: Product
   const outOfStock = product.productType === "physical" && (product.stockQty ?? 0) <= 0;
   const offAmount = sale ? Math.round(price - sale) : 0;
   const offPct = sale && price > 0 ? Math.round(((price - sale) / price) * 100) : 0;
-  const isCompact = design === "design4";
 
-  const wrapperClass = cn(
-    "flex gap-3 rounded-lg border overflow-hidden bg-white",
-    design === "design2" && "border-storefront-orange/40",
-    design === "design3" && "bg-storefront-green-light border-transparent",
-    design === "design4" && "border-storefront-border p-2",
-    design === "design1" && "border-storefront-border"
-  );
+  // Real CSS-class remap verified from the PHP: design3→design4 (two-tone),
+  // design4→design5 (compact chip) — NOT a 1:1 name match.
+  const cssDesign = { design1: "design1", design2: "design2", design3: "design4", design4: "design5" }[design];
+  const isCompact = design === "design4"; // admin-facing "design4" = compact chip = CSS "design5"
+  const isTwoTone = design === "design3"; // admin-facing "design3" = two-tone = CSS "design4"
 
   return (
-    <div className={wrapperClass}>
-      <Link href={`/shop/product?slug=${product.slug}`} className="relative w-24 h-24 shrink-0 bg-storefront-bg flex items-center justify-center">
-        {product.image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={`/${product.image}`} alt={product.name} className="w-full h-full object-cover" />
-        ) : (
-          <ImageIcon className="w-6 h-6 text-storefront-muted" />
-        )}
-        {design === "design2" && sale && offPct > 0 && (
-          <span className="absolute top-0 left-0 bg-storefront-orange text-white text-[10px] font-bold px-2 py-0.5">{offPct}% OFF</span>
-        )}
-      </Link>
-      <div className="flex-1 flex flex-col justify-center py-2 pr-2 min-w-0">
-        <Link href={`/shop/product?slug=${product.slug}`} className="text-sm font-medium line-clamp-2">{product.name}</Link>
+    <div
+      className={
+        isTwoTone
+          ? "border border-storefront-border rounded-[10px] overflow-hidden flex flex-col bg-white"
+          : "border border-storefront-border rounded-[10px] p-3.5 flex flex-col gap-3 bg-white"
+      }
+    >
+      <div className={isTwoTone ? "flex gap-3.5 p-3.5" : "flex gap-3.5"} style={isCompact ? { gap: "10px" } : undefined}>
+        <Link
+          href={`/shop/product?slug=${product.slug}`}
+          className="relative shrink-0 bg-[#fafafa] rounded-lg flex items-center justify-center overflow-hidden"
+          style={isCompact ? { width: 70, height: 70 } : { width: 100, height: 100 }}
+        >
+          {product.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={`/${product.image}`} alt={product.name} className="w-full h-full object-cover rounded-lg" />
+          ) : (
+            <ImageIcon className="w-6 h-6 text-storefront-muted" />
+          )}
+          {design === "design2" && sale && offPct > 0 && (
+            <span className="absolute top-2 -left-1.5 bg-[#c62828] text-white text-[10px] font-bold px-2.5 py-1 rounded-[2px_6px_6px_2px] shadow">
+              {offPct}% OFF
+            </span>
+          )}
+        </Link>
 
-        {isCompact ? (
-          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            {sale && <span className="text-xs text-storefront-muted line-through">₹{price.toFixed(0)}</span>}
-            <span className="font-bold text-sm">₹{(sale ?? price).toFixed(0)}</span>
-            {sale && offAmount > 0 && <span className="text-[10px] bg-storefront-orange/10 text-storefront-orange font-bold rounded px-1.5 py-0.5">₹{offAmount} OFF</span>}
-          </div>
+        <div className="flex-1 min-w-0 flex flex-col gap-1.5 justify-center">
+          <Link href={`/shop/product?slug=${product.slug}`} className={isCompact ? "text-[13px] font-semibold leading-snug text-[#1a1a1a]" : "text-sm font-semibold leading-snug text-[#1a1a1a]"}>
+            {product.name}
+          </Link>
+
+          {isCompact ? (
+            <div className="flex items-center gap-1.5 flex-wrap text-[13px]">
+              {sale && <span className="line-through text-storefront-muted">₹{price.toFixed(0)}</span>}
+              <span className="font-extrabold text-base text-[#111]">₹{(sale ?? price).toFixed(0)}</span>
+              {sale && offAmount > 0 && (
+                <span className="inline-block w-fit bg-storefront-green-light text-storefront-green-dark font-bold text-[10px] px-1.5 py-0.5 rounded">
+                  ₹{offAmount} OFF
+                </span>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 flex-wrap text-[13px]">
+                {sale && <span className="line-through text-storefront-muted">₹{price.toFixed(0)}</span>}
+                <span className="font-extrabold text-base text-[#111]">₹{(sale ?? price).toFixed(0)}</span>
+              </div>
+              {design !== "design2" && sale && offAmount > 0 && (
+                <span className="inline-block w-fit bg-storefront-green-light text-storefront-green-dark font-bold text-[11px] px-2 py-0.5 rounded">
+                  ₹{offAmount} OFF
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      <div
+        className={isTwoTone ? "flex items-center gap-2.5 w-full bg-storefront-green-light px-3.5 py-3" : "flex items-center gap-2.5 w-full"}
+      >
+        {outOfStock ? (
+          <>
+            <div
+              className={isTwoTone ? "border border-storefront-border rounded-md px-3 py-2 text-[12.5px] flex-shrink-0 flex flex-col justify-center bg-white" : "border border-storefront-border rounded-md px-3 py-2 text-[12.5px] flex-shrink-0 flex flex-col justify-center"}
+              style={{ width: isCompact ? 60 : 110, height: 44 }}
+            >
+              Out of stock
+            </div>
+            <button disabled className="flex-1 h-11 bg-storefront-muted text-white rounded-md font-bold text-[12.5px]">UNAVAILABLE</button>
+          </>
         ) : (
           <>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              {sale && <span className="text-xs text-storefront-muted line-through">₹{price.toFixed(0)}</span>}
-              <span className="font-bold text-sm">₹{(sale ?? price).toFixed(0)}</span>
+            <div
+              className={isTwoTone ? "border border-storefront-border rounded-md px-3 py-2 text-[12.5px] flex-shrink-0 flex flex-col justify-center bg-white" : "border border-storefront-border rounded-md px-3 py-2 text-[12.5px] flex-shrink-0 flex flex-col justify-center"}
+              style={isCompact ? { width: 60, height: 44, alignItems: "center", justifyContent: "center", fontWeight: 700 } : { width: 110, height: 44 }}
+            >
+              In Stock
+              {!isCompact && <small className="block text-storefront-muted text-[10.5px] mt-0.5">Ready to ship</small>}
             </div>
-            {design !== "design2" && sale && offAmount > 0 && (
-              <span className="text-[10px] text-storefront-orange font-bold mt-0.5">₹{offAmount} OFF</span>
-            )}
-          </>
-        )}
-
-        <div className="mt-2">
-          {outOfStock ? (
-            <button disabled className="bg-storefront-muted text-white text-xs font-bold rounded px-3 py-1.5">UNAVAILABLE</button>
-          ) : (
             <button
               onClick={() => addToCart(product.id)}
               disabled={adding}
-              className="flex items-center gap-1 bg-storefront-green hover:bg-storefront-green-dark text-white text-xs font-bold rounded px-3 py-1.5 disabled:opacity-60"
+              className={isCompact ? "flex-1 h-11 min-w-0 bg-storefront-green text-white rounded-md font-bold text-xs flex items-center justify-center gap-1.5 disabled:opacity-60" : "h-11 min-w-0 bg-storefront-green text-white rounded-md font-bold text-[12.5px] flex items-center justify-center gap-1.5 disabled:opacity-60"}
+              style={!isCompact ? { width: 150, flex: "0 0 auto" } : undefined}
             >
-              <ShoppingCart className="w-3 h-3" /> ADD TO CART
+              <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" stroke="#fff" strokeWidth="2">
+                <circle cx="9" cy="21" r="1" /><circle cx="19" cy="21" r="1" />
+                <path d="M2 3h2l2.6 12.4a2 2 0 002 1.6h9.7a2 2 0 002-1.6L22 7H6" />
+              </svg>
+              ADD TO CART
             </button>
-          )}
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

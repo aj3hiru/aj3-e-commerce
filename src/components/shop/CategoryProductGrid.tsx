@@ -39,7 +39,7 @@ export function CategoryProductGrid({ initialProducts, hasMore: initialHasMore, 
 
   return (
     <>
-      <div id="categoryProductGrid" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+      <div id="categoryProductGrid" className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
         {products.map((p) => (
           <ProductCard key={p.id} product={p} />
         ))}

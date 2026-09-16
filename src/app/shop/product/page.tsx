@@ -41,7 +41,7 @@ export default async function ProductPage({ searchParams }: ProductPageProps) {
         <Link href="/shop" className="text-storefront-muted">Home</Link> / <span className="text-storefront-text">{product.name}</span>
       </nav>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-[5fr_7fr] gap-8 mb-10">
         <ProductGallery images={galleryImages} name={product.name} />
 
         <div>

@@ -36,7 +36,7 @@ export default async function ShopHomePage({ searchParams }: ShopHomePageProps) 
             <p>No products found for your search.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
             {products.map((p: (typeof products)[number]) => (
               <ProductCard
                 key={p.id}
@@ -132,7 +132,7 @@ export default async function ShopHomePage({ searchParams }: ShopHomePageProps) 
         .map((row) => (
           <section key={row.category.id} className="mb-5">
             <h2 className="text-lg font-bold mb-2.5">{row.category.name}</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
               {row.products.map((p: (typeof row.products)[number]) => (
                 <ProductCard
                   key={p.id}
@@ -187,7 +187,7 @@ async function ProductGridSectionServer({ section }: { section: { id: number; ti
   return (
     <section className="mb-5">
       {section.title && <h2 className="text-lg font-bold mb-2.5">{section.title}</h2>}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:[grid-template-columns:repeat(2,minmax(240px,1fr))] lg:[grid-template-columns:repeat(3,minmax(240px,1fr))] gap-[18px]">
         {products.map((p: (typeof products)[number]) => (
           <Card2Product
             key={p.id}

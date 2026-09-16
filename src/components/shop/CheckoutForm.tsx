@@ -58,7 +58,7 @@ export function CheckoutForm({ initialAddress, paymentMethods, items, subtotal, 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
+    <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-[7fr_5fr] gap-6">
       <div className="space-y-4">
         {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-4 py-2.5">{error}</div>}
 

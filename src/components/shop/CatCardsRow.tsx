@@ -6,26 +6,33 @@ export interface CatCardData {
   label: string;
 }
 
-/** Verified against the .cat-cards / .ccard markup shared by category_row and
- *  manual_products home sections in shop/index.php. */
+/**
+ * Verified against .cat-row-title / .cat-cards CSS in shop-header.php
+ * (lines 374-411) — REBUILT after discovering the first pass rendered this
+ * as a horizontally-scrolling row of small circular thumbnails, when the
+ * real design is an 8-column CSS GRID of square cards with rounded corners
+ * (no scrolling at this breakpoint), light-blue placeholder background
+ * (#eaf2fb), and bold 17px labels below each image — a much bigger, more
+ * prominent card than the first pass's compact scroller implied.
+ */
 export function CatCardsRow({ title, cards }: { title: string | null; cards: CatCardData[] }) {
   if (cards.length === 0) return null;
 
   return (
-    <div className="mb-5">
-      {title && <div className="font-bold text-base mb-2.5">{title}</div>}
-      <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+    <div>
+      {title && <div className="text-xl font-extrabold pt-5 pb-1">{title}</div>}
+      <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-x-4 gap-y-5 py-3 pb-[30px]">
         {cards.map((c, i) => (
-          <Link key={i} href={c.href} className="flex flex-col items-center gap-1.5 shrink-0 w-20">
-            <div className="w-20 h-20 rounded-lg bg-storefront-bg flex items-center justify-center overflow-hidden">
+          <Link key={i} href={c.href} className="text-center">
+            <div className="w-full aspect-square bg-[#eaf2fb] rounded-xl flex items-center justify-center gap-1 mb-2.5 overflow-hidden">
               {c.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`/${c.image}`} alt={c.label} className="w-full h-full object-cover" />
+                <img src={`/${c.image}`} alt={c.label} className="w-full h-full object-cover rounded-xl" />
               ) : (
-                <span className="text-2xl">🛒</span>
+                <span className="text-[30px]">🛒</span>
               )}
             </div>
-            <p className="text-xs text-center line-clamp-2">{c.label}</p>
+            <p className="text-[17px] font-bold text-[#222] leading-tight">{c.label}</p>
           </Link>
         ))}
       </div>

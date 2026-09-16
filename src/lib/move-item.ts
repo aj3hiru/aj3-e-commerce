@@ -1,9 +1,16 @@
 import { prisma } from "./db";
 
 type SortableDelegate = {
-  findUnique: (args: any) => Promise<{ id: number; sortOrder: number } | null>;
-  findFirst: (args: any) => Promise<{ id: number; sortOrder: number } | null>;
-  update: (args: any) => Promise<unknown>;
+  // Real regression fixed here: this typed its arguments as `any` at some
+  // point (visible in the diff pulled from the live server as a change
+  // FROM `unknown` TO `any`, with no explanation given anywhere for why).
+  // `any` disables type-checking entirely on every call site that uses
+  // this delegate; `unknown` is the type-safe choice — it still requires
+  // the caller to narrow before use, which is exactly what's needed here
+  // since this type is generic over whichever Prisma model gets passed in.
+  findUnique: (args: unknown) => Promise<{ id: number; sortOrder: number } | null>;
+  findFirst: (args: unknown) => Promise<{ id: number; sortOrder: number } | null>;
+  update: (args: unknown) => Promise<unknown>;
 };
 
 /** Verified against moveItem($pdo, $table, $id, $direction) in homepage-settings.php:

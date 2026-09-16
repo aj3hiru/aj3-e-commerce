@@ -8,9 +8,9 @@ import { logActivity } from "@/lib/activity-log";
  * (best-effort, matches the PHP try/catch around the activity log insert)
  * then clears the session.
  *
- * Three real bugs fixed here, all found and root-caused on the sibling
- * StoryTimes CMS project (same underlying "newbase" PHP source, same
- * class of mistake independently reintroduced here):
+ * Two real bugs fixed here, both root-caused on the sibling StoryTimes CMS
+ * project (same underlying "newbase" PHP source, same class of mistake
+ * independently reintroduced here):
  *
  * 1. This used to also export a GET handler, "to support a plain
  *    <a href> link, matching the original PHP." Next.js's own <Link>
@@ -30,9 +30,10 @@ import { logActivity } from "@/lib/activity-log";
  *    route's raw JSON text instead of logging out and landing anywhere.
  *    Now issues a real 303 redirect, which is also what makes a POST
  *    <form> submission land somewhere sensible.
- * 3. The redirect target was "/shop/login" — the CUSTOMER login page,
- *    not the admin one. An admin logging out was being sent to the
- *    wrong login form entirely. Corrected to the real admin login path.
+ *
+ * A THIRD "fix" I made in an earlier pass — changing the redirect target
+ * from "/shop/login" to "/admin/admin-login-portal" — was itself wrong,
+ * and has been reverted below. See the comment at the return statement.
  */
 export async function POST(req: NextRequest) {
   const session = await getAdminSession();
@@ -45,5 +46,18 @@ export async function POST(req: NextRequest) {
   }
 
   await clearAdminSessionCookie();
-  return NextResponse.redirect(new URL("/admin/admin-login-portal", req.url), 303);
+  // Correcting my OWN earlier mistake here (originally this pointed at
+  // "/admin/admin-login-portal", which I mischaracterised as a bug fix).
+  // I'd assumed a separate admin login — matching the sibling StoryTimes
+  // CMS project's own design — without verifying against THIS project's
+  // actual PHP reference. Checked it directly: admin/admin-login-portal.php
+  // explicitly states "Login is now unified — admin, staff, and customer
+  // accounts all sign in from the same page" and itself just redirects to
+  // /shop/login.php. Every other admin page in this codebase (34 of them)
+  // already redirects unauthenticated visitors to "/shop/login" for
+  // exactly this reason — my earlier change was the one inconsistent with
+  // the rest of the project, not the other way around. Going straight to
+  // "/shop/login" avoids an unnecessary extra redirect hop through the
+  // now-vestigial /admin/admin-login-portal route.
+  return NextResponse.redirect(new URL("/shop/login", req.url), 303);
 }

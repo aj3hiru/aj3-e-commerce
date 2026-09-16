@@ -30,8 +30,8 @@ export async function POST(req: NextRequest) {
   const photoFile = form.get("photo") as File | null;
   let imagePath: string | undefined;
   if (photoFile && photoFile.size > 0) {
-    const existing = await prisma.ecomPaymentSettings.findUnique({ where: { methodKey } });
-    await deleteUploadedImage(existing?.image);
+    const existing = await prisma.ecomPaymentSettings.findUnique({ where: { methodKey: methodKey! } });
+    if (existing?.image) await deleteUploadedImage(existing.image);
     imagePath = await saveUploadedImage(photoFile, "ecommerce/payment", methodKey!);
   }
 

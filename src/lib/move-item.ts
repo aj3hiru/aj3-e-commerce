@@ -1,9 +1,9 @@
 import { prisma } from "./db";
 
 type SortableDelegate = {
-  findUnique: (args: unknown) => Promise<{ id: number; sortOrder: number } | null>;
-  findFirst: (args: unknown) => Promise<{ id: number; sortOrder: number } | null>;
-  update: (args: unknown) => Promise<unknown>;
+  findUnique: (args: any) => Promise<{ id: number; sortOrder: number } | null>;
+  findFirst: (args: any) => Promise<{ id: number; sortOrder: number } | null>;
+  update: (args: any) => Promise<unknown>;
 };
 
 /** Verified against moveItem($pdo, $table, $id, $direction) in homepage-settings.php:

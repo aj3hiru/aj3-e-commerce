@@ -59,12 +59,31 @@ export function ShopMobileDrawer({ business, customer, isOpen, onClose }: ShopMo
               </span>
               <span>{customer ? `Welcome, ${customer.name.split(" ")[0]}!` : `Welcome to ${business.businessName}!`}</span>
             </div>
-            <Link
-              href={customer ? "/shop/logout" : "/shop/login"}
-              className="block w-full py-3 rounded-lg bg-[#7c3aed] text-white text-[15px] font-bold text-center hover:opacity-90 transition-opacity"
-            >
-              {customer ? "Logout" : "Sign In / Register"}
-            </Link>
+            {customer ? (
+              // Two real bugs fixed here, both root-caused on the sibling
+              // StoryTimes CMS project. (1) The link prefetch issue — see
+              // the same fix in AdminHeader.tsx and the reasoning in
+              // src/app/api/auth/customer-logout/route.ts. (2) This
+              // pointed at "/shop/logout", a URL with no matching route
+              // anywhere in this project at all — the actual endpoint is
+              // "/api/auth/customer-logout". A plain click here would have
+              // hit a 404, not logged anyone out.
+              <form method="POST" action="/api/auth/customer-logout">
+                <button
+                  type="submit"
+                  className="block w-full py-3 rounded-lg bg-[#7c3aed] text-white text-[15px] font-bold text-center hover:opacity-90 transition-opacity"
+                >
+                  Logout
+                </button>
+              </form>
+            ) : (
+              <Link
+                href="/shop/login"
+                className="block w-full py-3 rounded-lg bg-[#7c3aed] text-white text-[15px] font-bold text-center hover:opacity-90 transition-opacity"
+              >
+                Sign In / Register
+              </Link>
+            )}
           </div>
         </div>
 

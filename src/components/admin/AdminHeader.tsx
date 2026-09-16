@@ -85,9 +85,22 @@ export function AdminHeader({ siteName, pageTitle, pageSubtitle, username, role,
               </li>
               <li><hr className="my-1 mx-1.5 border-admin-gray-100" /></li>
               <li>
-                <Link href="/api/auth/logout" className="flex items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-admin-gray-800 hover:bg-admin-gray-50">
-                  <LogOut className="w-4 h-4" /> Logout
-                </Link>
+                {/* Real bug fixed here — root-caused on the sibling StoryTimes
+                    CMS project: a plain <Link> to a logout endpoint gets
+                    silently PREFETCHED by Next.js whenever it's in the
+                    viewport (this dropdown is present on every admin page),
+                    which was logging admins out in the background with
+                    nobody clicking anything. Logout must be a real POST
+                    form submission, never a GET-reachable link — see
+                    src/app/api/auth/logout/route.ts for the matching fix. */}
+                <form method="POST" action="/api/auth/logout">
+                  <button
+                    type="submit"
+                    className="flex w-full items-center gap-2.5 px-2.5 py-2 rounded-md text-sm text-admin-gray-800 hover:bg-admin-gray-50 text-left"
+                  >
+                    <LogOut className="w-4 h-4" /> Logout
+                  </button>
+                </form>
               </li>
             </ul>
           )}

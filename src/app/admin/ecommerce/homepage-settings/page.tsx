@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 
 export default async function HomepageSettingsPage() {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
+  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_homepage")) {
     redirect("/shop/login");
   }
 

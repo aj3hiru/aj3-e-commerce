@@ -26,7 +26,7 @@ export interface PermissionsShape {
   ecommerce: {
     manage_categories: boolean; manage_products: boolean; manage_orders: boolean;
     manage_customers: boolean; manage_coupons: boolean; manage_payment: boolean;
-    manage_billing: boolean; manage_credits: boolean;
+    manage_billing: boolean; manage_credits: boolean; manage_homepage: boolean;
   };
   users: { create: boolean; edit: boolean; delete: boolean; suspend: boolean; change_roles: boolean; manage_permissions: boolean };
   authors: { create: boolean; edit: boolean; delete: boolean; approve: boolean; feature: boolean };
@@ -51,7 +51,7 @@ export const DEFAULT_PERMISSIONS: PermissionsShape = {
   ecommerce: {
     manage_categories: false, manage_products: false, manage_orders: false,
     manage_customers: false, manage_coupons: false, manage_payment: false,
-    manage_billing: false, manage_credits: false,
+    manage_billing: false, manage_credits: false, manage_homepage: false,
   },
   users: { create: false, edit: false, delete: false, suspend: false, change_roles: false, manage_permissions: false },
   authors: { create: false, edit: false, delete: false, approve: false, feature: false },
@@ -134,7 +134,13 @@ export const PERMISSION_GROUPS: {
   { key: "push_notifications", label: "Push Notifications", icon: "Bell", fields: { send: "Send", schedule: "Schedule", manage_templates: "Templates" } },
   {
     key: "ecommerce", label: "Ecommerce", icon: "Store",
-    fields: { manage_categories: "Categories", manage_products: "Products", manage_orders: "Orders", manage_customers: "Customers", manage_coupons: "Coupons", manage_payment: "Payment Settings", manage_billing: "Billing / POS", manage_credits: "Due" },
+    // Real bug fixed here: Homepage Settings was gated on manage_payment
+    // ("Payment Settings" in this very panel) — completely unrelated to
+    // managing the storefront's banner slider/sections. An admin granted
+    // every other ecommerce permission except Payment Settings hit
+    // "Access Denied" on every single homepage action, making the whole
+    // feature look broken. New manage_homepage field, checked instead.
+    fields: { manage_categories: "Categories", manage_products: "Products", manage_orders: "Orders", manage_customers: "Customers", manage_coupons: "Coupons", manage_payment: "Payment Settings", manage_billing: "Billing / POS", manage_credits: "Due", manage_homepage: "Homepage Settings" },
   },
   { key: "users", label: "Users", icon: "Users", fields: { create: "Create", edit: "Edit", delete: "Delete", suspend: "Suspend", change_roles: "Change Roles", manage_permissions: "Manage Permissions" } },
   { key: "authors", label: "Authors", icon: "Feather", fields: { create: "Create", edit: "Edit", delete: "Delete", approve: "Approve", feature: "Feature" } },

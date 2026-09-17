@@ -13,7 +13,7 @@ const VALID_CARD_DESIGNS = ["design1", "design2", "design3", "design4"];
  *  `elseif ($action === '...')` branch from the original. */
 export async function POST(req: NextRequest) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
+  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_homepage")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
   }
 

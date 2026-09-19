@@ -1,9 +1,43 @@
+/*
+ * The @import MUST be the first rule in this file. The CSS spec discards any
+ * @import that follows another rule, and `@tailwind base` expands into
+ * hundreds of rules — so while this line sat below the @tailwind directives,
+ * browsers silently dropped it and Inter never loaded. Every admin page was
+ * rendering in the system fallback font, which is why text never quite
+ * matched EduMint's size and weight.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
+/* ecom-head.php: body { font-family: Inter…; color: var(--gray-800); line-height: 1.5 } */
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #1f2937;
+  line-height: 1.5;
+}
+
+/* sidebar-nav.php: thin 4px scrollbar on the sidebar nav. */
+.admin-sidebar-nav { scrollbar-width: thin; scrollbar-color: #e5e7eb transparent; }
+.admin-sidebar-nav::-webkit-scrollbar { width: 4px; }
+.admin-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.admin-sidebar-nav::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 2px; }
+.admin-sidebar-nav::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+
+/* header-user.php: the little white arrow on top of the user dropdown,
+   pointing up at the name — `.header-user-menu::before`. */
+.header-user-menu::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  right: 18px;
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-left: 1px solid rgba(0, 0, 0, 0.15);
+  border-top: 1px solid rgba(0, 0, 0, 0.15);
+  transform: rotate(45deg);
+  border-radius: 2px 0 0 0;
 }

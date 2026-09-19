@@ -31,6 +31,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <AdminShell
+      showSearch
       siteName="EduMint24"
       pageTitle="E-commerce Dashboard"
       pageSubtitle="A live overview of your store"

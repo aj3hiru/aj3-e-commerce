@@ -2,7 +2,16 @@
 
 import { createContext, createElement, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 
+/** The PHP's own localStorage key, kept so existing saved prefs still apply. */
 const PREF_KEY = "ecom_dashboard_widgets";
+
+/** Shape of a Display Options group. Declared so a second dashboard can supply
+ *  its own list instead of this file's. */
+export interface WidgetGroup {
+  group: string;
+  groupLabel: string;
+  items: readonly { key: string; label: string }[];
+}
 
 export const DASHBOARD_WIDGETS = [
   {
@@ -48,11 +57,6 @@ export const DASHBOARD_WIDGETS = [
   },
 ] as const;
 
-const ALL_KEYS = [
-  "online", "earnings", "overview", "recentorders",
-  ...DASHBOARD_WIDGETS.flatMap((g) => g.items.map((i) => i.key)),
-];
-
 /**
  * Verified against the "Display Options (show/hide dashboard sections,
  * remembered per browser)" IIFE at the bottom of dashboard.php — same
@@ -72,45 +76,82 @@ interface WidgetPrefsValue {
   toggle: (key: string, visible: boolean) => void;
   loaded: boolean;
   allKeys: string[];
+  /** The groups the Display Options panel should render. */
+  groups: readonly WidgetGroup[];
+  /** Section-level keys with no group of their own, listed after the groups. */
+  standalone: readonly { key: string; label: string }[];
 }
 
 const WidgetPrefsContext = createContext<WidgetPrefsValue | null>(null);
 
-function useWidgetPrefsStore(): WidgetPrefsValue {
+const DEFAULT_STANDALONE = [{ key: "recentorders", label: "Recent Orders" }] as const;
+
+function useWidgetPrefsStore(
+  prefKey: string,
+  groups: readonly WidgetGroup[],
+  standalone: readonly { key: string; label: string }[]
+): WidgetPrefsValue {
   const [prefs, setPrefs] = useState<Record<string, boolean>>({});
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     try {
-      const saved = JSON.parse(window.localStorage.getItem(PREF_KEY) || "{}");
+      const saved = JSON.parse(window.localStorage.getItem(prefKey) || "{}");
       setPrefs(saved);
     } catch {
       setPrefs({});
     } finally {
       setLoaded(true);
     }
-  }, []);
+  }, [prefKey]);
 
   const isVisible = useCallback((key: string) => prefs[key] !== false, [prefs]);
 
-  const toggle = useCallback((key: string, visible: boolean) => {
-    setPrefs((prev) => {
-      const next = { ...prev, [key]: visible };
-      try {
-        window.localStorage.setItem(PREF_KEY, JSON.stringify(next));
-      } catch {
-        /* private mode / blocked storage — the toggle still applies for this page */
-      }
-      return next;
-    });
-  }, []);
+  const toggle = useCallback(
+    (key: string, visible: boolean) => {
+      setPrefs((prev) => {
+        const next = { ...prev, [key]: visible };
+        try {
+          window.localStorage.setItem(prefKey, JSON.stringify(next));
+        } catch {
+          /* private mode / blocked storage — the toggle still applies for this page */
+        }
+        return next;
+      });
+    },
+    [prefKey]
+  );
 
-  return { prefs, isVisible, toggle, loaded, allKeys: ALL_KEYS };
+  const allKeys = [
+    ...groups.map((g) => g.group),
+    ...standalone.map((s) => s.key),
+    ...groups.flatMap((g) => g.items.map((i) => i.key)),
+  ];
+
+  return { prefs, isVisible, toggle, loaded, allKeys, groups, standalone };
 }
 
-/** Wraps the whole dashboard so the panel and the sections share one store. */
-export function DashboardWidgetPrefsProvider({ children }: { children: ReactNode }) {
-  const value = useWidgetPrefsStore();
+/**
+ * Wraps a dashboard so its Display Options panel and its sections share one
+ * store.
+ *
+ * `prefKey` and `groups` are parameters because the two dashboards show
+ * different widgets. They MUST stay distinct per dashboard: a shared key would
+ * mean hiding a card on one page also hid an unrelated card on the other,
+ * since visibility is keyed by widget name alone.
+ */
+export function DashboardWidgetPrefsProvider({
+  children,
+  prefKey = PREF_KEY,
+  groups = DASHBOARD_WIDGETS,
+  standalone = DEFAULT_STANDALONE,
+}: {
+  children: ReactNode;
+  prefKey?: string;
+  groups?: readonly WidgetGroup[];
+  standalone?: readonly { key: string; label: string }[];
+}) {
+  const value = useWidgetPrefsStore(prefKey, groups, standalone);
   return createElement(WidgetPrefsContext.Provider, { value }, children);
 }
 

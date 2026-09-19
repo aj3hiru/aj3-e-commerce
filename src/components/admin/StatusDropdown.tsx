@@ -102,7 +102,7 @@ export function StatusDropdown({ value, options, variant, disabled, onSelect, la
           setOpen((o) => !o);
         }}
         // .btn.btn-sm sizing + .status-btn overrides (square, no shadow, 500 weight)
-        className="inline-flex items-center gap-1.5 border-0 rounded-none shadow-none px-2 py-1 text-sm font-medium leading-normal disabled:opacity-65"
+        className="inline-flex items-center gap-1.5 whitespace-nowrap border-0 rounded-none shadow-none px-2 py-1 text-sm font-medium leading-normal disabled:opacity-65"
         style={{ backgroundColor: style.background, color: style.color }}
       >
         {value}

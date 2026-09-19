@@ -1,3 +1,12 @@
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import {
+  faHome, faCashRegister, faHistory, faBoxes, faPlusSquare, faCopyright, faBoxOpen,
+  faPercent, faFileCsv, faStarHalfAlt, faBarcode, faTags, faList, faListUl, faReceipt,
+  faHourglassHalf, faTruckLoading, faTruck, faBan, faUserFriends, faPercentage,
+  faCreditCard, faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
+  faSignOutAlt, faChartLine, faFileAlt,
+} from "@fortawesome/free-solid-svg-icons";
+
 // ════════════════════════════════════════════════════════════════════════
 // Verified 1:1 against admin/components/sidebar-nav.php — every section,
 // submenu, icon, and permission gate below matches the original PHP file.
@@ -29,7 +38,12 @@ export type NavPermissionPath =
 export interface NavLink {
   href: string;
   label: string;
-  icon: string; // lucide-react icon name, mapped in the component
+  /** The exact Font Awesome 6.4 glyph sidebar-nav.php uses (`<i class="fas fa-…">`).
+   *  FA rather than Lucide on purpose: the two icon sets draw different
+   *  shapes, so no Lucide substitute can ever look like the original. */
+  icon: IconDefinition;
+  /** Rendered as a POST form instead of a link — see AdminSidebar. */
+  isLogout?: boolean;
   permission: NavPermissionPath;
   /** Used to compute the "active" state beyond a simple pathname match (e.g. orders.php?type=Pending) */
   matchQuery?: { key: string; value: string };
@@ -58,7 +72,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Main",
     permission: null,
     links: [
-      { href: "/admin/dashboard", label: "Dashboard", icon: "Home", permission: null },
+      { href: "/admin/dashboard", label: "Dashboard", icon: faHome, permission: null },
     ],
   },
 
@@ -67,8 +81,8 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Billing",
     permission: "ecommerce.manage_billing",
     links: [
-      { href: "/admin/ecommerce/billing", label: "Billing / POS", icon: "Cog" /* fa-cash-register */, permission: "ecommerce.manage_billing" },
-      { href: "/admin/ecommerce/sales-history", label: "Sales History", icon: "History", permission: "ecommerce.manage_billing" },
+      { href: "/admin/ecommerce/billing", label: "Billing / POS", icon: faCashRegister, permission: "ecommerce.manage_billing" },
+      { href: "/admin/ecommerce/sales-history", label: "Sales History", icon: faHistory, permission: "ecommerce.manage_billing" },
     ],
   },
 
@@ -80,19 +94,19 @@ export const ADMIN_NAV: NavSection[] = [
       {
         href: "/admin/ecommerce/products",
         label: "All Products",
-        icon: "Boxes",
+        icon: faBoxes,
         permission: "ecommerce.manage_products",
         defaultOpen: true,
         submenuId: "submenu-products",
         submenu: [
-          { href: "/admin/ecommerce/products/add", label: "Add Product", icon: "PlusSquare", permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/brands", label: "Brands", icon: "Copyright", permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/stock-out-products", label: "Stock Out Products", icon: "PackageOpen", permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/campaign-offer", label: "Campaign Offer", icon: "Percent", permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/csv-import-export", label: "CSV Import & Export", icon: "FileSpreadsheet", permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/product-reviews", label: "Product Reviews", icon: "StarHalf", permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/barcode-print", label: "Print Barcodes", icon: "Barcode", permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/product-tags", label: "Badge Tags & Item Types", icon: "Tags", permission: "ecommerce.manage_products" },
+          { href: "/admin/ecommerce/products/add", label: "Add Product", icon: faPlusSquare, permission: "ecommerce.manage_products" },
+          { href: "/admin/ecommerce/brands", label: "Brands", icon: faCopyright, permission: "ecommerce.manage_products" },
+          { href: "/admin/ecommerce/stock-out-products", label: "Stock Out Products", icon: faBoxOpen, permission: "ecommerce.manage_products" },
+          { href: "/admin/ecommerce/campaign-offer", label: "Campaign Offer", icon: faPercent, permission: "ecommerce.manage_products" },
+          { href: "/admin/ecommerce/csv-import-export", label: "CSV Import & Export", icon: faFileCsv, permission: "ecommerce.manage_products" },
+          { href: "/admin/ecommerce/product-reviews", label: "Product Reviews", icon: faStarHalfAlt, permission: "ecommerce.manage_products" },
+          { href: "/admin/ecommerce/barcode-print", label: "Print Barcodes", icon: faBarcode, permission: "ecommerce.manage_products" },
+          { href: "/admin/ecommerce/product-tags", label: "Badge Tags & Item Types", icon: faTags, permission: "ecommerce.manage_products" },
         ],
       },
     ],
@@ -106,11 +120,11 @@ export const ADMIN_NAV: NavSection[] = [
       {
         href: "/admin/ecommerce/categories",
         label: "Categories",
-        icon: "List",
+        icon: faList,
         permission: "ecommerce.manage_categories",
         submenuId: "submenu-categories",
         submenu: [
-          { href: "/admin/ecommerce/subcategories", label: "Sub Categories", icon: "ListTree", permission: "ecommerce.manage_categories" },
+          { href: "/admin/ecommerce/subcategories", label: "Sub Categories", icon: faListUl, permission: "ecommerce.manage_categories" },
         ],
       },
     ],
@@ -124,14 +138,14 @@ export const ADMIN_NAV: NavSection[] = [
       {
         href: "/admin/ecommerce/orders",
         label: "All Orders",
-        icon: "Receipt",
+        icon: faReceipt,
         permission: "ecommerce.manage_orders",
         submenuId: "submenu-orders",
         submenu: [
-          { href: "/admin/ecommerce/orders?type=Pending", label: "Pending Orders", icon: "Hourglass", permission: "ecommerce.manage_orders", matchQuery: { key: "type", value: "Pending" } },
-          { href: "/admin/ecommerce/orders?type=In+Progress", label: "Progress Orders", icon: "TruckElectric" /* fa-truck-loading */, permission: "ecommerce.manage_orders", matchQuery: { key: "type", value: "In Progress" } },
-          { href: "/admin/ecommerce/orders?type=Delivered", label: "Delivered Orders", icon: "Truck", permission: "ecommerce.manage_orders", matchQuery: { key: "type", value: "Delivered" } },
-          { href: "/admin/ecommerce/orders?type=Canceled", label: "Canceled Orders", icon: "Ban", permission: "ecommerce.manage_orders", matchQuery: { key: "type", value: "Canceled" } },
+          { href: "/admin/ecommerce/orders?type=Pending", label: "Pending Orders", icon: faHourglassHalf, permission: "ecommerce.manage_orders", matchQuery: { key: "type", value: "Pending" } },
+          { href: "/admin/ecommerce/orders?type=In+Progress", label: "Progress Orders", icon: faTruckLoading, permission: "ecommerce.manage_orders", matchQuery: { key: "type", value: "In Progress" } },
+          { href: "/admin/ecommerce/orders?type=Delivered", label: "Delivered Orders", icon: faTruck, permission: "ecommerce.manage_orders", matchQuery: { key: "type", value: "Delivered" } },
+          { href: "/admin/ecommerce/orders?type=Canceled", label: "Canceled Orders", icon: faBan, permission: "ecommerce.manage_orders", matchQuery: { key: "type", value: "Canceled" } },
         ],
       },
     ],
@@ -142,7 +156,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Analytics",
     permission: "ecommerce.manage_orders",
     links: [
-      { href: "/admin/ecommerce/analytics", label: "Sales Analytics", icon: "LineChart", permission: "ecommerce.manage_orders" },
+      { href: "/admin/ecommerce/analytics", label: "Sales Analytics", icon: faChartLine, permission: "ecommerce.manage_orders" },
     ],
   },
 
@@ -151,7 +165,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Customers",
     permission: "ecommerce.manage_customers",
     links: [
-      { href: "/admin/ecommerce/customers", label: "Customer List", icon: "Users", permission: "ecommerce.manage_customers" },
+      { href: "/admin/ecommerce/customers", label: "Customer List", icon: faUserFriends, permission: "ecommerce.manage_customers" },
     ],
   },
 
@@ -160,7 +174,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Discounts",
     permission: "ecommerce.manage_coupons",
     links: [
-      { href: "/admin/ecommerce/coupons", label: "Set Coupons", icon: "Percent", permission: "ecommerce.manage_coupons" },
+      { href: "/admin/ecommerce/coupons", label: "Set Coupons", icon: faPercentage, permission: "ecommerce.manage_coupons" },
     ],
   },
 
@@ -169,10 +183,10 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Settings",
     permission: "ecommerce.manage_payment",
     links: [
-      { href: "/admin/ecommerce/payment-settings", label: "Payment", icon: "CreditCard", permission: "ecommerce.manage_payment" },
-      { href: "/admin/ecommerce/business-settings", label: "Business Setting", icon: "Building2", permission: "ecommerce.manage_payment" },
-      { href: "/admin/ecommerce/homepage-settings", label: "Homepage Settings", icon: "Home", permission: "ecommerce.manage_payment" },
-      { href: "/admin/ecommerce/tax-settings", label: "GST / Tax Settings", icon: "Receipt", permission: "ecommerce.manage_products" },
+      { href: "/admin/ecommerce/payment-settings", label: "Payment", icon: faCreditCard, permission: "ecommerce.manage_payment" },
+      { href: "/admin/ecommerce/business-settings", label: "Business Setting", icon: faBuilding, permission: "ecommerce.manage_payment" },
+      { href: "/admin/ecommerce/homepage-settings", label: "Homepage Settings", icon: faHome, permission: "ecommerce.manage_payment" },
+      { href: "/admin/ecommerce/tax-settings", label: "GST / Tax Settings", icon: faReceipt, permission: "ecommerce.manage_products" },
     ],
   },
 
@@ -181,7 +195,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Due",
     permission: "ecommerce.manage_credits",
     links: [
-      { href: "/admin/ecommerce/due", label: "Due", icon: "HandCoins", permission: "ecommerce.manage_credits" },
+      { href: "/admin/ecommerce/due", label: "Due", icon: faHandHoldingUsd, permission: "ecommerce.manage_credits" },
     ],
   },
 
@@ -190,7 +204,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Media",
     permission: "files.access_file_manager",
     links: [
-      { href: "/admin/file-manager", label: "File Manager", icon: "Images", permission: "files.access_file_manager" },
+      { href: "/admin/file-manager", label: "File Manager", icon: faImages, permission: "files.access_file_manager" },
     ],
   },
 
@@ -199,7 +213,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Pages",
     permission: "pages.create",
     links: [
-      { href: "/admin/pages", label: "Static Pages", icon: "FileText", permission: "pages.create" },
+      { href: "/admin/pages", label: "Static Pages", icon: faFileAlt, permission: "pages.create" },
     ],
   },
 
@@ -208,36 +222,23 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Marketing",
     permission: "push_notifications.send",
     links: [
-      { href: "/push-notifications/push-manager", label: "Push Notifications", icon: "Bell", permission: "push_notifications.send" },
+      { href: "/push-notifications/push-manager", label: "Push Notifications", icon: faBell, permission: "push_notifications.send" },
     ],
   },
 
-  // 11. BLOG (collapsible group, closed by default unless inside /admin/blog/*)
-  {
-    title: "Blog",
-    collapsibleGroup: true,
-    submenuId: "submenu-blog",
-    permission: "blogs.any",
-    links: [
-      { href: "/admin/blog/dashboard", label: "Blog Dashboard", icon: "LayoutDashboard", permission: "blogs.any" },
-      { href: "/admin/blog/blogs-manager", label: "Blog Posts", icon: "Newspaper", permission: "blogs.any" },
-      { href: "/admin/blog/categories-manager", label: "Category Manager", icon: "List", permission: "blogs.manage_categories" },
-      { href: "/admin/blog/tag-manager", label: "Tag Manager", icon: "Tags", permission: "blogs.manage_tags" },
-      { href: "/admin/blog/comments-manager", label: "Comments", icon: "MessageSquare", permission: "blogs.manage_comments" },
-      { href: "/admin/blog/analytics", label: "Analytics", icon: "LineChart", permission: "analytics.view_basic" },
-      { href: "/admin/blog/ads-manager", label: "Ads Manager", icon: "Megaphone", permission: "blogs.any" },
-    ],
-  },
+  // 11. BLOG — intentionally absent. The blog/job-portal module was excluded
+  // from this port by the store owner, so /admin/blog/* does not exist here;
+  // listing it would give anyone with a blog permission seven links that 404.
 
   // 12. SYSTEM (always last)
   {
     title: "System",
     permission: null,
     links: [
-      { href: "/admin/cache-manager", label: "Cache Manager", icon: "Zap", permission: "settings.maintenance_mode" },
-      { href: "/admin/activity-logs", label: "Activity Logs", icon: "History", permission: "security.view_logs" },
-      { href: "/admin/user-manager", label: "Users Manager", icon: "User", permission: "users.create" },
-      { href: "/api/auth/logout", label: "Logout", icon: "LogOut", permission: null },
+      { href: "/admin/cache-manager", label: "Cache Manager", icon: faBolt, permission: "settings.maintenance_mode" },
+      { href: "/admin/activity-logs", label: "Activity Logs", icon: faHistory, permission: "security.view_logs" },
+      { href: "/admin/user-manager", label: "Users Manager", icon: faUser, permission: "users.create" },
+      { href: "/api/auth/logout", label: "Logout", icon: faSignOutAlt, permission: null, isLogout: true },
     ],
   },
 ];

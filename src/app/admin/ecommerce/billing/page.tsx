@@ -59,6 +59,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
 
   return (
     <AdminShell
+      showSearch
       siteName="EduMint24"
       pageTitle={pageTitle}
       pageSubtitle={pageSubtitle}

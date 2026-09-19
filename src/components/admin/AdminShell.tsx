@@ -11,6 +11,13 @@ interface AdminShellProps {
   username: string;
   role: string;
   permissions: Record<string, Record<string, boolean>>;
+  /** Optional controls rendered in the header's right-hand group, before the
+   *  search box — used by the dashboard for its range filter and Display
+   *  Options. Omitted everywhere else, so no other page changes. */
+  headerActions?: React.ReactNode;
+  /** Show the header search box. The PHP includes global-search.php on the
+   *  dashboard and billing screens only, so it is opt-in per page. */
+  showSearch?: boolean;
   children: React.ReactNode;
 }
 
@@ -19,7 +26,7 @@ interface AdminShellProps {
  * on desktop, single column with an off-canvas sidebar on mobile) defined in
  * admin/ecommerce/components/ecom-head.php / assets/css/admin-shell.css.
  */
-export function AdminShell({ siteName, pageTitle, pageSubtitle, username, role, permissions, children }: AdminShellProps) {
+export function AdminShell({ siteName, pageTitle, pageSubtitle, username, role, permissions, headerActions, showSearch, children }: AdminShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -37,9 +44,11 @@ export function AdminShell({ siteName, pageTitle, pageSubtitle, username, role, 
           pageSubtitle={pageSubtitle}
           username={username}
           role={role}
+          headerActions={headerActions}
+          showSearch={showSearch}
           onMenuToggle={() => setSidebarOpen((o) => !o)}
         />
-        <div className="p-6 max-w-admin-content mx-auto sm:p-4">
+        <div className="mx-auto max-w-[1600px] p-4 min-[641px]:p-6">
           {children}
         </div>
       </main>

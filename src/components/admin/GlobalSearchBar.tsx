@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, Receipt, User, FileText } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSearch, faReceipt, faHandHoldingUsd, faUser } from "@fortawesome/free-solid-svg-icons";
 
 interface SearchResult {
   type: "order" | "customer" | "receipt";
@@ -13,92 +13,122 @@ interface SearchResult {
   url: string;
 }
 
-const TYPE_ICONS = { order: Receipt, customer: User, receipt: FileText };
+/** The icon logic from global-search.php's result template:
+ *  order → fa-receipt, receipt → fa-hand-holding-usd, anything else → fa-user. */
+const TYPE_ICONS = { order: faReceipt, receipt: faHandHoldingUsd, customer: faUser };
 
+/**
+ * The header search box, ported from admin/components/global-search.php.
+ *
+ * It is an always-visible input, not an icon that opens a popover — that is
+ * how the original works. Only the RESULTS list opens and closes.
+ *
+ *   .gsearch-wrap    { width:260px; max-width:42vw }  hidden below 768px
+ *   .gsearch-icon    { left:12px; gray-400; .85rem }
+ *   .gsearch-input   { pill; bg gray-50; 1px gray-200;
+ *                      padding:.55rem .75rem .55rem 2.1rem; .875rem }
+ *   :focus           { border primary; bg #fff; ring 0 0 0 3px primary-lighter }
+ *   .gsearch-results { top:calc(100% + 6px); radius .6rem;
+ *                      shadow 0 10px 25px rgba(0,0,0,.1); max-height 340px }
+ *
+ * Behaviour matches too: nothing is sent under 2 characters, keystrokes are
+ * debounced by 250ms, and an empty result says `No matches for "q"`.
+ */
 export function GlobalSearchBar() {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [showResults, setShowResults] = useState(false);
+  const [searched, setSearched] = useState("");
+  const wrapRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Guards against a slow earlier response overwriting a newer one.
+  const latestRef = useRef("");
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setShowResults(false);
     }
     document.addEventListener("click", onClick);
-    return () => document.removeEventListener("click", onClick);
+    return () => {
+      document.removeEventListener("click", onClick);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, []);
 
   function onChange(value: string) {
     setQuery(value);
+    const q = value.trim();
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (value.trim().length < 2) {
-      setResults([]);
+    if (q.length < 2) {
+      setShowResults(false);
       return;
     }
     debounceRef.current = setTimeout(async () => {
-      setLoading(true);
+      latestRef.current = q;
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(value.trim())}`);
-        const data = await res.json();
-        setResults(data);
-        setOpen(true);
-      } finally {
-        setLoading(false);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const data: SearchResult[] = await res.json();
+        if (latestRef.current !== q) return;
+        setResults(Array.isArray(data) ? data : []);
+        setSearched(q);
+        setShowResults(true);
+      } catch {
+        if (latestRef.current !== q) return;
+        setResults([]);
+        setSearched(q);
+        setShowResults(true);
       }
-    }, 300);
+    }, 250);
   }
 
-  function selectResult(r: SearchResult) {
-    setOpen(false);
-    setQuery("");
-    setResults([]);
+  function go(r: SearchResult) {
+    setShowResults(false);
     router.push(r.url);
   }
 
   return (
-    <div className="relative" ref={ref}>
-      <button
-        className="w-10 h-10 rounded-lg flex items-center justify-center text-admin-gray-600 hover:bg-admin-gray-100"
-        aria-label="Search"
-        onClick={() => setOpen((o) => !o)}
-      >
-        <Search className="w-[1.125rem] h-[1.125rem]" />
-      </button>
+    <div ref={wrapRef} className="relative hidden w-[260px] max-w-[42vw] md:block">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[0.85rem] leading-none text-[#9ca3af]">
+        <FontAwesomeIcon icon={faSearch} />
+      </span>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => {
+          if (query.trim().length >= 2 && searched) setShowResults(true);
+        }}
+        placeholder="Order ID, receipt no., name, mobile…"
+        autoComplete="off"
+        aria-label="Search orders, receipts and customers"
+        className="w-full rounded-full border border-[#e5e7eb] bg-[#f9fafb] py-[0.55rem] pl-[2.1rem] pr-3 text-[0.875rem] leading-[1.5] text-black outline-none transition-all duration-150 placeholder:text-[#6c757d] focus:border-[#7c3aed] focus:bg-white focus:shadow-[0_0_0_3px_#f5f3ff]"
+      />
 
-      {open && (
-        <div className="absolute top-full right-0 mt-2 w-80 bg-white border border-admin-gray-200 rounded-lg shadow-lg z-50 p-2">
-          <input
-            autoFocus
-            type="text"
-            value={query}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Search orders, customers, receipts…"
-            className="w-full border border-admin-gray-200 rounded px-3 py-2 text-sm mb-1"
-          />
-          {loading && <div className="text-xs text-admin-gray-400 px-2 py-2">Searching…</div>}
-          {!loading && query.trim().length >= 2 && results.length === 0 && (
-            <div className="text-xs text-admin-gray-400 px-2 py-2">No results.</div>
-          )}
-          {results.map((r) => {
-            const Icon = TYPE_ICONS[r.type];
-            return (
+      {showResults && (
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[500] max-h-[340px] overflow-y-auto rounded-[0.6rem] border border-[#e5e7eb] bg-white shadow-[0_10px_25px_rgba(0,0,0,0.1)]">
+          {results.length === 0 ? (
+            <div className="p-[0.9rem] text-center text-[0.85rem] text-[#9ca3af]">
+              No matches for &quot;{searched}&quot;
+            </div>
+          ) : (
+            results.map((r) => (
               <button
                 key={`${r.type}-${r.id}`}
-                onClick={() => selectResult(r)}
-                className="w-full flex items-start gap-2.5 text-left px-2.5 py-2 rounded hover:bg-admin-gray-50"
+                type="button"
+                onClick={() => go(r)}
+                className="flex w-full flex-col border-b border-[#f3f4f6] px-[0.9rem] py-[0.6rem] text-left last:border-b-0 hover:bg-[#f9fafb]"
               >
-                <Icon className="w-4 h-4 text-admin-primary mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-sm font-medium truncate">{r.title}</div>
-                  <div className="text-xs text-admin-gray-400 truncate">{r.sub}</div>
-                </div>
+                <span className="flex items-center gap-[0.4rem] text-[0.875rem] font-semibold text-[#111827]">
+                  <span className="text-[0.75rem] text-[#7c3aed]">
+                    <FontAwesomeIcon icon={TYPE_ICONS[r.type] ?? faUser} />
+                  </span>
+                  {r.title}
+                </span>
+                <span className="mt-px text-[0.75rem] text-[#6b7280]">{r.sub}</span>
               </button>
-            );
-          })}
+            ))
+          )}
         </div>
       )}
     </div>

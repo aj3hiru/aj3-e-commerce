@@ -36,6 +36,40 @@ function niceMax(v: number): number {
 }
 
 /**
+ * Smooth the line through the same data points a straight-segment polyline
+ * would hit — a Catmull-Rom-to-Bézier conversion, not an arbitrary spline.
+ * That distinction matters on a money chart: an approximating smoother
+ * (e.g. resampling to fewer points) can draw the curve above or below a
+ * real value between two points, which reads as sales data that was never
+ * reported. Catmull-Rom passes through every input point exactly and only
+ * curves the segments between them, so the shape gets softer without any
+ * point silently moving.
+ *
+ * `points` is [x, y] pairs in the same 0–100 viewBox space `x()`/`y()`
+ * already produce. Endpoints are clamped (tangent = the one adjacent
+ * segment) rather than wrapped, since this is an open line, not a loop.
+ */
+function smoothPath(points: [number, number][]): string {
+  if (points.length < 2) return "";
+  if (points.length === 2) return `M${points[0][0]},${points[0][1]} L${points[1][0]},${points[1][1]}`;
+
+  const d: string[] = [`M${points[0][0]},${points[0][1]}`];
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i - 1] ?? points[i];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2] ?? p2;
+    // Catmull-Rom → cubic Bézier control points (standard 1/6 tangent scale).
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d.push(`C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`);
+  }
+  return d.join(" ");
+}
+
+/**
  * This week's paid sales, Monday → Sunday.
  *
  * Built as an SVG plot stretched to the card (preserveAspectRatio="none", with
@@ -52,8 +86,16 @@ export function SalesChart({ series, empty }: SalesChartProps) {
   const x = (i: number) => ((i + 0.5) / n) * 100;
   const y = (v: number) => 100 - (v / max) * 100;
 
-  const linePts = series.map((p, i) => `${x(i)},${y(p.value)}`).join(" ");
-  const areaPts = `${x(0)},100 ${linePts} ${x(n - 1)},100`;
+  const points: [number, number][] = series.map((p, i) => [x(i), y(p.value)]);
+  const linePath = smoothPath(points);
+  // Same curve as the line, closed down to the baseline for the fill — built
+  // by dropping the line path's own leading "M<start>" and prefixing a walk
+  // from the baseline up to that same start point instead, so the curve
+  // itself is never recomputed or approximated a second time.
+  const curveAfterStart = linePath.replace(/^M[^ ]+/, "");
+  const areaPath = n > 0
+    ? `M${x(0)},100 L${points[0][0]},${points[0][1]}${curveAfterStart} L${x(n - 1)},100 Z`
+    : "";
 
   return (
     <div className="flex h-[240px] flex-col">
@@ -95,9 +137,9 @@ export function SalesChart({ series, empty }: SalesChartProps) {
                   <stop offset="100%" stopColor={LINE} stopOpacity="0" />
                 </linearGradient>
               </defs>
-              <polygon points={areaPts} fill="url(#d2-sales-fill)" />
-              <polyline
-                points={linePts}
+              <path d={areaPath} fill="url(#d2-sales-fill)" />
+              <path
+                d={linePath}
                 fill="none"
                 stroke={LINE}
                 strokeWidth={2}

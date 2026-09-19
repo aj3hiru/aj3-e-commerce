@@ -13,6 +13,23 @@ interface SearchResult {
   url: string;
 }
 
+interface GlobalSearchBarProps {
+  /**
+   * "phpMatch" (default) — the exact `global-search.php` sizing (fixed
+   * 260px/42vw width, `py-[0.55rem]` height, `bg-[#f9fafb]`) used on every
+   * page this was pixel-matched against — do not change this default, or
+   * every one of those pages drifts from the verified original.
+   *
+   * "toolbar" — same box, sized and coloured to sit flush with the `h-10`
+   * pill buttons (RangeFilter, Display Options) beside it in a header row,
+   * and free to grow/shrink instead of a fixed px width. Used only on
+   * /admin/dashboard2's own toolbar, which is new UI with no PHP page to
+   * match, so this variant is free to prioritise visual consistency with
+   * its neighbours instead.
+   */
+  variant?: "phpMatch" | "toolbar";
+}
+
 /** The icon logic from global-search.php's result template:
  *  order → fa-receipt, receipt → fa-hand-holding-usd, anything else → fa-user. */
 const TYPE_ICONS = { order: faReceipt, receipt: faHandHoldingUsd, customer: faUser };
@@ -34,7 +51,7 @@ const TYPE_ICONS = { order: faReceipt, receipt: faHandHoldingUsd, customer: faUs
  * Behaviour matches too: nothing is sent under 2 characters, keystrokes are
  * debounced by 250ms, and an empty result says `No matches for "q"`.
  */
-export function GlobalSearchBar() {
+export function GlobalSearchBar({ variant = "phpMatch" }: GlobalSearchBarProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -87,8 +104,21 @@ export function GlobalSearchBar() {
     router.push(r.url);
   }
 
+  const isToolbar = variant === "toolbar";
+
   return (
-    <div ref={wrapRef} className="relative hidden w-[260px] max-w-[42vw] md:block">
+    <div
+      ref={wrapRef}
+      className={
+        isToolbar
+          // Flexes with its neighbours in the dashboard2 header row instead of
+          // a fixed px width, and drops the `hidden below md:` rule — this
+          // toolbar already collapses/repositions itself by breakpoint, so a
+          // second independent visibility rule on top of that just fights it.
+          ? "relative w-full min-w-[180px] max-w-[320px] flex-1"
+          : "relative hidden w-[260px] max-w-[42vw] md:block"
+      }
+    >
       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[0.85rem] leading-none text-[#9ca3af]">
         <FontAwesomeIcon icon={faSearch} />
       </span>
@@ -102,7 +132,13 @@ export function GlobalSearchBar() {
         placeholder="Order ID, receipt no., name, mobile…"
         autoComplete="off"
         aria-label="Search orders, receipts and customers"
-        className="w-full rounded-full border border-[#e5e7eb] bg-[#f9fafb] py-[0.55rem] pl-[2.1rem] pr-3 text-[0.875rem] leading-[1.5] text-black outline-none transition-all duration-150 placeholder:text-[#6c757d] focus:border-[#7c3aed] focus:bg-white focus:shadow-[0_0_0_3px_#f5f3ff]"
+        className={
+          isToolbar
+            // Same pill, matched to the h-10 (40px) RangeFilter/Display
+            // Options buttons instead of the PHP header's own shorter input.
+            ? "h-10 w-full rounded-full border border-[#e5e7eb] bg-white pl-[2.1rem] pr-3 text-[0.875rem] leading-[1.5] text-black outline-none transition-all duration-150 placeholder:text-[#9ca3af] focus:border-[#7c3aed] focus:shadow-[0_0_0_3px_#f5f3ff]"
+            : "w-full rounded-full border border-[#e5e7eb] bg-[#f9fafb] py-[0.55rem] pl-[2.1rem] pr-3 text-[0.875rem] leading-[1.5] text-black outline-none transition-all duration-150 placeholder:text-[#6c757d] focus:border-[#7c3aed] focus:bg-white focus:shadow-[0_0_0_3px_#f5f3ff]"
+        }
       />
 
       {showResults && (

@@ -735,7 +735,12 @@ model TableTemplate {
 
 model PushSubscription {
   id        Int      @id @default(autoincrement())
-  endpoint  String   @unique @db.Text
+  // MySQL cannot put a unique index on a `Text` column without an explicit
+  // key-prefix length (Postgres has no such restriction, which is why this
+  // worked before switching providers). Push subscription endpoint URLs are
+  // well under 768 chars in practice, and 768 bytes is safely within MySQL's
+  // max index key length (3072 bytes for InnoDB w/ utf8mb4, 4 bytes/char).
+  endpoint  String   @unique @db.VarChar(768)
   p256dh    String
   auth      String
   createdAt DateTime @default(now()) @map("created_at")

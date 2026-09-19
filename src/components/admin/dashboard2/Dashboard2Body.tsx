@@ -8,7 +8,7 @@ import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faShoppingCart, faHourglassHalf, faTruckLoading, faCheckCircle, faBan, faUserFriends, faUserPlus,
   faIndianRupeeSign, faCoins, faClock, faCreditCard, faChartBar, faCube, faThLarge, faTag, faTicketAlt,
-  faFileAlt, faChartLine, faChevronRight, faArrowUp, faArrowDown,
+  faFileAlt, faChartLine, faChevronRight, faArrowUp, faArrowDown, faStore, faGlobe,
 } from "@fortawesome/free-solid-svg-icons";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import {
@@ -145,6 +145,8 @@ export function Dashboard2Body({ stats, rangeLabel }: { stats: Dashboard2Stats; 
     { key: "d2-on-canceled", tone: "red", icon: faBan, label: "Canceled Orders", value: stats.onCanceled, delta: stats.deltas.onCanceled, href: "/admin/ecommerce/orders?type=Canceled", goodWhenUp: false },
     { key: "d2-cust-online", tone: "purple", icon: faUserFriends, label: "Total Online Customers", value: stats.onCustomers, delta: stats.deltas.onCustomers, href: "/admin/ecommerce/customers" },
     { key: "d2-cust-offline", tone: "green", icon: faUserPlus, label: "Total Offline Customers", value: stats.offCustomers, delta: stats.deltas.offCustomers, href: "/admin/ecommerce/customers" },
+    { key: "d2-sold-store", tone: "purple", icon: faStore, label: "Today Store Sold Product", value: stats.todayStoreSold, delta: stats.deltas.todayStoreSold, href: "/admin/ecommerce/orders" },
+    { key: "d2-sold-online", tone: "green", icon: faGlobe, label: "Today Online Sold Product", value: stats.todayOnlineSold, delta: stats.deltas.todayOnlineSold, href: "/admin/ecommerce/orders" },
   ] as const;
   const visibleStats = statCards.filter((c) => show("d2-orders", c.key));
 
@@ -177,11 +179,13 @@ export function Dashboard2Body({ stats, rangeLabel }: { stats: Dashboard2Stats; 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         {visibleEarnings.map((t) => (
           <div key={t.key} className="rounded-[0.6rem] border border-[#e5e7eb] px-5 py-4">
-            <span className="mb-3 flex h-8 w-8 items-center justify-center rounded-[0.5rem] text-[0.95rem]" style={{ background: TONE[t.tone].tint, color: TONE[t.tone].ink }}>
-              <FontAwesomeIcon icon={t.icon} />
-            </span>
-            <div className="text-[0.8125rem] text-[#6b7280]">{t.label}</div>
-            <div className="mt-1 text-[1.5rem] font-bold leading-tight text-[#111827]">{formatMoney(t.value)}</div>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.5rem] text-[0.95rem]" style={{ background: TONE[t.tone].tint, color: TONE[t.tone].ink }}>
+                <FontAwesomeIcon icon={t.icon} />
+              </span>
+              <span className="text-[0.8125rem] text-[#6b7280]">{t.label}</span>
+            </div>
+            <div className="text-[1.5rem] font-bold leading-tight text-[#111827]">{formatMoney(t.value)}</div>
           </div>
         ))}
       </div>

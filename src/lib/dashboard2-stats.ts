@@ -24,7 +24,12 @@ export interface Dashboard2Stats extends DashboardStats {
     onCanceled: Delta;
     onCustomers: Delta;
     offCustomers: Delta;
+    todayStoreSold: Delta;
+    todayOnlineSold: Delta;
   };
+  /** Total item quantity sold today (order.createdAt is today) by channel. */
+  todayStoreSold: number;
+  todayOnlineSold: number;
   /** Seven points, Monday → Sunday of the current week. */
   salesSeries: { label: string; value: number }[];
   /** True when every point is zero — the chart shows its empty state instead. */
@@ -62,6 +67,15 @@ function startOfWeek(d: Date): Date {
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+/** Sum of `EcomOrderItem.qty` across orders of the given channel placed today. */
+async function soldQtyToday(orderType: "online" | "offline", window: { gte: Date; lte: Date }): Promise<number> {
+  const items: { qty: number }[] = await prisma.ecomOrderItem.findMany({
+    where: { order: { is: { orderType, createdAt: window } } },
+    select: { qty: true },
+  });
+  return items.reduce((sum: number, it: { qty: number }) => sum + it.qty, 0);
+}
+
 export async function getDashboard2Stats(range: RangeResult): Promise<Dashboard2Stats> {
   const prev = previousPeriod(range);
 
@@ -72,10 +86,26 @@ export async function getDashboard2Stats(range: RangeResult): Promise<Dashboard2
 
   const prevWindow = { gte: prev.start, lte: prev.end };
 
+  // "Today" here always means the real calendar day, independent of whatever
+  // date range is selected on the page — the card is labelled "Today", not
+  // "This period", so it shouldn't silently mean something else.
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+  const todayWindow = { gte: todayStart, lte: todayEnd };
+
+  const yesterdayStart = new Date(todayStart);
+  yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+  const yesterdayEnd = new Date(todayEnd);
+  yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+  const yesterdayWindow = { gte: yesterdayStart, lte: yesterdayEnd };
+
   const [
     stats,
     pOnTotal, pOnPending, pOnProgress, pOnDelivered, pOnCanceled, pOnCustomers, pOffCustomers,
     weekOrders,
+    todayStoreSold, todayOnlineSold, ydayStoreSold, ydayOnlineSold,
   ] = await Promise.all([
     getDashboardStats(range),
 
@@ -95,6 +125,11 @@ export async function getDashboard2Stats(range: RangeResult): Promise<Dashboard2
       where: { paymentStatus: "Paid", createdAt: { gte: weekStart, lte: weekEnd } },
       select: { totalAmount: true, createdAt: true },
     }),
+
+    soldQtyToday("offline", todayWindow),
+    soldQtyToday("online", todayWindow),
+    soldQtyToday("offline", yesterdayWindow),
+    soldQtyToday("online", yesterdayWindow),
   ]);
 
   const buckets = new Array(7).fill(0) as number[];
@@ -115,7 +150,11 @@ export async function getDashboard2Stats(range: RangeResult): Promise<Dashboard2
       onCanceled: computeDelta(stats.onCanceled, pOnCanceled),
       onCustomers: computeDelta(stats.onCustomers, pOnCustomers),
       offCustomers: computeDelta(stats.offCustomers, pOffCustomers),
+      todayStoreSold: computeDelta(todayStoreSold, ydayStoreSold),
+      todayOnlineSold: computeDelta(todayOnlineSold, ydayOnlineSold),
     },
+    todayStoreSold,
+    todayOnlineSold,
     salesSeries,
     salesSeriesEmpty: salesSeries.every((p) => p.value === 0),
   };

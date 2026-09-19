@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * The order-status / payment-status pill-with-dropdown used in the orders list
@@ -69,29 +70,64 @@ interface StatusDropdownProps {
 
 export function StatusDropdown({ value, options, variant, disabled, onSelect, label }: StatusDropdownProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; openUp: boolean } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const style = STATUS_BTN_STYLES[variant];
+
+  // The menu is portaled to <body> and positioned with `fixed` (see below),
+  // specifically so it can escape any ancestor with `overflow-x-auto` (the
+  // Recent Orders table wrapper, for one) — an `overflow-x` other than
+  // `visible` forces the browser to compute `overflow-y` as `auto` too, per
+  // spec, which was silently clipping the dropdown's bottom half whenever it
+  // opened near the edge of a scrollable table.
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const menuH = menuRef.current?.offsetHeight ?? 160;
+    const openUp = rect.bottom + menuH > window.innerHeight && rect.top > menuH;
+    setMenuPos({
+      top: openUp ? rect.top - menuH - 2 : rect.bottom + 2,
+      left: rect.left,
+      openUp,
+    });
+  }, [open]);
 
   // Bootstrap closes an open dropdown on any outside click; mirror that.
   useEffect(() => {
     if (!open) return;
     function onDocClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (btnRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
     }
     function onEsc(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
+    function onReposition() {
+      setOpen(false);
+    }
     document.addEventListener("click", onDocClick);
     document.addEventListener("keydown", onEsc);
+    // Scrolling/resizing while open would leave a stale-positioned menu
+    // floating over the wrong element, since position is computed once on
+    // open rather than tracked continuously — closing is simpler and safer
+    // than re-measuring on every scroll frame.
+    window.addEventListener("scroll", onReposition, true);
+    window.addEventListener("resize", onReposition);
     return () => {
       document.removeEventListener("click", onDocClick);
       document.removeEventListener("keydown", onEsc);
+      window.removeEventListener("scroll", onReposition, true);
+      window.removeEventListener("resize", onReposition);
     };
   }, [open]);
 
   return (
-    <div className="relative inline-block" ref={ref}>
+    <>
       <button
+        ref={btnRef}
         type="button"
         aria-label={label}
         aria-haspopup="menu"
@@ -120,11 +156,19 @@ export function StatusDropdown({ value, options, variant, disabled, onSelect, la
         />
       </button>
 
-      {open && (
+      {open && typeof document !== "undefined" && createPortal(
         <div
+          ref={menuRef}
           role="menu"
-          // .dropdown-menu, with the ecom-head.php `border-radius: 0` override
-          className="absolute left-0 top-full z-30 mt-0.5 min-w-[10rem] rounded-none border border-black/[0.175] bg-white py-2 text-sm"
+          // .dropdown-menu, with the ecom-head.php `border-radius: 0` override.
+          // `fixed` + viewport coordinates (not `absolute`) is what lets this
+          // render above any ancestor's overflow clipping.
+          className="fixed z-50 min-w-[10rem] rounded-none border border-black/[0.175] bg-white py-2 text-sm shadow-lg"
+          style={{
+            top: menuPos?.top ?? -9999,
+            left: menuPos?.left ?? -9999,
+            visibility: menuPos ? "visible" : "hidden",
+          }}
         >
           {options.map((opt) => (
             <button
@@ -142,8 +186,9 @@ export function StatusDropdown({ value, options, variant, disabled, onSelect, la
               {opt}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }

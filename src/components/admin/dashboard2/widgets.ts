@@ -21,6 +21,8 @@ export const DASHBOARD2_GROUPS: readonly WidgetGroup[] = [
       { key: "d2-on-canceled", label: "Canceled Orders" },
       { key: "d2-cust-online", label: "Total Online Customers" },
       { key: "d2-cust-offline", label: "Total Offline Customers" },
+      { key: "d2-sold-store", label: "Today Store Sold Product" },
+      { key: "d2-sold-online", label: "Today Online Sold Product" },
     ],
   },
   {

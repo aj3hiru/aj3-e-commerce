@@ -11,6 +11,26 @@ export interface ShopBusinessSettings {
   socialMedia?: { platform: SocialPlatform; url: string }[];
 }
 
+/**
+ * Storefront header strip configuration.
+ *
+ * In the PHP these five values live in `ecom_home_settings` (read at the top of
+ * shop-header.php as $shop_show_location / $shop_show_delivery_info /
+ * $shop_delivery_label / $shop_delivery_time_text / $shop_search_placeholder).
+ * The storage stays exactly where PHP put it; only the *editor* for them moved
+ * into Business Settings, which is what the store owner asked for. Keeping the
+ * keys in ecom_home_settings means an existing database needs no migration and
+ * the header keeps rendering off the same rows it always did.
+ */
+export interface ShopHeaderSettings {
+  showLocation: boolean;
+  showDeliveryInfo: boolean;
+  deliveryLabel: string;
+  /** Falls back to business_hours when blank — same precedence as the PHP. */
+  deliveryTimeText: string;
+  searchPlaceholder: string;
+}
+
 export type SocialPlatform = "facebook" | "instagram" | "youtube" | "x" | "linkedin" | "whatsapp";
 
 export interface ShopCategoryNavItem {

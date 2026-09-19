@@ -26,8 +26,11 @@ export function StatCard({ color, icon: Icon, label, value, widgetKey, href }: S
   const content = (
     <div
       className={cn(
-        "relative flex items-center gap-4 h-full overflow-hidden rounded-lg border border-black/[0.08] bg-white p-5 shadow-sm",
-        href && "transition-transform hover:-translate-y-0.5 hover:shadow-md"
+        // .stat-card-e — note the shadow is the heavy card shadow
+        // (0 .15rem 1.75rem 0 rgba(58,59,69,.1)), not Tailwind's shadow-sm.
+        "relative flex h-full items-center gap-4 overflow-hidden rounded-[0.5rem] border border-black/[0.08] bg-white p-5 shadow-card",
+        // .stat-card-e-clickable
+        href && "transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[0_0.5rem_1.5rem_rgba(58,59,69,.15)]"
       )}
     >
       <div
@@ -36,13 +39,14 @@ export function StatCard({ color, icon: Icon, label, value, widgetKey, href }: S
         style={{ background: bg }}
       />
       <div
-        className="w-[52px] h-[52px] rounded-lg flex items-center justify-center text-white shrink-0"
+        className="w-[52px] h-[52px] rounded-[0.5rem] flex items-center justify-center text-white shrink-0"
         style={{ background: bg }}
       >
         <Icon className="w-5 h-5" />
       </div>
       <div>
-        <div className="text-sm text-admin-gray-500 mb-0.5">{label}</div>
+        {/* .stat-label-e / .stat-value-e */}
+        <div className="mb-[0.2rem] text-[0.875rem] text-admin-gray-500">{label}</div>
         <div className="text-[1.375rem] font-bold text-admin-gray-900">{value}</div>
       </div>
     </div>

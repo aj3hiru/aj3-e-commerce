@@ -6,21 +6,33 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { Menu, MapPin, Clock, Search, Heart, ShoppingCart, User } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
-import type { ShopBusinessSettings, ShopCategoryNavItem, ShopCustomer } from "@/types/shop";
+import type { ShopBusinessSettings, ShopCategoryNavItem, ShopCustomer, ShopHeaderSettings } from "@/types/shop";
 import { cn } from "@/lib/utils";
+import { formatMoneyInt } from "@/lib/format";
 
 interface ShopHeaderProps {
   business: ShopBusinessSettings;
+  header: ShopHeaderSettings;
   categories: ShopCategoryNavItem[];
   customer: ShopCustomer | null;
   onOpenMobileMenu: () => void;
 }
 
 /**
- * Verified 1:1 against shop/includes/shop-header.php lines 1009-1099:
- * a desktop <header class="topbar"> + category <nav class="navbar">, and a
- * separate mobile topbar with its own search bar. Business hours / location
- * / logo all render conditionally exactly as they did in PHP.
+ * Ported 1:1 from shop/includes/shop-header.php — the `<header class="topbar">`
+ * + `<nav class="navbar">` desktop pair, and the separate `.mobile-topbar` /
+ * `.mobile-search` block below it.
+ *
+ * Two things here are easy to get wrong and are therefore spelled out:
+ *
+ * 1. The desktop/mobile switch is at **901px**, not Tailwind's `md` (768px).
+ *    The PHP does `@media (max-width:900px){ .topbar{display:none} … }` paired
+ *    with `@media (min-width:901px){ .mobile-topbar{display:none} }`, so the
+ *    custom `shop:` breakpoint is used throughout this file.
+ *
+ * 2. `mb_strimwidth()` counts the ellipsis inside the width it is given, so
+ *    `mb_strimwidth($addr, 0, 18, '...')` yields at most 18 characters TOTAL
+ *    (15 of text + '...'), not 18 + '...'. See truncate() below.
  */
 export function ShopHeader(props: ShopHeaderProps) {
   return (
@@ -30,38 +42,81 @@ export function ShopHeader(props: ShopHeaderProps) {
   );
 }
 
-function ShopHeaderInner({ business, categories, customer, onOpenMobileMenu }: ShopHeaderProps) {
+/**
+ * PHP's mb_strimwidth($s, 0, $width, $trim): if the string is longer than
+ * $width, it is cut so that the result *including* the trim marker is $width
+ * characters. The location line passes an empty marker, the address line
+ * passes '...'.
+ */
+function strimwidth(value: string, width: number, marker = ""): string {
+  const s = value.trim();
+  if (s.length <= width) return s;
+  return s.slice(0, Math.max(0, width - marker.length)) + marker;
+}
+
+function ShopHeaderInner({ business, header, categories, customer, onOpenMobileMenu }: ShopHeaderProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { count, total } = useCart();
   const currentSlug = searchParams?.get("slug") ?? "";
   const currentQ = searchParams?.get("q") ?? "";
 
+  // `$shop_show_location && $shop_biz_location` — the toggle alone isn't
+  // enough, an empty location hides the block too.
+  const showLocation = header.showLocation && !!business.location;
+  const showDelivery = header.showDeliveryInfo && !!header.deliveryTimeText;
+
+  const accountHref = customer ? "/shop/account" : "/shop/login";
+  const accountLabel = customer ? customer.name.split(" ")[0] : "Login";
+
   return (
     <>
-      {/* ============ DESKTOP HEADER ============ */}
-      <header className="hidden md:flex items-center gap-5 px-8 py-3 border-b border-storefront-border bg-white h-[76px]">
+      {/* ============ DESKTOP HEADER (.topbar) ============ */}
+      <header className="hidden shop:flex items-center gap-5 px-8 py-3 border-b border-storefront-border bg-white h-[76px]">
         <Link href="/shop" className="flex items-center gap-1.5 shrink-0" aria-label={`${business.businessName} home`}>
           {business.logo ? (
-            <Image src={`/${business.logo}`} alt={`${business.businessName} logo`} width={150} height={44} className="h-11 w-auto max-w-[150px] object-contain rounded" />
+            <Image
+              src={`/${business.logo}`}
+              alt={`${business.businessName} logo`}
+              width={150}
+              height={44}
+              className="h-11 w-auto max-w-[150px] object-contain rounded-[4px] block"
+            />
           ) : (
-            <span className="text-[26px] font-extrabold text-storefront-green-dark tracking-wide">{business.businessName}</span>
+            <span className="text-[26px] font-extrabold text-storefront-green-dark tracking-[0.2px] leading-none">
+              {business.businessName}
+            </span>
           )}
         </Link>
 
-        {business.location && (
-          <div className="flex items-center gap-1.5 px-3 h-11 bg-storefront-green-light rounded-lg text-sm whitespace-nowrap shrink-0">
-            <MapPin className="w-[18px] h-[18px] text-storefront-green shrink-0" />
-            <span className="font-bold">{business.location.length > 12 ? `${business.location.slice(0, 12)}` : business.location}</span>
+        {/* .location — two lines: truncated location + chevron, then the address */}
+        {showLocation && (
+          <div className="flex items-center gap-1.5 px-3 h-11 bg-storefront-green-light rounded-[8px] text-sm whitespace-nowrap shrink-0">
+            <MapPin className="w-[18px] h-[18px] text-storefront-green shrink-0" fill="currentColor" strokeWidth={0} />
+            <div>
+              <span className="font-bold flex items-center gap-1">
+                {strimwidth(business.location ?? "", 12)}
+                {/* the little chevron that sits inline after the place name */}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </span>
+              {business.address && (
+                <span className="block text-xs text-storefront-muted">
+                  {strimwidth(business.address, 18, "...")}
+                </span>
+              )}
+            </div>
           </div>
         )}
 
-        {business.businessHours && (
+        {/* .delivery-info */}
+        {showDelivery && (
           <div className="text-[13px] whitespace-nowrap shrink-0 text-[#333]">
-            <span className="text-storefront-green font-bold">We&apos;re open</span>
-            <div className="flex items-center gap-1.5 font-bold mt-0.5">
-              <Clock className="w-3.5 h-3.5 text-storefront-orange" />
-              {business.businessHours}
+            <span className="text-storefront-green font-bold">{header.deliveryLabel}</span>
+            <div className="flex items-center gap-[5px] font-bold mt-[3px]">
+              <Clock className="w-3.5 h-3.5 text-storefront-orange" strokeWidth={2} />
+              {header.deliveryTimeText}
             </div>
           </div>
         )}
@@ -70,21 +125,24 @@ function ShopHeaderInner({ business, categories, customer, onOpenMobileMenu }: S
           <input
             type="text"
             name="q"
-            placeholder="Search for products"
+            placeholder={header.searchPlaceholder}
             defaultValue={currentQ}
-            className="flex-1 border border-storefront-border border-r-0 rounded-l-md px-4 text-sm outline-none text-[#333] placeholder:text-[#8a8a8a]"
+            className="flex-1 w-full border border-storefront-border border-r-0 rounded-l-[6px] px-4 text-sm outline-none text-[#333] placeholder:text-[#8a8a8a]"
           />
-          <button type="submit" className="bg-storefront-green hover:bg-storefront-green-dark text-white px-[26px] rounded-r-md font-bold text-[13px] tracking-wide">
+          <button
+            type="submit"
+            className="bg-storefront-green hover:bg-storefront-green-dark text-white px-[26px] rounded-r-[6px] font-bold text-[13px] tracking-[0.4px]"
+          >
             SEARCH
           </button>
         </form>
 
-        <div className="flex items-center gap-[26px] ml-auto whitespace-nowrap shrink-0">
-          <Link href={customer ? "/shop/account" : "/shop/login"} className="flex items-center gap-1.5 text-sm font-semibold text-[#333]">
+        <div className="flex items-center gap-[26px] whitespace-nowrap shrink-0">
+          <Link href={accountHref} className="flex items-center gap-[7px] text-sm font-semibold text-[#333]">
             <User className="w-[22px] h-[22px] text-storefront-green shrink-0" strokeWidth={1.8} />
-            <span>{customer ? customer.name.split(" ")[0] : "Sign In / Register"}</span>
+            <span>{accountLabel}</span>
           </Link>
-          <Link href="/shop/wishlist" className="flex items-center gap-1.5 text-sm font-semibold text-[#333]" aria-label="Wishlist">
+          <Link href="/shop/wishlist" className="flex items-center gap-[7px] text-sm font-semibold text-[#333]" aria-label="Wishlist">
             <Heart className="w-[22px] h-[22px] text-storefront-green shrink-0" strokeWidth={1.8} />
           </Link>
           <Link href="/shop/cart" className="flex items-center gap-1.5 relative text-sm font-semibold text-[#333]">
@@ -94,16 +152,19 @@ function ShopHeaderInner({ business, categories, customer, onOpenMobileMenu }: S
                 {count}
               </span>
             </div>
-            <span>₹{total.toLocaleString("en-IN")}</span>
+            <span>{formatMoneyInt(total)}</span>
           </Link>
         </div>
       </header>
 
-      {/* Category nav bar */}
-      <nav className="hidden md:flex gap-8 px-8 py-3.5 border-b border-storefront-border bg-white overflow-x-auto text-sm font-semibold">
+      {/* ============ CATEGORY NAV (.navbar) ============ */}
+      <nav className="hidden shop:flex flex-nowrap items-center justify-start gap-8 px-8 py-3.5 border-b border-storefront-border bg-white overflow-x-auto text-sm font-semibold">
         <Link
           href="/shop"
-          className={cn("whitespace-nowrap text-sm font-medium", pathname === "/shop" && !currentSlug ? "text-storefront-green" : "text-storefront-text")}
+          className={cn(
+            "shrink-0 pb-1 text-[#333] hover:text-storefront-green",
+            pathname === "/shop" && !currentSlug && "!text-[#111] underline underline-offset-[6px]"
+          )}
         >
           All Categories
         </Link>
@@ -111,45 +172,60 @@ function ShopHeaderInner({ business, categories, customer, onOpenMobileMenu }: S
           <Link
             key={cat.slug}
             href={`/shop/category?slug=${encodeURIComponent(cat.slug)}`}
-            className={cn("whitespace-nowrap text-sm font-medium", currentSlug === cat.slug ? "text-storefront-green" : "text-storefront-text")}
+            className={cn(
+              "shrink-0 pb-1 text-[#333] hover:text-storefront-green",
+              currentSlug === cat.slug && "!text-[#111] underline underline-offset-[6px]"
+            )}
           >
             {cat.name}
           </Link>
         ))}
       </nav>
 
-      {/* ============ MOBILE HEADER ============ */}
-      <div className="flex md:hidden items-center justify-between px-4 py-3 border-b border-storefront-border bg-white">
-        <button onClick={onOpenMobileMenu} aria-label="Open menu">
-          <Menu className="w-6 h-6" />
+      {/* ============ MOBILE HEADER (.mobile-topbar) ============ */}
+      <div className="flex shop:hidden items-center justify-between px-4 py-3.5 border-b border-storefront-border bg-white">
+        <button onClick={onOpenMobileMenu} aria-label="Open menu" className="shrink-0">
+          <Menu className="w-6 h-6 text-[#333]" strokeWidth={2} />
         </button>
         <Link href="/shop" aria-label={`${business.businessName} home`}>
           {business.logo ? (
-            <Image src={`/${business.logo}`} alt={`${business.businessName} logo`} width={100} height={32} className="h-8 w-auto object-contain" />
+            <Image
+              src={`/${business.logo}`}
+              alt={`${business.businessName} logo`}
+              width={110}
+              height={34}
+              className="h-[34px] w-auto max-w-[110px] object-contain"
+            />
           ) : (
-            <span className="text-lg font-extrabold text-storefront-green-dark">{business.businessName}</span>
+            <span className="text-xl font-extrabold text-storefront-green-dark">{business.businessName}</span>
           )}
         </Link>
-        <div className="flex items-center gap-4">
-          <Link href="/shop/wishlist"><Heart className="w-5 h-5" /></Link>
-          <Link href="/shop/cart" className="relative">
-            <ShoppingCart className="w-5 h-5" />
-            <span className="absolute -top-2 -right-2 bg-storefront-orange text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+        <div className="flex items-center gap-[18px]">
+          <Link href="/shop/wishlist" aria-label="Wishlist">
+            <Heart className="w-6 h-6 text-storefront-green" strokeWidth={1.8} />
+          </Link>
+          <Link href="/shop/cart" className="relative" aria-label="Cart">
+            <ShoppingCart className="w-6 h-6 text-storefront-green" strokeWidth={1.8} />
+            <span className="absolute -top-2 left-[14px] bg-[#fdd835] text-[#333] text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
               {count}
             </span>
           </Link>
-          <Link href={customer ? "/shop/account" : "/shop/login"}><User className="w-5 h-5" /></Link>
+          <Link href={accountHref} aria-label={accountLabel}>
+            <User className="w-6 h-6 text-storefront-green" strokeWidth={1.8} />
+          </Link>
         </div>
       </div>
-      <form action="/shop" method="GET" className="md:hidden px-4 py-2 bg-white border-b border-storefront-border">
-        <div className="flex items-center gap-2 bg-storefront-bg rounded-full px-3 py-2">
-          <Search className="w-4 h-4 text-storefront-muted" />
+
+      {/* ============ MOBILE SEARCH (.mobile-search) ============ */}
+      <form action="/shop" method="GET" className="shop:hidden px-4 pt-3 pb-4 bg-white border-b border-storefront-border">
+        <div className="flex items-center gap-2.5 bg-[#eee] rounded-[6px] px-3.5 py-3">
+          <Search className="w-[18px] h-[18px] text-[#666] shrink-0" strokeWidth={2} />
           <input
             type="text"
             name="q"
-            placeholder="Search for products"
+            placeholder={header.searchPlaceholder}
             defaultValue={currentQ}
-            className="flex-1 bg-transparent text-sm outline-none"
+            className="flex-1 bg-transparent border-none outline-none text-[13px] text-[#333] placeholder:text-[#8a8a8a]"
           />
         </div>
       </form>

@@ -1,10 +1,12 @@
 import { prisma } from "./db";
 import { getCustomerSession } from "./customer-auth";
 import { getCart, cartCount } from "./cart-session";
-import type { ShopBusinessSettings, ShopCategoryNavItem, ShopCustomer } from "@/types/shop";
+import { getShopHeaderSettings } from "./header-settings";
+import type { ShopBusinessSettings, ShopCategoryNavItem, ShopCustomer, ShopHeaderSettings } from "@/types/shop";
 
 export interface ShopLayoutData {
   business: ShopBusinessSettings;
+  header: ShopHeaderSettings;
   categories: ShopCategoryNavItem[];
   customer: ShopCustomer | null;
   cartCount: number;
@@ -27,9 +29,15 @@ export async function getShopLayoutData(): Promise<ShopLayoutData> {
     customer = { id: customerSession.customerId, name: customerSession.name };
   }
 
-  const cartTotal = await computeCartTotal(cart);
+  // Depends on `biz` (business_hours is the delivery-time fallback), so this
+  // runs after the Promise.all above rather than inside it.
+  const [cartTotal, header] = await Promise.all([
+    computeCartTotal(cart),
+    getShopHeaderSettings(biz?.businessHours ?? null),
+  ]);
 
   return {
+    header,
     business: {
       businessName: biz?.businessName ?? "EduMint24",
       logo: biz?.logo ?? null,

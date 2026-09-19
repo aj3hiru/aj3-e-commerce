@@ -5,10 +5,14 @@ import { ShopHeader } from "./ShopHeader";
 import { ShopMobileDrawer } from "./ShopMobileDrawer";
 import { ShopFooter } from "./ShopFooter";
 import { CartProvider } from "@/hooks/useCart";
-import type { ShopBusinessSettings, ShopCategoryNavItem, ShopCustomer } from "@/types/shop";
+import { defaultShopHeaderSettings } from "@/lib/shop-header-defaults";
+import type { ShopBusinessSettings, ShopCategoryNavItem, ShopCustomer, ShopHeaderSettings } from "@/types/shop";
 
 interface ShopLayoutProps {
   business: ShopBusinessSettings;
+  /** Optional: auth pages and the DB-free demo route render a header without
+   *  reading the customizer table, and fall back to the PHP defaults. */
+  header?: ShopHeaderSettings;
   categories: ShopCategoryNavItem[];
   customer: ShopCustomer | null;
   cartCount: number;
@@ -16,14 +20,18 @@ interface ShopLayoutProps {
   children: React.ReactNode;
 }
 
-export function ShopLayout({ business, categories, customer, cartCount, cartTotal, children }: ShopLayoutProps) {
+export function ShopLayout({ business, header, categories, customer, cartCount, cartTotal, children }: ShopLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const headerSettings = header ?? defaultShopHeaderSettings(business.businessHours);
 
   return (
     <CartProvider initialCount={cartCount} initialTotal={cartTotal}>
-      <div className="min-h-screen flex flex-col bg-white">
+      {/* font-storefront: the shop uses Segoe UI, not the admin's Inter — see
+          the `body` rule at the top of shop-header.php. */}
+      <div className="font-storefront min-h-screen flex flex-col bg-white">
         <ShopHeader
           business={business}
+          header={headerSettings}
           categories={categories}
           customer={customer}
           onOpenMobileMenu={() => setDrawerOpen(true)}

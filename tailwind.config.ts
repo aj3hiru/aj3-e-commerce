@@ -11,6 +11,21 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // The PHP used two different breakpoint systems, and Tailwind's defaults
+      // match NEITHER — so both are declared here rather than approximated.
+      //  • `shop`   = the storefront's own `@media (min-width:901px)` switch
+      //               between .mobile-topbar and .topbar (shop-header.php).
+      //               Tailwind's `md` is 768px, which would flip the header
+      //               ~130px too early.
+      //  • `bs-sm` / `bs-lg` = Bootstrap 5's 576/992 grid tiers, used by the
+      //               admin's `col-sm-6 col-lg-3` stat-card grid. Tailwind's
+      //               sm/lg are 640/1024, so reusing them would reflow the
+      //               dashboard cards at the wrong widths.
+      screens: {
+        shop: "901px",
+        "bs-sm": "576px",
+        "bs-lg": "992px",
+      },
       colors: {
         // ── Storefront theme (shop/*) ──
         storefront: {
@@ -33,6 +48,16 @@ const config: Config = {
           warning: "#f59e0b",
           danger: "#ef4444",
           info: "#3b82f6",
+          // Status-pill / action-button palette — verified from the
+          // `.status-btn.*` and `.action-list .btn-*` rules in ecom-head.php.
+          // These are deliberately DIFFERENT from the semantic tokens above
+          // (e.g. status green is #1cc88a, not the #10b981 --success), so they
+          // get their own names rather than being conflated.
+          "status-success": "#1cc88a",
+          "status-secondary": "#858796",
+          "status-warning": "#f6c23e",
+          "action-primary": "#4361ee",
+          "action-info": "#36b9cc",
           gray: {
             50: "#f9fafb",
             100: "#f3f4f6",
@@ -55,9 +80,24 @@ const config: Config = {
       borderRadius: {
         DEFAULT: "0.5rem",
         lg: "0.75rem",
+        // Verified from `.gd-card { border-radius: 0.35rem }` in ecom-head.php —
+        // the admin card radius is noticeably tighter than the generic 0.5rem.
+        card: "0.35rem",
+      },
+      boxShadow: {
+        // Verified from `.gd-card { box-shadow: 0 0.15rem 1.75rem 0 rgba(58,59,69,.1) }`
+        card: "0 0.15rem 1.75rem 0 rgba(58,59,69,.1)",
+      },
+      borderColor: {
+        // Verified from `.gd-card { border: 1px solid rgba(0,0,0,.08) }`
+        card: "rgba(0,0,0,.08)",
       },
       fontFamily: {
+        // Admin theme (ecom-head.php loads Inter from Google Fonts).
         sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+        // Storefront theme — shop-header.php's own stack. The two halves of
+        // this app deliberately do NOT share a typeface.
+        storefront: ["Segoe UI", "Arial", "Helvetica", "sans-serif"],
       },
       maxWidth: {
         "container-lg": "1140px",

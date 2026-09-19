@@ -60,15 +60,10 @@ export function ShopMobileDrawer({ business, customer, isOpen, onClose }: ShopMo
               <span>{customer ? `Welcome, ${customer.name.split(" ")[0]}!` : `Welcome to ${business.businessName}!`}</span>
             </div>
             {customer ? (
-              // Two real bugs fixed here, both root-caused on the sibling
-              // StoryTimes CMS project. (1) The link prefetch issue — see
-              // the same fix in AdminHeader.tsx and the reasoning in
-              // src/app/api/auth/customer-logout/route.ts. (2) This
-              // pointed at "/shop/logout", a URL with no matching route
-              // anywhere in this project at all — the actual endpoint is
-              // "/api/auth/customer-logout". A plain click here would have
-              // hit a 404, not logged anyone out.
-              <form method="POST" action="/api/auth/customer-logout">
+              /* POST form, not a <Link> — see AdminHeader/logout route notes.
+                 (The first pass linked to "/shop/logout", which was also a dead
+                 route that never existed — it 404'd rather than logging out.) */
+              <form action="/api/auth/customer-logout" method="POST">
                 <button
                   type="submit"
                   className="block w-full py-3 rounded-lg bg-[#7c3aed] text-white text-[15px] font-bold text-center hover:opacity-90 transition-opacity"
@@ -77,11 +72,16 @@ export function ShopMobileDrawer({ business, customer, isOpen, onClose }: ShopMo
                 </button>
               </form>
             ) : (
+              // shop-footer.php's `.sidebar-signin` still reads "Sign In /
+              // Register", but the store owner asked for the auth link to say
+              // just "Login". The desktop header in the latest PHP already
+              // says "Login", so matching it here keeps the two consistent
+              // rather than showing a different word on mobile.
               <Link
                 href="/shop/login"
                 className="block w-full py-3 rounded-lg bg-[#7c3aed] text-white text-[15px] font-bold text-center hover:opacity-90 transition-opacity"
               >
-                Sign In / Register
+                Login
               </Link>
             )}
           </div>

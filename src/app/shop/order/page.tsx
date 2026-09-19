@@ -11,7 +11,13 @@ interface OrderPageProps {
   searchParams: Promise<{ id?: string; placed?: string }>;
 }
 
-const STATUSES = ["Pending", "In Progress", "Delivered"];
+// The customer-facing progress stepper. Deliberately NOT the full admin list:
+// "Canceled" is not a step on the happy path (it is handled by `isCanceled`
+// below, which replaces the tracker entirely), so the stepper shows only the
+// forward-moving stages — now including the "Out for Delivery" stage added to
+// the admin status vocabulary, or an order sitting at it would show as stuck
+// at step -1 with no progress at all.
+const STATUSES = ["Pending", "In Progress", "Out for Delivery", "Delivered"];
 
 /** Verified against shop/order.php. */
 export default async function OrderPage({ searchParams }: OrderPageProps) {

@@ -21,7 +21,27 @@ const PRESETS: { value: DashboardRange; label: string }[] = [
   { value: "prev_month", label: "Previous Month" },
 ];
 
-/** Verified against the .range-bar markup in dashboard.php. */
+/**
+ * The `.range-bar` above the dashboard, ported from admin/dashboard.php:
+ *
+ *   .range-bar        { flex; gap:.5rem; wrap; #fff; 1px solid var(--gray-200);
+ *                       radius .5rem; padding:.75rem 1rem; margin-bottom:1rem }
+ *   .range-bar-label  { .8125rem; var(--gray-500); margin-right:auto }
+ *   .range-bar .btn-group .btn { font-size:.8125rem }
+ *   .range-bar-custom { flex; gap:.4rem; margin-left:auto }
+ *
+ * Button colours are Bootstrap 5.3 defaults, NOT the admin purple: the
+ * e-commerce admin pages include only ecom-head.php, which overrides
+ * `.action-list .btn-primary` but never `.btn-primary` itself. So the selected
+ * preset really is Bootstrap blue #0d6efd here, and Apply really is the grey
+ * #6c757d `.btn-secondary`. Recolouring them to var(--primary) would look
+ * tidier but would no longer match the original admin.
+ *
+ *   .btn-sm                 { padding:.25rem .5rem; radius .25rem }
+ *   .btn-primary            { #0d6efd bg/border, #fff }
+ *   .btn-outline-secondary  { #6c757d text+border, transparent; hover #6c757d/#fff }
+ *   .btn-group .btn         { square inner corners, rounded outer only, -1px overlap }
+ */
 export function DateRangeBar({ currentRange, rangeLabel, dateFrom, dateTo }: DateRangeBarProps) {
   const router = useRouter();
   const [from, setFrom] = useState(dateFrom);
@@ -29,47 +49,68 @@ export function DateRangeBar({ currentRange, rangeLabel, dateFrom, dateTo }: Dat
 
   function applyCustom(e: React.FormEvent) {
     e.preventDefault();
+    // Matches the PHP's reversed-range guard: ?range=custom always resolves
+    // server-side, which also swaps from/to if they arrive backwards.
     router.push(`?range=custom&from=${from}&to=${to}`);
   }
 
   return (
-    <div className="flex items-center gap-2 flex-wrap bg-white border border-admin-gray-200 rounded-lg px-4 py-3 mb-4">
-      <span className="text-sm text-admin-gray-500 mr-auto">
-        Showing: <strong className="text-admin-gray-900">{rangeLabel}</strong>
+    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-[0.5rem] border border-admin-gray-200 bg-white px-4 py-3">
+      <span className="mr-auto text-[0.8125rem] text-admin-gray-500">
+        Showing: <strong className="font-bold">{rangeLabel}</strong>
       </span>
 
-      <div className="flex rounded-md overflow-hidden border border-admin-gray-300">
-        {PRESETS.map((p) => (
-          <a
-            key={p.value}
-            href={`?range=${p.value}`}
-            className={cn(
-              "px-3 py-1.5 text-[0.8125rem] border-r border-admin-gray-300 last:border-r-0",
-              currentRange === p.value
-                ? "bg-admin-primary text-white"
-                : "bg-white text-admin-gray-700 hover:bg-admin-gray-50"
-            )}
-          >
-            {p.label}
-          </a>
-        ))}
+      {/* .btn-group */}
+      <div className="inline-flex">
+        {PRESETS.map((p, i) => {
+          const active = currentRange === p.value;
+          return (
+            <a
+              key={p.value}
+              href={`?range=${p.value}`}
+              className={cn(
+                "relative border px-2 py-1 text-[0.8125rem] leading-normal transition-colors",
+                // .btn-group: only the outer corners are rounded, and inner
+                // borders collapse via a -1px pull.
+                i === 0 && "rounded-l-[0.25rem]",
+                i === PRESETS.length - 1 && "rounded-r-[0.25rem]",
+                i > 0 && "-ml-px",
+                active
+                  ? "z-10 border-[#0d6efd] bg-[#0d6efd] text-white"
+                  : "border-[#6c757d] bg-transparent text-[#6c757d] hover:bg-[#6c757d] hover:text-white"
+              )}
+            >
+              {p.label}
+            </a>
+          );
+        })}
       </div>
 
-      <form onSubmit={applyCustom} className="flex items-center gap-1.5 ml-auto">
+      {/* .range-bar-custom */}
+      <form onSubmit={applyCustom} className="ml-auto flex items-center gap-[0.4rem]">
         <input
           type="date"
+          name="from"
+          aria-label="Range start date"
           value={from}
           onChange={(e) => setFrom(e.target.value)}
-          className="w-[150px] text-sm border border-admin-gray-300 rounded px-2 py-1.5"
+          // .form-control.form-control-sm + the inline width:150px from the PHP
+          className="w-[150px] rounded-[0.25rem] border border-admin-gray-300 px-2 py-1 text-[0.875rem] text-admin-gray-700 focus:border-admin-primary focus:outline-none"
         />
-        <span className="text-admin-gray-400 text-sm">to</span>
+        <span className="text-[0.875em] text-[#6c757d]">to</span>
         <input
           type="date"
+          name="to"
+          aria-label="Range end date"
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          className="w-[150px] text-sm border border-admin-gray-300 rounded px-2 py-1.5"
+          className="w-[150px] rounded-[0.25rem] border border-admin-gray-300 px-2 py-1 text-[0.875rem] text-admin-gray-700 focus:border-admin-primary focus:outline-none"
         />
-        <button type="submit" className="bg-admin-gray-600 hover:bg-admin-gray-700 text-white text-sm rounded px-3 py-1.5">
+        <button
+          type="submit"
+          // .btn.btn-secondary.btn-sm
+          className="rounded-[0.25rem] border border-[#6c757d] bg-[#6c757d] px-2 py-1 text-[0.875rem] text-white hover:border-[#5c636a] hover:bg-[#5c636a]"
+        >
           Apply
         </button>
       </form>

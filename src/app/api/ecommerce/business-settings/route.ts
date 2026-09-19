@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { saveUploadedImage } from "@/lib/upload";
+import { HEADER_SETTING_DEFAULTS, type HeaderSettingKey } from "@/lib/header-settings";
 
 const VALID_FKEYS = Array.from({ length: 11 }, (_, i) => `F${i + 2}`); // F2..F12
 
@@ -97,7 +98,47 @@ export async function POST(req: NextRequest) {
     await prisma.ecomBusinessSettings.create({ data });
   }
 
+  // Logged before the header-strip write below, so the audit trail records the
+  // profile update even when that optional second write fails and returns early.
   await logActivity(req, session.userId, "ecom_business_settings_update", "Updated business profile settings");
+
+  // ── Storefront header strip ─────────────────────────────────────────────
+  // These five live in ecom_home_settings, where shop-header.php has always
+  // read them from; only the editor for them moved onto this page. Written
+  // after the business row so a failure here cannot leave the main profile
+  // half-saved, and upserted one key at a time because the table is a plain
+  // key/value store with a unique index on setting_key.
+  const headerValues: Record<HeaderSettingKey, string> = {
+    show_location: form.get("header_show_location") === "1" ? "1" : "0",
+    show_delivery_info: form.get("header_show_delivery_info") === "1" ? "1" : "0",
+    delivery_label: str("header_delivery_label") || HEADER_SETTING_DEFAULTS.delivery_label,
+    // Blank is meaningful: it makes the header fall back to business_hours.
+    delivery_time_text: str("header_delivery_time_text"),
+    search_placeholder: str("header_search_placeholder") || HEADER_SETTING_DEFAULTS.search_placeholder,
+  };
+
+  try {
+    await prisma.$transaction(
+      (Object.entries(headerValues) as [HeaderSettingKey, string][]).map(([settingKey, settingValue]) =>
+        prisma.ecomHomeSetting.upsert({
+          where: { settingKey },
+          update: { settingValue },
+          create: { settingKey, settingValue },
+        })
+      )
+    );
+  } catch {
+    // The storefront customizer table is optional in the PHP (shop-header.php
+    // wraps its read in try/catch for databases that predate it). Losing the
+    // header strip settings must not fail the whole save, so this is reported
+    // rather than thrown — the business profile above is already committed.
+    return NextResponse.json({
+      success: true,
+      partial: true,
+      message: "Business profile saved, but the storefront header settings could not be written.",
+      redirect: "/admin/ecommerce/business-settings?success=1&header=failed",
+    });
+  }
 
   return NextResponse.json({ success: true, redirect: "/admin/ecommerce/business-settings?success=1" });
 }

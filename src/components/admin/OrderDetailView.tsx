@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Phone, Mail, MapPin, CreditCard, RefreshCw, Trash2, FileText, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ORDER_STATUSES } from "@/lib/order-statuses";
 
 export interface OrderDetailItem {
   id: number;
@@ -35,8 +36,6 @@ interface OrderDetailViewProps {
   items: OrderDetailItem[];
   availableProducts: { id: number; name: string; sku: string | null; price: number }[];
 }
-
-const ORDER_STATUSES = ["Pending", "In Progress", "Delivered", "Canceled"] as const;
 
 export function OrderDetailView({ order, items, availableProducts }: OrderDetailViewProps) {
   const router = useRouter();
@@ -97,7 +96,7 @@ export function OrderDetailView({ order, items, availableProducts }: OrderDetail
           </div>
         )}
 
-        <div className="bg-white rounded-lg border border-admin-gray-200 p-5">
+        <div className="bg-white rounded-card border border-card shadow-card p-5">
           <h5 className="font-bold mb-3">Order Items</h5>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -134,7 +133,7 @@ export function OrderDetailView({ order, items, availableProducts }: OrderDetail
                             </div>
                           </div>
                         ) : order.linkedCreditId ? (
-                          <span className="inline-block bg-emerald-500 text-white text-xs font-semibold rounded px-2 py-1">Paid: ₹{order.totalAmount.toFixed(2)}</span>
+                          <span className="inline-block bg-admin-status-success text-white text-xs font-semibold rounded px-2 py-1">Paid: ₹{order.totalAmount.toFixed(2)}</span>
                         ) : (
                           <span className="text-admin-gray-400">—</span>
                         )}
@@ -160,7 +159,7 @@ export function OrderDetailView({ order, items, availableProducts }: OrderDetail
                           onClick={() => {
                             if (confirm("Remove this item from the order?")) callItemsApi({ action: "remove_item", itemId: it.id });
                           }}
-                          className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded"
+                          className="w-[34px] h-[34px] inline-flex items-center justify-center p-0 rounded text-white transition-opacity hover:opacity-85" style={{ backgroundColor: "#ef4444" }}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -207,7 +206,7 @@ export function OrderDetailView({ order, items, availableProducts }: OrderDetail
       </div>
 
       {/* RIGHT: summary */}
-      <div className="bg-white rounded-lg border border-admin-gray-200 p-5 h-fit">
+      <div className="bg-white rounded-card border border-card shadow-card p-5 h-fit">
         <div className="text-center pb-4 mb-4 border-b border-admin-gray-100">
           <div className="text-[1.05rem] font-bold text-admin-gray-900">{order.orderNumber}</div>
           <div className="text-[1.75rem] font-extrabold text-admin-primary mt-0.5">₹{order.totalAmount.toFixed(2)}</div>

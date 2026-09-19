@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export function DisplayOptionsPanel() {
   const [open, setOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
-  const { isVisible, toggle } = useDashboardWidgetPrefs();
+  const { isVisible, toggle, loaded } = useDashboardWidgetPrefs();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -24,14 +24,19 @@ export function DisplayOptionsPanel() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 text-sm border border-admin-gray-300 bg-admin-gray-100 hover:bg-admin-gray-200 rounded px-3 py-1.5"
+        // .btn.btn-secondary.btn-sm — the same grey as the Apply button it sits next to
+        className="flex items-center gap-1.5 rounded-[0.25rem] border border-[#6c757d] bg-[#6c757d] px-2 py-1 text-[0.875rem] text-white hover:border-[#5c636a] hover:bg-[#5c636a]"
       >
         <SlidersHorizontal className="w-3.5 h-3.5" /> Display Options
         <ChevronDown className={cn("w-3 h-3 transition-transform", open && "rotate-180")} />
       </button>
 
-      {open && (
-        <div className="absolute top-full right-0 mt-2 min-w-[240px] max-h-[70vh] overflow-y-auto bg-white border border-admin-gray-200 rounded-lg shadow-lg p-3 z-20">
+      {open && loaded && (
+        <div className="absolute top-full right-0 z-20 mt-2 flex max-h-[70vh] min-w-[240px] flex-col gap-[0.125rem] overflow-y-auto rounded-[0.5rem] border border-admin-gray-200 bg-white p-3 shadow-[0_0.5rem_1.5rem_rgba(0,0,0,.15)]">
+          {/* .db-display-divider */}
+          <div className="px-2.5 pb-[0.2rem] pt-2 text-[0.6875rem] font-bold uppercase text-admin-gray-400">
+            Sections
+          </div>
           {DASHBOARD_WIDGETS.map((group) => {
             const groupOpen = openGroups[group.group] ?? false;
             return (

@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import type { RangeResult } from "./dashboard-range";
+import { ORDER_STATUSES } from "./order-statuses";
 
 export interface SalesReportData {
   sales: {
@@ -107,9 +108,14 @@ export async function getSalesReportData(range: RangeResult, saleType: "all" | "
   }));
   const collectionsTotal = collections.reduce((s: number, c: (typeof collections)[number]) => s + c.amount, 0);
 
-  const onlineCounts: Record<string, number> = { Pending: 0, "In Progress": 0, Delivered: 0, Canceled: 0 };
+  // Seeded from ORDER_STATUSES rather than a hardcoded literal: a status that
+  // exists in the app but not in this map would be counted nowhere, and the
+  // breakdown would quietly stop summing to the online order total.
+  const onlineCounts: Record<string, number> = Object.fromEntries(ORDER_STATUSES.map((st) => [st, 0]));
   for (const oo of onlineOrders) {
-    if (onlineCounts[oo.orderStatus] !== undefined) onlineCounts[oo.orderStatus]++;
+    // A row holding a status retired from ORDER_STATUSES still has to appear,
+    // or it would vanish from the report entirely.
+    onlineCounts[oo.orderStatus] = (onlineCounts[oo.orderStatus] ?? 0) + 1;
   }
 
   return { sales, salesTotal, salesPaid, salesDue, byMethod, newDues, newDuesTotal, collections, collectionsTotal, onlineCounts };

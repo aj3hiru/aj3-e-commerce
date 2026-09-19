@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 
-const VALID_ORDER_STATUSES = ["Pending", "In Progress", "Delivered", "Canceled"];
-const VALID_PAYMENT_STATUSES = ["Unpaid", "Paid"];
+// Single source of truth shared with both status dropdowns, so the UI can never
+// offer a value this endpoint would silently drop.
+import { isOrderStatus, isPaymentStatus } from "@/lib/order-statuses";
 
 /** Verified against the set_order_status / set_payment_status GET-based quick
  *  toggles in orders.php. */
@@ -21,12 +22,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const body = await req.json().catch(() => ({}));
 
-  if (body.orderStatus && VALID_ORDER_STATUSES.includes(body.orderStatus)) {
-    await prisma.ecomOrder.update({ where: { id: orderId }, data: { orderStatus: body.orderStatus } });
+  // The PHP silently ignored an unrecognised status (in_array guard, then a
+  // redirect). Returning 400 instead means the caller can tell a rejected
+  // update apart from an applied one and avoid showing a value that was never
+  // saved — the dashboard table relies on this.
+  if (body.orderStatus !== undefined && !isOrderStatus(body.orderStatus)) {
+    return NextResponse.json({ success: false, message: "Unknown order status" }, { status: 400 });
   }
-  if (body.paymentStatus && VALID_PAYMENT_STATUSES.includes(body.paymentStatus)) {
-    await prisma.ecomOrder.update({ where: { id: orderId }, data: { paymentStatus: body.paymentStatus } });
+  if (body.paymentStatus !== undefined && !isPaymentStatus(body.paymentStatus)) {
+    return NextResponse.json({ success: false, message: "Unknown payment status" }, { status: 400 });
   }
+
+  const data: { orderStatus?: string; paymentStatus?: string } = {};
+  if (body.orderStatus !== undefined) data.orderStatus = body.orderStatus;
+  if (body.paymentStatus !== undefined) data.paymentStatus = body.paymentStatus;
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ success: false, message: "Nothing to update" }, { status: 400 });
+  }
+
+  // One UPDATE rather than the two the old code issued when both changed.
+  await prisma.ecomOrder.update({ where: { id: orderId }, data });
 
   return NextResponse.json({ success: true });
 }

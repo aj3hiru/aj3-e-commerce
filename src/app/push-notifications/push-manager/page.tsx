@@ -18,7 +18,7 @@ export default async function PushManagerPage() {
       </div>
       <div className="bg-white border border-admin-gray-200 rounded-lg p-5">
         <h2 className="font-bold text-lg mb-3">Campaigns</h2>
-        {campaigns.length === 0 ? <p className="text-sm text-admin-gray-500">No push campaigns have been created yet.</p> : <div className="divide-y">{campaigns.map(c => <div key={c.id} className="py-3 flex items-center justify-between"><div><div className="font-medium">{c.title}</div><div className="text-xs text-admin-gray-500">{c.body}</div></div><span className="text-xs rounded bg-admin-gray-100 px-2 py-1">{c.status}</span></div>)}</div>}
+        {campaigns.length === 0 ? <p className="text-sm text-admin-gray-500">No push campaigns have been created yet.</p> : <div className="divide-y">{campaigns.map((c: (typeof campaigns)[number]) => <div key={c.id} className="py-3 flex items-center justify-between"><div><div className="font-medium">{c.title}</div><div className="text-xs text-admin-gray-500">{c.body}</div></div><span className="text-xs rounded bg-admin-gray-100 px-2 py-1">{c.status}</span></div>)}</div>}
       </div>
     </AdminShell>
   );

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { isOrderLocked } from "@/lib/order-recalc";
+import { ORDER_STATUSES, PAYMENT_STATUSES } from "@/lib/order-statuses";
 
-const VALID_ORDER_STATUSES = ["Pending", "In Progress", "Delivered", "Canceled"];
-const VALID_PAYMENT_STATUSES = ["Paid", "Unpaid"];
+const VALID_ORDER_STATUSES: readonly string[] = ORDER_STATUSES;
+const VALID_PAYMENT_STATUSES: readonly string[] = PAYMENT_STATUSES;
 
 /** Verified against order-view.php's update_status / update_payment actions,
  *  including the "Delivered orders are locked" rule. */

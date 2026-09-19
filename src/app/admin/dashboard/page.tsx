@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { DateRangeBar } from "@/components/admin/DateRangeBar";
 import { DashboardSections } from "@/components/admin/DashboardSections";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { resolveDashboardRange } from "@/lib/dashboard-range";
 import { getDashboardStats } from "@/lib/dashboard-stats";
@@ -37,13 +38,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       role={session.role}
       permissions={session.permissions}
     >
-      <DateRangeBar
-        currentRange={range.range}
-        rangeLabel={range.rangeLabel}
-        dateFrom={range.dateFrom}
-        dateTo={range.dateTo}
-      />
-      <DashboardSections stats={stats} rangeLabel={range.rangeLabel} />
+      {/* The Display Options panel lives inside DateRangeBar while the widgets
+          it controls live in DashboardSections, so both must sit under one
+          provider or a toggle would not reach the cards. */}
+      <DashboardWidgetPrefsProvider>
+        <DateRangeBar
+          currentRange={range.range}
+          rangeLabel={range.rangeLabel}
+          dateFrom={range.dateFrom}
+          dateTo={range.dateTo}
+        />
+        <DashboardSections stats={stats} rangeLabel={range.rangeLabel} />
+      </DashboardWidgetPrefsProvider>
     </AdminShell>
   );
 }

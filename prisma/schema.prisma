@@ -132,6 +132,11 @@ model EcomProduct {
   salePrice     Decimal? @map("sale_price") @db.Decimal(10, 2)
   gstRate       Decimal  @map("gst_rate") @db.Decimal(5, 2)
   stockQty      Int?     @map("stock_qty") // null for non-physical types
+  // Sold-by unit label — "KG", "Gram", "Liter", "ml", "cm", "Meter", "Piece",
+  // or any free text the admin types for a "Custom" unit. Null means the
+  // product has no unit (sold as a plain countable item, the pre-existing
+  // behavior for every product created before this field existed).
+  unit          String?
   image         String?
   description   String?  @db.Text
   badgeTag      String   @default("none") @map("badge_tag") // "none" | "new" | "best" | "hot" | "featured"

@@ -10,6 +10,10 @@ export interface PosProduct {
   productType: string;
   categoryId: number | null;
   subcategoryId: number | null;
+  /** Sold-by unit label ("KG", "Liter", "Piece", a custom string, or null
+   *  for a plain countable product). Display-only on the billing screen —
+   *  quantity itself stays a whole number either way. */
+  unit: string | null;
 }
 
 export interface PosCoupon {
@@ -39,6 +43,7 @@ export interface CartLine {
   subcategoryId: number | null;
   gstRate: number;
   priceOverridden?: boolean;
+  unit?: string | null;
 }
 
 export interface PaymentRow {

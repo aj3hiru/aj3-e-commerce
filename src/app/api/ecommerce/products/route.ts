@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
         sku: text(form, "sku") || null,
         hsnCode: text(form, "hsn_code") || null,
         barcode: text(form, "barcode") || null,
+        unit: text(form, "unit") || null,
         productType,
         price,
         salePrice: numberOrNull(text(form, "sale_price")),

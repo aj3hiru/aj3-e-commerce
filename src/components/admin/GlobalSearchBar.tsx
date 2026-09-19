@@ -134,9 +134,10 @@ export function GlobalSearchBar({ variant = "phpMatch" }: GlobalSearchBarProps) 
         aria-label="Search orders, receipts and customers"
         className={
           isToolbar
-            // Same pill, matched to the h-10 (40px) RangeFilter/Display
-            // Options buttons instead of the PHP header's own shorter input.
-            ? "h-10 w-full rounded-full border border-[#e5e7eb] bg-white pl-[2.1rem] pr-3 text-[0.875rem] leading-[1.5] text-black outline-none transition-all duration-150 placeholder:text-[#9ca3af] focus:border-[#7c3aed] focus:shadow-[0_0_0_3px_#f5f3ff]"
+            // Same rounding as its RangeFilter/Display Options neighbours
+            // (`rounded-[0.5rem]`, not the PHP box's full pill) — matched to
+            // their h-10 (40px) height, not their own shorter input.
+            ? "h-10 w-full rounded-[0.5rem] border border-[#e5e7eb] bg-white pl-[2.1rem] pr-3 text-[0.875rem] leading-[1.5] text-black outline-none transition-all duration-150 placeholder:text-[#9ca3af] focus:border-[#7c3aed] focus:shadow-[0_0_0_3px_#f5f3ff]"
             : "w-full rounded-full border border-[#e5e7eb] bg-[#f9fafb] py-[0.55rem] pl-[2.1rem] pr-3 text-[0.875rem] leading-[1.5] text-black outline-none transition-all duration-150 placeholder:text-[#6c757d] focus:border-[#7c3aed] focus:bg-white focus:shadow-[0_0_0_3px_#f5f3ff]"
         }
       />

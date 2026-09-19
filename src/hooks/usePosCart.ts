@@ -43,6 +43,38 @@ export function usePosCart() {
           categoryId: product.categoryId,
           subcategoryId: product.subcategoryId,
           gstRate: product.gstRate,
+          unit: product.unit,
+        },
+      ];
+    });
+  }, []);
+
+  /**
+   * Same as `addToCart`, but for a line that starts at a chosen quantity
+   * instead of 1 — used when a quick-added product (one typed in on the
+   * spot, not scanned) is entered with its quantity already known, so the
+   * cashier isn't left tapping "+" repeatedly right after adding it.
+   */
+  const addToCartWithQty = useCallback((product: PosProduct, qty: number) => {
+    const safeQty = Math.max(1, Math.floor(qty) || 1);
+    setCart((prev) => {
+      const existing = prev.find((c) => c.productId === product.id);
+      if (existing) {
+        return prev.map((c) => (c.productId === product.id ? { ...c, qty: c.qty + safeQty } : c));
+      }
+      return [
+        ...prev,
+        {
+          productId: product.id,
+          name: product.name,
+          unitPrice: effectivePrice(product),
+          qty: safeQty,
+          stockQty: product.stockQty,
+          productType: product.productType,
+          categoryId: product.categoryId,
+          subcategoryId: product.subcategoryId,
+          gstRate: product.gstRate,
+          unit: product.unit,
         },
       ];
     });
@@ -176,6 +208,7 @@ export function usePosCart() {
   return {
     cart,
     addToCart,
+    addToCartWithQty,
     changeQty,
     setQty,
     setPrice,

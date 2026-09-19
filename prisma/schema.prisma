@@ -10,7 +10,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql" // swap to "mysql" if you want to match the original DB engine exactly
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 

@@ -50,7 +50,7 @@ export default async function Products2Page({ searchParams }: Products2PageProps
       select: {
         id: true, name: true, image: true, sku: true, barcode: true, price: true, salePrice: true,
         status: true, productType: true, stockQty: true, badgeTag: true, itemType: true, unit: true, createdAt: true,
-        categoryId: true, category: { select: { name: true } },
+        categoryId: true, category: { select: { name: true } }, brand: { select: { name: true } },
       },
     }),
     prisma.ecomProductTag.findMany({
@@ -68,6 +68,7 @@ export default async function Products2Page({ searchParams }: Products2PageProps
     id: number; name: string; image: string | null; sku: string | null; barcode: string | null; price: unknown;
     salePrice: unknown; status: string; productType: string; stockQty: number | null; badgeTag: string;
     itemType: string; unit: string | null; createdAt: Date; categoryId: number | null; category: { name: string } | null;
+    brand: { name: string } | null;
   }) => ({
     id: p.id,
     name: p.name,
@@ -84,6 +85,7 @@ export default async function Products2Page({ searchParams }: Products2PageProps
     unit: p.unit,
     categoryId: p.categoryId,
     categoryName: p.category?.name ?? null,
+    brandName: p.brand?.name ?? null,
     createdAt: p.createdAt.toISOString(),
   }));
 

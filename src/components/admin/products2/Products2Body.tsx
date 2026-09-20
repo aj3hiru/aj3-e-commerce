@@ -31,6 +31,7 @@ export interface Product2Row {
   unit: string | null;
   categoryId: number | null;
   categoryName: string | null;
+  brandName?: string | null;
   createdAt: string;
 }
 
@@ -131,7 +132,7 @@ export function Products2Provider({ products: initial, badges, itemTypes, catego
       if (filters.category !== "all" && filters.category !== "none" && String(p.categoryId) !== filters.category) return false;
       if (filters.type !== "all" && p.badgeTag !== filters.type) return false;
       if (filters.item !== "all" && p.itemType !== filters.item) return false;
-      if (term && !`${p.name} ${p.sku ?? ""} ${p.barcode ?? ""} ${p.categoryName ?? ""}`.toLowerCase().includes(term)) return false;
+      if (term && !`${p.name} ${p.sku ?? ""} ${p.barcode ?? ""} ${p.categoryName ?? ""} ${p.brandName ?? ""}`.toLowerCase().includes(term)) return false;
       return true;
     });
     const val = (p: Product2Row): string | number => {

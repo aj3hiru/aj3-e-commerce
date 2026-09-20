@@ -9,6 +9,7 @@ import { usePosCart } from "@/hooks/usePosCart";
 import { useCustomerSearch } from "@/hooks/useCustomerSearch";
 import { useProductScan } from "@/hooks/useProductScan";
 import { QuickAddProductModal } from "./QuickAddProductModal";
+import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { PosProduct, PosCoupon, PosCustomer, BusinessPosSettings, PaymentRow } from "@/types/pos";
 import { cn } from "@/lib/utils";
 
@@ -182,6 +183,33 @@ export function Billing2Screen({
     addToCartWithQty(product, qty);
   }
 
+  // Display Options (header panel). A part shows when its own toggle and its
+  // section's toggle are both on; everything is on until the viewer hides it.
+  const { isVisible } = useDashboardWidgetPrefs();
+  const inCart = (k: string) => isVisible("b2-cart") && isVisible(k);
+  const inFooter = (k: string) => isVisible("b2-footer") && isVisible(k);
+  const inSummary = (k: string) => isVisible("b2-summary") && isVisible(k);
+  const inCheckout = (k: string) => isVisible("b2-checkout") && isVisible(k);
+  const col = {
+    product: inCart("b2-col-product"),
+    price: inCart("b2-col-price"),
+    qty: inCart("b2-col-qty"),
+    unit: inCart("b2-col-unit"),
+    subtotal: inCart("b2-col-subtotal"),
+    action: inCart("b2-col-action"),
+  };
+  const colCount = Object.values(col).filter(Boolean).length;
+  const showCart = isVisible("b2-cart");
+  const showCoupon = inFooter("b2-coupon");
+  const showTotals = inFooter("b2-totals");
+  const showFooter = showCoupon || showTotals;
+  const showSumTotal = inSummary("b2-sum-total");
+  const showSumReceived = inSummary("b2-sum-received");
+  const showSumDue = inSummary("b2-sum-due");
+  const showSummaryCard = showSumTotal || showSumReceived || (showSumDue && (due > 0.004 || cart.length > 0));
+  const showCustomer = inCheckout("b2-customer");
+  const showPayments = inCheckout("b2-payments");
+
   const gstLabelRate = sameGstRate(cart);
   const itemCountLabel = `${cart.length} item${cart.length === 1 ? "" : "s"}`;
 
@@ -190,6 +218,7 @@ export function Billing2Screen({
       {/* ─────────────── LEFT: search, cart ─────────────── */}
       <div className="min-w-0 space-y-4">
         {/* Search / scan */}
+        {isVisible("b2-scan") && (
         <div className="rounded-xl bg-[#FFF4F0] p-2">
           <div className="relative">
             <div className="flex items-stretch overflow-hidden rounded-lg border border-[#F3B6A6] bg-white focus-within:ring-2 focus-within:ring-[#EE6A4D]/15">
@@ -246,16 +275,20 @@ export function Billing2Screen({
             )}
           </div>
         </div>
+        )}
 
         {/* Cart — fixed-height card on large screens: the item rows scroll,
             while coupon + totals stay pinned at the bottom of the card. */}
-        <div className="flex flex-col rounded-xl border border-admin-gray-200 bg-white shadow-sm xl:h-[calc(100dvh-230px)] xl:min-h-[440px]">
+        {(showCart || showFooter) && (
+        <div className={cn("flex flex-col rounded-xl border border-admin-gray-200 bg-white shadow-sm", showCart && "xl:h-[calc(100dvh-230px)] xl:min-h-[440px]")}>
+          {showCart && (<>
           <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-3 pt-4">
             <h5 className="flex items-center gap-2 text-base">
               <ShoppingCart className="h-4 w-4" style={{ color: CORAL }} />
               <span className="font-semibold text-admin-gray-900">Cart</span>
               <span className="text-sm font-normal text-admin-gray-400">({itemCountLabel})</span>
             </h5>
+            {isVisible("b2-add-product") && (
             <button
               type="button"
               onClick={() => setShowQuickAdd(true)}
@@ -264,24 +297,31 @@ export function Billing2Screen({
             >
               <PackagePlus className="h-3.5 w-3.5" /> Add Product
             </button>
+            )}
           </div>
 
           <div className="mx-4 max-h-[55vh] min-h-[150px] flex-1 overflow-auto rounded-lg border border-admin-gray-100 xl:max-h-none">
-            <table className="w-full min-w-[620px] text-sm">
+            <table className={cn("w-full text-sm", colCount >= 4 && "min-w-[620px]")}>
               <thead className="sticky top-0 z-10 bg-admin-gray-50">
                 <tr className="text-left text-xs font-medium text-admin-gray-500">
-                  <th className="py-2 pl-3 font-medium">Product</th>
-                  <th className="w-[120px] py-2 font-medium">Price</th>
-                  <th className="w-[130px] py-2 font-medium">Quantity</th>
-                  <th className="w-[120px] py-2 font-medium">Unit</th>
-                  <th className="w-[110px] py-2 pr-5 text-right font-medium">Subtotal</th>
-                  <th className="w-[64px] py-2 pr-3 text-center font-medium">Action</th>
+                  {col.product && <th className="py-2 pl-3 font-medium">Product</th>}
+                  {col.price && <th className="w-[120px] py-2 pl-3 font-medium">Price</th>}
+                  {col.qty && <th className="w-[130px] py-2 pl-3 font-medium">Quantity</th>}
+                  {col.unit && <th className="w-[120px] py-2 pl-3 font-medium">Unit</th>}
+                  {col.subtotal && <th className="w-[110px] py-2 pr-5 text-right font-medium">Subtotal</th>}
+                  {col.action && <th className="w-[64px] py-2 pr-3 text-center font-medium">Action</th>}
                 </tr>
               </thead>
               <tbody>
-                {cart.length === 0 ? (
+                {colCount === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-sm text-admin-gray-400">
+                    <td className="py-10 text-center text-sm text-admin-gray-400">
+                      All cart columns are hidden — turn them back on from Display Options.
+                    </td>
+                  </tr>
+                ) : cart.length === 0 ? (
+                  <tr>
+                    <td colSpan={colCount} className="py-10 text-center text-sm text-admin-gray-400">
                       <ShoppingCart className="mx-auto mb-2 h-7 w-7 text-admin-gray-300" />
                       Cart is empty — scan a product to begin, or use &quot;Add Product&quot; for something not in the list.
                     </td>
@@ -289,10 +329,13 @@ export function Billing2Screen({
                 ) : (
                   cart.map((c, idx) => (
                     <tr key={c.productId} className="border-t border-admin-gray-100 first:border-t-0 hover:bg-admin-gray-50/60">
-                      <td className="py-2 pl-3 pr-2">
+                      {col.product && (
+                      <td className="py-2 pl-3">
                         <div className="max-w-[260px] truncate font-medium text-admin-gray-900" title={c.name}>{c.name}</div>
                       </td>
-                      <td className="py-2 pr-2">
+                      )}
+                      {col.price && (
+                      <td className="py-2 pl-3">
                         <EditableNumber
                           value={c.unitPrice}
                           decimals={2}
@@ -303,7 +346,9 @@ export function Billing2Screen({
                           className={cn(c.priceOverridden && "border-[#F3B6A6] bg-[#FFF8F6]")}
                         />
                       </td>
-                      <td className="py-2 pr-2">
+                      )}
+                      {col.qty && (
+                      <td className="py-2 pl-3">
                         <QtyStepper
                           value={c.qty}
                           name={c.name}
@@ -312,12 +357,18 @@ export function Billing2Screen({
                           onSet={(v) => setQty(idx, String(v))}
                         />
                       </td>
-                      <td className="py-2 pr-2">
+                      )}
+                      {col.unit && (
+                      <td className="py-2 pl-3">
                         <UnitPicker value={c.unit ?? ""} name={c.name} onChange={(u) => setUnit(idx, u)} />
                       </td>
-                      <td className="whitespace-nowrap py-2 pr-5 text-right font-semibold text-admin-gray-900">
+                      )}
+                      {col.subtotal && (
+                      <td className="whitespace-nowrap py-2 pl-3 pr-5 text-right font-semibold text-admin-gray-900">
                         {fmt(c.unitPrice * c.qty)}
                       </td>
+                      )}
+                      {col.action && (
                       <td className="py-2 pr-3 text-center">
                         <button
                           type="button"
@@ -328,15 +379,23 @@ export function Billing2Screen({
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </td>
+                      )}
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
           </div>
+          </>)}
 
           {/* Coupon + totals — pinned to the bottom of the card */}
-          <div className="mt-3 grid grid-cols-1 gap-3 rounded-b-xl border-t border-admin-gray-100 bg-white p-4 md:grid-cols-2">
+          {showFooter && (
+          <div className={cn(
+            "grid grid-cols-1 gap-3 rounded-b-xl bg-white p-4",
+            showCart && "mt-3 border-t border-admin-gray-100",
+            showCoupon && showTotals && "md:grid-cols-2"
+          )}>
+            {showCoupon && (
             <div className="self-start rounded-lg bg-[#FFF6F3] p-3">
               <label htmlFor="b2-coupon" className="mb-2 flex items-center gap-2 text-sm font-semibold text-admin-gray-900">
                 <Tag className="h-3.5 w-3.5" style={{ color: CORAL }} /> Coupon Code
@@ -369,7 +428,9 @@ export function Billing2Screen({
                 <div className={cn("mt-2 text-xs", couponMessage.ok ? "text-emerald-600" : "text-red-600")}>{couponMessage.text}</div>
               )}
             </div>
+            )}
 
+            {showTotals && (
             <div className="rounded-lg bg-admin-gray-50 px-4 py-3">
               <div className="flex gap-2.5">
                 <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
@@ -391,8 +452,11 @@ export function Billing2Screen({
                 <span className="text-lg font-bold text-admin-gray-900">{fmt(totals.grandTotal)}</span>
               </div>
             </div>
+            )}
           </div>
+          )}
         </div>
+        )}
       </div>
 
       {/* ─────────────── RIGHT: Payment Summary ─────────────── */}
@@ -407,16 +471,25 @@ export function Billing2Screen({
         </div>
 
         {/* Totals card */}
-        <div className="rounded-xl bg-white p-3.5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-admin-gray-100 pb-3">
-            <span className="text-sm text-admin-gray-600">Total Amount</span>
-            <span className="text-xl font-bold tracking-tight text-admin-gray-900">{fmt(totals.grandTotal)}</span>
+        {showSummaryCard && (
+        <div className="mb-2 rounded-xl bg-white p-3.5 shadow-sm">
+          {(showSumTotal || showSumReceived) && (
+          <div className="divide-y divide-admin-gray-100">
+            {showSumTotal && (
+            <div className="flex items-center justify-between pb-3">
+              <span className="text-sm text-admin-gray-600">Total Amount</span>
+              <span className="text-xl font-bold tracking-tight text-admin-gray-900">{fmt(totals.grandTotal)}</span>
+            </div>
+            )}
+            {showSumReceived && (
+            <div className={cn("flex items-center justify-between pb-3", showSumTotal && "pt-3")}>
+              <span className="text-sm text-admin-gray-600">Amount Received</span>
+              <span className="text-base font-semibold text-admin-gray-900">{fmt(paidTotal)}</span>
+            </div>
+            )}
           </div>
-          <div className="flex items-center justify-between py-3">
-            <span className="text-sm text-admin-gray-600">Amount Received</span>
-            <span className="text-base font-semibold text-admin-gray-900">{fmt(paidTotal)}</span>
-          </div>
-          {due > 0.004 ? (
+          )}
+          {showSumDue && (due > 0.004 ? (
             <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-[#FDECEC] to-[#FFF5F3] px-3 py-2.5">
               <span className="flex items-center gap-2 text-sm font-semibold text-red-500">
                 <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-red-500 text-[11px] font-bold leading-none text-white">!</span>
@@ -433,12 +506,14 @@ export function Billing2Screen({
                 <span className="text-lg font-bold text-emerald-600">{fmt(0)}</span>
               </div>
             )
-          )}
+          ))}
         </div>
+        )}
 
         {/* Customer + payment card */}
-        <div className="mt-2 rounded-xl bg-white p-3.5 shadow-sm">
+        <div className="rounded-xl bg-white p-3.5 shadow-sm">
           {/* Customer: mobile + name as one icon-led pair */}
+          {showCustomer && (<>
           <div className="mb-2 flex items-center justify-between">
             <span className="flex items-center gap-2 text-sm font-semibold text-admin-gray-900">
               <User className="h-4 w-4" style={{ color: CORAL }} /> Customer
@@ -507,10 +582,13 @@ export function Billing2Screen({
             </div>
           )}
 
-          <div className="my-3.5 border-t border-admin-gray-100" />
+          </>)}
+
+          {showCustomer && showPayments && <div className="my-3.5 border-t border-admin-gray-100" />}
 
           {/* Payment — split across methods like the original billing screen
               (e.g. part Cash + part UPI). Each row is one method + amount. */}
+          {showPayments && (<>
           <div className="mb-2 flex items-center justify-between">
             <span className="flex items-center gap-2 text-sm font-semibold text-admin-gray-900">
               <Wallet className="h-4 w-4" style={{ color: CORAL }} /> Payment
@@ -583,21 +661,27 @@ export function Billing2Screen({
               />
             </div>
           )}
+          </>)}
 
           <button
             type="button"
             onClick={completeSale}
             disabled={submitting}
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#EE6A4D] to-[#F07E62] py-2.5 text-[15px] font-semibold text-white shadow-[0_8px_20px_-8px_rgba(238,106,77,0.7)] transition-opacity hover:opacity-95 disabled:opacity-60"
+            className={cn(
+              "flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#EE6A4D] to-[#F07E62] py-2.5 text-[15px] font-semibold text-white shadow-[0_8px_20px_-8px_rgba(238,106,77,0.7)] transition-opacity hover:opacity-95 disabled:opacity-60",
+              (showCustomer || showPayments) && "mt-4"
+            )}
           >
             <CreditCard className="h-4 w-4" />
             {submitting ? "Processing…" : "Pay Now"}
             {!submitting && <ArrowRight className="h-4 w-4" />}
           </button>
 
+          {inCheckout("b2-secure-note") && (
           <div className="mt-2.5 flex items-center justify-center gap-1.5 text-[11px] text-admin-gray-400">
             <Lock className="h-3 w-3" /> Secure &amp; Encrypted Payment
           </div>
+          )}
         </div>
       </aside>
 

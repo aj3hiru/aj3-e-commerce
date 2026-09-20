@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { Billing2Screen } from "@/components/admin/billing2/Billing2Screen";
+import { BILLING2_GROUPS, BILLING2_PREF_KEY, BILLING2_STANDALONE } from "@/components/admin/billing2/displayOptions";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import { GlobalSearchBar } from "@/components/admin/GlobalSearchBar";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 
@@ -18,6 +22,9 @@ interface Billing2PageProps {
  * session gate, same header/sidebar (via AdminShell) and the same checkout
  * API as the original — only the on-page layout and a couple of extra
  * fields (unit, quick-add) are new.
+ *
+ * Display Options (header, like dashboard2) are listed in
+ * src/components/admin/billing2/displayOptions.ts.
  *
  * To remove it once a choice is made, delete:
  *   src/app/admin/ecommerce/billing2/
@@ -64,6 +71,9 @@ export default async function Billing2Page({ searchParams }: Billing2PageProps) 
   }
 
   return (
+    // Provider wraps the shell: the Display Options control sits in the
+    // header while the parts it hides live in the page body (same as dashboard2).
+    <DashboardWidgetPrefsProvider prefKey={BILLING2_PREF_KEY} groups={BILLING2_GROUPS} standalone={BILLING2_STANDALONE}>
     <AdminShell
       siteName="EduMint24"
       pageTitle="Billing / POS"
@@ -71,7 +81,18 @@ export default async function Billing2Page({ searchParams }: Billing2PageProps) 
       username={session.username}
       role={session.role}
       permissions={session.permissions}
+      headerActions={
+        <div className="hidden items-center gap-3 xl:flex">
+          <DisplayOptionsPanel variant="header" />
+          <GlobalSearchBar variant="toolbar" />
+        </div>
+      }
     >
+      {/* Below 1280px the header has no room, so the same controls move here. */}
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-3 xl:hidden">
+        <DisplayOptionsPanel variant="toolbar" />
+        <GlobalSearchBar variant="toolbar" />
+      </div>
       <Billing2Screen
         allProducts={products.map((p: (typeof products)[number]) => ({
           id: p.id, name: p.name, sku: p.sku, barcode: p.barcode,
@@ -95,5 +116,6 @@ export default async function Billing2Page({ searchParams }: Billing2PageProps) 
         preselectedCustomer={preselectedCustomer}
       />
     </AdminShell>
+    </DashboardWidgetPrefsProvider>
   );
 }

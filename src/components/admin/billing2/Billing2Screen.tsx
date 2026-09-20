@@ -185,14 +185,14 @@ export function Billing2Screen({
   const itemCountLabel = `${cart.length} item${cart.length === 1 ? "" : "s"}`;
 
   return (
-    <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
+    <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_350px]">
       {/* ─────────────── LEFT: search, cart ─────────────── */}
-      <div className="min-w-0 space-y-5">
+      <div className="min-w-0 space-y-4">
         {/* Search / scan */}
-        <div className="rounded-2xl bg-[#FFF4F0] p-3">
+        <div className="rounded-xl bg-[#FFF4F0] p-2">
           <div className="relative">
-            <div className="flex items-stretch overflow-hidden rounded-xl border border-[#F3B6A6] bg-white focus-within:ring-4 focus-within:ring-[#EE6A4D]/15">
-              <ScanBarcode className="ml-4 h-5 w-5 shrink-0 self-center text-admin-gray-700" />
+            <div className="flex items-stretch overflow-hidden rounded-lg border border-[#F3B6A6] bg-white focus-within:ring-2 focus-within:ring-[#EE6A4D]/15">
+              <ScanBarcode className="ml-3 h-4 w-4 shrink-0 self-center text-admin-gray-700" />
               <input
                 ref={scanInputRef}
                 type="text"
@@ -207,25 +207,25 @@ export function Billing2Screen({
                     scan.onEnter();
                   }
                 }}
-                className="min-w-0 flex-1 bg-transparent px-3 py-3.5 text-[15px] text-admin-gray-900 placeholder:text-admin-gray-400 focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent px-2.5 py-2 text-sm text-admin-gray-900 placeholder:text-admin-gray-400 focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => scan.onEnter()}
                 aria-label="Search product"
-                className="m-1 flex w-14 shrink-0 items-center justify-center rounded-lg text-white transition-opacity hover:opacity-90"
+                className="m-1 flex w-10 shrink-0 items-center justify-center rounded-md text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: CORAL }}
               >
-                <Search className="h-5 w-5" />
+                <Search className="h-4 w-4" />
               </button>
             </div>
             {scan.results.length > 0 && (
-              <div className="absolute z-50 mt-1.5 max-h-72 w-full overflow-y-auto rounded-xl border border-admin-gray-200 bg-white py-1 shadow-lg">
+              <div className="absolute z-50 mt-1.5 max-h-72 w-full overflow-y-auto rounded-lg border border-admin-gray-200 bg-white py-1 shadow-lg">
                 {scan.results.map((p) => (
                   <button
                     type="button"
                     key={p.id}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-[#FFF4F0]"
+                    className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#FFF4F0]"
                     onClick={() => scan.selectResult(p)}
                   >
                     <Thumb image={p.image} size="sm" />
@@ -248,67 +248,67 @@ export function Billing2Screen({
         </div>
 
         {/* Cart */}
-        <div className="rounded-2xl border border-admin-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h5 className="flex items-center gap-2.5 text-lg">
-              <ShoppingCart className="h-5 w-5" style={{ color: CORAL }} />
+        <div className="rounded-xl border border-admin-gray-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h5 className="flex items-center gap-2 text-base">
+              <ShoppingCart className="h-4 w-4" style={{ color: CORAL }} />
               <span className="font-semibold text-admin-gray-900">Cart</span>
-              <span className="font-normal text-admin-gray-400">({itemCountLabel})</span>
+              <span className="text-sm font-normal text-admin-gray-400">({itemCountLabel})</span>
             </h5>
             <button
               type="button"
               onClick={() => setShowQuickAdd(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-[#F3B6A6] bg-[#FFF4F0] px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[#FFE9E2]"
+              className="flex items-center gap-1 rounded-md border border-[#F3B6A6] bg-[#FFF4F0] px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-[#FFE9E2]"
               style={{ color: CORAL }}
             >
-              <PackagePlus className="h-4 w-4" /> Add Product
+              <PackagePlus className="h-3.5 w-3.5" /> Add Product
             </button>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[600px] text-sm">
               <thead>
-                <tr className="bg-admin-gray-50 text-left text-[13px] font-medium text-admin-gray-500">
-                  <th className="w-12 rounded-l-lg py-3 pl-4 font-medium">#</th>
-                  <th className="py-3 font-medium">Product</th>
-                  <th className="py-3 font-medium">Price</th>
-                  <th className="py-3 font-medium">Qty</th>
-                  <th className="py-3 font-medium">Subtotal</th>
-                  <th className="rounded-r-lg py-3 pr-4 text-center font-medium">Action</th>
+                <tr className="bg-admin-gray-50 text-left text-xs font-medium text-admin-gray-500">
+                  <th className="w-10 rounded-l-md py-2 pl-3 font-medium">#</th>
+                  <th className="py-2 font-medium">Product</th>
+                  <th className="py-2 font-medium">Price</th>
+                  <th className="py-2 font-medium">Qty</th>
+                  <th className="py-2 font-medium">Subtotal</th>
+                  <th className="rounded-r-md py-2 pr-3 text-center font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {cart.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-14 text-center text-admin-gray-400">
-                      <ShoppingCart className="mx-auto mb-2 h-8 w-8 text-admin-gray-300" />
+                    <td colSpan={6} className="py-10 text-center text-sm text-admin-gray-400">
+                      <ShoppingCart className="mx-auto mb-2 h-7 w-7 text-admin-gray-300" />
                       Cart is empty — scan a product to begin, or use &quot;Add Product&quot; for something not in the list.
                     </td>
                   </tr>
                 ) : (
                   cart.map((c, idx) => (
                     <tr key={c.productId} className="border-b border-admin-gray-100 last:border-b-0">
-                      <td className="py-4 pl-4 text-admin-gray-700">{idx + 1}</td>
-                      <td className="py-4">
-                        <div className="flex items-center gap-4">
+                      <td className="py-2.5 pl-3 text-admin-gray-500">{idx + 1}</td>
+                      <td className="py-2.5">
+                        <div className="flex items-center gap-3">
                           <Thumb image={c.image} />
                           <div className="min-w-0">
-                            <div className="truncate text-[15px] font-medium text-admin-gray-900">{c.name}</div>
-                            <div className="mt-0.5 truncate text-[13px] text-admin-gray-500">
+                            <div className="truncate text-sm font-medium text-admin-gray-900">{c.name}</div>
+                            <div className="truncate text-xs text-admin-gray-500">
                               {c.sku ? `SKU: ${c.sku}` : "SKU: —"}
                               {c.unit ? ` · Unit: ${c.unit}` : ""}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="whitespace-nowrap py-4 text-[15px] text-admin-gray-800">{fmt(c.unitPrice)}</td>
-                      <td className="py-4">
-                        <div className="inline-flex items-stretch overflow-hidden rounded-lg border border-admin-gray-200 bg-admin-gray-50">
+                      <td className="whitespace-nowrap py-2.5 text-admin-gray-700">{fmt(c.unitPrice)}</td>
+                      <td className="py-2.5">
+                        <div className="inline-flex items-stretch overflow-hidden rounded-md border border-admin-gray-200 bg-admin-gray-50">
                           <button
                             type="button"
                             onClick={() => changeQty(idx, -1)}
                             aria-label="Decrease quantity"
-                            className="w-9 text-admin-gray-600 hover:bg-admin-gray-100"
+                            className="w-7 text-admin-gray-600 hover:bg-admin-gray-100"
                           >
                             −
                           </button>
@@ -318,27 +318,27 @@ export function Billing2Screen({
                             value={c.qty}
                             onChange={(e) => setQty(idx, e.target.value)}
                             aria-label="Quantity"
-                            className="w-11 border-x border-admin-gray-200 bg-white py-1.5 text-center text-[15px] [appearance:textfield] focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            className="w-9 border-x border-admin-gray-200 bg-white py-1 text-center text-sm [appearance:textfield] focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                           />
                           <button
                             type="button"
                             onClick={() => changeQty(idx, 1)}
                             aria-label="Increase quantity"
-                            className="w-9 text-admin-gray-600 hover:bg-admin-gray-100"
+                            className="w-7 text-admin-gray-600 hover:bg-admin-gray-100"
                           >
                             +
                           </button>
                         </div>
                       </td>
-                      <td className="whitespace-nowrap py-4 text-[15px] text-admin-gray-800">{fmt(c.unitPrice * c.qty)}</td>
-                      <td className="py-4 pr-4 text-center">
+                      <td className="whitespace-nowrap py-2.5 font-medium text-admin-gray-900">{fmt(c.unitPrice * c.qty)}</td>
+                      <td className="py-2.5 pr-3 text-center">
                         <button
                           type="button"
                           onClick={() => removeFromCart(idx)}
                           aria-label={`Remove ${c.name}`}
-                          className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
+                          className="rounded-md p-1 text-red-500 hover:bg-red-50"
                         >
-                          <Trash2 className="h-[18px] w-[18px]" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </td>
                     </tr>
@@ -349,24 +349,24 @@ export function Billing2Screen({
           </div>
 
           {/* Coupon + totals */}
-          <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div className="self-start rounded-xl bg-[#FFF6F3] p-4">
-              <label htmlFor="b2-coupon" className="mb-3 flex items-center gap-2 text-[15px] font-semibold text-admin-gray-900">
-                <Tag className="h-4 w-4" style={{ color: CORAL }} /> Coupon Code
+          <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="self-start rounded-lg bg-[#FFF6F3] p-3">
+              <label htmlFor="b2-coupon" className="mb-2 flex items-center gap-2 text-sm font-semibold text-admin-gray-900">
+                <Tag className="h-3.5 w-3.5" style={{ color: CORAL }} /> Coupon Code
               </label>
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <input
                   id="b2-coupon"
                   type="text"
                   placeholder="Enter coupon code"
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                  className="min-w-0 flex-1 rounded-lg border border-admin-gray-200 bg-white px-4 py-2.5 text-sm placeholder:normal-case placeholder:text-admin-gray-400 focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
+                  className="min-w-0 flex-1 rounded-md border border-admin-gray-200 bg-white px-3 py-1.5 text-sm placeholder:normal-case placeholder:text-admin-gray-400 focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
                 />
                 <button
                   type="button"
                   onClick={() => applyCoupon(couponCode, allCoupons)}
-                  className="rounded-lg border border-[#F3B6A6] bg-[#FFF4F0] px-6 text-sm font-semibold transition-colors hover:bg-[#FFE9E2]"
+                  className="rounded-md border border-[#F3B6A6] bg-[#FFF4F0] px-4 text-sm font-semibold transition-colors hover:bg-[#FFE9E2]"
                   style={{ color: CORAL }}
                 >
                   Apply
@@ -377,10 +377,10 @@ export function Billing2Screen({
               )}
             </div>
 
-            <div className="rounded-xl bg-admin-gray-50 px-5 py-4">
-              <div className="flex gap-3">
-                <Info className="mt-0.5 h-[18px] w-[18px] shrink-0 text-sky-600" />
-                <div className="flex-1 space-y-2 text-[15px]">
+            <div className="rounded-lg bg-admin-gray-50 px-4 py-3">
+              <div className="flex gap-2.5">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
+                <div className="flex-1 space-y-1 text-sm">
                   <div className="flex justify-between text-admin-gray-500">
                     <span>Subtotal</span><span className="text-admin-gray-800">{fmt(totals.subtotal)}</span>
                   </div>
@@ -393,9 +393,9 @@ export function Billing2Screen({
                   </div>
                 </div>
               </div>
-              <div className="mt-4 flex items-center justify-between border-t border-admin-gray-200 pt-4 pl-[30px]">
-                <span className="text-xl font-bold text-admin-gray-900">Total</span>
-                <span className="text-2xl font-bold text-admin-gray-900">{fmt(totals.grandTotal)}</span>
+              <div className="mt-2.5 flex items-center justify-between border-t border-admin-gray-200 pt-2.5 pl-[26px]">
+                <span className="text-base font-semibold text-admin-gray-900">Total</span>
+                <span className="text-lg font-bold text-admin-gray-900">{fmt(totals.grandTotal)}</span>
               </div>
             </div>
           </div>
@@ -403,81 +403,81 @@ export function Billing2Screen({
       </div>
 
       {/* ─────────────── RIGHT: Payment Summary ─────────────── */}
-      <aside className="rounded-3xl bg-gradient-to-b from-[#EF7456] via-[#F6B3A2] via-[35%] to-[#FDEFEA] p-3 shadow-[0_10px_30px_-12px_rgba(238,106,77,0.45)] xl:sticky xl:top-4">
-        <div className="flex items-center justify-between gap-3 px-3 pb-4 pt-3 text-white">
-          <h5 className="flex items-center gap-2.5 whitespace-nowrap text-lg font-semibold sm:gap-3 sm:text-xl">
-            <CreditCard className="h-6 w-6" /> Payment Summary
+      <aside className="rounded-2xl bg-gradient-to-b from-[#EF7456] via-[#F6B3A2] via-[30%] to-[#FDEFEA] p-2 shadow-[0_8px_24px_-12px_rgba(238,106,77,0.45)] xl:sticky xl:top-4">
+        <div className="flex items-center justify-between gap-2 px-2.5 pb-2.5 pt-1.5 text-white">
+          <h5 className="flex items-center gap-2 whitespace-nowrap text-[15px] font-semibold">
+            <CreditCard className="h-4 w-4" /> Payment Summary
           </h5>
-          <span className="shrink-0 whitespace-nowrap rounded-lg bg-white/85 px-3 py-1 text-sm font-medium" style={{ color: CORAL }}>
+          <span className="shrink-0 whitespace-nowrap rounded-md bg-white/85 px-2 py-0.5 text-xs font-medium" style={{ color: CORAL }}>
             {itemCountLabel}
           </span>
         </div>
 
         {/* Totals card */}
-        <div className="rounded-2xl bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between border-b border-admin-gray-100 pb-5">
-            <span className="text-[15px] text-admin-gray-800">Total Amount</span>
-            <span className="text-3xl font-bold tracking-tight text-admin-gray-900">{fmt(totals.grandTotal)}</span>
+        <div className="rounded-xl bg-white p-3.5 shadow-sm">
+          <div className="flex items-center justify-between border-b border-admin-gray-100 pb-3">
+            <span className="text-sm text-admin-gray-600">Total Amount</span>
+            <span className="text-xl font-bold tracking-tight text-admin-gray-900">{fmt(totals.grandTotal)}</span>
           </div>
-          <div className="flex items-center justify-between py-5">
-            <span className="text-[15px] text-admin-gray-800">Amount Received</span>
-            <span className="text-2xl font-bold text-admin-gray-900">{fmt(paidTotal)}</span>
+          <div className="flex items-center justify-between py-3">
+            <span className="text-sm text-admin-gray-600">Amount Received</span>
+            <span className="text-base font-semibold text-admin-gray-900">{fmt(paidTotal)}</span>
           </div>
           {due > 0.004 ? (
-            <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-[#FDECEC] to-[#FFF5F3] px-4 py-4">
-              <span className="flex items-center gap-2.5 text-[15px] font-semibold text-red-500">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-sm font-bold leading-none text-white">!</span>
+            <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-[#FDECEC] to-[#FFF5F3] px-3 py-2.5">
+              <span className="flex items-center gap-2 text-sm font-semibold text-red-500">
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-red-500 text-[11px] font-bold leading-none text-white">!</span>
                 Due Amount
               </span>
-              <span className="text-2xl font-bold text-red-500">{fmt(due)}</span>
+              <span className="text-lg font-bold text-red-500">{fmt(due)}</span>
             </div>
           ) : (
             cart.length > 0 && (
-              <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-4">
-                <span className="flex items-center gap-2.5 text-[15px] font-semibold text-emerald-600">
-                  <CheckCircle2 className="h-5 w-5" /> Fully Paid
+              <div className="flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-2.5">
+                <span className="flex items-center gap-2 text-sm font-semibold text-emerald-600">
+                  <CheckCircle2 className="h-4 w-4" /> Fully Paid
                 </span>
-                <span className="text-2xl font-bold text-emerald-600">{fmt(0)}</span>
+                <span className="text-lg font-bold text-emerald-600">{fmt(0)}</span>
               </div>
             )
           )}
         </div>
 
         {/* Customer + payment card */}
-        <div className="mt-3 rounded-2xl bg-white p-5 shadow-sm">
+        <div className="mt-2 rounded-xl bg-white p-3.5 shadow-sm">
           {/* Customer: mobile + name as one icon-led pair */}
-          <div className="mb-3 flex items-center justify-between">
-            <span className="flex items-center gap-2.5 text-[15px] font-semibold text-admin-gray-900">
-              <User className="h-[18px] w-[18px]" style={{ color: CORAL }} /> Customer
+          <div className="mb-2 flex items-center justify-between">
+            <span className="flex items-center gap-2 text-sm font-semibold text-admin-gray-900">
+              <User className="h-4 w-4" style={{ color: CORAL }} /> Customer
             </span>
             <label className="flex cursor-pointer select-none items-center gap-2">
               <input type="checkbox" className="sr-only" checked={isGuest} onChange={(e) => toggleGuestBill(e.target.checked)} />
               <span
-                className="relative h-5 w-9 rounded-full transition-colors"
+                className="relative h-[18px] w-8 rounded-full transition-colors"
                 style={{ backgroundColor: isGuest ? CORAL : "#E5E7EB" }}
               >
-                <span className={cn("absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform", isGuest && "translate-x-4")} />
+                <span className={cn("absolute left-0.5 top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-transform", isGuest && "translate-x-3.5")} />
               </span>
               <span className="text-xs font-semibold text-admin-gray-500">Guest Bill</span>
             </label>
           </div>
 
-          <div className={cn("grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-2", isGuest && "pointer-events-none opacity-40")}>
+          <div className={cn("grid grid-cols-1 gap-2 sm:grid-cols-2", isGuest && "pointer-events-none opacity-40")}>
             <div className="relative">
-              <Phone className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-400" />
+              <Phone className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-gray-400" />
               <input
                 type="tel"
                 inputMode="numeric"
                 autoComplete="off"
                 aria-label="Mobile number"
-                placeholder="Mobile number"
+                placeholder="Mobile"
                 value={customer.phone}
                 onChange={(e) => customer.onPhoneChange(e.target.value)}
                 onKeyDown={customer.onKeyDown}
-                className="w-full rounded-xl border border-admin-gray-200 py-3 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
+                className="w-full rounded-md border border-admin-gray-200 py-2 pl-8 pr-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
               />
               {customer.results.length > 0 && (
-                <div className="absolute z-50 mt-1 max-h-64 w-full min-w-[240px] overflow-y-auto rounded-xl border border-admin-gray-200 bg-white py-1 shadow-lg">
+                <div className="absolute z-50 mt-1 max-h-64 w-full min-w-[240px] overflow-y-auto rounded-lg border border-admin-gray-200 bg-white py-1 shadow-lg">
                   {customer.results.map((c, i) => (
                     <button
                       type="button"
@@ -492,14 +492,14 @@ export function Billing2Screen({
               )}
             </div>
             <div className="relative">
-              <User className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-400" />
+              <User className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-gray-400" />
               <input
                 type="text"
                 aria-label="Customer name"
-                placeholder="Customer name"
+                placeholder="Name"
                 value={customer.name}
                 onChange={(e) => customer.setName(e.target.value)}
-                className="w-full rounded-xl border border-admin-gray-200 py-3 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
+                className="w-full rounded-md border border-admin-gray-200 py-2 pl-8 pr-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
               />
             </div>
           </div>
@@ -514,45 +514,45 @@ export function Billing2Screen({
             </div>
           )}
 
-          <div className="my-5 border-t border-admin-gray-100" />
+          <div className="my-3.5 border-t border-admin-gray-100" />
 
           {/* Payment — split across methods like the original billing screen
               (e.g. part Cash + part UPI). Each row is one method + amount. */}
-          <div className="mb-3 flex items-center justify-between">
-            <span className="flex items-center gap-2.5 text-[15px] font-semibold text-admin-gray-900">
-              <Wallet className="h-[18px] w-[18px]" style={{ color: CORAL }} /> Payment
+          <div className="mb-2 flex items-center justify-between">
+            <span className="flex items-center gap-2 text-sm font-semibold text-admin-gray-900">
+              <Wallet className="h-4 w-4" style={{ color: CORAL }} /> Payment
             </span>
             <button
               type="button"
               onClick={addSplitPayment}
-              className="flex items-center gap-1.5 rounded-lg border border-[#F3B6A6] bg-[#FFF4F0] px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[#FFE9E2]"
+              className="flex items-center gap-1 rounded-md border border-[#F3B6A6] bg-[#FFF4F0] px-2.5 py-1 text-xs font-semibold transition-colors hover:bg-[#FFE9E2]"
               style={{ color: CORAL }}
             >
-              <Plus className="h-4 w-4" /> Add
+              <Plus className="h-3.5 w-3.5" /> Add
             </button>
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {payments.map((p, i) => {
               const Icon = METHOD_ICON[p.method] ?? Wallet;
               return (
                 <div key={p.id} className="flex items-center gap-2">
-                  <div className="relative w-[128px] shrink-0">
-                    <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-600" />
+                  <div className="relative w-[108px] shrink-0">
+                    <Icon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-gray-600" />
                     <select
                       aria-label={`Payment ${i + 1} method`}
                       value={p.method}
                       onChange={(e) => updatePaymentRow(p.id, { method: e.target.value as PaymentRow["method"] })}
-                      className="w-full appearance-none rounded-xl border border-admin-gray-200 bg-white py-3 pl-9 pr-7 text-[15px] text-admin-gray-900 focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
+                      className="w-full appearance-none rounded-md border border-admin-gray-200 bg-white py-2 pl-8 pr-6 text-sm text-admin-gray-900 focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
                     >
                       {PAYMENT_METHODS.map((m) => (
                         <option key={m} value={m}>{m}</option>
                       ))}
                     </select>
-                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-500" />
+                    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-gray-500" />
                   </div>
                   <div className="relative min-w-0 flex-1">
-                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] text-admin-gray-500">₹</span>
+                    <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-admin-gray-500">₹</span>
                     <input
                       type="number"
                       step="0.01"
@@ -561,7 +561,7 @@ export function Billing2Screen({
                       aria-label={`Payment ${i + 1} amount`}
                       value={p.amount}
                       onChange={(e) => updatePaymentRow(p.id, { amount: e.target.value })}
-                      className="w-full rounded-xl border border-admin-gray-200 py-3 pl-8 pr-3 text-[15px] text-admin-gray-900 [appearance:textfield] focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      className="w-full rounded-md border border-admin-gray-200 py-2 pl-6 pr-2.5 text-sm text-admin-gray-900 [appearance:textfield] focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                   </div>
                   <button
@@ -569,9 +569,9 @@ export function Billing2Screen({
                     onClick={() => removePaymentRow(p.id)}
                     disabled={payments.length <= 1}
                     aria-label={`Remove payment ${i + 1}`}
-                    className="shrink-0 rounded-md p-2 text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+                    className="shrink-0 rounded-md p-1.5 text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
                   >
-                    <Trash2 className="h-[18px] w-[18px]" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               );
@@ -579,14 +579,14 @@ export function Billing2Screen({
           </div>
 
           {due > 0.004 && (
-            <div className="mt-4">
-              <label htmlFor="b2-promise" className="mb-2 block text-sm text-admin-gray-600">Promise to pay by (optional)</label>
+            <div className="mt-3">
+              <label htmlFor="b2-promise" className="mb-1 block text-xs text-admin-gray-600">Promise to pay by (optional)</label>
               <input
                 id="b2-promise"
                 type="date"
                 value={promisedDate}
                 onChange={(e) => setPromisedDate(e.target.value)}
-                className="w-full rounded-xl border border-admin-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
+                className="w-full rounded-md border border-admin-gray-200 px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
               />
             </div>
           )}
@@ -595,15 +595,15 @@ export function Billing2Screen({
             type="button"
             onClick={completeSale}
             disabled={submitting}
-            className="mt-10 flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#EE6A4D] to-[#F07E62] py-4 text-lg font-semibold text-white shadow-[0_8px_20px_-8px_rgba(238,106,77,0.7)] transition-opacity hover:opacity-95 disabled:opacity-60"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#EE6A4D] to-[#F07E62] py-2.5 text-[15px] font-semibold text-white shadow-[0_8px_20px_-8px_rgba(238,106,77,0.7)] transition-opacity hover:opacity-95 disabled:opacity-60"
           >
-            <CreditCard className="h-6 w-6" />
+            <CreditCard className="h-4 w-4" />
             {submitting ? "Processing…" : "Pay Now"}
-            {!submitting && <ArrowRight className="h-5 w-5" />}
+            {!submitting && <ArrowRight className="h-4 w-4" />}
           </button>
 
-          <div className="mt-5 flex items-center justify-center gap-2 text-[13px] text-admin-gray-400">
-            <Lock className="h-3.5 w-3.5" /> Secure &amp; Encrypted Payment
+          <div className="mt-2.5 flex items-center justify-center gap-1.5 text-[11px] text-admin-gray-400">
+            <Lock className="h-3 w-3" /> Secure &amp; Encrypted Payment
           </div>
         </div>
       </aside>
@@ -617,14 +617,14 @@ export function Billing2Screen({
 
 /** Product thumbnail with a neutral placeholder when the product has no image. */
 function Thumb({ image, size = "md" }: { image?: string | null; size?: "sm" | "md" }) {
-  const box = size === "sm" ? "h-9 w-9" : "h-14 w-14";
+  const box = size === "sm" ? "h-8 w-8" : "h-10 w-10";
   if (image) {
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={`/${image}`} alt="" className={cn(box, "shrink-0 rounded-lg border border-admin-gray-100 object-cover")} />;
+    return <img src={`/${image}`} alt="" className={cn(box, "shrink-0 rounded-md border border-admin-gray-100 object-cover")} />;
   }
   return (
-    <span className={cn(box, "flex shrink-0 items-center justify-center rounded-lg border border-admin-gray-100 bg-admin-gray-50 text-admin-gray-300")}>
-      <Package className={size === "sm" ? "h-4 w-4" : "h-6 w-6"} />
+    <span className={cn(box, "flex shrink-0 items-center justify-center rounded-md border border-admin-gray-100 bg-admin-gray-50 text-admin-gray-300")}>
+      <Package className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"} />
     </span>
   );
 }

@@ -291,7 +291,6 @@ export function Billing2Screen({
                     <tr key={c.productId} className="border-t border-admin-gray-100 first:border-t-0 hover:bg-admin-gray-50/60">
                       <td className="py-2 pl-3 pr-2">
                         <div className="max-w-[260px] truncate font-medium text-admin-gray-900" title={c.name}>{c.name}</div>
-                        {c.sku && <div className="truncate text-xs text-admin-gray-400">SKU: {c.sku}</div>}
                       </td>
                       <td className="py-2 pr-2">
                         <EditableNumber

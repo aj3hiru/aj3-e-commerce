@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
 import {
   Products2AddButton, Products2Body, Products2ExportMenu, Products2HeaderSearch, Products2Provider, type Product2Row,
 } from "@/components/admin/products2/Products2Body";
 import { parseProducts2Filters } from "@/components/admin/products2/filters";
+import { PRODUCTS2_GROUPS, PRODUCTS2_PREF_KEY, PRODUCTS2_STANDALONE } from "@/components/admin/products2/displayOptions";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 
@@ -82,6 +85,7 @@ export default async function Products2Page({ searchParams }: Products2PageProps
   return (
     // The provider wraps the shell: the header's search and Export work on the
     // same product list, filters and selection as the table below.
+    <DashboardWidgetPrefsProvider prefKey={PRODUCTS2_PREF_KEY} groups={PRODUCTS2_GROUPS} standalone={PRODUCTS2_STANDALONE}>
     <Products2Provider products={rows} badges={badges} itemTypes={itemTypes} categories={categories} initialFilters={initialFilters}>
       <AdminShell
         siteName="EduMint24"
@@ -92,7 +96,8 @@ export default async function Products2Page({ searchParams }: Products2PageProps
         permissions={session.permissions}
         headerActions={
           <div className="hidden items-center gap-3 xl:flex">
-            <Products2HeaderSearch className="w-[220px] min-[1440px]:w-[280px] min-[1600px]:w-[320px]" />
+            <Products2HeaderSearch className="w-[190px] min-[1440px]:w-[240px] min-[1600px]:w-[300px]" />
+            <DisplayOptionsPanel variant="header" />
             <Products2ExportMenu />
             <Products2AddButton />
           </div>
@@ -101,6 +106,7 @@ export default async function Products2Page({ searchParams }: Products2PageProps
         {/* Below 1280px the header has no room, so the same controls move here. */}
         <div className="mb-5 flex flex-wrap items-center gap-3 xl:hidden">
           <Products2HeaderSearch className="w-full sm:w-auto sm:min-w-[240px] sm:flex-1" />
+          <DisplayOptionsPanel variant="toolbar" />
           <Products2ExportMenu />
           <Products2AddButton />
         </div>
@@ -108,5 +114,6 @@ export default async function Products2Page({ searchParams }: Products2PageProps
         <Products2Body />
       </AdminShell>
     </Products2Provider>
+    </DashboardWidgetPrefsProvider>
   );
 }

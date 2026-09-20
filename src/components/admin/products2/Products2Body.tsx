@@ -10,6 +10,7 @@ import {
   Loader2, CheckCircle2, AlertCircle, X, Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import { EMPTY_PRODUCTS2_FILTERS, LOW_STOCK_LIMIT, type Products2Filters } from "./filters";
 
 /* ───────────────────────── types & helpers ───────────────────────── */
@@ -47,7 +48,7 @@ const isOutOfStock = (p: Product2Row) => p.productType === "physical" && (p.stoc
 /** Physical, still in stock, but LOW_STOCK_LIMIT units or fewer. */
 const isLowStock = (p: Product2Row) => p.productType === "physical" && p.stockQty !== null && p.stockQty > 0 && p.stockQty <= LOW_STOCK_LIMIT;
 
-type SortKey = "name" | "category" | "price" | "status" | "type" | "item" | "created";
+type SortKey = "name" | "stock" | "category" | "price" | "status" | "type" | "item" | "created";
 
 /* ───────────────────────── shared state ─────────────────────────
  * The header (search, Export) and the page body are separate parts of the
@@ -136,6 +137,7 @@ export function Products2Provider({ products: initial, badges, itemTypes, catego
     const val = (p: Product2Row): string | number => {
       switch (sort.key) {
         case "name": return p.name.toLowerCase();
+        case "stock": return p.productType === "physical" ? p.stockQty ?? 0 : Number.MAX_SAFE_INTEGER;
         case "category": return (p.categoryName ?? "\uffff").toLowerCase();
         case "price": return effectivePrice(p);
         case "status": return p.status;
@@ -287,7 +289,10 @@ export function Products2AddButton() {
       href="/admin/ecommerce/products/add"
       className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[0.5rem] bg-orange-500 px-4 text-[0.875rem] font-semibold text-white shadow-sm transition-colors hover:bg-orange-600"
     >
-      <Plus className="h-4 w-4" /> Add Product
+      <Plus className="h-4 w-4" />
+      {/* Shorter label on laptop widths so the header stays on one line. */}
+      <span className="xl:hidden min-[1440px]:inline">Add Product</span>
+      <span className="hidden xl:inline min-[1440px]:hidden">Add</span>
     </Link>
   );
 }
@@ -301,6 +306,7 @@ const MIN_ROWS = 10;
 
 export function Products2Body() {
   const router = useRouter();
+  const { isVisible: show, loaded } = useDashboardWidgetPrefs();
   const {
     products, setProducts, badges, itemTypes, categories, filters, setFilters, setFilter, sort, toggleSort,
     filtered, selected, setSelected, typeLabel, itemLabel,
@@ -440,55 +446,114 @@ export function Products2Body() {
     if (ids.length) window.open(`/admin/ecommerce/barcode-print?ids=${ids.join(",")}`, "_blank", "noopener");
   }
 
+  /** Stock editor: adds to (or sets) a physical product's stock via the same restock endpoint as Stock Out Products. */
+  async function saveStock(id: number, newQty: number) {
+    const p = products.find((x) => x.id === id);
+    if (!p) return false;
+    const before = p.stockQty;
+    setProducts((list) => list.map((x) => (x.id === id ? { ...x, stockQty: newQty } : x)));
+    markBusy([id], true);
+    let ok = false;
+    try {
+      const res = await fetch(`/api/ecommerce/products/${id}/restock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qty: newQty }),
+      });
+      ok = res.ok && (await res.json().catch(() => ({}))).success === true;
+    } catch {
+      ok = false;
+    }
+    markBusy([id], false);
+    if (!ok) {
+      setProducts((list) => list.map((x) => (x.id === id ? { ...x, stockQty: before } : x)));
+      setToast({ ok: false, text: `Couldn't update the stock of “${p.name}”. Please try again.` });
+      return false;
+    }
+    setToast({ ok: true, text: `Stock of “${p.name}” is now ${newQty}${p.unit ? ` ${p.unit}` : ""}.` });
+    router.refresh();
+    return true;
+  }
+
+  const cols = TABLE_COLS.filter((c) => show(c.key));
+  const tableMinW = cols.reduce((s, c) => s + c.base, 0);
+  const showSelect = show("p2-c-select");
+  const cardKeys = ["p2-k-total", "p2-k-published", "p2-k-low", "p2-k-out"].filter(show);
+  const filterKeys = ["p2-f-status", "p2-f-stock", "p2-f-category", "p2-f-type", "p2-f-item"].filter(show);
+
   return (
-    <div className="space-y-5">
+    // Invisible until the saved Display Options are read, so hidden parts never flash in.
+    <div className={cn("space-y-5", !loaded && "invisible")}>
       {/* ── stat cards (click to filter) ── */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard icon={ShoppingBag} tint="bg-orange-50 text-orange-500" value={stats.total} label="Total Products"
-          active={!filtersActive} onClick={() => setFilters(EMPTY_PRODUCTS2_FILTERS)} />
-        <StatCard icon={BadgeCheck} tint="bg-emerald-50 text-emerald-500" value={stats.published} label="Published"
-          active={filters.status === "active"} onClick={() => setFilter("status", filters.status === "active" ? "all" : "active")} />
-        <StatCard icon={TriangleAlert} tint="bg-amber-50 text-amber-500" value={stats.low} label={`Low Stock (≤ ${LOW_STOCK_LIMIT})`}
-          active={filters.stock === "low"} onClick={() => setFilter("stock", filters.stock === "low" ? "all" : "low")} />
-        <StatCard icon={PackageX} tint="bg-red-50 text-red-500" value={stats.out} label="Out of Stock"
-          active={filters.stock === "out"} onClick={() => setFilter("stock", filters.stock === "out" ? "all" : "out")} />
-      </div>
+      {show("p2-cards") && cardKeys.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 lg:grid-flow-col lg:grid-cols-none lg:auto-cols-fr">
+          {show("p2-k-total") && (
+            <StatCard icon={ShoppingBag} tint="bg-orange-50 text-orange-500" value={stats.total} label="Total Products"
+              active={!filtersActive} onClick={() => setFilters(EMPTY_PRODUCTS2_FILTERS)} />
+          )}
+          {show("p2-k-published") && (
+            <StatCard icon={BadgeCheck} tint="bg-emerald-50 text-emerald-500" value={stats.published} label="Published"
+              active={filters.status === "active"} onClick={() => setFilter("status", filters.status === "active" ? "all" : "active")} />
+          )}
+          {show("p2-k-low") && (
+            <StatCard icon={TriangleAlert} tint="bg-amber-50 text-amber-500" value={stats.low} label={`Low Stock (≤ ${LOW_STOCK_LIMIT})`}
+              active={filters.stock === "low"} onClick={() => setFilter("stock", filters.stock === "low" ? "all" : "low")} />
+          )}
+          {show("p2-k-out") && (
+            <StatCard icon={PackageX} tint="bg-red-50 text-red-500" value={stats.out} label="Out of Stock"
+              active={filters.stock === "out"} onClick={() => setFilter("stock", filters.stock === "out" ? "all" : "out")} />
+          )}
+        </div>
+      )}
 
       {/* ── filters (all live) ── */}
-      <section className="rounded-xl border border-admin-gray-200 bg-white p-3.5 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
-          <FilterSelect icon={CircleDot} label="Status" value={filters.status} onChange={(v) => setFilter("status", v as Products2Filters["status"])}
-            dot={filters.status === "active" ? "bg-emerald-500" : filters.status === "inactive" ? "bg-admin-gray-400" : undefined}>
-            <option value="all">All Status</option>
-            <option value="active">Published</option>
-            <option value="inactive">Unpublished</option>
-          </FilterSelect>
-          <FilterSelect icon={Boxes} label="Stock" value={filters.stock} onChange={(v) => setFilter("stock", v as Products2Filters["stock"])}
-            dot={filters.stock === "in" ? "bg-emerald-500" : filters.stock === "low" ? "bg-amber-500" : filters.stock === "out" ? "bg-red-500" : undefined}>
-            <option value="all">All Stock</option>
-            <option value="in">In Stock</option>
-            <option value="low">Low Stock (≤ {LOW_STOCK_LIMIT})</option>
-            <option value="out">Out of Stock</option>
-          </FilterSelect>
-          <FilterSelect icon={FolderTree} label="Category" value={filters.category} onChange={(v) => setFilter("category", v)}>
-            <option value="all">All Categories</option>
-            {categories.map((c) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
-            {(hasUncategorized || filters.category === "none") && <option value="none">Uncategorized</option>}
-          </FilterSelect>
-          <FilterSelect icon={Tag} label="Type" value={filters.type} onChange={(v) => setFilter("type", v)}>
-            <option value="all">All Types</option>
-            <option value="none">None</option>
-            {badges.filter((b) => b.slug !== "none").map((b) => <option key={b.slug} value={b.slug}>{b.label}</option>)}
-          </FilterSelect>
-          <FilterSelect icon={LayoutGrid} label="Item Type" value={filters.item} onChange={(v) => setFilter("item", v)}>
-            <option value="all">All Item Types</option>
-            <option value="normal">Normal</option>
-            {itemTypes.filter((t) => t.slug !== "normal").map((t) => <option key={t.slug} value={t.slug}>{t.label}</option>)}
-          </FilterSelect>
-        </div>
-      </section>
+      {show("p2-filters") && filterKeys.length > 0 && (
+        <section className="rounded-xl border border-admin-gray-200 bg-white p-3.5 shadow-sm">
+          <div className="flex flex-wrap gap-3">
+            {show("p2-f-status") && (
+              <FilterSelect icon={CircleDot} label="Status" value={filters.status} onChange={(v) => setFilter("status", v as Products2Filters["status"])}
+                dot={filters.status === "active" ? "bg-emerald-500" : filters.status === "inactive" ? "bg-admin-gray-400" : undefined}>
+                <option value="all">All Status</option>
+                <option value="active">Published</option>
+                <option value="inactive">Unpublished</option>
+              </FilterSelect>
+            )}
+            {show("p2-f-stock") && (
+              <FilterSelect icon={Boxes} label="Stock" value={filters.stock} onChange={(v) => setFilter("stock", v as Products2Filters["stock"])}
+                dot={filters.stock === "in" ? "bg-emerald-500" : filters.stock === "low" ? "bg-amber-500" : filters.stock === "out" ? "bg-red-500" : undefined}>
+                <option value="all">All Stock</option>
+                <option value="in">In Stock</option>
+                <option value="low">Low Stock (≤ {LOW_STOCK_LIMIT})</option>
+                <option value="out">Out of Stock</option>
+              </FilterSelect>
+            )}
+            {show("p2-f-category") && (
+              <FilterSelect icon={FolderTree} label="Category" value={filters.category} onChange={(v) => setFilter("category", v)}>
+                <option value="all">All Categories</option>
+                {categories.map((c) => <option key={c.id} value={String(c.id)}>{c.name}</option>)}
+                {(hasUncategorized || filters.category === "none") && <option value="none">Uncategorized</option>}
+              </FilterSelect>
+            )}
+            {show("p2-f-type") && (
+              <FilterSelect icon={Tag} label="Type" value={filters.type} onChange={(v) => setFilter("type", v)}>
+                <option value="all">All Types</option>
+                <option value="none">None</option>
+                {badges.filter((b) => b.slug !== "none").map((b) => <option key={b.slug} value={b.slug}>{b.label}</option>)}
+              </FilterSelect>
+            )}
+            {show("p2-f-item") && (
+              <FilterSelect icon={LayoutGrid} label="Item Type" value={filters.item} onChange={(v) => setFilter("item", v)}>
+                <option value="all">All Item Types</option>
+                <option value="normal">Normal</option>
+                {itemTypes.filter((t) => t.slug !== "normal").map((t) => <option key={t.slug} value={t.slug}>{t.label}</option>)}
+              </FilterSelect>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* ── products table (same look and size as the Sales History ledger) ── */}
+      {show("p2-table") && (
       <section className="rounded-xl border border-admin-gray-200 bg-white p-5 shadow-sm">
         {/* Show [20] entries · Select All · Bulk Actions ··········· Clear filters */}
         <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-3 text-sm text-admin-gray-800">
@@ -499,7 +564,7 @@ export function Products2Body() {
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
                 aria-label="Entries per page"
-                className="h-9 w-[88px] appearance-none rounded-md border border-admin-gray-200 bg-white pl-3 pr-8 text-sm focus:border-orange-400 focus:outline-none"
+                className="h-9 w-[88px] appearance-none rounded-[0.5rem] border border-admin-gray-200 bg-white pl-3 pr-8 text-sm focus:border-admin-primary focus:outline-none"
               >
                 {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
                 <option value={0}>All</option>
@@ -509,40 +574,43 @@ export function Products2Body() {
             entries
           </label>
 
-          <span className="hidden h-6 w-px bg-admin-gray-200 sm:block" />
+          {showSelect && (
+            <>
+              <span className="hidden h-6 w-px bg-admin-gray-200 sm:block" />
+              <label className="flex cursor-pointer select-none items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={(e) => selectMany(filtered.map((p) => p.id), e.target.checked)}
+                  className="h-4 w-4 rounded border-admin-gray-300 accent-orange-500"
+                />
+                Select All ({selected.size})
+              </label>
 
-          <label className="flex cursor-pointer select-none items-center gap-2">
-            <input
-              type="checkbox"
-              checked={allFilteredSelected}
-              onChange={(e) => selectMany(filtered.map((p) => p.id), e.target.checked)}
-              className="h-4 w-4 rounded border-admin-gray-300 accent-orange-500"
-            />
-            Select All ({selected.size})
-          </label>
-
-          <Menu
-            disabled={selected.size === 0}
-            trigger={(open) => (
-              <span className={cn(
-                "flex h-9 items-center gap-2 rounded-md border border-admin-gray-200 bg-white px-3 text-sm font-medium text-admin-gray-800 transition-colors",
-                selected.size === 0 ? "opacity-50" : "hover:bg-admin-gray-50"
-              )}>
-                <Layers className="h-4 w-4 text-admin-gray-500" /> Bulk Actions
-                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
-              </span>
-            )}
-            items={[
-              { label: `Publish (${selected.size})`, onClick: () => setStatus(selectedIds, "active") },
-              { label: `Unpublish (${selected.size})`, onClick: () => setStatus(selectedIds, "inactive") },
-              { label: `Print Barcodes (${selected.size})`, onClick: () => printBarcodes(selectedIds) },
-              { label: `Delete (${selected.size})`, danger: true, onClick: () => setConfirm({ ids: selectedIds, label: `${selected.size} selected product${selected.size === 1 ? "" : "s"}` }) },
-            ]}
-          />
-          {selected.size > 0 && (
-            <button type="button" onClick={() => setSelected(new Set())} className="text-[13px] text-admin-gray-500 hover:text-admin-gray-800 hover:underline">
-              Clear selection
-            </button>
+              <Menu
+                disabled={selected.size === 0}
+                trigger={(open) => (
+                  <span className={cn(
+                    "flex h-9 items-center gap-2 rounded-[0.5rem] border border-[#e5e7eb] bg-white px-3 text-sm font-medium text-[#374151] transition-colors",
+                    selected.size === 0 ? "opacity-50" : "hover:bg-[#f9fafb]"
+                  )}>
+                    <Layers className="h-4 w-4 text-admin-gray-500" /> Bulk Actions
+                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+                  </span>
+                )}
+                items={[
+                  { label: `Publish (${selected.size})`, onClick: () => setStatus(selectedIds, "active") },
+                  { label: `Unpublish (${selected.size})`, onClick: () => setStatus(selectedIds, "inactive") },
+                  { label: `Print Barcodes (${selected.size})`, onClick: () => printBarcodes(selectedIds) },
+                  { label: `Delete (${selected.size})`, danger: true, onClick: () => setConfirm({ ids: selectedIds, label: `${selected.size} selected product${selected.size === 1 ? "" : "s"}` }) },
+                ]}
+              />
+              {selected.size > 0 && (
+                <button type="button" onClick={() => setSelected(new Set())} className="text-[13px] text-admin-gray-500 hover:text-admin-gray-800 hover:underline">
+                  Clear selection
+                </button>
+              )}
+            </>
           )}
 
           {filtersActive && (
@@ -556,45 +624,40 @@ export function Products2Body() {
           )}
         </div>
 
+        {cols.length === 0 ? (
+          <p className="py-10 text-center text-sm text-admin-gray-400">All table columns are hidden — turn them on from Display Options.</p>
+        ) : (
         <div className="overflow-x-auto" style={{ minHeight: pageSize === 0 ? undefined : HEAD_H + Math.min(pageSize, MIN_ROWS) * ROW_H }}>
-          <table className="w-full min-w-[920px] table-fixed border-collapse text-[13px]">
+          <table className="w-full table-fixed border-collapse text-[13px]" style={{ minWidth: tableMinW }}>
             <colgroup>
               {/* Narrower columns under 1500px so Name keeps room on laptops. */}
-              <col className="w-[36px] min-[1500px]:w-[44px]" />
-              <col className="w-[52px] min-[1500px]:w-[58px]" />
-              <col />
-              <col className="w-[114px] min-[1500px]:w-[160px]" />
-              <col className="w-[96px] min-[1500px]:w-[130px]" />
-              <col className="w-[136px] min-[1500px]:w-[146px]" />
-              <col className="w-[100px] min-[1500px]:w-[120px]" />
-              <col className="w-[96px] min-[1500px]:w-[130px]" />
-              <col className="w-[126px] min-[1500px]:w-[132px]" />
+              {cols.map((c) => <col key={c.key} className={c.width} />)}
             </colgroup>
             <thead>
               <tr className="border-b border-admin-gray-200 text-left" style={{ height: HEAD_H }}>
-                <th className="px-2 min-[1500px]:px-3">
-                  <input
-                    type="checkbox"
-                    checked={pageAllSelected}
-                    onChange={(e) => selectMany(pageRows.map((p) => p.id), e.target.checked)}
-                    aria-label="Select products on this page"
-                    className="h-4 w-4 rounded border-admin-gray-300 accent-orange-500"
-                  />
-                </th>
-                <th className="px-2 font-semibold text-admin-gray-900">Image</th>
-                <SortTh label="Name" k="name" sort={sort} onSort={toggleSort} />
-                <SortTh label="Category" k="category" sort={sort} onSort={toggleSort} />
-                <SortTh label="Price" k="price" sort={sort} onSort={toggleSort} />
-                <SortTh label="Status" k="status" sort={sort} onSort={toggleSort} />
-                <SortTh label="Type" k="type" sort={sort} onSort={toggleSort} />
-                <SortTh label="Item Type" k="item" sort={sort} onSort={toggleSort} />
-                <th className="px-2 font-semibold text-admin-gray-900 min-[1500px]:px-3">Actions</th>
+                {cols.map((c) =>
+                  c.key === "p2-c-select" ? (
+                    <th key={c.key} className="px-2 min-[1500px]:px-3">
+                      <input
+                        type="checkbox"
+                        checked={pageAllSelected}
+                        onChange={(e) => selectMany(pageRows.map((p) => p.id), e.target.checked)}
+                        aria-label="Select products on this page"
+                        className="h-4 w-4 rounded border-admin-gray-300 accent-orange-500"
+                      />
+                    </th>
+                  ) : c.sort ? (
+                    <SortTh key={c.key} label={c.label} k={c.sort} sort={sort} onSort={toggleSort} />
+                  ) : (
+                    <th key={c.key} className="px-2 font-semibold text-admin-gray-900 min-[1500px]:px-3">{c.label}</th>
+                  )
+                )}
               </tr>
             </thead>
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-admin-gray-400">
+                  <td colSpan={cols.length} className="py-12 text-center text-admin-gray-400">
                     {products.length === 0 ? (
                       <>No products yet. <Link href="/admin/ecommerce/products/add" className="font-semibold text-orange-600 hover:underline">Add your first product</Link></>
                     ) : (
@@ -607,6 +670,7 @@ export function Products2Body() {
                   const busy = busyIds.has(p.id);
                   const badge = badgeBySlug.get(p.badgeTag);
                   const isSel = selected.has(p.id);
+                  const editHref = `/admin/ecommerce/products/add?edit=${p.id}`;
                   return (
                     <tr
                       key={p.id}
@@ -617,88 +681,114 @@ export function Products2Body() {
                         busy && "opacity-60"
                       )}
                     >
-                      <td className="px-2 min-[1500px]:px-3">
-                        <input
-                          type="checkbox"
-                          checked={isSel}
-                          onChange={() => toggle(p.id)}
-                          aria-label={`Select ${p.name}`}
-                          className="h-4 w-4 rounded border-admin-gray-300 accent-orange-500"
-                        />
-                      </td>
-                      <td className="px-1.5 min-[1500px]:px-2">
-                        {p.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={`/${p.image}`} alt="" loading="lazy" className="h-9 w-9 rounded-md border border-admin-gray-100 bg-white object-cover" />
-                        ) : (
-                          <span className="flex h-9 w-9 items-center justify-center rounded-md border border-admin-gray-100 bg-admin-gray-50 text-admin-gray-300">
-                            <ImageIcon className="h-4 w-4" />
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-2 min-[1500px]:px-3">
-                        <div className="truncate text-admin-gray-900" title={p.name}>{p.name}</div>
-                        <StockNote p={p} />
-                      </td>
-                      <td className="px-2 min-[1500px]:px-3">
-                        {p.categoryName ? (
-                          <button
-                            type="button"
-                            onClick={() => setFilter("category", String(p.categoryId))}
-                            title={`Show only ${p.categoryName}`}
-                            className="block max-w-full truncate text-left text-admin-gray-700 hover:text-orange-600 hover:underline"
-                          >
-                            {p.categoryName}
-                          </button>
-                        ) : (
-                          <span className="text-admin-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="whitespace-nowrap px-2 min-[1500px]:px-3">
-                        <div className="text-admin-gray-900">{money(effectivePrice(p))}</div>
-                        {hasSale(p) && <div className="text-[11px] text-admin-gray-400 line-through">{money(p.price)}</div>}
-                      </td>
-                      <td className="px-2 min-[1500px]:px-3">
-                        <StatusMenu status={p.status} busy={busy} onChange={(s) => setStatus([p.id], s)} />
-                      </td>
-                      <td className="px-2 min-[1500px]:px-3">
-                        {p.badgeTag === "none" || !badge ? (
-                          <span className="text-admin-gray-500">{typeLabel(p.badgeTag)}</span>
-                        ) : (
-                          <span className="inline-flex max-w-full items-center gap-1.5 truncate text-admin-gray-800">
-                            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: badge.color || "#6b7280" }} />
-                            {badge.label}
-                          </span>
-                        )}
-                      </td>
-                      <td className="truncate px-2 text-admin-gray-700 min-[1500px]:px-3">{itemLabel(p.itemType)}</td>
-                      <td className="px-2 min-[1500px]:px-3">
-                        <div className="flex items-center gap-1">
-                          <a
-                            href={`/admin/ecommerce/barcode-print?ids=${p.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            title="Print barcode"
-                            aria-label={`Print barcode for ${p.name}`}
-                            className={iconBtn("hover:text-admin-gray-900")}
-                          >
-                            <Barcode className="h-4 w-4" />
-                          </a>
-                          <Link href={`/admin/ecommerce/products/add?edit=${p.id}`} title="Edit" aria-label={`Edit ${p.name}`} className={iconBtn("hover:text-orange-600")}>
-                            <SquarePen className="h-4 w-4" />
+                      {show("p2-c-select") && (
+                        <td className="px-2 min-[1500px]:px-3">
+                          <input
+                            type="checkbox"
+                            checked={isSel}
+                            onChange={() => toggle(p.id)}
+                            aria-label={`Select ${p.name}`}
+                            className="h-4 w-4 rounded border-admin-gray-300 accent-orange-500"
+                          />
+                        </td>
+                      )}
+                      {show("p2-c-image") && (
+                        <td className="px-1.5 min-[1500px]:px-2">
+                          <Link href={editHref} tabIndex={-1} aria-hidden="true" className="block w-9">
+                            {p.image ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={`/${p.image}`} alt="" loading="lazy" className="h-9 w-9 rounded-md border border-admin-gray-100 bg-white object-cover" />
+                            ) : (
+                              <span className="flex h-9 w-9 items-center justify-center rounded-md border border-admin-gray-100 bg-admin-gray-50 text-admin-gray-300">
+                                <ImageIcon className="h-4 w-4" />
+                              </span>
+                            )}
                           </Link>
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => setConfirm({ ids: [p.id], label: `“${p.name}”` })}
-                            title="Delete"
-                            aria-label={`Delete ${p.name}`}
-                            className={iconBtn("hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-50")}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
+                        </td>
+                      )}
+                      {show("p2-c-name") && (
+                        <td className="px-2 min-[1500px]:px-3">
+                          <Link href={editHref} title={`Open ${p.name}`} className="block truncate font-medium text-admin-gray-900 hover:text-admin-primary hover:underline">
+                            {p.name}
+                          </Link>
+                          {/* Stock moves under the name only while the Stock column is hidden. */}
+                          {!show("p2-c-stock") && <StockNote p={p} />}
+                        </td>
+                      )}
+                      {show("p2-c-stock") && (
+                        <td className="px-2 min-[1500px]:px-3">
+                          <StockCell p={p} busy={busy} onSave={(q) => saveStock(p.id, q)} />
+                        </td>
+                      )}
+                      {show("p2-c-category") && (
+                        <td className="px-2 min-[1500px]:px-3">
+                          {p.categoryName ? (
+                            <button
+                              type="button"
+                              onClick={() => setFilter("category", String(p.categoryId))}
+                              title={`Show only ${p.categoryName}`}
+                              className="block max-w-full truncate text-left text-admin-gray-700 hover:text-orange-600 hover:underline"
+                            >
+                              {p.categoryName}
+                            </button>
+                          ) : (
+                            <span className="text-admin-gray-400">—</span>
+                          )}
+                        </td>
+                      )}
+                      {show("p2-c-price") && (
+                        <td className="whitespace-nowrap px-2 min-[1500px]:px-3">
+                          <div className="text-admin-gray-900">{money(effectivePrice(p))}</div>
+                          {hasSale(p) && <div className="text-[11px] text-admin-gray-400 line-through">{money(p.price)}</div>}
+                        </td>
+                      )}
+                      {show("p2-c-status") && (
+                        <td className="px-2 min-[1500px]:px-3">
+                          <StatusMenu status={p.status} busy={busy} onChange={(s) => setStatus([p.id], s)} />
+                        </td>
+                      )}
+                      {show("p2-c-type") && (
+                        <td className="px-2 min-[1500px]:px-3">
+                          {p.badgeTag === "none" || !badge ? (
+                            <span className="text-admin-gray-500">{typeLabel(p.badgeTag)}</span>
+                          ) : (
+                            <span className="inline-flex max-w-full items-center gap-1.5 truncate text-admin-gray-800">
+                              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: badge.color || "#6b7280" }} />
+                              {badge.label}
+                            </span>
+                          )}
+                        </td>
+                      )}
+                      {show("p2-c-item") && <td className="truncate px-2 text-admin-gray-700 min-[1500px]:px-3">{itemLabel(p.itemType)}</td>}
+                      {show("p2-c-actions") && (
+                        <td className="px-2 min-[1500px]:px-3">
+                          <div className="flex items-center gap-1">
+                            <a
+                              href={`/admin/ecommerce/barcode-print?ids=${p.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Print barcode"
+                              aria-label={`Print barcode for ${p.name}`}
+                              className={iconBtn("hover:text-admin-gray-900")}
+                            >
+                              <Barcode className="h-4 w-4" />
+                            </a>
+                            <Link href={editHref} title="Edit" aria-label={`Edit ${p.name}`} className={iconBtn("hover:text-admin-primary")}>
+                              <SquarePen className="h-4 w-4" />
+                            </Link>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => setConfirm({ ids: [p.id], label: `“${p.name}”` })}
+                              title="Delete"
+                              aria-label={`Delete ${p.name}`}
+                              className={iconBtn("hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-50")}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })
@@ -706,6 +796,7 @@ export function Products2Body() {
             </tbody>
           </table>
         </div>
+        )}
 
         <div className="mt-3 flex min-h-8 flex-wrap items-center justify-between gap-3 text-[13px] text-admin-gray-600">
           <span>
@@ -717,6 +808,7 @@ export function Products2Body() {
           {pageCount > 1 && <Pager page={current} pageCount={pageCount} onPage={setPage} />}
         </div>
       </section>
+      )}
 
       {confirm && (
         <ConfirmDelete label={confirm.label} count={confirm.ids.length} onCancel={() => setConfirm(null)} onConfirm={() => deleteProducts(confirm.ids)} />
@@ -726,10 +818,175 @@ export function Products2Body() {
   );
 }
 
+/**
+ * Table columns in order. `width` is the Tailwind width (narrower under
+ * 1500px so Name keeps room on laptops); `base` is the narrow width in px,
+ * used to size the table's minimum width from whichever columns are shown.
+ */
+const TABLE_COLS: { key: string; label: string; width?: string; base: number; sort?: SortKey }[] = [
+  { key: "p2-c-select", label: "", width: "w-[36px] min-[1500px]:w-[44px]", base: 36 },
+  { key: "p2-c-image", label: "Image", width: "w-[52px] min-[1500px]:w-[58px]", base: 52 },
+  { key: "p2-c-name", label: "Name", base: 180, sort: "name" },
+  { key: "p2-c-stock", label: "Stock", width: "w-[96px] min-[1500px]:w-[112px]", base: 96, sort: "stock" },
+  { key: "p2-c-category", label: "Category", width: "w-[114px] min-[1500px]:w-[150px]", base: 114, sort: "category" },
+  { key: "p2-c-price", label: "Price", width: "w-[96px] min-[1500px]:w-[120px]", base: 96, sort: "price" },
+  { key: "p2-c-status", label: "Status", width: "w-[140px] min-[1500px]:w-[150px]", base: 140, sort: "status" },
+  { key: "p2-c-type", label: "Type", width: "w-[100px] min-[1500px]:w-[116px]", base: 100, sort: "type" },
+  { key: "p2-c-item", label: "Item Type", width: "w-[96px] min-[1500px]:w-[124px]", base: 96, sort: "item" },
+  { key: "p2-c-actions", label: "Actions", width: "w-[126px] min-[1500px]:w-[132px]", base: 126 },
+];
+
 /* ───────────────────────── pieces ───────────────────────── */
 
 const iconBtn = (extra: string) =>
-  cn("flex h-8 w-8 items-center justify-center rounded-md border border-admin-gray-200 bg-white text-admin-gray-500 transition-colors hover:bg-admin-gray-50", extra);
+  cn("flex h-8 w-8 items-center justify-center rounded-[0.5rem] border border-[#e5e7eb] bg-white text-admin-gray-500 transition-colors hover:bg-admin-gray-50", extra);
+
+/**
+ * Stock column: the quantity (red when out, amber when low) and a small +
+ * button that opens a quick form to add stock — or set an exact count —
+ * right here, without leaving the list. Digital/licence/affiliate products
+ * don't track stock, so they show "—".
+ */
+function StockCell({ p, busy, onSave }: { p: Product2Row; busy: boolean; onSave: (qty: number) => Promise<boolean> }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+
+  if (p.productType !== "physical") {
+    return <span className="text-admin-gray-400" title="Stock isn't tracked for this product type">—</span>;
+  }
+  const qty = p.stockQty ?? 0;
+  const tone = isOutOfStock(p) ? "text-red-600" : isLowStock(p) ? "text-amber-600" : "text-admin-gray-900";
+
+  function open() {
+    const r = btn.current?.getBoundingClientRect();
+    if (!r) return;
+    const W = 250;
+    const H = 214;
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - W - 8));
+    const top = r.bottom + 6 + H > window.innerHeight ? Math.max(8, r.top - 6 - H) : r.bottom + 6;
+    setPos({ top, left });
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className={cn("truncate", tone)} title={isOutOfStock(p) ? "Out of stock" : isLowStock(p) ? "Low stock" : undefined}>
+        <span className="font-semibold">{qty.toLocaleString("en-IN")}</span>
+        {p.unit && <span className="ml-1 text-[11px] font-normal text-admin-gray-500">{p.unit}</span>}
+      </span>
+      <button
+        ref={btn}
+        type="button"
+        disabled={busy}
+        onClick={() => (pos ? setPos(null) : open())}
+        aria-haspopup="dialog"
+        aria-expanded={!!pos}
+        aria-label={`Add stock for ${p.name}`}
+        title="Add stock"
+        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[0.5rem] border border-[#e5e7eb] bg-white text-admin-gray-500 transition-colors hover:border-admin-primary hover:text-admin-primary disabled:opacity-50"
+      >
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+      </button>
+      {pos && <StockForm p={p} pos={pos} anchor={btn} onClose={() => setPos(null)} onSave={onSave} />}
+    </div>
+  );
+}
+
+function StockForm({ p, pos, anchor, onClose, onSave }: {
+  p: Product2Row;
+  pos: { top: number; left: number };
+  anchor: React.RefObject<HTMLButtonElement | null>;
+  onClose: () => void;
+  onSave: (qty: number) => Promise<boolean>;
+}) {
+  const current = p.stockQty ?? 0;
+  const [mode, setMode] = useState<"add" | "set">("add");
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+
+  const n = Math.floor(Number(value));
+  const valid = value.trim() !== "" && Number.isFinite(n) && n >= 0 && (mode === "set" || n > 0);
+  const next = mode === "add" ? current + (valid ? n : 0) : valid ? n : current;
+
+  useEffect(() => {
+    input.current?.focus();
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!box.current?.contains(t) && !anchor.current?.contains(t)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onScroll = (e: Event) => {
+      if (!box.current?.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onClose);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onClose);
+    };
+  }, [anchor, onClose]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!valid || saving) return;
+    setSaving(true);
+    const ok = await onSave(next);
+    setSaving(false);
+    if (ok) onClose();
+  }
+
+  return createPortal(
+    <div ref={box} role="dialog" aria-label={`Update stock — ${p.name}`} className="fixed z-[400] w-[250px] rounded-[0.5rem] border border-admin-gray-200 bg-white p-3 text-[13px] shadow-[0_0.5rem_1.5rem_rgba(0,0,0,.15)]" style={pos}>
+      <form onSubmit={submit}>
+        <div className="mb-2 truncate font-semibold text-admin-gray-900" title={p.name}>{p.name}</div>
+        <div className="mb-2.5 grid grid-cols-2 rounded-[0.5rem] border border-[#e5e7eb] p-0.5">
+          {(["add", "set"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => {
+                setMode(m);
+                input.current?.focus();
+              }}
+              aria-pressed={mode === m}
+              className={cn("h-7 rounded-[0.375rem] text-xs font-medium transition-colors", mode === m ? "bg-admin-primary text-white" : "text-admin-gray-600 hover:bg-admin-gray-50")}
+            >
+              {m === "add" ? "Add stock" : "Set exact"}
+            </button>
+          ))}
+        </div>
+        <label className="mb-1 block text-xs text-admin-gray-500">{mode === "add" ? "Quantity to add" : "New stock quantity"}{p.unit ? ` (${p.unit})` : ""}</label>
+        <input
+          ref={input}
+          type="number"
+          inputMode="numeric"
+          min={mode === "add" ? 1 : 0}
+          step={1}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          aria-label={mode === "add" ? "Quantity to add" : "New stock quantity"}
+          className="h-9 w-full rounded-[0.5rem] border border-[#e5e7eb] px-2.5 text-sm outline-none focus:border-admin-primary focus:shadow-[0_0_0_3px_#f5f3ff]"
+        />
+        <div className="mt-2 flex items-center justify-between text-xs text-admin-gray-500">
+          <span>Now: <b className="text-admin-gray-800">{current}</b></span>
+          <span>After: <b className={cn(valid ? "text-emerald-600" : "text-admin-gray-800")}>{next}</b></span>
+        </div>
+        <div className="mt-3 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="h-8 rounded-[0.5rem] border border-[#e5e7eb] bg-white px-3 text-xs font-medium text-[#374151] hover:bg-[#f9fafb]">Cancel</button>
+          <button type="submit" disabled={!valid || saving} className="flex h-8 items-center gap-1.5 rounded-[0.5rem] bg-admin-primary px-3 text-xs font-semibold text-white hover:bg-admin-primary-dark disabled:cursor-not-allowed disabled:opacity-50">
+            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Save
+          </button>
+        </div>
+      </form>
+    </div>,
+    document.body
+  );
+}
 
 /** Small line under the name: stock for physical products. */
 function StockNote({ p }: { p: Product2Row }) {
@@ -771,7 +1028,7 @@ function FilterSelect({ icon: Icon, label, value, onChange, dot, children }: {
   return (
     <label
       className={cn(
-        "relative flex h-12 min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border pl-3 pr-9 transition-colors focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-500/15",
+        "relative flex h-12 min-w-[160px] flex-1 cursor-pointer items-center gap-2.5 rounded-[0.5rem] border pl-3 pr-9 transition-colors focus-within:border-admin-primary focus-within:ring-2 focus-within:ring-admin-primary/15",
         on ? "border-orange-300 bg-orange-50/50" : "border-admin-gray-200 bg-white hover:border-admin-gray-300"
       )}
     >
@@ -859,17 +1116,18 @@ function StatusMenu({ status, busy, onChange }: { status: string; busy: boolean;
           if (r) setPos({ top: r.bottom + 4 + MENU_H > window.innerHeight ? r.top - 4 - MENU_H : r.bottom + 4, left: r.left });
         }}
         className={cn(
-          "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors disabled:cursor-wait",
-          active ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "border-admin-gray-200 bg-admin-gray-50 text-admin-gray-600 hover:bg-admin-gray-100"
+          // Same look as the header's buttons: white, 1px #e5e7eb border, 0.5rem radius.
+          "inline-flex h-8 w-[124px] items-center gap-2 rounded-[0.5rem] border border-[#e5e7eb] bg-white px-2.5 text-[13px] font-medium transition-colors hover:bg-[#f9fafb] disabled:cursor-wait",
+          active ? "text-[#374151]" : "text-admin-gray-500"
         )}
       >
-        {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <span className={cn("h-1.5 w-1.5 rounded-full", active ? "bg-emerald-500" : "bg-admin-gray-400")} />}
-        {active ? "Published" : "Unpublished"}
-        <ChevronDown className="h-3 w-3 opacity-60" />
+        {busy ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : <span className={cn("h-2 w-2 shrink-0 rounded-full", active ? "bg-emerald-500" : "bg-admin-gray-400")} />}
+        <span className="flex-1 text-left">{active ? "Published" : "Unpublished"}</span>
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-admin-gray-400" />
       </button>
       {pos &&
         createPortal(
-          <div ref={menu} role="menu" className="fixed z-[400] w-[150px] rounded-lg border border-admin-gray-200 bg-white py-1 text-[13px] shadow-lg" style={pos}>
+          <div ref={menu} role="menu" className="fixed z-[400] w-[150px] rounded-[0.5rem] border border-admin-gray-200 bg-white py-1 text-[13px] shadow-lg" style={pos}>
             {(["active", "inactive"] as const).map((s) => (
               <button
                 key={s}

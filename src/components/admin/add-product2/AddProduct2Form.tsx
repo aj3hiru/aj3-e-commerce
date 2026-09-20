@@ -621,7 +621,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
                     >
                       <option value="">Select category…</option>
                       {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      <option value="__add__">+ Add new category…</option>
+                      {show("ap2-quick", "ap2-q-category") && <option value="__add__">+ Add new category…</option>}
                     </SelectBox>
                   </Field>
                 )}
@@ -630,7 +630,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
                     <SelectBox value={s.subcategoryId} onChange={(v) => (v === "__add__" ? setQuickAdd("subcategory") : set("subcategoryId", v))} disabled={!s.categoryId}>
                       <option value="">{!s.categoryId ? "Select category first…" : subsForCategory.length === 0 ? "No sub categories yet" : "Select sub category…"}</option>
                       {subsForCategory.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      {s.categoryId && <option value="__add__">+ Add new sub category…</option>}
+                      {s.categoryId && show("ap2-quick", "ap2-q-subcategory") && <option value="__add__">+ Add new sub category…</option>}
                     </SelectBox>
                   </Field>
                 )}
@@ -642,7 +642,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
                     >
                       <option value="">Select brand…</option>
                       {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                      <option value="__add__">+ Add new brand…</option>
+                      {show("ap2-quick", "ap2-q-brand") && <option value="__add__">+ Add new brand…</option>}
                     </SelectBox>
                   </Field>
                 )}
@@ -670,62 +670,74 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
           )}
 
 
-          {show("ap2-more", "ap2-sizes") && (
-            <Card icon={Scale} title="Sizes / Units" note="(optional)">
-              <p className="-mt-1 text-[13px] leading-relaxed text-admin-gray-500">
-                Sell this product in more than one size — e.g. 250 g / 500 g / 1 Kg, or 500 ml / 1 L / 2 L — each with its own MRP and selling price.
-                Leave this empty to keep it a simple single-price product using the Pricing fields above.
-              </p>
-              <div data-field="sizes" className="space-y-2.5">
-                {sizes.length > 0 && (
-                  <div className="hidden grid-cols-[28px_minmax(0,1.3fr)_repeat(2,minmax(0,1fr))_minmax(0,0.8fr)_40px] gap-2.5 px-0.5 text-xs font-medium text-admin-gray-500 md:grid">
-                    <span title="Default size — shown first in the shop">Def.</span><span>Size / Unit</span><span>MRP ₹</span><span>Selling Price ₹</span><span>Stock</span><span />
-                  </div>
+          {isVisible("ap2-sizes") && (() => {
+            // Columns follow Display Options (Selling Price / Stock / Default can be hidden;
+            // hidden values are kept and saved unchanged).
+            const def = isVisible("ap2-sz-default"), sp = isVisible("ap2-sz-price"), st = isVisible("ap2-sz-stock");
+            const mdCols = [def && "28px", "minmax(0,1.3fr)", "minmax(0,1fr)", sp && "minmax(0,1fr)", st && "minmax(0,0.8fr)", "40px"].filter(Boolean).join(" ");
+            const smCols = [def && "28px", "minmax(0,1fr)", "40px"].filter(Boolean).join(" ");
+            const subCols = `repeat(${1 + (sp ? 1 : 0) + (st ? 1 : 0)},minmax(0,1fr))`;
+            const vars = { "--md": mdCols, "--sm": smCols, "--sub": subCols } as React.CSSProperties;
+            return (
+              <Card icon={Scale} title="Sizes / Units" note="(optional)">
+                {isVisible("ap2-sz-help") && (
+                  <p className="-mt-1 text-[13px] text-admin-gray-500">Sell in multiple sizes (e.g. 500 g, 1 Kg), each with its own MRP and price. Leave empty for a single-price product.</p>
                 )}
-                {sizes.map((z, i) => {
-                  const off = z.price !== "" && z.mrp !== "" && Number(z.price) < Number(z.mrp) && Number(z.mrp) > 0
-                    ? Math.round(((Number(z.mrp) - Number(z.price)) / Number(z.mrp)) * 100) : null;
-                  return (
-                    <div key={z.k} className="grid grid-cols-[28px_minmax(0,1fr)_40px] items-center gap-2.5 md:grid-cols-[28px_minmax(0,1.3fr)_repeat(2,minmax(0,1fr))_minmax(0,0.8fr)_40px]">
-                      <label className="flex h-10 cursor-pointer items-center justify-center" title="Default size — shown first in the shop">
-                        <input
-                          type="radio"
-                          name="default_size"
-                          checked={z.isDefault}
-                          onChange={() => updateSize(z.k, { isDefault: true })}
-                          aria-label={`Make ${z.label || `row ${i + 1}`} the default size`}
-                          className="h-4 w-4 accent-admin-primary"
-                        />
-                      </label>
-                      <input value={z.label} onChange={(e) => updateSize(z.k, { label: e.target.value })} placeholder="e.g. 500 g" maxLength={50} aria-label={`Size ${i + 1}`} className={inputCls(false)} />
-                      <button type="button" onClick={() => removeSize(z.k)} aria-label={`Remove size ${i + 1}`} title="Remove" className={cn(iconBtnCls, "border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 md:order-last")}>
-                        <X className="h-4 w-4" />
-                      </button>
-                      <div className="col-span-3 grid grid-cols-3 gap-2.5 pl-[38px] md:contents">
-                        <MoneyInput value={z.mrp} onChange={(v) => updateSize(z.k, { mrp: v })} placeholder="MRP" ariaLabel={`MRP for size ${i + 1}`} />
-                        <div className="relative">
-                          <MoneyInput value={z.price} onChange={(v) => updateSize(z.k, { price: v })} placeholder="Selling (opt.)" ariaLabel={`Selling price for size ${i + 1}`}
-                            error={z.price !== "" && z.mrp !== "" && Number(z.price) > Number(z.mrp)} />
-                          {off !== null && <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded min-[1100px]:block bg-emerald-50 px-1.5 text-[11px] font-semibold text-emerald-600">{off}% off</span>}
+                <div data-field="sizes" className="space-y-2.5" style={vars}>
+                  <div className="hidden gap-2.5 px-0.5 text-xs font-medium text-admin-gray-500 md:grid md:grid-cols-[var(--md)]">
+                    {def && <span title="Default size — shown first in the shop">Def.</span>}
+                    <span>Size / Unit</span><span>MRP ₹</span>{sp && <span>Selling Price ₹</span>}{st && <span>Stock</span>}<span />
+                  </div>
+                  {sizes.map((z, i) => {
+                    const off = z.price !== "" && z.mrp !== "" && Number(z.price) < Number(z.mrp) && Number(z.mrp) > 0
+                      ? Math.round(((Number(z.mrp) - Number(z.price)) / Number(z.mrp)) * 100) : null;
+                    return (
+                      <div key={z.k} className="grid grid-cols-[var(--sm)] items-center gap-2.5 md:grid-cols-[var(--md)]">
+                        {def && (
+                          <label className="flex h-10 cursor-pointer items-center justify-center" title="Default size — shown first in the shop">
+                            <input
+                              type="radio"
+                              name="default_size"
+                              checked={z.isDefault}
+                              onChange={() => updateSize(z.k, { isDefault: true })}
+                              aria-label={`Make ${z.label || `row ${i + 1}`} the default size`}
+                              className="h-4 w-4 accent-admin-primary"
+                            />
+                          </label>
+                        )}
+                        <input value={z.label} onChange={(e) => updateSize(z.k, { label: e.target.value })} placeholder="e.g. 500 g" maxLength={50} aria-label={`Size ${i + 1}`} className={inputCls(false)} />
+                        <button type="button" onClick={() => removeSize(z.k)} aria-label={`Remove size ${i + 1}`} title="Remove" className={cn(iconBtnCls, "border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 md:order-last")}>
+                          <X className="h-4 w-4" />
+                        </button>
+                        <div className={cn("col-span-full grid grid-cols-[var(--sub)] gap-2.5 md:contents", def && "pl-[38px]")}>
+                          <MoneyInput value={z.mrp} onChange={(v) => updateSize(z.k, { mrp: v })} placeholder="MRP" ariaLabel={`MRP for size ${i + 1}`} />
+                          {sp && (
+                            <div className="relative">
+                              <MoneyInput value={z.price} onChange={(v) => updateSize(z.k, { price: v })} placeholder="Selling (opt.)" ariaLabel={`Selling price for size ${i + 1}`}
+                                error={z.price !== "" && z.mrp !== "" && Number(z.price) > Number(z.mrp)} />
+                              {off !== null && <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded bg-emerald-50 px-1.5 text-[11px] font-semibold text-emerald-600 min-[1100px]:block">{off}% off</span>}
+                            </div>
+                          )}
+                          {st && (
+                            <input type="number" min={0} step={1} inputMode="numeric" value={z.stock} onChange={(e) => updateSize(z.k, { stock: e.target.value })} placeholder="Stock (opt.)" aria-label={`Stock for size ${i + 1}`} className={inputCls(false)} />
+                          )}
                         </div>
-                        <input type="number" min={0} step={1} inputMode="numeric" value={z.stock} onChange={(e) => updateSize(z.k, { stock: e.target.value })} placeholder="Stock (opt.)" aria-label={`Stock for size ${i + 1}`} className={inputCls(false)} />
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <button type="button" onClick={() => { setSizes((rows) => [...rows, newSize(rows.length === 0)]); setDirty(true); }} className={outlineBtnCls}>
-                <Plus className="h-4 w-4" /> Add Size / Unit
-              </button>
-            </Card>
-          )}
+                    );
+                  })}
+                </div>
+                <button type="button" onClick={() => { setSizes((rows) => [...rows, newSize(rows.length === 0)]); setDirty(true); }} className={outlineBtnCls}>
+                  <Plus className="h-4 w-4" /> Add Size / Unit
+                </button>
+              </Card>
+            );
+          })()}
 
-          {show("ap2-more", "ap2-specs") && (
+          {isVisible("ap2-specs") && (
             <Card icon={ListChecks} title="Specifications" note="(optional)">
-              <p className="-mt-1 text-[13px] leading-relaxed text-admin-gray-500">
-                Shown as a bullet list on the product page — e.g. &ldquo;Material: Cotton&rdquo;, &ldquo;Weight: 500 g&rdquo;, &ldquo;Country of Origin: India&rdquo;.
-                Only rows where both fields are filled in are shown; leave empty to skip. (Brand is set above in Categorization and is shown automatically — no need to repeat it here.)
-              </p>
+              {isVisible("ap2-sp-help") && (
+                <p className="-mt-1 text-[13px] text-admin-gray-500">Shown as a list on the product page, e.g. Material: Cotton. Only filled rows are saved.</p>
+              )}
               <div data-field="specs" className="space-y-2.5">
                 {specs.map((x, i) => (
                   <div key={x.k} className="grid grid-cols-[minmax(0,1fr)_40px] items-center gap-2.5 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_40px]">
@@ -860,7 +872,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
                     <option value="normal">Normal</option>
                     {itemTypes.filter((t) => t.slug !== "normal").map((t) => <option key={t.slug} value={t.slug}>{t.label}</option>)}
                     {s.itemType !== "normal" && !itemTypes.some((t) => t.slug === s.itemType) && <option value={s.itemType}>{s.itemType}</option>}
-                    <option value="__add__">+ Add new item type…</option>
+                    {show("ap2-quick", "ap2-q-itemtype") && <option value="__add__">+ Add new item type…</option>}
                   </SelectBox>
                 </Field>
               )}
@@ -1113,6 +1125,13 @@ function QuickAddModal({ kind, category, onClose, onAdded }: {
 }) {
   const [name, setName] = useState("");
   const [logo, setLogo] = useState<File | null>(null);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!logo) return setLogoUrl(null);
+    const u = URL.createObjectURL(logo);
+    setLogoUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [logo]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const what = QUICK_LABEL[kind];
@@ -1126,7 +1145,7 @@ function QuickAddModal({ kind, category, onClose, onAdded }: {
   async function save() {
     if (!name.trim()) return setErr(`Please enter a ${what.toLowerCase()} name.`);
     if (kind === "subcategory" && !category) return setErr("Choose a category first.");
-    if (logo && (!logo.type.startsWith("image/") || logo.size > 2 * 1024 * 1024)) return setErr("The logo must be an image up to 2 MB.");
+    if (logo && (!logo.type.startsWith("image/") || logo.size > 2 * 1024 * 1024)) return setErr(`The ${kind === "brand" ? "logo" : "image"} must be an image up to 2 MB.`);
     setBusy(true);
     setErr("");
     const fd = new FormData();
@@ -1134,6 +1153,7 @@ function QuickAddModal({ kind, category, onClose, onAdded }: {
     fd.set("name", name.trim());
     if (kind === "subcategory" && category) fd.set("category_id", String(category.id));
     if (kind === "brand" && logo) fd.set("logo", logo);
+    if (kind === "category" && logo) fd.set("image", logo);
     try {
       const res = await fetch("/api/ecommerce/products2/quick-add", { method: "POST", body: fd });
       const data = await res.json().catch(() => ({ success: false }));
@@ -1178,16 +1198,23 @@ function QuickAddModal({ kind, category, onClose, onAdded }: {
               className={inputCls(!!err)}
             />
           </div>
-          {kind === "brand" && (
+          {(kind === "brand" || kind === "category") && (
             <div>
               <label className="mb-1.5 block text-[13px] font-medium text-admin-gray-800">
-                Logo <span className="font-normal text-admin-gray-400">(optional)</span>
+                {kind === "brand" ? "Logo" : "Image"} <span className="font-normal text-admin-gray-400">(optional)</span>
               </label>
               <label className="flex h-10 cursor-pointer items-center overflow-hidden rounded-[0.5rem] border border-[#e5e7eb] text-sm">
                 <span className="flex h-full shrink-0 items-center border-r border-[#e5e7eb] bg-admin-gray-50 px-3 font-medium text-admin-gray-700">Choose file</span>
                 <span className={cn("truncate px-3", logo ? "text-admin-gray-900" : "text-admin-gray-400")}>{logo ? logo.name : "No file chosen"}</span>
-                <input type="file" accept="image/*" className="sr-only" aria-label="Brand logo" onChange={(e) => setLogo(e.target.files?.[0] ?? null)} />
+                <input type="file" accept="image/*" className="sr-only" aria-label={kind === "brand" ? "Brand logo" : "Category image"} onClick={(e) => ((e.target as HTMLInputElement).value = "")} onChange={(e) => setLogo(e.target.files?.[0] ?? null)} />
               </label>
+              {logoUrl && (
+                <div className="mt-2 flex items-center gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={logoUrl} alt="" className="h-12 w-12 rounded-[0.5rem] border border-admin-gray-200 object-contain" />
+                  <button type="button" onClick={() => setLogo(null)} className="text-xs text-red-600 hover:underline">Remove</button>
+                </div>
+              )}
             </div>
           )}
           {err && <p className="text-xs text-red-600">{err}</p>}

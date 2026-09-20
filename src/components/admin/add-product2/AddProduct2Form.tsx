@@ -132,7 +132,7 @@ function initialState(p: AP2Product | null, defaultGst: number): State {
 
 /* ───────────────────────── form ───────────────────────── */
 
-export function AddProduct2Form({ product, categories: initialCategories, subcategories: initialSubcategories, brands: initialBrands, badges, itemTypes: initialItemTypes, gstRates }: {
+export function AddProduct2Form({ product, categories: initialCategories, subcategories: initialSubcategories, brands: initialBrands, badges, itemTypes: initialItemTypes, gstRates, listPath = LIST_PATH }: {
   product: AP2Product | null;
   categories: AP2Option[];
   subcategories: AP2Sub[];
@@ -140,6 +140,8 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
   badges: AP2Tag[];
   itemTypes: AP2Tag[];
   gstRates: AP2Gst[];
+  /** Where Cancel and a finished save go back to (defaults to All Products 2). */
+  listPath?: string;
 }) {
   const router = useRouter();
   const { isVisible, loaded } = useDashboardWidgetPrefs();
@@ -438,7 +440,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
         return;
       }
       setDirty(false);
-      router.push(`${LIST_PATH}?success=${editing ? "updated" : "created"}&name=${encodeURIComponent(data.name)}`);
+      router.push(`${listPath}?success=${editing ? "updated" : "created"}&name=${encodeURIComponent(data.name)}`);
     } catch {
       setError({ message: "Could not reach the server. Please try again." });
       setSaving(null);
@@ -902,7 +904,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
             <span className="ml-3 hidden text-admin-gray-400 md:inline">Ctrl + S to save</span>
           </span>
           <div className="flex flex-1 items-center justify-end gap-2 sm:flex-none">
-            <Link href={LIST_PATH} className={btnCls}>Cancel</Link>
+            <Link href={listPath} className={btnCls}>Cancel</Link>
             {!editing && (
               <button type="button" disabled={!!saving} onClick={() => submit("another")} className={cn(btnCls, "disabled:opacity-60")}>
                 {saving === "another" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}

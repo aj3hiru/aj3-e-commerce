@@ -9,6 +9,14 @@ import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 
+/**
+ * Pages that open Edit Product 2 and want to be returned to after saving.
+ * Only these exact names are accepted for `?from=` (never a free-form URL).
+ */
+const RETURN_TARGETS = new Map<string, { href: string; label: string }>([
+  ["stock-out-products2", { href: "/admin/ecommerce/stock-out-products2", label: "Back to Stock Out" }],
+]);
+
 interface AddProduct2PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
@@ -37,6 +45,8 @@ export default async function AddProduct2Page({ searchParams }: AddProduct2PageP
   const sp = await searchParams;
   const editRaw = Array.isArray(sp.edit) ? sp.edit[0] : sp.edit;
   const editId = editRaw && /^\d+$/.test(editRaw) ? Number(editRaw) : null;
+  const fromRaw = Array.isArray(sp.from) ? sp.from[0] : sp.from;
+  const back = (fromRaw ? RETURN_TARGETS.get(fromRaw) : undefined) ?? { href: "/admin/ecommerce/products2", label: "Back to Products" };
 
   const [categories, subcategories, brands, tags, gstRows, found] = await Promise.all([
     prisma.ecomCategory.findMany({ where: { status: "active" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -117,10 +127,10 @@ export default async function AddProduct2Page({ searchParams }: AddProduct2PageP
         headerActions={
           <div className="hidden items-center gap-3 xl:flex">
             <Link
-              href="/admin/ecommerce/products2"
+              href={back.href}
               className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[0.5rem] border border-[#e5e7eb] bg-white px-3.5 text-[0.875rem] font-medium text-[#374151] transition-colors hover:bg-[#f9fafb]"
             >
-              <ArrowLeft className="h-4 w-4" /> Back to Products
+              <ArrowLeft className="h-4 w-4" /> {back.label}
             </Link>
             <DisplayOptionsPanel variant="header" />
           </div>
@@ -129,10 +139,10 @@ export default async function AddProduct2Page({ searchParams }: AddProduct2PageP
         {/* Below 1280px the header has no room, so the same controls move here. */}
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 xl:hidden">
           <Link
-            href="/admin/ecommerce/products2"
+            href={back.href}
             className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[0.5rem] border border-[#e5e7eb] bg-white px-3.5 text-[0.875rem] font-medium text-[#374151] hover:bg-[#f9fafb]"
           >
-            <ArrowLeft className="h-4 w-4" /> Back to Products
+            <ArrowLeft className="h-4 w-4" /> {back.label}
           </Link>
           <DisplayOptionsPanel variant="toolbar" />
         </div>
@@ -158,6 +168,7 @@ export default async function AddProduct2Page({ searchParams }: AddProduct2PageP
             badges={badges}
             itemTypes={itemTypes}
             gstRates={gstRates}
+            listPath={back.href}
           />
         )}
       </AdminShell>

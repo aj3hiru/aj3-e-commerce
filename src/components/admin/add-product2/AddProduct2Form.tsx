@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   Info, FolderTree, IndianRupee, ImageIcon, Images, SlidersHorizontal, Barcode, Printer, Upload, X, Plus, Loader2,
-  CheckCircle2, AlertCircle, ChevronDown, Save, RotateCcw, Link2, Pencil, ExternalLink,
+  CheckCircle2, AlertCircle, ChevronDown, Save, RotateCcw, Link2, Pencil, ExternalLink, Scale, ListChecks,
 } from "lucide-react";
 import slugify from "slugify";
 import { cn } from "@/lib/utils";
@@ -47,7 +47,18 @@ export interface AP2Product {
   campaignPrice: number | null;
   showOnHome: boolean;
   gallery: { id: number; image: string }[];
+  sizes: { label: string; mrp: number; price: number | null; stockQty: number | null; isDefault: boolean }[];
+  specs: { name: string; value: string }[];
 }
+
+/** Editable rows (strings while typing). `k` is a stable React key. */
+interface SizeRowS { k: number; label: string; mrp: string; price: string; stock: string; isDefault: boolean }
+interface SpecRowS { k: number; name: string; value: string }
+let rowKey = 0;
+const newSize = (isDefault = false): SizeRowS => ({ k: ++rowKey, label: "", mrp: "", price: "", stock: "", isDefault });
+const newSpec = (): SpecRowS => ({ k: ++rowKey, name: "", value: "" });
+const sizeFilled = (z: SizeRowS) => !!(z.label.trim() || z.mrp.trim() || z.price.trim() || z.stock.trim());
+type QuickKind = "brand" | "category" | "subcategory" | "item_type";
 
 /** Preset units — same list as the current product form; "Custom…" allows any text. */
 const UNIT_PRESETS = ["KG", "Gram", "Liter", "ml", "cm", "Meter", "Piece"];
@@ -121,7 +132,7 @@ function initialState(p: AP2Product | null, defaultGst: number): State {
 
 /* ───────────────────────── form ───────────────────────── */
 
-export function AddProduct2Form({ product, categories, subcategories, brands: initialBrands, badges, itemTypes: initialItemTypes, gstRates }: {
+export function AddProduct2Form({ product, categories: initialCategories, subcategories: initialSubcategories, brands: initialBrands, badges, itemTypes: initialItemTypes, gstRates }: {
   product: AP2Product | null;
   categories: AP2Option[];
   subcategories: AP2Sub[];
@@ -139,6 +150,17 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
   const defaultGst = gstRates.find((g) => g.isDefault)?.rate ?? 0;
   const [s, setS] = useState<State>(() => initialState(product, defaultGst));
   const [brands, setBrands] = useState(initialBrands);
+  const [categories, setCategories] = useState(initialCategories);
+  const [subcategories, setSubcategories] = useState(initialSubcategories);
+  // Sizes / Units and Specifications (always at least one blank row to type in).
+  const [sizes, setSizes] = useState<SizeRowS[]>(() =>
+    product?.sizes.length
+      ? product.sizes.map((z) => ({ k: ++rowKey, label: z.label, mrp: String(z.mrp), price: num(z.price), stock: num(z.stockQty), isDefault: z.isDefault }))
+      : [newSize(true)]
+  );
+  const [specs, setSpecs] = useState<SpecRowS[]>(() =>
+    product?.specs.length ? product.specs.map((x) => ({ k: ++rowKey, name: x.name, value: x.value })) : [newSpec()]
+  );
   const [itemTypes, setItemTypes] = useState(initialItemTypes);
 
   // Images
@@ -153,7 +175,7 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
   const [error, setError] = useState<{ message: string; field?: string } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
-  const [quickAdd, setQuickAdd] = useState<null | "brand" | "item_type">(null);
+  const [quickAdd, setQuickAdd] = useState<null | QuickKind>(null);
   const [barcodeCheck, setBarcodeCheck] = useState<{ state: "idle" | "checking" | "free" | "taken" | "error"; by?: { id: number; name: string } }>({ state: "idle" });
 
   const nameRef = useRef<HTMLInputElement>(null);
@@ -269,9 +291,55 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
   const discount = s.salePrice !== "" && s.price !== "" && sale > 0 && sale < price ? Math.round(((price - sale) / price) * 100) : null;
   const saleError = s.salePrice !== "" && s.price !== "" && sale > 0 && sale >= price;
 
+  const filledSizes = sizes.filter(sizeFilled);
+  const hasSizes = filledSizes.length > 0;
+
+  function updateSize(k: number, patch: Partial<SizeRowS>) {
+    setSizes((rows) => rows.map((z) => (z.k === k ? { ...z, ...patch } : patch.isDefault ? { ...z, isDefault: false } : z)));
+    setDirty(true);
+    if (error?.field === "sizes") setError(null);
+  }
+  function removeSize(k: number) {
+    setSizes((rows) => {
+      const left = rows.filter((z) => z.k !== k);
+      if (left.length === 0) return [newSize(true)];
+      if (!left.some((z) => z.isDefault)) left[0] = { ...left[0], isDefault: true };
+      return left;
+    });
+    setDirty(true);
+  }
+  function updateSpec(k: number, patch: Partial<SpecRowS>) {
+    setSpecs((rows) => rows.map((x) => (x.k === k ? { ...x, ...patch } : x)));
+    setDirty(true);
+  }
+  function removeSpec(k: number) {
+    setSpecs((rows) => (rows.length === 1 ? [newSpec()] : rows.filter((x) => x.k !== k)));
+    setDirty(true);
+  }
+
+  function validateSizes(): string | null {
+    const seen = new Set<string>();
+    for (const [i, z] of filledSizes.entries()) {
+      const label = z.label.trim();
+      if (!label) return `Size / Unit row ${i + 1}: enter the size, e.g. 500 g.`;
+      const key = label.toLowerCase().replace(/\s+/g, " ");
+      if (seen.has(key)) return `Size / Unit “${label}” is added twice.`;
+      seen.add(key);
+      const mrp = Number(z.mrp);
+      if (z.mrp.trim() === "" || !Number.isFinite(mrp) || mrp < 0) return `Size / Unit “${label}”: enter the MRP.`;
+      if (z.price.trim() !== "" && (!Number.isFinite(Number(z.price)) || Number(z.price) < 0)) return `Size / Unit “${label}”: enter a valid selling price.`;
+      if (z.price.trim() !== "" && Number(z.price) > mrp) return `Size / Unit “${label}”: selling price can't be more than the MRP.`;
+      if (z.stock.trim() !== "" && (!Number.isInteger(Number(z.stock)) || Number(z.stock) < 0)) return `Size / Unit “${label}”: stock must be a whole number, 0 or more.`;
+    }
+    return null;
+  }
+
   function validate(): { message: string; field: string } | null {
     if (!s.name.trim()) return { message: "Product name is required.", field: "name" };
-    if (s.price === "" || !Number.isFinite(price) || price < 0) return { message: "Enter a valid price.", field: "price" };
+    // With Sizes / Units the main price may be left empty (the default size's price is used).
+    if (s.price === "" ? !hasSizes : !Number.isFinite(price) || price < 0) return { message: hasSizes ? "Enter a valid price." : "Enter a price, or add Sizes / Units below.", field: "price" };
+    const sizeErr = validateSizes();
+    if (sizeErr) return { message: sizeErr, field: "sizes" };
     if (saleError) return { message: "Sale price should be lower than the price (leave it empty for no sale).", field: "sale_price" };
     if (isPhysical && (s.stock !== "" && (!Number.isInteger(Number(s.stock)) || Number(s.stock) < 0))) return { message: "Stock must be a whole number, 0 or more.", field: "stock_qty" };
     if (s.unitChoice === "custom" && !s.unitCustom.trim()) return { message: "Type the custom unit, or pick one from the list.", field: "unit" };
@@ -299,6 +367,8 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
     setImageFile(null);
     setImagePreview(null);
     setNewGallery([]);
+    setSizes([newSize(true)]);
+    setSpecs([newSpec()]);
     setBarcodeCheck({ state: "idle" });
     setDirty(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -341,6 +411,8 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
     if (s.showOnHome) fd.set("show_on_home", "on");
     if (s.isCampaign) fd.set("is_campaign", "on");
     fd.set("campaign_price", s.campaignPrice);
+    fd.set("sizes", JSON.stringify(filledSizes.map((z) => ({ label: z.label, mrp: z.mrp, price: z.price, stock: z.stock, isDefault: z.isDefault }))));
+    fd.set("specs", JSON.stringify(specs.map((x) => ({ name: x.name, value: x.value }))));
     if (imageFile) fd.set("image", imageFile);
     if (removeImage) fd.set("remove_image", "1");
     newGallery.forEach((g) => fd.append("gallery_images", g.file));
@@ -489,7 +561,7 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
           <Card icon={IndianRupee} title={isPhysical ? "Pricing & Stock" : "Pricing"}>
             {/* Price · Sale Price · Stock · GST in one row (2 × 2 on narrower screens). */}
             <div className={ROW4}>
-              <Field label="Price (₹)" required field="price" error={fieldErr("price")}>
+              <Field label="Price (₹)" required={!hasSizes} hint={hasSizes && s.price === "" ? "From default size" : undefined} field="price" error={fieldErr("price")}>
                 <MoneyInput value={s.price} onChange={(v) => set("price", v)} error={fieldErr("price")} />
               </Field>
               {show("ap2-price", "ap2-sale") && (
@@ -542,17 +614,23 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
               <div className={ROW4}>
                 {show("ap2-cat", "ap2-category") && (
                   <Field label="Category" field="category_id" error={fieldErr("category_id")}>
-                    <SelectBox value={s.categoryId} onChange={(v) => setS((p) => ({ ...p, categoryId: v, subcategoryId: "" }))} onDirty={() => setDirty(true)}>
+                    <SelectBox
+                      value={s.categoryId}
+                      onChange={(v) => (v === "__add__" ? setQuickAdd("category") : setS((p) => ({ ...p, categoryId: v, subcategoryId: "" })))}
+                      onDirty={() => setDirty(true)}
+                    >
                       <option value="">Select category…</option>
                       {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      <option value="__add__">+ Add new category…</option>
                     </SelectBox>
                   </Field>
                 )}
                 {show("ap2-cat", "ap2-category") && show("ap2-cat", "ap2-subcategory") && (
                   <Field label="Sub Category" field="subcategory_id">
-                    <SelectBox value={s.subcategoryId} onChange={(v) => set("subcategoryId", v)} disabled={!s.categoryId || subsForCategory.length === 0}>
-                      <option value="">{!s.categoryId ? "Select category first…" : subsForCategory.length === 0 ? "No sub categories" : "Select sub category…"}</option>
+                    <SelectBox value={s.subcategoryId} onChange={(v) => (v === "__add__" ? setQuickAdd("subcategory") : set("subcategoryId", v))} disabled={!s.categoryId}>
+                      <option value="">{!s.categoryId ? "Select category first…" : subsForCategory.length === 0 ? "No sub categories yet" : "Select sub category…"}</option>
                       {subsForCategory.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      {s.categoryId && <option value="__add__">+ Add new sub category…</option>}
                     </SelectBox>
                   </Field>
                 )}
@@ -591,6 +669,79 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
             </Card>
           )}
 
+
+          {show("ap2-more", "ap2-sizes") && (
+            <Card icon={Scale} title="Sizes / Units" note="(optional)">
+              <p className="-mt-1 text-[13px] leading-relaxed text-admin-gray-500">
+                Sell this product in more than one size — e.g. 250 g / 500 g / 1 Kg, or 500 ml / 1 L / 2 L — each with its own MRP and selling price.
+                Leave this empty to keep it a simple single-price product using the Pricing fields above.
+              </p>
+              <div data-field="sizes" className="space-y-2.5">
+                {sizes.length > 0 && (
+                  <div className="hidden grid-cols-[28px_minmax(0,1.3fr)_repeat(2,minmax(0,1fr))_minmax(0,0.8fr)_40px] gap-2.5 px-0.5 text-xs font-medium text-admin-gray-500 md:grid">
+                    <span title="Default size — shown first in the shop">Def.</span><span>Size / Unit</span><span>MRP ₹</span><span>Selling Price ₹</span><span>Stock</span><span />
+                  </div>
+                )}
+                {sizes.map((z, i) => {
+                  const off = z.price !== "" && z.mrp !== "" && Number(z.price) < Number(z.mrp) && Number(z.mrp) > 0
+                    ? Math.round(((Number(z.mrp) - Number(z.price)) / Number(z.mrp)) * 100) : null;
+                  return (
+                    <div key={z.k} className="grid grid-cols-[28px_minmax(0,1fr)_40px] items-center gap-2.5 md:grid-cols-[28px_minmax(0,1.3fr)_repeat(2,minmax(0,1fr))_minmax(0,0.8fr)_40px]">
+                      <label className="flex h-10 cursor-pointer items-center justify-center" title="Default size — shown first in the shop">
+                        <input
+                          type="radio"
+                          name="default_size"
+                          checked={z.isDefault}
+                          onChange={() => updateSize(z.k, { isDefault: true })}
+                          aria-label={`Make ${z.label || `row ${i + 1}`} the default size`}
+                          className="h-4 w-4 accent-admin-primary"
+                        />
+                      </label>
+                      <input value={z.label} onChange={(e) => updateSize(z.k, { label: e.target.value })} placeholder="e.g. 500 g" maxLength={50} aria-label={`Size ${i + 1}`} className={inputCls(false)} />
+                      <button type="button" onClick={() => removeSize(z.k)} aria-label={`Remove size ${i + 1}`} title="Remove" className={cn(iconBtnCls, "border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 md:order-last")}>
+                        <X className="h-4 w-4" />
+                      </button>
+                      <div className="col-span-3 grid grid-cols-3 gap-2.5 pl-[38px] md:contents">
+                        <MoneyInput value={z.mrp} onChange={(v) => updateSize(z.k, { mrp: v })} placeholder="MRP" ariaLabel={`MRP for size ${i + 1}`} />
+                        <div className="relative">
+                          <MoneyInput value={z.price} onChange={(v) => updateSize(z.k, { price: v })} placeholder="Selling (opt.)" ariaLabel={`Selling price for size ${i + 1}`}
+                            error={z.price !== "" && z.mrp !== "" && Number(z.price) > Number(z.mrp)} />
+                          {off !== null && <span className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded min-[1100px]:block bg-emerald-50 px-1.5 text-[11px] font-semibold text-emerald-600">{off}% off</span>}
+                        </div>
+                        <input type="number" min={0} step={1} inputMode="numeric" value={z.stock} onChange={(e) => updateSize(z.k, { stock: e.target.value })} placeholder="Stock (opt.)" aria-label={`Stock for size ${i + 1}`} className={inputCls(false)} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <button type="button" onClick={() => { setSizes((rows) => [...rows, newSize(rows.length === 0)]); setDirty(true); }} className={outlineBtnCls}>
+                <Plus className="h-4 w-4" /> Add Size / Unit
+              </button>
+            </Card>
+          )}
+
+          {show("ap2-more", "ap2-specs") && (
+            <Card icon={ListChecks} title="Specifications" note="(optional)">
+              <p className="-mt-1 text-[13px] leading-relaxed text-admin-gray-500">
+                Shown as a bullet list on the product page — e.g. &ldquo;Material: Cotton&rdquo;, &ldquo;Weight: 500 g&rdquo;, &ldquo;Country of Origin: India&rdquo;.
+                Only rows where both fields are filled in are shown; leave empty to skip. (Brand is set above in Categorization and is shown automatically — no need to repeat it here.)
+              </p>
+              <div data-field="specs" className="space-y-2.5">
+                {specs.map((x, i) => (
+                  <div key={x.k} className="grid grid-cols-[minmax(0,1fr)_40px] items-center gap-2.5 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)_40px]">
+                    <input value={x.name} onChange={(e) => updateSpec(x.k, { name: e.target.value })} placeholder="e.g. Material" maxLength={100} aria-label={`Specification ${i + 1} name`} className={inputCls(false)} />
+                    <button type="button" onClick={() => removeSpec(x.k)} aria-label={`Remove specification ${i + 1}`} title="Remove" className={cn(iconBtnCls, "border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 sm:order-last")}>
+                      <X className="h-4 w-4" />
+                    </button>
+                    <input value={x.value} onChange={(e) => updateSpec(x.k, { value: e.target.value })} placeholder="e.g. Cotton" maxLength={255} aria-label={`Specification ${i + 1} value`} className={cn(inputCls(false), "col-span-2 sm:col-span-1")} />
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={() => { setSpecs((rows) => [...rows, newSpec()]); setDirty(true); }} className={outlineBtnCls}>
+                <Plus className="h-4 w-4" /> Add Specification
+              </button>
+            </Card>
+          )}
         </div>
 
         {/* ── right column ── */}
@@ -757,17 +908,27 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
       {quickAdd && (
         <QuickAddModal
           kind={quickAdd}
+          category={categories.find((c) => String(c.id) === s.categoryId) ?? null}
           onClose={() => setQuickAdd(null)}
           onAdded={(opt) => {
-            if (quickAdd === "brand") {
-              setBrands((list) => (list.some((b) => b.id === opt.id) ? list : [...list, { id: opt.id!, name: opt.name }].sort((a, b) => a.name.localeCompare(b.name))));
+            const kind = quickAdd;
+            const byName = <T extends { name: string }>(a: T, b: T) => a.name.localeCompare(b.name);
+            if (kind === "brand") {
+              setBrands((list) => (list.some((b) => b.id === opt.id) ? list : [...list, { id: opt.id!, name: opt.name }].sort(byName)));
               set("brandId", String(opt.id));
+            } else if (kind === "category") {
+              setCategories((list) => (list.some((c) => c.id === opt.id) ? list : [...list, { id: opt.id!, name: opt.name }].sort(byName)));
+              setS((p) => ({ ...p, categoryId: String(opt.id), subcategoryId: "" }));
+              setDirty(true);
+            } else if (kind === "subcategory") {
+              setSubcategories((list) => (list.some((c) => c.id === opt.id) ? list : [...list, { id: opt.id!, name: opt.name, categoryId: opt.categoryId! }].sort(byName)));
+              set("subcategoryId", String(opt.id));
             } else {
               setItemTypes((list) => (list.some((t) => t.slug === opt.slug) ? list : [...list, { slug: opt.slug!, label: opt.name }]));
               set("itemType", opt.slug!);
             }
             setQuickAdd(null);
-            setToast(`${quickAdd === "brand" ? "Brand" : "Item type"} “${opt.name}” ${opt.existed ? "selected" : "added"}.`);
+            setToast(`${QUICK_LABEL[kind]} “${opt.name}” ${opt.existed ? "already existed — selected" : "added"}.`);
           }}
         />
       )}
@@ -791,16 +952,21 @@ const inputCls = (err: boolean) =>
   );
 const btnCls =
   "flex h-10 items-center gap-2 whitespace-nowrap rounded-[0.5rem] border border-[#e5e7eb] bg-white px-3.5 text-sm font-medium text-[#374151] transition-colors hover:bg-[#f9fafb]";
+const outlineBtnCls =
+  "flex h-9 items-center gap-1.5 rounded-[0.5rem] border border-admin-primary/40 bg-white px-3 text-[13px] font-medium text-admin-primary transition-colors hover:bg-admin-primary-lighter";
 const iconBtnCls = "flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.5rem] border border-[#e5e7eb] bg-white text-admin-gray-500 hover:bg-[#f9fafb] hover:text-admin-primary";
 
-function Card({ icon: Icon, title, aside, children }: { icon: React.ComponentType<{ className?: string }>; title: string; aside?: React.ReactNode; children: React.ReactNode }) {
+function Card({ icon: Icon, title, note, aside, children }: { icon: React.ComponentType<{ className?: string }>; title: string; note?: string; aside?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section className="rounded-xl border border-admin-gray-200 bg-white shadow-sm">
       <header className="flex items-center gap-2.5 border-b border-admin-gray-100 px-5 py-3.5">
         <span className="flex h-8 w-8 items-center justify-center rounded-[0.5rem] bg-admin-primary-lighter text-admin-primary">
           <Icon className="h-4 w-4" />
         </span>
-        <h2 className="flex-1 text-[15px] font-semibold text-admin-gray-900">{title}</h2>
+        <h2 className="flex-1 text-[15px] font-semibold text-admin-gray-900">
+          {title}
+          {note && <span className="ml-1.5 text-[13px] font-normal text-admin-gray-400">{note}</span>}
+        </h2>
         {aside}
       </header>
       <div className="space-y-4 p-5">{children}</div>
@@ -846,7 +1012,7 @@ function SelectBox({ value, onChange, disabled, className, onDirty, children }: 
   );
 }
 
-function MoneyInput({ value, onChange, error }: { value: string; onChange: (v: string) => void; error?: boolean }) {
+function MoneyInput({ value, onChange, error, placeholder = "0.00", ariaLabel }: { value: string; onChange: (v: string) => void; error?: boolean; placeholder?: string; ariaLabel?: string }) {
   return (
     <div className="relative">
       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-admin-gray-400">₹</span>
@@ -858,7 +1024,8 @@ function MoneyInput({ value, onChange, error }: { value: string; onChange: (v: s
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onWheel={(e) => (e.target as HTMLInputElement).blur()}
-        placeholder="0.00"
+        placeholder={placeholder}
+        aria-label={ariaLabel}
         className={cn(inputCls(!!error), "pl-7")}
       />
     </div>
@@ -934,15 +1101,21 @@ function Thumb({ src, isNew, onRemove }: { src: string; isNew?: boolean; onRemov
   );
 }
 
-function QuickAddModal({ kind, onClose, onAdded }: {
-  kind: "brand" | "item_type";
+const QUICK_LABEL: Record<QuickKind, string> = { brand: "Brand", category: "Category", subcategory: "Sub Category", item_type: "Item Type" };
+const QUICK_PLACEHOLDER: Record<QuickKind, string> = { brand: "e.g. Aashirvaad", category: "e.g. Grocery", subcategory: "e.g. Atta & Flours", item_type: "e.g. Combo Pack" };
+
+/** "+ Add new…" pop-up for brand (with optional logo), category, sub-category and item type. */
+function QuickAddModal({ kind, category, onClose, onAdded }: {
+  kind: QuickKind;
+  category: AP2Option | null;
   onClose: () => void;
-  onAdded: (o: { id?: number; slug?: string; name: string; existed?: boolean }) => void;
+  onAdded: (o: { id?: number; slug?: string; name: string; categoryId?: number; existed?: boolean }) => void;
 }) {
   const [name, setName] = useState("");
+  const [logo, setLogo] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const what = kind === "brand" ? "Brand" : "Item Type";
+  const what = QUICK_LABEL[kind];
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
@@ -952,21 +1125,24 @@ function QuickAddModal({ kind, onClose, onAdded }: {
 
   async function save() {
     if (!name.trim()) return setErr(`Please enter a ${what.toLowerCase()} name.`);
+    if (kind === "subcategory" && !category) return setErr("Choose a category first.");
+    if (logo && (!logo.type.startsWith("image/") || logo.size > 2 * 1024 * 1024)) return setErr("The logo must be an image up to 2 MB.");
     setBusy(true);
     setErr("");
+    const fd = new FormData();
+    fd.set("kind", kind);
+    fd.set("name", name.trim());
+    if (kind === "subcategory" && category) fd.set("category_id", String(category.id));
+    if (kind === "brand" && logo) fd.set("logo", logo);
     try {
-      const res = await fetch("/api/ecommerce/products2/quick-add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, name: name.trim() }),
-      });
+      const res = await fetch("/api/ecommerce/products2/quick-add", { method: "POST", body: fd });
       const data = await res.json().catch(() => ({ success: false }));
       if (!data.success) {
         setErr(data.message || `Could not add the ${what.toLowerCase()}.`);
         setBusy(false);
         return;
       }
-      onAdded(kind === "brand" ? { id: data.id, name: data.name, existed: data.existed } : { slug: data.slug, name: data.label, existed: data.existed });
+      onAdded({ id: data.id, slug: data.slug, name: data.name, categoryId: data.categoryId, existed: data.existed });
     } catch {
       setErr("Could not reach the server. Please try again.");
       setBusy(false);
@@ -975,28 +1151,48 @@ function QuickAddModal({ kind, onClose, onAdded }: {
 
   return createPortal(
     <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={() => !busy && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label={`Add New ${what}`} className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
+      <div role="dialog" aria-modal="true" aria-label={`Add New ${what}`} className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-admin-gray-100 bg-admin-gray-50/70 px-5 py-4">
           <h5 className="text-base font-bold text-admin-gray-900">Add New {what}</h5>
           <button type="button" onClick={onClose} disabled={busy} aria-label="Close" className="rounded p-1 text-admin-gray-400 hover:bg-admin-gray-100"><X className="h-4 w-4" /></button>
         </div>
-        <label className="mb-1.5 block text-[13px] font-medium text-admin-gray-800">{what} Name</label>
-        <input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              save();
-            }
-          }}
-          placeholder={kind === "brand" ? "e.g. Aashirvaad" : "e.g. Combo Pack"}
-          maxLength={100}
-          className={inputCls(!!err)}
-        />
-        {err && <p className="mt-1.5 text-xs text-red-600">{err}</p>}
-        <div className="mt-5 flex justify-end gap-2">
+        <div className="space-y-4 px-5 py-5">
+          {kind === "subcategory" && category && (
+            <p className="rounded-[0.5rem] bg-admin-primary-lighter px-3 py-2 text-[13px] text-admin-gray-700">Under category <b className="text-admin-gray-900">{category.name}</b></p>
+          )}
+          <div>
+            <label htmlFor="qa-name" className="mb-1.5 block text-[13px] font-medium text-admin-gray-800">{what} Name</label>
+            <input
+              id="qa-name"
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  save();
+                }
+              }}
+              placeholder={QUICK_PLACEHOLDER[kind]}
+              maxLength={100}
+              className={inputCls(!!err)}
+            />
+          </div>
+          {kind === "brand" && (
+            <div>
+              <label className="mb-1.5 block text-[13px] font-medium text-admin-gray-800">
+                Logo <span className="font-normal text-admin-gray-400">(optional)</span>
+              </label>
+              <label className="flex h-10 cursor-pointer items-center overflow-hidden rounded-[0.5rem] border border-[#e5e7eb] text-sm">
+                <span className="flex h-full shrink-0 items-center border-r border-[#e5e7eb] bg-admin-gray-50 px-3 font-medium text-admin-gray-700">Choose file</span>
+                <span className={cn("truncate px-3", logo ? "text-admin-gray-900" : "text-admin-gray-400")}>{logo ? logo.name : "No file chosen"}</span>
+                <input type="file" accept="image/*" className="sr-only" aria-label="Brand logo" onChange={(e) => setLogo(e.target.files?.[0] ?? null)} />
+              </label>
+            </div>
+          )}
+          {err && <p className="text-xs text-red-600">{err}</p>}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-admin-gray-100 px-5 py-4">
           <button type="button" onClick={onClose} disabled={busy} className={btnCls}>Cancel</button>
           <button type="button" onClick={save} disabled={busy} className="flex h-10 items-center gap-2 rounded-[0.5rem] bg-admin-primary px-4 text-sm font-semibold text-white hover:bg-admin-primary-dark disabled:opacity-60">
             {busy && <Loader2 className="h-4 w-4 animate-spin" />} Add {what}

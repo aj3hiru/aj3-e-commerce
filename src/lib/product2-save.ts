@@ -49,10 +49,17 @@ async function parse(form: FormData, editId: number | null) {
   if (!name) throw new SaveError("Product name is required.", "name");
   if (name.length > 255) throw new SaveError("Product name is too long (255 characters max).", "name");
 
-  const price = Number(text(form, "price"));
-  if (text(form, "price") === "" || !Number.isFinite(price) || price < 0) throw new SaveError("Enter a valid price.", "price");
+  const sizes = parseSizes(text(form, "sizes"));
+  const specs = parseSpecs(text(form, "specs"));
 
-  const saleRaw = text(form, "sale_price");
+  // With Sizes / Units and no main price, the default size's prices are used
+  // as the product's price (so lists, billing and the shop still show one).
+  const def = sizes.find((z) => z.isDefault);
+  const priceRaw = text(form, "price") || (def ? String(def.mrp) : "");
+  const price = Number(priceRaw);
+  if (priceRaw === "" || !Number.isFinite(price) || price < 0) throw new SaveError("Enter a valid price.", "price");
+
+  const saleRaw = text(form, "price") === "" && def ? (def.price === null || def.price >= def.mrp ? "" : String(def.price)) : text(form, "sale_price");
   const salePrice = saleRaw === "" ? null : Number(saleRaw);
   if (salePrice !== null && (!Number.isFinite(salePrice) || salePrice < 0)) throw new SaveError("Enter a valid sale price.", "sale_price");
   if (salePrice !== null && salePrice > 0 && salePrice >= price) {
@@ -153,9 +160,92 @@ async function parse(form: FormData, editId: number | null) {
     barcode,
     image,
     gallery,
+    sizes,
+    specs,
     removeImage: form.get("remove_image") === "1",
     removedGalleryIds: form.getAll("removed_gallery_ids").map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0),
   };
+}
+
+export interface SizeRow { label: string; mrp: number; price: number | null; stockQty: number | null; isDefault: boolean }
+export interface SpecRow { name: string; value: string }
+
+function jsonList(raw: string, field: string): Record<string, unknown>[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    if (!Array.isArray(v)) throw new Error();
+    return v.filter((x) => x && typeof x === "object");
+  } catch {
+    throw new SaveError("Could not read the form. Please reload the page and try again.", field);
+  }
+}
+const str = (v: unknown) => (v === null || v === undefined ? "" : String(v)).trim();
+
+/**
+ * Sizes / Units rows. Fully empty rows are skipped; a row needs a size and
+ * an MRP; selling price (≤ MRP) and stock are optional. Exactly one row is
+ * the default (the first one if none is marked).
+ */
+export function parseSizes(raw: string): SizeRow[] {
+  const rows: SizeRow[] = [];
+  const seen = new Set<string>();
+  for (const r of jsonList(raw, "sizes")) {
+    const label = str(r.label);
+    const mrpS = str(r.mrp);
+    const priceS = str(r.price);
+    const stockS = str(r.stock);
+    if (!label && !mrpS && !priceS && !stockS) continue;
+    const n = rows.length + 1;
+    if (!label) throw new SaveError(`Size / Unit row ${n}: enter the size, e.g. 500 g.`, "sizes");
+    if (label.length > 50) throw new SaveError(`Size / Unit “${label}” is too long (50 characters max).`, "sizes");
+    const key = label.toLowerCase().replace(/\s+/g, " ");
+    if (seen.has(key)) throw new SaveError(`Size / Unit “${label}” is added twice.`, "sizes");
+    seen.add(key);
+    const mrp = Number(mrpS);
+    if (!mrpS || !Number.isFinite(mrp) || mrp < 0) throw new SaveError(`Size / Unit “${label}”: enter a valid MRP.`, "sizes");
+    const price = priceS === "" ? null : Number(priceS);
+    if (price !== null && (!Number.isFinite(price) || price < 0)) throw new SaveError(`Size / Unit “${label}”: enter a valid selling price.`, "sizes");
+    if (price !== null && price > mrp) throw new SaveError(`Size / Unit “${label}”: selling price can't be more than the MRP.`, "sizes");
+    const stockQty = stockS === "" ? null : Number(stockS);
+    if (stockQty !== null && (!Number.isInteger(stockQty) || stockQty < 0)) throw new SaveError(`Size / Unit “${label}”: stock must be a whole number, 0 or more.`, "sizes");
+    rows.push({ label, mrp, price, stockQty, isDefault: r.isDefault === true });
+  }
+  if (rows.length > 30) throw new SaveError("You can add up to 30 sizes / units.", "sizes");
+  const d = rows.findIndex((x) => x.isDefault);
+  rows.forEach((x, i) => (x.isDefault = i === (d === -1 ? 0 : d)));
+  return rows;
+}
+
+/** Specifications: only rows with both a name and a value are kept (as the form says). */
+export function parseSpecs(raw: string): SpecRow[] {
+  const rows: SpecRow[] = [];
+  for (const r of jsonList(raw, "specs")) {
+    const name = str(r.name);
+    const value = str(r.value);
+    if (!name || !value) continue;
+    if (name.length > 100) throw new SaveError(`Specification “${name.slice(0, 30)}…” name is too long (100 characters max).`, "specs");
+    if (value.length > 255) throw new SaveError(`Specification “${name}” value is too long (255 characters max).`, "specs");
+    rows.push({ name, value });
+  }
+  if (rows.length > 50) throw new SaveError("You can add up to 50 specifications.", "specs");
+  return rows;
+}
+
+/** Replaces a product's sizes and specifications with the ones from the form. */
+async function saveSizesAndSpecs(productId: number, sizes: SizeRow[], specs: SpecRow[], replace: boolean) {
+  if (replace) {
+    await prisma.ecomProductSize.deleteMany({ where: { productId } });
+    await prisma.ecomProductSpec.deleteMany({ where: { productId } });
+  }
+  if (sizes.length) {
+    await prisma.ecomProductSize.createMany({
+      data: sizes.map((z, i) => ({ productId, label: z.label, mrp: z.mrp, price: z.price, stockQty: z.stockQty, isDefault: z.isDefault, sortOrder: i })),
+    });
+  }
+  if (specs.length) {
+    await prisma.ecomProductSpec.createMany({ data: specs.map((x, i) => ({ productId, name: x.name, value: x.value, sortOrder: i })) });
+  }
 }
 
 async function addGallery(productId: number, files: File[]) {
@@ -185,6 +275,7 @@ export async function createProduct2(form: FormData): Promise<{ id: number; name
       // Same automatic barcode as the PHP: EM + id padded to 8 digits.
       await prisma.ecomProduct.update({ where: { id: created.id }, data: { barcode: `EM${String(created.id).padStart(8, "0")}` } });
     }
+    await saveSizesAndSpecs(created.id, p.sizes, p.specs, false);
     await addGallery(created.id, p.gallery);
     return created;
   } catch (e) {
@@ -218,6 +309,7 @@ export async function updateProduct2(id: number, form: FormData): Promise<{ id: 
         for (const g of gone as { image: string }[]) await deleteUploadedImage(g.image);
       }
     }
+    await saveSizesAndSpecs(id, p.sizes, p.specs, true);
     await addGallery(id, p.gallery);
     return updated;
   } catch (e) {

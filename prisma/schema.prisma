@@ -159,6 +159,8 @@ model EcomProduct {
   subcategory EcomSubcategory? @relation(fields: [subcategoryId], references: [id])
   brand       EcomBrand?       @relation(fields: [brandId], references: [id])
   images      EcomProductImage[]
+  sizes       EcomProductSize[]
+  specs       EcomProductSpec[]
   reviews     EcomProductReview[]
   orderItems  EcomOrderItem[]
   wishlists   EcomWishlist[]
@@ -166,6 +168,41 @@ model EcomProduct {
   coupons     EcomCoupon[]     @relation("CouponProduct")
 
   @@map("ecom_products")
+}
+
+/// Sizes / Units for one product (e.g. 250 g / 500 g / 1 Kg), each with its
+/// own MRP, optional selling price and optional stock. A product with no rows
+/// here is a simple single-price product using EcomProduct.price / salePrice.
+/// Added by /admin/ecommerce/add-product2.
+model EcomProductSize {
+  id        Int      @id @default(autoincrement())
+  productId Int      @map("product_id")
+  label     String   @db.VarChar(50)
+  mrp       Decimal  @db.Decimal(10, 2)
+  price     Decimal? @db.Decimal(10, 2) // selling price; null = sells at MRP
+  stockQty  Int?     @map("stock_qty")   // null = not tracked per size
+  isDefault Boolean  @default(false) @map("is_default")
+  sortOrder Int      @default(0) @map("sort_order")
+
+  product EcomProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("ecom_product_sizes")
+}
+
+/// Specifications shown as a bullet list on the product page, e.g.
+/// "Material: Cotton". Added by /admin/ecommerce/add-product2.
+model EcomProductSpec {
+  id        Int    @id @default(autoincrement())
+  productId Int    @map("product_id")
+  name      String @db.VarChar(100)
+  value     String @db.VarChar(255)
+  sortOrder Int    @default(0) @map("sort_order")
+
+  product EcomProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("ecom_product_specs")
 }
 
 model EcomProductImage {

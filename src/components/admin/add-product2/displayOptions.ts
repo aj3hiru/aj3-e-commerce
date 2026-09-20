@@ -39,6 +39,14 @@ export const ADD2_GROUPS: readonly WidgetGroup[] = [
     ],
   },
   {
+    group: "ap2-more",
+    groupLabel: "Sizes & Specifications",
+    items: [
+      { key: "ap2-sizes", label: "Sizes / Units" },
+      { key: "ap2-specs", label: "Specifications" },
+    ],
+  },
+  {
     group: "ap2-media",
     groupLabel: "Images",
     items: [

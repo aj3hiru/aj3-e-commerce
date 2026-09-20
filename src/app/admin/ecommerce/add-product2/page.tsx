@@ -49,6 +49,8 @@ export default async function AddProduct2Page({ searchParams }: AddProduct2PageP
           where: { id: editId },
           include: {
             images: { orderBy: { sortOrder: "asc" }, select: { id: true, image: true } },
+            sizes: { orderBy: { sortOrder: "asc" }, select: { label: true, mrp: true, price: true, stockQty: true, isDefault: true } },
+            specs: { orderBy: { sortOrder: "asc" }, select: { name: true, value: true } },
             category: { select: { id: true, name: true } },
             subcategory: { select: { id: true, name: true, categoryId: true } },
             brand: { select: { id: true, name: true } },
@@ -70,6 +72,8 @@ export default async function AddProduct2Page({ searchParams }: AddProduct2PageP
     price: unknown; salePrice: unknown; gstRate: unknown; stockQty: number | null; image: string | null; badgeTag: string; itemType: string;
     status: string; downloadLink: string | null; licenseKey: string | null; affiliateUrl: string | null; isCampaign: boolean;
     campaignPrice: unknown; showOnHome: boolean; images: { id: number; image: string }[];
+    sizes: { label: string; mrp: unknown; price: unknown; stockQty: number | null; isDefault: boolean }[];
+    specs: { name: string; value: string }[];
     category: { id: number; name: string } | null; subcategory: { id: number; name: string; categoryId: number } | null; brand: { id: number; name: string } | null;
   };
   const f = found as Found | null;
@@ -83,6 +87,8 @@ export default async function AddProduct2Page({ searchParams }: AddProduct2PageP
         badgeTag: f.badgeTag, itemType: f.itemType, status: f.status, downloadLink: f.downloadLink, licenseKey: f.licenseKey,
         affiliateUrl: f.affiliateUrl, isCampaign: f.isCampaign, campaignPrice: optNum(f.campaignPrice), showOnHome: f.showOnHome,
         gallery: f.images,
+        sizes: f.sizes.map((z) => ({ label: z.label, mrp: Number(z.mrp), price: optNum(z.price), stockQty: z.stockQty, isDefault: z.isDefault })),
+        specs: f.specs,
       }
     : null;
 

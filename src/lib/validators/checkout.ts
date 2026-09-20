@@ -12,6 +12,9 @@ export const checkoutItemSchema = z.object({
   // damaged-item discount) — same trust boundary as the original PHP: this is
   // ONLY honored on the admin billing endpoint, never on the public storefront checkout.
   price_override: z.coerce.number().min(0).nullable().optional(),
+  // Optional sold-by unit chosen at the counter (Billing2). When present it is
+  // recorded on the order line as "Name (Unit)" so the invoice shows it.
+  unit: z.string().trim().max(40).optional(),
 });
 
 export const checkoutSchema = z.object({

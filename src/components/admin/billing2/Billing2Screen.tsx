@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Search, ShoppingCart, Trash2, Tag, CreditCard, PackagePlus, Phone, User, CheckCircle2,
-  Info, Lock, ArrowRight, ScanBarcode, Banknote, Smartphone, Wallet, ChevronDown, Package, Plus,
+  Info, Lock, ArrowRight, ScanBarcode, Banknote, Smartphone, Wallet, ChevronDown, Plus, Minus, X,
 } from "lucide-react";
 import { usePosCart } from "@/hooks/usePosCart";
 import { useCustomerSearch } from "@/hooks/useCustomerSearch";
@@ -34,7 +34,7 @@ const CORAL = "#EE6A4D";
  * /admin/ecommerce/billing2 — same POS logic as PosBillingScreen (same hooks,
  * same checkout API, same business rules), laid out to match the Billing2
  * mockup: barcode search with a search button, a cart with product
- * thumbnails, coupon + totals boxes, and a sticky coral "Payment Summary"
+ * editable price/qty/unit, coupon + totals pinned at the bottom, and a sticky coral "Payment Summary"
  * column. Customer fields (mobile + name) and the original screen's
  * split-payment rows (Cash + UPI + Card…) live in the payment card.
  */
@@ -50,7 +50,7 @@ export function Billing2Screen({
   const [products, setProducts] = useState(allProducts);
 
   const {
-    cart, addToCart, addToCartWithQty, changeQty, setQty, removeFromCart,
+    cart, addToCart, addToCartWithQty, changeQty, setQty, setPrice, setUnit, removeFromCart,
     appliedCoupon, couponMessage, applyCoupon, totals,
     payments, addPaymentRow, removePaymentRow, updatePaymentRow,
     resetForNextSale,
@@ -126,6 +126,7 @@ export function Billing2Screen({
             product_id: c.productId,
             qty: c.qty,
             price_override: c.priceOverridden ? c.unitPrice : null,
+            unit: c.unit ?? "",
           })),
           customer_id: isGuest ? 0 : customer.customerId ?? 0,
           customer_name: isGuest ? "" : customer.name.trim(),
@@ -228,7 +229,6 @@ export function Billing2Screen({
                     className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-[#FFF4F0]"
                     onClick={() => scan.selectResult(p)}
                   >
-                    <Thumb image={p.image} size="sm" />
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-admin-gray-900">{p.name}</span>
                       <span className="block truncate text-xs text-admin-gray-400">
@@ -247,9 +247,10 @@ export function Billing2Screen({
           </div>
         </div>
 
-        {/* Cart */}
-        <div className="rounded-xl border border-admin-gray-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        {/* Cart — fixed-height card on large screens: the item rows scroll,
+            while coupon + totals stay pinned at the bottom of the card. */}
+        <div className="flex flex-col rounded-xl border border-admin-gray-200 bg-white shadow-sm xl:h-[calc(100dvh-230px)] xl:min-h-[440px]">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 pb-3 pt-4">
             <h5 className="flex items-center gap-2 text-base">
               <ShoppingCart className="h-4 w-4" style={{ color: CORAL }} />
               <span className="font-semibold text-admin-gray-900">Cart</span>
@@ -265,16 +266,16 @@ export function Billing2Screen({
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px] text-sm">
-              <thead>
-                <tr className="bg-admin-gray-50 text-left text-xs font-medium text-admin-gray-500">
-                  <th className="w-10 rounded-l-md py-2 pl-3 font-medium">#</th>
-                  <th className="py-2 font-medium">Product</th>
-                  <th className="py-2 font-medium">Price</th>
-                  <th className="py-2 font-medium">Qty</th>
-                  <th className="py-2 font-medium">Subtotal</th>
-                  <th className="rounded-r-md py-2 pr-3 text-center font-medium">Action</th>
+          <div className="mx-4 max-h-[55vh] min-h-[150px] flex-1 overflow-auto rounded-lg border border-admin-gray-100 xl:max-h-none">
+            <table className="w-full min-w-[620px] text-sm">
+              <thead className="sticky top-0 z-10 bg-admin-gray-50">
+                <tr className="text-left text-xs font-medium text-admin-gray-500">
+                  <th className="py-2 pl-3 font-medium">Product</th>
+                  <th className="w-[120px] py-2 font-medium">Price</th>
+                  <th className="w-[130px] py-2 font-medium">Quantity</th>
+                  <th className="w-[120px] py-2 font-medium">Unit</th>
+                  <th className="w-[110px] py-2 pr-5 text-right font-medium">Subtotal</th>
+                  <th className="w-[64px] py-2 pr-3 text-center font-medium">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -287,56 +288,43 @@ export function Billing2Screen({
                   </tr>
                 ) : (
                   cart.map((c, idx) => (
-                    <tr key={c.productId} className="border-b border-admin-gray-100 last:border-b-0">
-                      <td className="py-2.5 pl-3 text-admin-gray-500">{idx + 1}</td>
-                      <td className="py-2.5">
-                        <div className="flex items-center gap-3">
-                          <Thumb image={c.image} />
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-medium text-admin-gray-900">{c.name}</div>
-                            <div className="truncate text-xs text-admin-gray-500">
-                              {c.sku ? `SKU: ${c.sku}` : "SKU: —"}
-                              {c.unit ? ` · Unit: ${c.unit}` : ""}
-                            </div>
-                          </div>
-                        </div>
+                    <tr key={c.productId} className="border-t border-admin-gray-100 first:border-t-0 hover:bg-admin-gray-50/60">
+                      <td className="py-2 pl-3 pr-2">
+                        <div className="max-w-[260px] truncate font-medium text-admin-gray-900" title={c.name}>{c.name}</div>
+                        {c.sku && <div className="truncate text-xs text-admin-gray-400">SKU: {c.sku}</div>}
                       </td>
-                      <td className="whitespace-nowrap py-2.5 text-admin-gray-700">{fmt(c.unitPrice)}</td>
-                      <td className="py-2.5">
-                        <div className="inline-flex items-stretch overflow-hidden rounded-md border border-admin-gray-200 bg-admin-gray-50">
-                          <button
-                            type="button"
-                            onClick={() => changeQty(idx, -1)}
-                            aria-label="Decrease quantity"
-                            className="w-7 text-admin-gray-600 hover:bg-admin-gray-100"
-                          >
-                            −
-                          </button>
-                          <input
-                            type="number"
-                            min={1}
-                            value={c.qty}
-                            onChange={(e) => setQty(idx, e.target.value)}
-                            aria-label="Quantity"
-                            className="w-9 border-x border-admin-gray-200 bg-white py-1 text-center text-sm [appearance:textfield] focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => changeQty(idx, 1)}
-                            aria-label="Increase quantity"
-                            className="w-7 text-admin-gray-600 hover:bg-admin-gray-100"
-                          >
-                            +
-                          </button>
-                        </div>
+                      <td className="py-2 pr-2">
+                        <EditableNumber
+                          value={c.unitPrice}
+                          decimals={2}
+                          min={0}
+                          prefix="₹"
+                          ariaLabel={`Price of ${c.name}`}
+                          onCommit={(v) => setPrice(idx, String(v))}
+                          className={cn(c.priceOverridden && "border-[#F3B6A6] bg-[#FFF8F6]")}
+                        />
                       </td>
-                      <td className="whitespace-nowrap py-2.5 font-medium text-admin-gray-900">{fmt(c.unitPrice * c.qty)}</td>
-                      <td className="py-2.5 pr-3 text-center">
+                      <td className="py-2 pr-2">
+                        <QtyStepper
+                          value={c.qty}
+                          name={c.name}
+                          onDec={() => changeQty(idx, -1)}
+                          onInc={() => changeQty(idx, 1)}
+                          onSet={(v) => setQty(idx, String(v))}
+                        />
+                      </td>
+                      <td className="py-2 pr-2">
+                        <UnitPicker value={c.unit ?? ""} name={c.name} onChange={(u) => setUnit(idx, u)} />
+                      </td>
+                      <td className="whitespace-nowrap py-2 pr-5 text-right font-semibold text-admin-gray-900">
+                        {fmt(c.unitPrice * c.qty)}
+                      </td>
+                      <td className="py-2 pr-3 text-center">
                         <button
                           type="button"
                           onClick={() => removeFromCart(idx)}
                           aria-label={`Remove ${c.name}`}
-                          className="rounded-md p-1 text-red-500 hover:bg-red-50"
+                          className="rounded-md p-1.5 text-red-500 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -348,8 +336,8 @@ export function Billing2Screen({
             </table>
           </div>
 
-          {/* Coupon + totals */}
-          <div className="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+          {/* Coupon + totals — pinned to the bottom of the card */}
+          <div className="mt-3 grid grid-cols-1 gap-3 rounded-b-xl border-t border-admin-gray-100 bg-white p-4 md:grid-cols-2">
             <div className="self-start rounded-lg bg-[#FFF6F3] p-3">
               <label htmlFor="b2-coupon" className="mb-2 flex items-center gap-2 text-sm font-semibold text-admin-gray-900">
                 <Tag className="h-3.5 w-3.5" style={{ color: CORAL }} /> Coupon Code
@@ -361,6 +349,12 @@ export function Billing2Screen({
                   placeholder="Enter coupon code"
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      applyCoupon(couponCode, allCoupons);
+                    }
+                  }}
                   className="min-w-0 flex-1 rounded-md border border-admin-gray-200 bg-white px-3 py-1.5 text-sm placeholder:normal-case placeholder:text-admin-gray-400 focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
                 />
                 <button
@@ -615,17 +609,140 @@ export function Billing2Screen({
   );
 }
 
-/** Product thumbnail with a neutral placeholder when the product has no image. */
-function Thumb({ image, size = "md" }: { image?: string | null; size?: "sm" | "md" }) {
-  const box = size === "sm" ? "h-8 w-8" : "h-10 w-10";
-  if (image) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={`/${image}`} alt="" className={cn(box, "shrink-0 rounded-md border border-admin-gray-100 object-cover")} />;
+const UNIT_PRESETS = ["KG", "Gram", "Liter", "ml", "cm", "Meter", "Piece"];
+
+/**
+ * Number input that keeps what the cashier is typing (e.g. "12." mid-entry)
+ * and reports each valid value upward, so the line subtotal updates live.
+ * Snaps back to the stored value on blur if left empty/invalid.
+ */
+function EditableNumber({
+  value, onCommit, decimals, min, prefix, ariaLabel, className,
+}: {
+  value: number; onCommit: (v: number) => void; decimals: number; min: number;
+  prefix?: string; ariaLabel: string; className?: string;
+}) {
+  const show = (n: number) => (decimals > 0 ? n.toFixed(decimals) : String(n));
+  const [text, setText] = useState(show(value));
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setText(show(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, focused]);
+  return (
+    <div className="relative">
+      {prefix && <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-admin-gray-400">{prefix}</span>}
+      <input
+        type="number"
+        inputMode="decimal"
+        step={decimals > 0 ? "0.01" : "1"}
+        min={min}
+        aria-label={ariaLabel}
+        value={text}
+        onFocus={(e) => { setFocused(true); e.target.select(); }}
+        onBlur={() => setFocused(false)}
+        onChange={(e) => {
+          setText(e.target.value);
+          const n = parseFloat(e.target.value);
+          if (Number.isFinite(n) && n >= min) onCommit(n);
+        }}
+        className={cn(
+          "h-8 w-full rounded-md border border-admin-gray-200 bg-white pr-2 text-sm text-admin-gray-900 [appearance:textfield] focus:border-[#EE6A4D] focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/15 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+          prefix ? "pl-5" : "pl-2",
+          className
+        )}
+      />
+    </div>
+  );
+}
+
+/** Quantity stepper: − [typed qty] +, one bordered control. */
+function QtyStepper({
+  value, name, onDec, onInc, onSet,
+}: { value: number; name: string; onDec: () => void; onInc: () => void; onSet: (v: number) => void }) {
+  const [text, setText] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setText(String(value));
+  }, [value, focused]);
+  const btn =
+    "flex h-full w-8 items-center justify-center text-admin-gray-500 transition-colors hover:bg-[#FFF4F0] hover:text-[#EE6A4D] active:bg-[#FFE9E2]";
+  return (
+    <div className="inline-flex h-8 items-stretch overflow-hidden rounded-md border border-admin-gray-200 bg-white shadow-sm focus-within:border-[#EE6A4D] focus-within:ring-2 focus-within:ring-[#EE6A4D]/15">
+      <button type="button" onClick={onDec} aria-label={`Decrease quantity of ${name}`} className={btn}>
+        <Minus className="h-3.5 w-3.5" />
+      </button>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={1}
+        aria-label={`Quantity of ${name}`}
+        value={text}
+        onFocus={(e) => { setFocused(true); e.target.select(); }}
+        onBlur={() => setFocused(false)}
+        onChange={(e) => {
+          setText(e.target.value);
+          const n = parseInt(e.target.value, 10);
+          if (Number.isFinite(n) && n >= 1) onSet(n);
+        }}
+        className="w-11 border-x border-admin-gray-200 text-center text-sm font-semibold text-admin-gray-900 [appearance:textfield] focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      />
+      <button type="button" onClick={onInc} aria-label={`Increase quantity of ${name}`} className={btn}>
+        <Plus className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+/** Unit per line: preset list, "No unit", or a custom text unit. */
+function UnitPicker({ value, name, onChange }: { value: string; name: string; onChange: (u: string) => void }) {
+  const isCustomValue = value !== "" && !UNIT_PRESETS.includes(value);
+  const [custom, setCustom] = useState(isCustomValue);
+  if (custom) {
+    return (
+      <div className="flex h-8 items-stretch overflow-hidden rounded-md border border-admin-gray-200 bg-white focus-within:border-[#EE6A4D] focus-within:ring-2 focus-within:ring-[#EE6A4D]/15">
+        <input
+          type="text"
+          autoFocus={!isCustomValue}
+          maxLength={40}
+          placeholder="Unit"
+          aria-label={`Custom unit for ${name}`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="min-w-0 flex-1 px-2 text-sm focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={() => { setCustom(false); onChange(""); }}
+          aria-label="Back to unit list"
+          className="px-1.5 text-admin-gray-400 hover:text-admin-gray-700"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
   }
   return (
-    <span className={cn(box, "flex shrink-0 items-center justify-center rounded-md border border-admin-gray-100 bg-admin-gray-50 text-admin-gray-300")}>
-      <Package className={size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"} />
-    </span>
+    <div className="relative">
+      <select
+        aria-label={`Unit for ${name}`}
+        value={value}
+        onChange={(e) => {
+          if (e.target.value === "__custom") {
+            setCustom(true);
+            onChange("");
+          } else onChange(e.target.value);
+        }}
+        className="h-8 w-full appearance-none rounded-md border border-admin-gray-200 bg-white pl-2 pr-6 text-sm text-admin-gray-900 focus:border-[#EE6A4D] focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/15"
+      >
+        <option value="">—</option>
+        {UNIT_PRESETS.map((u) => (
+          <option key={u} value={u}>{u}</option>
+        ))}
+        <option value="__custom">Custom…</option>
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-gray-400" />
+    </div>
   );
 }
 

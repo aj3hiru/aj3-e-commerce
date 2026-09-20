@@ -116,6 +116,11 @@ export function usePosCart() {
     setCart((prev) => prev.map((c, i) => (i === idx ? { ...c, unitPrice: price, priceOverridden: true } : c)));
   }, []);
 
+  /** Change the sold-by unit on one cart line (Billing2's editable Unit column). */
+  const setUnit = useCallback((idx: number, unit: string) => {
+    setCart((prev) => prev.map((c, i) => (i === idx ? { ...c, unit: unit || null } : c)));
+  }, []);
+
   const removeFromCart = useCallback((idx: number) => {
     setCart((prev) => prev.filter((_, i) => i !== idx));
   }, []);
@@ -216,6 +221,7 @@ export function usePosCart() {
     changeQty,
     setQty,
     setPrice,
+    setUnit,
     removeFromCart,
     appliedCoupon,
     couponMessage,

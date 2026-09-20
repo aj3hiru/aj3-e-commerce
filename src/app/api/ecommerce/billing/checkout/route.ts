@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
       const lineItems: {
         product: Awaited<ReturnType<typeof tx.ecomProduct.findUnique>>;
         qty: number;
+        unit: string;
         unitPrice: number;
         lineTotal: number;
         gstAmount?: number;
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
         }
 
         const lineTotal = unitPrice * it.qty;
-        lineItems.push({ product, qty: it.qty, unitPrice, lineTotal });
+        lineItems.push({ product, qty: it.qty, unit: it.unit ?? "", unitPrice, lineTotal });
         subtotal += lineTotal;
       }
 
@@ -177,7 +178,7 @@ export async function POST(req: NextRequest) {
           data: {
             orderId: order.id,
             productId: li.product!.id,
-            productName: li.product!.name,
+            productName: li.unit ? `${li.product!.name} (${li.unit})` : li.product!.name,
             hsnCode: li.product!.hsnCode,
             qty: li.qty,
             price: li.unitPrice,

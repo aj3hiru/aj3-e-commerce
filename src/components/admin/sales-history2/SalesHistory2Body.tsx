@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   TrendingUp, BarChart3, CalendarDays, CalendarRange, ArrowRight, IndianRupee, ShoppingCart, Wallet,
-  ArrowUp, ArrowDown, Filter, Search, ChevronDown, RotateCcw, FileText, Globe, ChevronsUpDown, Loader2,
+  ArrowUp, ArrowDown, ChevronDown, ChevronLeft, ChevronRight, FileText, Globe, ChevronsUpDown, Loader2,
 } from "lucide-react";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { ChartSeries, FilterOptions, LedgerRow, Metric, SalesFilters, SalesMetrics } from "@/lib/sales-history2";
@@ -343,6 +343,35 @@ function DueTile({ collected, outstanding }: { collected: number; outstanding: n
 
 /* ───────────────────────── Filter Sales ───────────────────────── */
 
+type Preset = { key: string; label: string; range: [string, string] };
+
+/** The EduMint range presets, computed in India time. */
+function rangePresets(): Preset[] {
+  const today = istTodayYmd();
+  const firstThis = `${today.slice(0, 8)}01`;
+  const lastPrev = shiftYmd(firstThis, -1);
+  return [
+    { key: "today", label: "Today", range: [today, today] },
+    { key: "yesterday", label: "Yesterday", range: [shiftYmd(today, -1), shiftYmd(today, -1)] },
+    { key: "7days", label: "7 Days", range: [shiftYmd(today, -6), today] },
+    { key: "this_month", label: "This Month", range: [firstThis, today] },
+    { key: "prev_month", label: "Previous Month", range: [`${lastPrev.slice(0, 8)}01`, lastPrev] },
+  ];
+}
+
+/** 2026-09-01 → "01 Sep 2026" */
+function longDate(ymd: string) {
+  return fmtDate(`${ymd}T12:00:00Z`);
+}
+
+/**
+ * Filter Sales, in the original EduMint range-bar style:
+ *   Showing: <range>   [Today|Yesterday|7 Days|This Month|Previous Month]   [from] to [to] [Apply]
+ * followed by Order Status / Payment Status / Customer / Items-Product.
+ *
+ * A preset applies at once (like EduMint's preset links); dates and the four
+ * dropdowns apply with Apply. Either way every current choice is kept.
+ */
 function FilterSalesCard({ filters, options }: { filters: SalesFilters; options: FilterOptions }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -352,54 +381,105 @@ function FilterSalesCard({ filters, options }: { filters: SalesFilters; options:
   const [payment, setPayment] = useState<string>(filters.payment);
   const [customer, setCustomer] = useState(filters.customer);
   const [product, setProduct] = useState(filters.product);
-  const [q, setQ] = useState(filters.q);
 
-  function apply(e?: React.FormEvent) {
-    e?.preventDefault();
-    const [a, b] = from <= to ? [from, to] : [to, from];
-    const p = new URLSearchParams({ from: a, to: b });
+  // Back/forward navigation or a preset click changes the URL: follow it.
+  useEffect(() => {
+    setFrom(filters.from); setTo(filters.to); setStatus(filters.status); setPayment(filters.payment);
+    setCustomer(filters.customer); setProduct(filters.product);
+  }, [filters]);
+
+  const presets = rangePresets();
+  const activePreset = presets.find((p) => p.range[0] === filters.from && p.range[1] === filters.to);
+  const showing = activePreset
+    ? activePreset.label
+    : filters.from === filters.to
+    ? longDate(filters.from)
+    : `${longDate(filters.from)} – ${longDate(filters.to)}`;
+
+  function go(a: string, b: string) {
+    const [f, t] = a <= b ? [a, b] : [b, a];
+    const p = new URLSearchParams({ from: f, to: t });
     if (status !== "all") p.set("status", status);
     if (payment !== "all") p.set("payment", payment);
     if (customer) p.set("customer", customer);
     if (product) p.set("product", product);
-    if (q.trim()) p.set("q", q.trim());
+    if (filters.q) p.set("q", filters.q);
     startTransition(() => router.push(`${PAGE_PATH}?${p.toString()}`));
   }
 
-  function clear() {
-    startTransition(() => router.push(PAGE_PATH));
-  }
-
-  // Filters reset to the URL's values after Clear / back-forward navigation.
-  useEffect(() => {
-    setFrom(filters.from); setTo(filters.to); setStatus(filters.status); setPayment(filters.payment);
-    setCustomer(filters.customer); setProduct(filters.product); setQ(filters.q);
-  }, [filters]);
-
   return (
-    <Card className="p-5">
-      <form onSubmit={apply}>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="flex items-center gap-2.5 text-base font-semibold text-admin-gray-900">
-            <Filter className="h-5 w-5 text-blue-600" /> Filter Sales
-          </h2>
-          <div className="relative w-full sm:w-[400px]">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-gray-400" />
+    <Card className="px-4 py-3">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (from && to) go(from, to);
+        }}
+      >
+        {/* EduMint .range-bar */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="mr-auto flex items-center gap-2 text-[0.8125rem] text-admin-gray-500">
+            Showing: <strong className="font-bold text-admin-gray-900">{showing}</strong>
+            {pending && <Loader2 className="h-3.5 w-3.5 animate-spin text-admin-gray-400" />}
+          </span>
+
+          {/* .btn-group */}
+          <div className="inline-flex flex-wrap" role="group" aria-label="Date range presets">
+            {presets.map((p, i) => {
+              const active = activePreset?.key === p.key;
+              return (
+                <button
+                  key={p.key}
+                  type="button"
+                  disabled={pending}
+                  aria-pressed={active}
+                  onClick={() => go(p.range[0], p.range[1])}
+                  className={cn(
+                    "relative border px-2 py-1 text-[0.8125rem] leading-normal transition-colors",
+                    i === 0 && "rounded-l-[0.25rem]",
+                    i === presets.length - 1 && "rounded-r-[0.25rem]",
+                    i > 0 && "-ml-px",
+                    active
+                      ? "z-10 border-[#0d6efd] bg-[#0d6efd] text-white"
+                      : "border-[#6c757d] bg-transparent text-[#6c757d] hover:bg-[#6c757d] hover:text-white"
+                  )}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* .range-bar-custom */}
+          <div className="ml-auto flex items-center gap-[0.4rem]">
             <input
-              type="search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search by order ID, customer, or item..."
-              aria-label="Search sales"
-              className="h-9 w-full rounded-lg border border-admin-gray-200 bg-white pl-9 pr-3 text-[13px] placeholder:text-admin-gray-400 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+              type="date"
+              aria-label="Range start date"
+              value={from}
+              max={to || undefined}
+              onChange={(e) => setFrom(e.target.value)}
+              className="w-[150px] rounded-[0.25rem] border border-admin-gray-300 px-2 py-1 text-[0.875rem] text-admin-gray-700 focus:border-admin-primary focus:outline-none"
             />
+            <span className="text-[0.875em] text-[#6c757d]">to</span>
+            <input
+              type="date"
+              aria-label="Range end date"
+              value={to}
+              min={from || undefined}
+              onChange={(e) => setTo(e.target.value)}
+              className="w-[150px] rounded-[0.25rem] border border-admin-gray-300 px-2 py-1 text-[0.875rem] text-admin-gray-700 focus:border-admin-primary focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={pending}
+              className="rounded-[0.25rem] border border-[#6c757d] bg-[#6c757d] px-2 py-1 text-[0.875rem] text-white hover:border-[#5c636a] hover:bg-[#5c636a] disabled:opacity-70"
+            >
+              Apply
+            </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-[1.25fr_1fr_1fr_1fr_1fr_auto]">
-          <Field label="Date Range">
-            <DateRangePicker from={from} to={to} onChange={(a, b) => { setFrom(a); setTo(b); }} />
-          </Field>
+        {/* Order Status / Payment Status / Customer / Items-Product */}
+        <div className="mt-3 grid grid-cols-1 gap-4 border-t border-admin-gray-100 pt-3 sm:grid-cols-2 lg:grid-cols-4">
           <Field label="Order Status">
             <SelectBox value={status} onChange={setStatus} ariaLabel="Order Status">
               <option value="all">All</option>
@@ -434,23 +514,6 @@ function FilterSalesCard({ filters, options }: { filters: SalesFilters; options:
               ))}
             </SelectBox>
           </Field>
-          <div className="flex gap-3 sm:col-span-2 lg:col-span-1">
-            <button
-              type="submit"
-              disabled={pending}
-              className="flex h-10 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:opacity-70 2xl:flex-none"
-            >
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Filter className="h-4 w-4" />} Apply Filters
-            </button>
-            <button
-              type="button"
-              onClick={clear}
-              disabled={pending}
-              className="flex h-10 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-admin-gray-200 bg-white px-4 text-sm font-medium text-admin-gray-700 transition-colors hover:bg-admin-gray-50 disabled:opacity-70 2xl:flex-none"
-            >
-              <RotateCcw className="h-4 w-4" /> Clear
-            </button>
-          </div>
         </div>
       </form>
     </Card>
@@ -460,7 +523,7 @@ function FilterSalesCard({ filters, options }: { filters: SalesFilters; options:
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <div className="mb-1.5 text-[13px] font-medium text-admin-gray-700">{label}</div>
+      <div className="mb-1.5 text-sm font-medium text-admin-gray-700">{label}</div>
       {children}
     </div>
   );
@@ -473,89 +536,11 @@ function SelectBox({ value, onChange, ariaLabel, children }: { value: string; on
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={ariaLabel}
-        className="h-10 w-full appearance-none truncate rounded-lg border border-admin-gray-200 bg-white pl-3 pr-9 text-[13px] text-admin-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+        className="h-10 w-full appearance-none truncate rounded-xl border border-admin-gray-200 bg-white pl-3.5 pr-10 text-sm text-admin-gray-900 focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/15"
       >
         {children}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-500" />
-    </div>
-  );
-}
-
-function DateRangePicker({ from, to, onChange }: { from: string; to: string; onChange: (from: string, to: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDoc(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
-
-  const today = istTodayYmd();
-  const presets: { label: string; range: [string, string] }[] = [
-    { label: "Today", range: [today, today] },
-    { label: "Yesterday", range: [shiftYmd(today, -1), shiftYmd(today, -1)] },
-    { label: "Last 7 Days", range: [shiftYmd(today, -6), today] },
-    { label: "This Month", range: [`${today.slice(0, 8)}01`, today] },
-    (() => {
-      const firstThis = `${today.slice(0, 8)}01`;
-      const lastPrev = shiftYmd(firstThis, -1);
-      return { label: "Last Month", range: [`${lastPrev.slice(0, 8)}01`, lastPrev] as [string, string] };
-    })(),
-  ];
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-label="Date range"
-        className="flex h-10 w-full items-center gap-2 rounded-lg border border-admin-gray-200 bg-white px-3 text-left text-[13px] text-admin-gray-700 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
-      >
-        <CalendarDays className="h-4 w-4 shrink-0 text-admin-gray-500" />
-        <span className="min-w-0 flex-1 truncate">{dmy(from)} – {dmy(to)}</span>
-        <ChevronDown className={cn("h-4 w-4 shrink-0 text-admin-gray-500 transition-transform", open && "rotate-180")} />
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-2 w-[300px] rounded-xl border border-admin-gray-200 bg-white p-4 shadow-lg">
-          <div className="mb-3 flex flex-wrap gap-1.5">
-            {presets.map((p) => {
-              const active = p.range[0] === from && p.range[1] === to;
-              return (
-                <button
-                  key={p.label}
-                  type="button"
-                  onClick={() => onChange(p.range[0], p.range[1])}
-                  className={cn(
-                    "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
-                    active ? "border-emerald-600 bg-emerald-50 text-emerald-700" : "border-admin-gray-200 text-admin-gray-600 hover:bg-admin-gray-50"
-                  )}
-                >
-                  {p.label}
-                </button>
-              );
-            })}
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="text-xs text-admin-gray-600">
-              From
-              <input type="date" value={from} max={to} onChange={(e) => e.target.value && onChange(e.target.value, to)} className="mt-1 h-9 w-full rounded-md border border-admin-gray-200 px-2 text-[13px] text-admin-gray-900" />
-            </label>
-            <label className="text-xs text-admin-gray-600">
-              To
-              <input type="date" value={to} min={from} onChange={(e) => e.target.value && onChange(from, e.target.value)} className="mt-1 h-9 w-full rounded-md border border-admin-gray-200 px-2 text-[13px] text-admin-gray-900" />
-            </label>
-          </div>
-          <button type="button" onClick={() => setOpen(false)} className="mt-3 h-8 w-full rounded-md bg-admin-gray-100 text-xs font-medium text-admin-gray-700 hover:bg-admin-gray-200">
-            Done
-          </button>
-        </div>
-      )}
+      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-500" />
     </div>
   );
 }
@@ -591,6 +576,8 @@ function SalesLedgerCard({ rows }: { rows: LedgerRow[] }) {
   const { isVisible } = useDashboardWidgetPrefs();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "time", dir: "desc" });
+  const [pageSize, setPageSize] = useState(20); // 0 = All
+  const [page, setPage] = useState(1);
   const cols = COLUMNS.filter((c) => isVisible(c.key));
   const show = (key: string) => isVisible(key);
 
@@ -613,24 +600,50 @@ function SalesLedgerCard({ rows }: { rows: LedgerRow[] }) {
   const shownTotal = shown.reduce((s, r) => s + r.total, 0);
   const shownDue = shown.reduce((s, r) => s + r.due, 0);
 
+  // Pagination (DataTables-style "Show N entries").
+  const pageCount = pageSize === 0 ? 1 : Math.max(1, Math.ceil(shown.length / pageSize));
+  const current = Math.min(page, pageCount);
+  const startIdx = pageSize === 0 ? 0 : (current - 1) * pageSize;
+  const pageRows = pageSize === 0 ? shown : shown.slice(startIdx, startIdx + pageSize);
+  // A new search, sort, page size or data set starts again from page 1.
+  useEffect(() => setPage(1), [search, sort, pageSize, rows]);
+
   function toggleSort(k: SortKey) {
     setSort((s) => (s.key === k ? { key: k, dir: s.dir === "asc" ? "desc" : "asc" } : { key: k, dir: k === "time" || k === "total" || k === "paid" ? "desc" : "asc" }));
   }
 
   return (
     <Card className="p-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2.5 text-base font-semibold text-admin-gray-900">
-          <FileText className="h-5 w-5 text-blue-600" /> Sales Ledger
-        </h2>
-        <label className="flex items-center gap-2 text-[13px] text-admin-gray-700">
+      <h2 className="mb-3 flex items-center gap-2.5 text-base font-semibold text-admin-gray-900">
+        <FileText className="h-5 w-5 text-blue-600" /> Sales Ledger
+      </h2>
+
+      {/* Show [20] entries ··········· Search: [      ] */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-sm text-admin-gray-800">
+        <label className="flex items-center gap-2">
+          Show
+          <span className="relative">
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              aria-label="Entries per page"
+              className="h-9 w-[88px] appearance-none rounded-md border border-admin-gray-200 bg-white pl-3 pr-8 text-sm focus:border-admin-primary focus:outline-none"
+            >
+              {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
+              <option value={0}>All</option>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-600" />
+          </span>
+          entries
+        </label>
+        <label className="flex items-center gap-2">
           Search:
           <input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             aria-label="Search the ledger"
-            className="h-8 w-[200px] rounded-md border border-admin-gray-200 bg-white px-2.5 text-[13px] focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/15"
+            className="h-9 w-[220px] rounded-md border border-admin-gray-200 bg-white px-2.5 text-sm focus:border-admin-primary focus:outline-none"
           />
         </label>
       </div>
@@ -668,7 +681,7 @@ function SalesLedgerCard({ rows }: { rows: LedgerRow[] }) {
                   </td>
                 </tr>
               ) : (
-                shown.map((r) => (
+                pageRows.map((r) => (
                   <tr key={r.id} className="border-b border-admin-gray-100 odd:bg-white even:bg-admin-gray-50/70 hover:bg-emerald-50/40">
                     {show("sh2-c-time") && (
                       <td className="whitespace-nowrap px-3 py-2 align-middle">
@@ -727,16 +740,54 @@ function SalesLedgerCard({ rows }: { rows: LedgerRow[] }) {
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-admin-gray-500">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-[13px] text-admin-gray-600">
         <span>
-          Showing {shown.length} of {rows.length} sale{rows.length === 1 ? "" : "s"}
-        </span>
-        <span>
+          {shown.length === 0
+            ? "Showing 0 entries"
+            : `Showing ${startIdx + 1} to ${startIdx + pageRows.length} of ${shown.length} entries`}
+          {shown.length !== rows.length && ` (filtered from ${rows.length} total entries)`}
+          <span className="mx-2 text-admin-gray-300">|</span>
           Total <b className="text-admin-gray-900">{money(shownTotal)}</b>
           {shownDue > 0.004 && <> · Due <b className="text-red-600">{money(shownDue)}</b></>}
         </span>
+        {pageCount > 1 && <Pager page={current} pageCount={pageCount} onPage={setPage} />}
       </div>
     </Card>
+  );
+}
+
+/** Previous · 1 2 3 … 9 · Next */
+function Pager({ page, pageCount, onPage }: { page: number; pageCount: number; onPage: (p: number) => void }) {
+  const nums: (number | "…")[] = [];
+  for (let i = 1; i <= pageCount; i++) {
+    if (i === 1 || i === pageCount || Math.abs(i - page) <= 1) nums.push(i);
+    else if (nums[nums.length - 1] !== "…") nums.push("…");
+  }
+  const btn = "flex h-8 min-w-8 items-center justify-center border border-admin-gray-200 px-2.5 text-[13px] -ml-px first:ml-0 first:rounded-l-md last:rounded-r-md";
+  return (
+    <nav className="flex" aria-label="Ledger pages">
+      <button type="button" disabled={page === 1} onClick={() => onPage(page - 1)} className={cn(btn, "gap-1 text-admin-gray-700 hover:bg-admin-gray-50 disabled:cursor-not-allowed disabled:text-admin-gray-300 disabled:hover:bg-transparent")}>
+        <ChevronLeft className="h-3.5 w-3.5" /> Previous
+      </button>
+      {nums.map((n, i) =>
+        n === "…" ? (
+          <span key={`e${i}`} className={cn(btn, "text-admin-gray-400")}>…</span>
+        ) : (
+          <button
+            key={n}
+            type="button"
+            aria-current={n === page ? "page" : undefined}
+            onClick={() => onPage(n)}
+            className={cn(btn, n === page ? "relative z-10 border-[#0d6efd] bg-[#0d6efd] text-white" : "text-[#0d6efd] hover:bg-admin-gray-50")}
+          >
+            {n}
+          </button>
+        )
+      )}
+      <button type="button" disabled={page === pageCount} onClick={() => onPage(page + 1)} className={cn(btn, "gap-1 text-admin-gray-700 hover:bg-admin-gray-50 disabled:cursor-not-allowed disabled:text-admin-gray-300 disabled:hover:bg-transparent")}>
+        Next <ChevronRight className="h-3.5 w-3.5" />
+      </button>
+    </nav>
   );
 }
 

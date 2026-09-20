@@ -160,11 +160,6 @@ export function Billing2Screen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posSettings, lastOrderId, cart, isGuest, customer.customerId, customer.name, payments, appliedCoupon, promisedDate]);
 
-  // Step strip: purely a status readout (not clickable navigation, and every
-  // section stays on-page below it) — highlights wherever the cashier
-  // actually is in the flow, instead of always pointing at step 1.
-  const step: 1 | 2 | 3 = cart.length === 0 ? 1 : !isGuest && !customer.customerId && !customer.name.trim() ? 2 : 3;
-
   function handleProductAdded(product: PosProduct, qty: number) {
     setProducts((prev) => [...prev, product].sort((a, b) => a.name.localeCompare(b.name)));
     addToCartWithQty(product, qty);
@@ -172,14 +167,6 @@ export function Billing2Screen({
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_380px]">
-      {/* Step strip */}
-      <div className="lg:col-span-2">
-        <div className="flex flex-col gap-2 rounded-lg border border-admin-gray-200 bg-white p-3 sm:flex-row sm:items-stretch sm:gap-3 sm:p-4">
-          <StepChip n={1} title="Add items" subtitle="Scan or search products" active={step === 1} done={step > 1} />
-          <StepChip n={2} title="Customer" subtitle="Enter customer details" active={step === 2} done={step > 2} />
-          <StepChip n={3} title="Payment" subtitle="Choose method and complete" active={step === 3} done={false} />
-        </div>
-      </div>
 
       {/* LEFT: Scan + Cart */}
       <div className="space-y-5">
@@ -480,25 +467,6 @@ export function Billing2Screen({
       {showQuickAdd && (
         <QuickAddProductModal onClose={() => setShowQuickAdd(false)} onAdded={handleProductAdded} />
       )}
-    </div>
-  );
-}
-
-function StepChip({ n, title, subtitle, active, done }: { n: number; title: string; subtitle: string; active: boolean; done: boolean }) {
-  return (
-    <div className={cn("flex flex-1 items-center gap-3 rounded-lg border px-4 py-3 transition-colors", active ? "border-orange-200 bg-orange-50" : "border-transparent")}>
-      <span
-        className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold",
-          active ? "bg-orange-500 text-white" : done ? "bg-emerald-500 text-white" : "bg-admin-gray-200 text-admin-gray-500"
-        )}
-      >
-        {done ? <CheckCircle2 className="h-4 w-4" /> : n}
-      </span>
-      <div className="min-w-0">
-        <div className={cn("truncate text-sm font-semibold", active ? "text-admin-gray-900" : "text-admin-gray-700")}>{title}</div>
-        <div className="truncate text-xs text-admin-gray-400">{subtitle}</div>
-      </div>
     </div>
   );
 }

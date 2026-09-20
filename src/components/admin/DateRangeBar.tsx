@@ -11,6 +11,11 @@ interface DateRangeBarProps {
   rangeLabel: string;
   dateFrom: string;
   dateTo: string;
+  /** Show the dashboard's Display Options button. Only the dashboard wraps
+   *  this bar in <DashboardWidgetPrefsProvider>; on any other page (Sales
+   *  History, Analytics) the button has nothing to control and, without the
+   *  provider, crashed the whole page — so it is opt-in. */
+  showDisplayOptions?: boolean;
 }
 
 const PRESETS: { value: DashboardRange; label: string }[] = [
@@ -42,7 +47,7 @@ const PRESETS: { value: DashboardRange; label: string }[] = [
  *   .btn-outline-secondary  { #6c757d text+border, transparent; hover #6c757d/#fff }
  *   .btn-group .btn         { square inner corners, rounded outer only, -1px overlap }
  */
-export function DateRangeBar({ currentRange, rangeLabel, dateFrom, dateTo }: DateRangeBarProps) {
+export function DateRangeBar({ currentRange, rangeLabel, dateFrom, dateTo, showDisplayOptions = false }: DateRangeBarProps) {
   const router = useRouter();
   const [from, setFrom] = useState(dateFrom);
   const [to, setTo] = useState(dateTo);
@@ -115,7 +120,7 @@ export function DateRangeBar({ currentRange, rangeLabel, dateFrom, dateTo }: Dat
         </button>
       </form>
 
-      <DisplayOptionsPanel />
+      {showDisplayOptions && <DisplayOptionsPanel />}
     </div>
   );
 }

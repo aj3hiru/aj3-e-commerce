@@ -48,6 +48,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           rangeLabel={range.rangeLabel}
           dateFrom={range.dateFrom}
           dateTo={range.dateTo}
+          showDisplayOptions
         />
         <DashboardSections stats={stats} rangeLabel={range.rangeLabel} />
       </DashboardWidgetPrefsProvider>

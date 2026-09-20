@@ -5,6 +5,8 @@ import { generateOrderNumber } from "@/lib/order-number";
 import { logActivity } from "@/lib/activity-log";
 import { checkoutSchema } from "@/lib/validators/checkout";
 import type { Prisma } from "@prisma/client";
+import { campaignPriceFor, type CampaignPrice } from "@/lib/campaign-core";
+import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "@/lib/campaign-pricing";
 
 /**
  * Verified 1:1 against the `?action=checkout` branch of admin/ecommerce/billing.php.
@@ -29,6 +31,12 @@ export async function POST(req: NextRequest) {
   let payments = input.payments.filter((p) => p.amount > 0);
   if (payments.length === 0) payments = [{ method: "Cash", amount: 0 }];
 
+  // Campaign prices are worked out from the campaigns as they are right now.
+  // This is read before the bill is opened; if it can't be read the bill simply
+  // goes ahead at normal prices.
+  const now = new Date();
+  const liveCampaigns = await loadLiveCampaigns({ fresh: true });
+
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Re-fetch authoritative product data — never trust client-sent prices.
@@ -39,6 +47,7 @@ export async function POST(req: NextRequest) {
         unitPrice: number;
         lineTotal: number;
         gstAmount?: number;
+        campaign: CampaignPrice | null;
       }[] = [];
       let subtotal = 0;
 
@@ -50,14 +59,24 @@ export async function POST(req: NextRequest) {
         const price = Number(product.price);
         let unitPrice = salePrice > 0 && salePrice < price ? salePrice : price;
 
+        // A live campaign can only lower the price (never stacks with the sale price).
+        let campaign = campaignPriceFor(
+          { id: product.id, categoryId: product.categoryId, brandId: product.brandId, price, salePrice: salePrice > 0 ? salePrice : null },
+          liveCampaigns,
+          now
+        );
+        if (campaign) unitPrice = campaign.unitPrice;
+
         // Staff override honored ONLY here (authenticated admin billing screen),
-        // exactly matching the trust boundary in the PHP version.
+        // exactly matching the trust boundary in the PHP version. A price the
+        // cashier typed in is theirs, not the campaign's, so it isn't counted as a campaign sale.
         if (it.price_override !== null && it.price_override !== undefined && it.price_override >= 0) {
           unitPrice = it.price_override;
+          campaign = null;
         }
 
         const lineTotal = unitPrice * it.qty;
-        lineItems.push({ product, qty: it.qty, unit: it.unit ?? "", unitPrice, lineTotal });
+        lineItems.push({ product, qty: it.qty, unit: it.unit ?? "", unitPrice, lineTotal, campaign });
         subtotal += lineTotal;
       }
 
@@ -173,8 +192,9 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      const campaignSales: CampaignSaleInput[] = [];
       for (const li of lineItems) {
-        await tx.ecomOrderItem.create({
+        const item = await tx.ecomOrderItem.create({
           data: {
             orderId: order.id,
             productId: li.product!.id,
@@ -185,7 +205,14 @@ export async function POST(req: NextRequest) {
             gstRate: li.product!.gstRate,
             gstAmount: li.gstAmount!,
           },
+          select: { id: true },
         });
+        if (li.campaign) {
+          campaignSales.push({
+            campaignId: li.campaign.campaignId, orderId: order.id, orderItemId: item.id, productId: li.product!.id,
+            qty: li.qty, unitPrice: li.unitPrice, discountPerUnit: li.campaign.discountPerUnit,
+          });
+        }
 
         if (li.product!.productType === "physical" && li.product!.stockQty !== null) {
           await tx.ecomProduct.update({
@@ -219,8 +246,11 @@ export async function POST(req: NextRequest) {
         await tx.ecomCoupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } });
       }
 
-      return { order, discount, totalGst, dueAmount, grandTotal };
+      return { order, discount, totalGst, dueAmount, grandTotal, campaignSales };
     });
+
+    // Remember which lines were sold under a campaign (after the bill is safely saved; never throws).
+    await recordCampaignSales(result.campaignSales);
 
     await logActivity(
       req,

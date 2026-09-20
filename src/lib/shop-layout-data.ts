@@ -3,6 +3,7 @@ import { getCustomerSession } from "./customer-auth";
 import { getCart, cartCount } from "./cart-session";
 import { getShopHeaderSettings } from "./header-settings";
 import type { ShopBusinessSettings, ShopCategoryNavItem, ShopCustomer, ShopHeaderSettings } from "@/types/shop";
+import { campaignSalePrices } from "@/lib/campaign-pricing";
 
 export interface ShopLayoutData {
   business: ShopBusinessSettings;
@@ -60,12 +61,13 @@ export async function getShopLayoutData(): Promise<ShopLayoutData> {
 async function computeCartTotal(cart: Record<number, number>): Promise<number> {
   const ids = Object.keys(cart).map(Number);
   if (ids.length === 0) return 0;
-  const products = await prisma.ecomProduct.findMany({ where: { id: { in: ids } }, select: { id: true, price: true, salePrice: true } });
+  const products = await prisma.ecomProduct.findMany({ where: { id: { in: ids } }, select: { id: true, price: true, salePrice: true, categoryId: true, brandId: true } });
+  const campaign = await campaignSalePrices(products); // campaign prices, so the badge matches the cart
   let total = 0;
   for (const p of products) {
     const sale = p.salePrice ? Number(p.salePrice) : 0;
     const price = Number(p.price);
-    const unit = sale > 0 && sale < price ? sale : price;
+    const unit = campaign.get(p.id) ?? (sale > 0 && sale < price ? sale : price);
     total += unit * (cart[p.id] ?? 0);
   }
   return total;

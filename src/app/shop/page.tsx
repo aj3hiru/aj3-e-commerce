@@ -8,6 +8,7 @@ import { FestiveBanner } from "@/components/shop/FestiveBanner";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
 import { prisma } from "@/lib/db";
 import { PackageSearch, Store } from "lucide-react";
+import { campaignSalePrices } from "@/lib/campaign-pricing";
 
 interface ShopHomePageProps {
   searchParams: Promise<{ q?: string }>;
@@ -26,6 +27,7 @@ export default async function ShopHomePage({ searchParams }: ShopHomePageProps) 
       orderBy: { createdAt: "desc" },
       take: 60,
     });
+    const campaign = await campaignSalePrices(products); // campaign prices, when a campaign is live
 
     return (
       <ShopLayout {...layoutData}>
@@ -40,7 +42,7 @@ export default async function ShopHomePage({ searchParams }: ShopHomePageProps) 
             {products.map((p: (typeof products)[number]) => (
               <ProductCard
                 key={p.id}
-                product={{ id: p.id, slug: p.slug, name: p.name, image: p.image, price: Number(p.price), salePrice: p.salePrice ? Number(p.salePrice) : null, productType: p.productType, stockQty: p.stockQty }}
+                product={{ id: p.id, slug: p.slug, name: p.name, image: p.image, price: Number(p.price), salePrice: campaign.get(p.id) ?? (p.salePrice ? Number(p.salePrice) : null), productType: p.productType, stockQty: p.stockQty }}
               />
             ))}
           </div>
@@ -88,6 +90,7 @@ export default async function ShopHomePage({ searchParams }: ShopHomePageProps) 
       return { category: cat, products };
     })
   );
+  const autoCampaign = await campaignSalePrices(autoCategoryRows.flatMap((r) => r.products));
 
   return (
     <ShopLayout {...layoutData}>
@@ -136,7 +139,7 @@ export default async function ShopHomePage({ searchParams }: ShopHomePageProps) 
               {row.products.map((p: (typeof row.products)[number]) => (
                 <ProductCard
                   key={p.id}
-                  product={{ id: p.id, slug: p.slug, name: p.name, image: p.image, price: Number(p.price), salePrice: p.salePrice ? Number(p.salePrice) : null, productType: p.productType, stockQty: p.stockQty }}
+                  product={{ id: p.id, slug: p.slug, name: p.name, image: p.image, price: Number(p.price), salePrice: autoCampaign.get(p.id) ?? (p.salePrice ? Number(p.salePrice) : null), productType: p.productType, stockQty: p.stockQty }}
                 />
               ))}
             </div>
@@ -182,6 +185,7 @@ async function ProductGridSectionServer({ section }: { section: { id: number; ti
 
   if (products.length === 0) return null;
 
+  const campaign = await campaignSalePrices(products);
   const design = (section.cardDesign || "design1") as "design1" | "design2" | "design3" | "design4";
 
   return (
@@ -192,7 +196,7 @@ async function ProductGridSectionServer({ section }: { section: { id: number; ti
           <Card2Product
             key={p.id}
             design={design}
-            product={{ id: p.id, slug: p.slug, name: p.name, image: p.image, price: Number(p.price), salePrice: p.salePrice ? Number(p.salePrice) : null, productType: p.productType, stockQty: p.stockQty }}
+            product={{ id: p.id, slug: p.slug, name: p.name, image: p.image, price: Number(p.price), salePrice: campaign.get(p.id) ?? (p.salePrice ? Number(p.salePrice) : null), productType: p.productType, stockQty: p.stockQty }}
           />
         ))}
       </div>

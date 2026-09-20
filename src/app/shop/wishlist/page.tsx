@@ -6,6 +6,7 @@ import { ProductCard } from "@/components/shop/ProductCard";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { prisma } from "@/lib/db";
+import { campaignSalePrices } from "@/lib/campaign-pricing";
 
 /** Verified against shop/wishlist.php. */
 export default async function WishlistPage() {
@@ -18,6 +19,7 @@ export default async function WishlistPage() {
     include: { product: true },
     orderBy: { createdAt: "desc" },
   });
+  const campaign = await campaignSalePrices(wishlistItems.map((w: (typeof wishlistItems)[number]) => w.product)); // campaign prices, when a campaign is live
 
   return (
     <ShopLayout {...layoutData}>
@@ -38,7 +40,7 @@ export default async function WishlistPage() {
               key={w.id}
               product={{
                 id: w.product.id, slug: w.product.slug, name: w.product.name, image: w.product.image,
-                price: Number(w.product.price), salePrice: w.product.salePrice ? Number(w.product.salePrice) : null,
+                price: Number(w.product.price), salePrice: campaign.get(w.product.id) ?? (w.product.salePrice ? Number(w.product.salePrice) : null),
                 productType: w.product.productType, stockQty: w.product.stockQty,
               }}
             />

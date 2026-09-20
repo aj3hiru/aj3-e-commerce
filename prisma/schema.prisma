@@ -815,3 +815,68 @@ model PushQueue {
 
   @@map("push_queue")
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// CAMPAIGNS (Campaign Offer 2)
+// Additive only: three NEW tables, no existing table or column is changed.
+// A campaign discounts products for a period — all products, some
+// categories, some brands, or hand-picked products. The price is worked out
+// by src/lib/campaign-core.ts and applied in the shop and in billing; the
+// sales it makes are recorded in ecom_campaign_sales for the reports.
+// The older per-product "campaign price" on ecom_products is untouched and
+// is NOT used by the shop or billing.
+// ─────────────────────────────────────────────────────────────────────────
+
+model EcomCampaign {
+  id            Int       @id @default(autoincrement())
+  name          String    @db.VarChar(150)
+  scope         String    @db.VarChar(20)                        // "all" | "category" | "brand" | "product"
+  discountType  String    @map("discount_type") @db.VarChar(20)  // "percent" | "amount" | "fixed"
+  discountValue Decimal?  @map("discount_value") @db.Decimal(10, 2) // % or ₹ off; empty for "fixed" (each product has its own price)
+  startsAt      DateTime? @map("starts_at")                      // empty = starts immediately
+  endsAt        DateTime? @map("ends_at")                        // empty = no end date
+  isPaused      Boolean   @default(false) @map("is_paused")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  targets EcomCampaignTarget[]
+  sales   EcomCampaignSale[]
+
+  @@index([isPaused, startsAt, endsAt])
+  @@map("ecom_campaigns")
+}
+
+/// What a campaign applies to (empty for scope "all").
+model EcomCampaignTarget {
+  id         Int      @id @default(autoincrement())
+  campaignId Int      @map("campaign_id")
+  targetType String   @map("target_type") @db.VarChar(20) // "category" | "brand" | "product"
+  targetId   Int      @map("target_id")
+  fixedPrice Decimal? @map("fixed_price") @db.Decimal(10, 2) // only for discountType "fixed" (product targets)
+
+  campaign EcomCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@map("ecom_campaign_targets")
+}
+
+/// One row per order line that was sold at a campaign price. Written after the
+/// sale is saved (never inside it), so it can never hold up a checkout.
+/// order/product are plain ids (no foreign keys) so nothing else is affected.
+model EcomCampaignSale {
+  id              Int      @id @default(autoincrement())
+  campaignId      Int      @map("campaign_id")
+  orderId         Int      @map("order_id")
+  orderItemId     Int      @unique @map("order_item_id")
+  productId       Int      @map("product_id")
+  qty             Int
+  unitPrice       Decimal  @map("unit_price") @db.Decimal(10, 2)          // what the customer paid per unit
+  discountPerUnit Decimal  @map("discount_per_unit") @db.Decimal(10, 2)   // how much less than the price they'd otherwise have paid
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  campaign EcomCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([orderId])
+  @@map("ecom_campaign_sales")
+}

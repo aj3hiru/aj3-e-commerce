@@ -7,6 +7,7 @@ import { ProductCard } from "@/components/shop/ProductCard";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { prisma } from "@/lib/db";
+import { campaignSalePrices } from "@/lib/campaign-pricing";
 
 interface ProductPageProps {
   searchParams: Promise<{ slug?: string }>;
@@ -30,7 +31,8 @@ export default async function ProductPage({ searchParams }: ProductPageProps) {
 
   const avgRating = reviews.length > 0 ? reviews.reduce((s: number, r: (typeof reviews)[number]) => s + r.rating, 0) / reviews.length : 0;
   const price = Number(product.price);
-  const sale = product.salePrice && Number(product.salePrice) > 0 && Number(product.salePrice) < price ? Number(product.salePrice) : null;
+  const campaign = await campaignSalePrices([product, ...related]); // campaign prices, when a campaign is live
+  const sale = campaign.get(product.id) ?? (product.salePrice && Number(product.salePrice) > 0 && Number(product.salePrice) < price ? Number(product.salePrice) : null);
   const outOfStock = product.productType === "physical" && (product.stockQty ?? 0) <= 0;
 
   const galleryImages = [product.image, ...product.images.map((i: (typeof product.images)[number]) => i.image)].filter((x): x is string => !!x);
@@ -108,7 +110,7 @@ export default async function ProductPage({ searchParams }: ProductPageProps) {
             {related.map((p: (typeof related)[number]) => (
               <ProductCard
                 key={p.id}
-                product={{ id: p.id, slug: p.slug, name: p.name, image: p.image, price: Number(p.price), salePrice: p.salePrice ? Number(p.salePrice) : null, productType: p.productType, stockQty: p.stockQty }}
+                product={{ id: p.id, slug: p.slug, name: p.name, image: p.image, price: Number(p.price), salePrice: campaign.get(p.id) ?? (p.salePrice ? Number(p.salePrice) : null), productType: p.productType, stockQty: p.stockQty }}
               />
             ))}
           </div>

@@ -7,6 +7,7 @@ import { GlobalSearchBar } from "@/components/admin/GlobalSearchBar";
 import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
+import { campaignSalePrices } from "@/lib/campaign-pricing";
 
 interface Billing2PageProps {
   searchParams: Promise<{ customer_id?: string }>;
@@ -46,7 +47,7 @@ export default async function Billing2Page({ searchParams }: Billing2PageProps) 
       orderBy: { name: "asc" },
       select: {
         id: true, name: true, sku: true, barcode: true, price: true, salePrice: true,
-        gstRate: true, stockQty: true, productType: true, categoryId: true, subcategoryId: true, unit: true, image: true,
+        gstRate: true, stockQty: true, productType: true, categoryId: true, subcategoryId: true, unit: true, image: true, brandId: true,
       },
     }),
     prisma.ecomCoupon.findMany({
@@ -60,6 +61,10 @@ export default async function Billing2Page({ searchParams }: Billing2PageProps) 
     }),
     prisma.ecomBusinessSettings.findFirst({ orderBy: { id: "asc" } }),
   ]);
+
+  // Campaign prices, when a campaign is live: shown to the cashier as the sale price and
+  // charged again (freshly worked out) by the checkout API.
+  const campaign = await campaignSalePrices(products);
 
   let preselectedCustomer = null;
   const customerIdParam = resolvedSearchParams.customer_id;
@@ -96,7 +101,7 @@ export default async function Billing2Page({ searchParams }: Billing2PageProps) 
       <Billing2Screen
         allProducts={products.map((p: (typeof products)[number]) => ({
           id: p.id, name: p.name, sku: p.sku, barcode: p.barcode,
-          price: Number(p.price), salePrice: p.salePrice ? Number(p.salePrice) : null,
+          price: Number(p.price), salePrice: campaign.get(p.id) ?? (p.salePrice ? Number(p.salePrice) : null),
           gstRate: Number(p.gstRate), stockQty: p.stockQty, productType: p.productType,
           categoryId: p.categoryId, subcategoryId: p.subcategoryId, unit: p.unit, image: p.image,
         }))}

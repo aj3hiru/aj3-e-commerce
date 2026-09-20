@@ -6,6 +6,7 @@ import { CategoryProductGrid } from "@/components/shop/CategoryProductGrid";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
+import { campaignSalePrices } from "@/lib/campaign-pricing";
 
 interface CategoryPageProps {
   searchParams: Promise<{ slug?: string; sub?: string }>;
@@ -35,6 +36,7 @@ export default async function CategoryPage({ searchParams }: CategoryPageProps) 
     prisma.ecomProduct.count({ where }),
   ]);
   const hasMore = totalProducts > products.length;
+  const campaign = await campaignSalePrices(products); // campaign prices, when a campaign is live
 
   return (
     <ShopLayout {...layoutData}>
@@ -73,7 +75,7 @@ export default async function CategoryPage({ searchParams }: CategoryPageProps) 
         <CategoryProductGrid
           initialProducts={products.map((p: (typeof products)[number]) => ({
             id: p.id, slug: p.slug, name: p.name, image: p.image,
-            price: Number(p.price), salePrice: p.salePrice ? Number(p.salePrice) : null,
+            price: Number(p.price), salePrice: campaign.get(p.id) ?? (p.salePrice ? Number(p.salePrice) : null),
             productType: p.productType, stockQty: p.stockQty,
           }))}
           hasMore={hasMore}

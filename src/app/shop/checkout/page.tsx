@@ -6,6 +6,7 @@ import { getCustomerSession } from "@/lib/customer-auth";
 import { getCart } from "@/lib/cart-session";
 import { prisma } from "@/lib/db";
 import { effectivePrice } from "@/lib/shop-price";
+import { campaignSalePrices } from "@/lib/campaign-pricing";
 
 /** Verified against shop/checkout.php's two redirect guards (must be logged in,
  *  cart must not be empty) and the order-summary display. */
@@ -23,11 +24,13 @@ export default async function CheckoutPage() {
     prisma.ecomPaymentSettings.findMany({ where: { isEnabled: true }, select: { methodKey: true, name: true } }),
   ]);
 
+  const campaign = await campaignSalePrices(products); // campaign prices, when a campaign is live
+
   let subtotal = 0;
   let estimatedGst = 0;
   const items = products.map((p: (typeof products)[number]) => {
     const qty = cart[p.id] ?? 0;
-    const unit = effectivePrice(Number(p.price), p.salePrice ? Number(p.salePrice) : null);
+    const unit = campaign.get(p.id) ?? effectivePrice(Number(p.price), p.salePrice ? Number(p.salePrice) : null);
     const lineTotal = unit * qty;
     subtotal += lineTotal;
     estimatedGst += lineTotal * (Number(p.gstRate) / 100);

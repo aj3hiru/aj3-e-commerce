@@ -4,6 +4,8 @@ import { getCustomerSession } from "@/lib/customer-auth";
 import { getCart, setCart } from "@/lib/cart-session";
 import { generateOrderNumber } from "@/lib/order-number";
 import type { Prisma } from "@prisma/client";
+import { campaignPriceFor, type CampaignPrice } from "@/lib/campaign-core";
+import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "@/lib/campaign-pricing";
 
 /** Verified 1:1 against shop/checkout.php's POST handler: re-validates stock,
  *  re-fetches prices server-side, applies an optional coupon with proportional
@@ -28,12 +30,18 @@ export async function POST(req: NextRequest) {
   if (!address) return NextResponse.json({ success: false, message: "Please enter a delivery address." }, { status: 400 });
   if (!paymentMethod) return NextResponse.json({ success: false, message: "Please select a payment method." }, { status: 400 });
 
+  // Campaign prices are worked out from the campaigns as they are right now.
+  // This is read before the order is opened; if it can't be read the order simply
+  // goes ahead at normal prices.
+  const now = new Date();
+  const liveCampaigns = await loadLiveCampaigns({ fresh: true });
+
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const ids = Object.keys(cart).map(Number);
       const products = await tx.ecomProduct.findMany({ where: { id: { in: ids }, status: "active" } });
 
-      const lineItems: { product: (typeof products)[number]; qty: number; unitPrice: number; lineTotal: number; gstAmount?: number }[] = [];
+      const lineItems: { product: (typeof products)[number]; qty: number; unitPrice: number; lineTotal: number; gstAmount?: number; campaign: CampaignPrice | null }[] = [];
       let subtotal = 0;
 
       for (const p of products) {
@@ -44,9 +52,12 @@ export async function POST(req: NextRequest) {
 
         const price = Number(p.price);
         const sale = p.salePrice ? Number(p.salePrice) : 0;
-        const unitPrice = sale > 0 && sale < price ? sale : price;
+        let unitPrice = sale > 0 && sale < price ? sale : price;
+        // A live campaign can only lower the price (never stacks with the sale price).
+        const campaign = campaignPriceFor({ id: p.id, categoryId: p.categoryId, brandId: p.brandId, price, salePrice: sale > 0 ? sale : null }, liveCampaigns, now);
+        if (campaign) unitPrice = campaign.unitPrice;
         const lineTotal = unitPrice * qty;
-        lineItems.push({ product: p, qty, unitPrice, lineTotal });
+        lineItems.push({ product: p, qty, unitPrice, lineTotal, campaign });
         subtotal += lineTotal;
       }
 
@@ -109,13 +120,21 @@ export async function POST(req: NextRequest) {
         },
       });
 
+      const campaignSales: CampaignSaleInput[] = [];
       for (const li of lineItems) {
-        await tx.ecomOrderItem.create({
+        const item = await tx.ecomOrderItem.create({
           data: {
             orderId: order.id, productId: li.product.id, productName: li.product.name, hsnCode: li.product.hsnCode,
             qty: li.qty, price: li.unitPrice, gstRate: li.product.gstRate, gstAmount: li.gstAmount!,
           },
+          select: { id: true },
         });
+        if (li.campaign) {
+          campaignSales.push({
+            campaignId: li.campaign.campaignId, orderId: order.id, orderItemId: item.id, productId: li.product.id,
+            qty: li.qty, unitPrice: li.unitPrice, discountPerUnit: li.campaign.discountPerUnit,
+          });
+        }
         if (li.product.productType === "physical" && li.product.stockQty !== null) {
           await tx.ecomProduct.update({ where: { id: li.product.id }, data: { stockQty: Math.max(0, li.product.stockQty - li.qty) } });
         }
@@ -125,8 +144,11 @@ export async function POST(req: NextRequest) {
         await tx.ecomCoupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } });
       }
 
-      return { orderId: order.id };
+      return { orderId: order.id, campaignSales };
     });
+
+    // Remember which lines were sold under a campaign (after the order is safely saved; never throws).
+    await recordCampaignSales(result.campaignSales);
 
     await setCart({});
 

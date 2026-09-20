@@ -407,140 +407,129 @@ function FilterSalesCard({ filters, options }: { filters: SalesFilters; options:
     startTransition(() => router.push(`${PAGE_PATH}?${p.toString()}`));
   }
 
+  const ctl =
+    "h-[31px] rounded-[0.25rem] border border-admin-gray-300 bg-white text-[0.8125rem] text-admin-gray-700 focus:border-admin-primary focus:outline-none";
+
   return (
     <Card className="px-4 py-3">
+      {/* One row: presets · Order Status · Payment Status · Customer · Items/Product · from–to · Apply.
+          It wraps onto a second line only when the screen is too narrow. */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
           if (from && to) go(from, to);
         }}
+        className="flex flex-wrap items-center gap-2"
+        aria-label="Filter sales"
       >
-        {/* EduMint .range-bar */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-auto flex items-center gap-2 text-[0.8125rem] text-admin-gray-500">
-            Showing: <strong className="font-bold text-admin-gray-900">{showing}</strong>
-            {pending && <Loader2 className="h-3.5 w-3.5 animate-spin text-admin-gray-400" />}
-          </span>
-
-          {/* .btn-group */}
-          <div className="inline-flex flex-wrap" role="group" aria-label="Date range presets">
-            {presets.map((p, i) => {
-              const active = activePreset?.key === p.key;
-              return (
-                <button
-                  key={p.key}
-                  type="button"
-                  disabled={pending}
-                  aria-pressed={active}
-                  onClick={() => go(p.range[0], p.range[1])}
-                  className={cn(
-                    "relative border px-2 py-1 text-[0.8125rem] leading-normal transition-colors",
-                    i === 0 && "rounded-l-[0.25rem]",
-                    i === presets.length - 1 && "rounded-r-[0.25rem]",
-                    i > 0 && "-ml-px",
-                    active
-                      ? "z-10 border-[#0d6efd] bg-[#0d6efd] text-white"
-                      : "border-[#6c757d] bg-transparent text-[#6c757d] hover:bg-[#6c757d] hover:text-white"
-                  )}
-                >
-                  {p.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* .range-bar-custom */}
-          <div className="ml-auto flex items-center gap-[0.4rem]">
-            <input
-              type="date"
-              aria-label="Range start date"
-              value={from}
-              max={to || undefined}
-              onChange={(e) => setFrom(e.target.value)}
-              className="w-[150px] rounded-[0.25rem] border border-admin-gray-300 px-2 py-1 text-[0.875rem] text-admin-gray-700 focus:border-admin-primary focus:outline-none"
-            />
-            <span className="text-[0.875em] text-[#6c757d]">to</span>
-            <input
-              type="date"
-              aria-label="Range end date"
-              value={to}
-              min={from || undefined}
-              onChange={(e) => setTo(e.target.value)}
-              className="w-[150px] rounded-[0.25rem] border border-admin-gray-300 px-2 py-1 text-[0.875rem] text-admin-gray-700 focus:border-admin-primary focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={pending}
-              className="rounded-[0.25rem] border border-[#6c757d] bg-[#6c757d] px-2 py-1 text-[0.875rem] text-white hover:border-[#5c636a] hover:bg-[#5c636a] disabled:opacity-70"
-            >
-              Apply
-            </button>
-          </div>
+        {/* EduMint .btn-group */}
+        <div className="inline-flex max-w-full shrink-0 overflow-x-auto" role="group" aria-label="Date range presets">
+          {presets.map((p, i) => {
+            const active = activePreset?.key === p.key;
+            return (
+              <button
+                key={p.key}
+                type="button"
+                disabled={pending}
+                aria-pressed={active}
+                onClick={() => go(p.range[0], p.range[1])}
+                className={cn(
+                  "relative h-[31px] whitespace-nowrap border px-2 text-[0.8125rem] leading-none transition-colors",
+                  i === 0 && "rounded-l-[0.25rem]",
+                  i === presets.length - 1 && "rounded-r-[0.25rem]",
+                  i > 0 && "-ml-px",
+                  active
+                    ? "z-10 border-[#0d6efd] bg-[#0d6efd] text-white"
+                    : "border-[#6c757d] bg-transparent text-[#6c757d] hover:bg-[#6c757d] hover:text-white"
+                )}
+              >
+                {p.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Order Status / Payment Status / Customer / Items-Product */}
-        <div className="mt-3 grid grid-cols-1 gap-4 border-t border-admin-gray-100 pt-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Order Status">
-            <SelectBox value={status} onChange={setStatus} ariaLabel="Order Status">
-              <option value="all">All</option>
-              <option value="Delivered">Delivered</option>
-              <option value="Pending">Pending</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Canceled">Canceled</option>
-            </SelectBox>
-          </Field>
-          <Field label="Payment Status">
-            <SelectBox value={payment} onChange={setPayment} ariaLabel="Payment Status">
-              <option value="all">All</option>
-              <option value="paid">Paid</option>
-              <option value="due">Due</option>
-              <option value="due_cleared">Due Cleared</option>
-            </SelectBox>
-          </Field>
-          <Field label="Customer">
-            <SelectBox value={customer} onChange={setCustomer} ariaLabel="Customer">
-              <option value="">All Customers</option>
-              <option value="guest">Walk-in / Guest</option>
-              {options.customers.map((c) => (
-                <option key={c.id} value={String(c.id)}>{c.name}{c.phone ? ` (${c.phone})` : ""}</option>
-              ))}
-            </SelectBox>
-          </Field>
-          <Field label="Items / Product">
-            <SelectBox value={product} onChange={setProduct} ariaLabel="Items / Product">
-              <option value="">All Products</option>
-              {options.products.map((p) => (
-                <option key={p.id} value={String(p.id)}>{p.name}</option>
-              ))}
-            </SelectBox>
-          </Field>
+        {/* Four filters, each labelled by its "All …" option and a tooltip */}
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:min-w-[420px] sm:flex-1 sm:flex-nowrap sm:items-center">
+          <InlineSelect value={status} onChange={setStatus} label="Order Status" className={ctl} grow="sm:flex-[0.85]">
+            <option value="all">All Status</option>
+            <option value="Delivered">Delivered</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Canceled">Canceled</option>
+          </InlineSelect>
+          <InlineSelect value={payment} onChange={setPayment} label="Payment Status" className={ctl} grow="sm:flex-[1.02]">
+            <option value="all">All Payments</option>
+            <option value="paid">Paid</option>
+            <option value="due">Due</option>
+            <option value="due_cleared">Due Cleared</option>
+          </InlineSelect>
+          <InlineSelect value={customer} onChange={setCustomer} label="Customer" className={ctl} grow="sm:flex-[1.1]">
+            <option value="">All Customers</option>
+            <option value="guest">Walk-in / Guest</option>
+            {options.customers.map((c) => (
+              <option key={c.id} value={String(c.id)}>{c.name}{c.phone ? ` (${c.phone})` : ""}</option>
+            ))}
+          </InlineSelect>
+          <InlineSelect value={product} onChange={setProduct} label="Items / Product" className={ctl} grow="sm:flex-[1.05]">
+            <option value="">All Products</option>
+            {options.products.map((p) => (
+              <option key={p.id} value={String(p.id)}>{p.name}</option>
+            ))}
+          </InlineSelect>
+        </div>
+
+        {/* EduMint .range-bar-custom */}
+        <div className="ml-auto flex flex-wrap items-center gap-[0.4rem]">
+          <input
+            type="date"
+            aria-label="Range start date"
+            title={`Showing: ${showing}`}
+            value={from}
+            max={to || undefined}
+            onChange={(e) => setFrom(e.target.value)}
+            className={cn(ctl, "w-[112px] px-1.5 sm:w-[132px] sm:px-2")}
+          />
+          <span className="text-[0.8125rem] text-[#6c757d]">to</span>
+          <input
+            type="date"
+            aria-label="Range end date"
+            title={`Showing: ${showing}`}
+            value={to}
+            min={from || undefined}
+            onChange={(e) => setTo(e.target.value)}
+            className={cn(ctl, "w-[112px] px-1.5 sm:w-[132px] sm:px-2")}
+          />
+          <button
+            type="submit"
+            disabled={pending}
+            className="flex h-[31px] items-center gap-1.5 rounded-[0.25rem] border border-[#6c757d] bg-[#6c757d] px-3 text-[0.8125rem] text-white hover:border-[#5c636a] hover:bg-[#5c636a] disabled:opacity-70"
+          >
+            {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Apply
+          </button>
         </div>
       </form>
     </Card>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/** Compact select for the one-row filter bar; `label` is its accessible name and tooltip. */
+function InlineSelect({ value, onChange, label, className, grow, children }: {
+  value: string; onChange: (v: string) => void; label: string; className: string; grow: string; children: React.ReactNode;
+}) {
   return (
-    <div className="min-w-0">
-      <div className="mb-1.5 text-sm font-medium text-admin-gray-700">{label}</div>
-      {children}
-    </div>
-  );
-}
-
-function SelectBox({ value, onChange, ariaLabel, children }: { value: string; onChange: (v: string) => void; ariaLabel: string; children: React.ReactNode }) {
-  return (
-    <div className="relative">
+    <div className={cn("relative min-w-0 sm:max-w-[200px]", grow)}>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        aria-label={ariaLabel}
-        className="h-10 w-full appearance-none truncate rounded-xl border border-admin-gray-200 bg-white pl-3.5 pr-10 text-sm text-admin-gray-900 focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/15"
+        aria-label={label}
+        title={label}
+        className={cn(className, "w-full appearance-none truncate pl-2 pr-7")}
       >
         {children}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-500" />
+      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-gray-500" />
     </div>
   );
 }

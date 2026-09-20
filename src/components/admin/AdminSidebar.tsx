@@ -50,10 +50,23 @@ function NavIcon({ icon }: { icon: IconDefinition }) {
 
 export function AdminSidebar(props: AdminSidebarProps) {
   // useSearchParams() needs a Suspense boundary during static build.
+  // The fallback is an empty sidebar of the same size, not null: with null,
+  // while the real sidebar loads the page content slid into the 280px
+  // sidebar column and the header was crushed (title wrapping word by word).
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<SidebarPlaceholder />}>
       <AdminSidebarInner {...props} />
     </Suspense>
+  );
+}
+
+/** Same footprint as the real sidebar on desktop; nothing on mobile, where the real one is off-canvas. */
+function SidebarPlaceholder() {
+  return (
+    <aside
+      aria-hidden="true"
+      className="hidden w-[280px] border-r border-[#e5e7eb] bg-white lg:sticky lg:top-0 lg:block lg:h-screen"
+    />
   );
 }
 

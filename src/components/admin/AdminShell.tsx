@@ -37,7 +37,9 @@ export function AdminShell({ siteName, pageTitle, pageSubtitle, username, role, 
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
-      <main className="min-w-0">
+      {/* Pinned to the content column so it can never slide into the
+          sidebar's 280px column, even for a moment while the sidebar loads. */}
+      <main className="min-w-0 lg:col-start-2">
         <AdminHeader
           siteName={siteName}
           pageTitle={pageTitle}

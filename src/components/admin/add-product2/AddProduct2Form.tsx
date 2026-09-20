@@ -52,6 +52,8 @@ export interface AP2Product {
 /** Preset units — same list as the current product form; "Custom…" allows any text. */
 const UNIT_PRESETS = ["KG", "Gram", "Liter", "ml", "cm", "Meter", "Piece"];
 const LIST_PATH = "/admin/ecommerce/products2";
+/** Four fields in one row; 2 × 2 while the form shares the screen with the side column on laptops (1280–1439px). */
+const ROW4 = "grid items-start gap-4 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-2 min-[1440px]:grid-cols-4";
 const FORM_ID = "add-product2-form";
 
 const makeSlug = (s: string) => slugify(s, { lower: true, strict: true, trim: true });
@@ -436,44 +438,46 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
                 </div>
               </Field>
             )}
-            {(show("ap2-basic", "ap2-sku") || show("ap2-basic", "ap2-hsn")) && (
-              <div className="grid gap-4 sm:grid-cols-2">
+            {(show("ap2-basic", "ap2-sku") || show("ap2-basic", "ap2-hsn") || show("ap2-basic", "ap2-barcode")) && (
+              // SKU · HSN Code · Barcode in one row.
+              <div className="grid items-start gap-4 sm:grid-cols-3">
                 {show("ap2-basic", "ap2-sku") && (
                   <Field label="SKU" field="sku">
                     <input value={s.sku} onChange={(e) => set("sku", e.target.value)} placeholder="e.g. SKU-00123" maxLength={100} className={inputCls(false)} />
                   </Field>
                 )}
                 {show("ap2-basic", "ap2-hsn") && (
-                  <Field label="HSN Code" hint="For GST invoices" field="hsn">
+                  <Field label="HSN Code" hint="For GST" field="hsn">
                     <input value={s.hsn} onChange={(e) => set("hsn", e.target.value)} placeholder="e.g. 1101" maxLength={20} className={inputCls(false)} />
                   </Field>
                 )}
+                {show("ap2-basic", "ap2-barcode") && (
+                  <Field label="Barcode / QR Code" error={fieldErr("barcode")} field="barcode">
+                    <div className="flex gap-2">
+                      <div className="relative min-w-0 flex-1">
+                        <Barcode className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-400" />
+                        <input
+                          value={s.barcode}
+                          onChange={(e) => set("barcode", e.target.value)}
+                          // Scanners press Enter after the code — don't let that submit the form.
+                          onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                          placeholder={editing ? "Scan or type" : "Scan or leave blank"}
+                          autoComplete="off"
+                          maxLength={100}
+                          aria-label="Barcode"
+                          className={cn(inputCls(fieldErr("barcode") || barcodeCheck.state === "taken"), "pl-9")}
+                        />
+                      </div>
+                      {editing && product?.barcode && (
+                        <a href={`/admin/ecommerce/barcode-print?ids=${product.id}`} target="_blank" rel="noreferrer" title="Print barcode" aria-label="Print barcode" className={iconBtnCls}>
+                          <Printer className="h-4 w-4" />
+                        </a>
+                      )}
+                    </div>
+                    <BarcodeStatus check={barcodeCheck} blank={!s.barcode.trim()} editing={editing} />
+                  </Field>
+                )}
               </div>
-            )}
-            {show("ap2-basic", "ap2-barcode") && (
-              <Field label="Barcode / QR Code" error={fieldErr("barcode")} field="barcode">
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Barcode className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-400" />
-                    <input
-                      value={s.barcode}
-                      onChange={(e) => set("barcode", e.target.value)}
-                      // Scanners press Enter after the code — don't let that submit the form.
-                      onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-                      placeholder={editing ? "Scan or type a barcode" : "Scan barcode or leave blank to auto-create"}
-                      autoComplete="off"
-                      maxLength={100}
-                      className={cn(inputCls(fieldErr("barcode") || barcodeCheck.state === "taken"), "pl-9")}
-                    />
-                  </div>
-                  {editing && product?.barcode && (
-                    <a href={`/admin/ecommerce/barcode-print?ids=${product.id}`} target="_blank" rel="noreferrer" className={cn(btnCls, "shrink-0")}>
-                      <Printer className="h-4 w-4" /> Print
-                    </a>
-                  )}
-                </div>
-                <BarcodeStatus check={barcodeCheck} blank={!s.barcode.trim()} editing={editing} />
-              </Field>
             )}
             {show("ap2-basic", "ap2-desc") && (
               <Field label="Description" field="description">
@@ -483,7 +487,8 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
           </Card>
 
           <Card icon={IndianRupee} title={isPhysical ? "Pricing & Stock" : "Pricing"}>
-            <div className="grid gap-4 sm:grid-cols-3">
+            {/* Price · Sale Price · Stock · GST in one row (2 × 2 on narrower screens). */}
+            <div className={ROW4}>
               <Field label="Price (₹)" required field="price" error={fieldErr("price")}>
                 <MoneyInput value={s.price} onChange={(v) => set("price", v)} error={fieldErr("price")} />
               </Field>
@@ -495,25 +500,25 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
               )}
               {isPhysical && show("ap2-price", "ap2-stock") && (
                 <Field label={`Stock Quantity${unitValue ? ` (${unitValue})` : ""}`} field="stock_qty" error={fieldErr("stock_qty")}
-                  hint={s.stock !== "" && Number(s.stock) === 0 ? "Will show as out of stock" : undefined}>
+                  hint={s.stock !== "" && Number(s.stock) === 0 ? "Out of stock" : undefined}>
                   <input type="number" min={0} step={1} inputMode="numeric" value={s.stock} onChange={(e) => set("stock", e.target.value)} className={inputCls(fieldErr("stock_qty"))} />
                 </Field>
               )}
+              {show("ap2-price", "ap2-gst") && (
+                <Field label="GST Rate" hint="Auto in bills" field="gst_rate" error={fieldErr("gst_rate")}>
+                  <SelectBox value={s.gst} onChange={(v) => set("gst", v)}>
+                    {gstRates.length === 0 && <option value="0">0%</option>}
+                    {/* Keep a saved rate selectable even if it was removed from GST settings. */}
+                    {!gstRates.some((g) => String(g.rate) === s.gst) && gstRates.length > 0 && <option value={s.gst}>{s.gst}% (current)</option>}
+                    {gstRates.map((g) => (
+                      <option key={`${g.label}-${g.rate}`} value={String(g.rate)}>
+                        {g.label}{g.label.includes("%") ? "" : ` (${g.rate}%)`}{g.isDefault ? " · Default" : ""}
+                      </option>
+                    ))}
+                  </SelectBox>
+                </Field>
+              )}
             </div>
-            {show("ap2-price", "ap2-gst") && (
-              <Field label="GST Rate" hint="Applied automatically in Billing, Checkout and Invoices." field="gst_rate" error={fieldErr("gst_rate")}>
-                <SelectBox value={s.gst} onChange={(v) => set("gst", v)} className="sm:max-w-[320px]">
-                  {gstRates.length === 0 && <option value="0">0%</option>}
-                  {/* Keep a saved rate selectable even if it was removed from GST settings. */}
-                  {!gstRates.some((g) => String(g.rate) === s.gst) && gstRates.length > 0 && <option value={s.gst}>{s.gst}% (current)</option>}
-                  {gstRates.map((g) => (
-                    <option key={`${g.label}-${g.rate}`} value={String(g.rate)}>
-                      {g.label} ({g.rate.toFixed(2)}%){g.isDefault ? " — Default" : ""}
-                    </option>
-                  ))}
-                </SelectBox>
-              </Field>
-            )}
             {/* Fields for non-physical products (only reachable when editing one). */}
             {productType === "digital" && (
               <Field label="Download Link" field="download_link">
@@ -533,7 +538,8 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
           </Card>
           {isVisible("ap2-cat") && (show("ap2-cat", "ap2-category") || show("ap2-cat", "ap2-brand") || show("ap2-cat", "ap2-unit")) && (
             <Card icon={FolderTree} title="Categorization">
-              <div className="grid gap-4 sm:grid-cols-2">
+              {/* Category · Sub Category · Brand · Unit in one row (2 × 2 on narrower screens). */}
+              <div className={ROW4}>
                 {show("ap2-cat", "ap2-category") && (
                   <Field label="Category" field="category_id" error={fieldErr("category_id")}>
                     <SelectBox value={s.categoryId} onChange={(v) => setS((p) => ({ ...p, categoryId: v, subcategoryId: "" }))} onDirty={() => setDirty(true)}>
@@ -564,16 +570,21 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
                 )}
                 {show("ap2-cat", "ap2-unit") && (
                   <Field label="Unit" hint="How it's sold" field="unit" error={fieldErr("unit")}>
-                    <div className="flex gap-2">
-                      <SelectBox className="flex-1" value={s.unitChoice} onChange={(v) => set("unitChoice", v)}>
-                        <option value="">No unit (plain item)</option>
+                    {/* "Custom…" swaps the list for a text box (× goes back to the list), so the row stays one line. */}
+                    {s.unitChoice === "custom" ? (
+                      <div className="relative">
+                        <input value={s.unitCustom} onChange={(e) => set("unitCustom", e.target.value)} placeholder="Type unit, e.g. Dozen" maxLength={30} autoFocus aria-label="Custom unit" className={cn(inputCls(fieldErr("unit")), "pr-9")} />
+                        <button type="button" onClick={() => setS((p) => ({ ...p, unitChoice: "", unitCustom: "" }))} title="Back to the unit list" aria-label="Back to the unit list" className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-admin-gray-400 hover:bg-admin-gray-100 hover:text-admin-gray-700">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <SelectBox value={s.unitChoice} onChange={(v) => set("unitChoice", v)}>
+                        <option value="">No unit</option>
                         {UNIT_PRESETS.map((u) => <option key={u} value={u}>{u}</option>)}
                         <option value="custom">Custom…</option>
                       </SelectBox>
-                      {s.unitChoice === "custom" && (
-                        <input value={s.unitCustom} onChange={(e) => set("unitCustom", e.target.value)} placeholder="e.g. Dozen, Box" maxLength={30} autoFocus className={cn(inputCls(fieldErr("unit")), "flex-1")} />
-                      )}
-                    </div>
+                    )}
                   </Field>
                 )}
               </div>
@@ -584,67 +595,79 @@ export function AddProduct2Form({ product, categories, subcategories, brands: in
 
         {/* ── right column ── */}
         <div className="min-w-0 space-y-5">
-          {show("ap2-media", "ap2-image") && (
-            <Card icon={ImageIcon} title="Product Image">
-              <div data-field="image">
-                <DropZone onFile={pickImage}>
-                  {(open) =>
-                    currentImage ? (
-                      <div className="group relative h-[200px] overflow-hidden rounded-[0.5rem] border border-[#e5e7eb] bg-admin-gray-50">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={currentImage} alt="Product" className="h-full w-full object-contain" />
-                        <div className="absolute inset-x-0 bottom-0 flex justify-center gap-2 bg-gradient-to-t from-black/50 to-transparent p-3 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-                          <button type="button" onClick={open} className="flex h-8 items-center gap-1.5 rounded-[0.5rem] bg-white px-3 text-xs font-medium text-admin-gray-800 shadow"><Pencil className="h-3.5 w-3.5" /> Change</button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (imageFile) {
-                                setImageFile(null);
-                                setImagePreview(null);
-                              } else setRemoveImage(true);
-                              setDirty(true);
-                            }}
-                            className="flex h-8 items-center gap-1.5 rounded-[0.5rem] bg-white px-3 text-xs font-medium text-red-600 shadow"
-                          >
-                            <X className="h-3.5 w-3.5" /> Remove
+          {isVisible("ap2-media") && (show("ap2-media", "ap2-image") || show("ap2-media", "ap2-gallery")) && (
+            // Featured (main) image on top, gallery right under it — as in EduMint.
+            <Card icon={ImageIcon} title="Product Images">
+              {show("ap2-media", "ap2-image") && (
+                <div>
+                  <div className="mb-1.5 flex items-baseline justify-between">
+                    <span className="text-[13px] font-medium text-admin-gray-800">Featured Image</span>
+                    <span className="text-xs text-admin-gray-400">Main photo shown everywhere</span>
+                  </div>
+                  <div data-field="image">
+                    <DropZone onFile={pickImage}>
+                      {(open) =>
+                        currentImage ? (
+                          <div className="group relative h-[220px] overflow-hidden rounded-[0.5rem] border border-[#e5e7eb] bg-admin-gray-50">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={currentImage} alt="Product" className="h-full w-full object-contain" />
+                            <div className="absolute inset-x-0 bottom-0 flex justify-center gap-2 bg-gradient-to-t from-black/50 to-transparent p-3 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                              <button type="button" onClick={open} className="flex h-8 items-center gap-1.5 rounded-[0.5rem] bg-white px-3 text-xs font-medium text-admin-gray-800 shadow"><Pencil className="h-3.5 w-3.5" /> Change</button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (imageFile) {
+                                    setImageFile(null);
+                                    setImagePreview(null);
+                                  } else setRemoveImage(true);
+                                  setDirty(true);
+                                }}
+                                className="flex h-8 items-center gap-1.5 rounded-[0.5rem] bg-white px-3 text-xs font-medium text-red-600 shadow"
+                              >
+                                <X className="h-3.5 w-3.5" /> Remove
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button type="button" onClick={open} className="flex h-[220px] w-full flex-col items-center justify-center gap-2 rounded-[0.5rem] border-2 border-dashed border-admin-gray-200 bg-admin-gray-50/60 text-admin-gray-500 transition-colors hover:border-admin-primary hover:text-admin-primary">
+                            <Upload className="h-6 w-6" />
+                            <span className="text-sm font-medium">Click or drop an image</span>
+                            <span className="text-xs text-admin-gray-400">JPG, PNG, WebP · up to 5 MB</span>
                           </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button type="button" onClick={open} className="flex h-[200px] w-full flex-col items-center justify-center gap-2 rounded-[0.5rem] border-2 border-dashed border-admin-gray-200 bg-admin-gray-50/60 text-admin-gray-500 transition-colors hover:border-admin-primary hover:text-admin-primary">
-                        <Upload className="h-6 w-6" />
-                        <span className="text-sm font-medium">Click or drop an image</span>
-                        <span className="text-xs text-admin-gray-400">JPG, PNG, WebP · up to 5 MB</span>
-                      </button>
-                    )
-                  }
-                </DropZone>
-                {removeImage && product?.image && (
-                  <button type="button" onClick={() => setRemoveImage(false)} className="mt-2 text-xs text-admin-primary hover:underline">Undo remove</button>
-                )}
-              </div>
-            </Card>
-          )}
-
-          {show("ap2-media", "ap2-gallery") && (
-            <Card icon={Images} title="Gallery" aside={<span className="text-xs text-admin-gray-400">{gallery.length + newGallery.length} photo{gallery.length + newGallery.length === 1 ? "" : "s"}</span>}>
-              <div data-field="gallery" className="flex flex-wrap gap-2">
-                {gallery.map((g) => (
-                  <Thumb key={g.id} src={`/${g.image}`} onRemove={() => {
-                    setGallery((list) => list.filter((x) => x.id !== g.id));
-                    setRemovedGallery((ids) => [...ids, g.id]);
-                    setDirty(true);
-                  }} />
-                ))}
-                {newGallery.map((g, i) => (
-                  <Thumb key={g.url} src={g.url} isNew onRemove={() => setNewGallery((list) => list.filter((_, j) => j !== i))} />
-                ))}
-                <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-[0.5rem] border-2 border-dashed border-admin-gray-200 text-admin-gray-400 transition-colors hover:border-admin-primary hover:text-admin-primary" title="Add photos">
-                  <Plus className="h-5 w-5" />
-                  <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => { addGalleryFiles(e.target.files); e.target.value = ""; }} aria-label="Add gallery photos" />
-                </label>
-              </div>
-              {removedGallery.length > 0 && <p className="mt-2 text-xs text-admin-gray-500">{removedGallery.length} photo{removedGallery.length === 1 ? "" : "s"} will be removed when you save.</p>}
+                        )
+                      }
+                    </DropZone>
+                    {removeImage && product?.image && (
+                      <button type="button" onClick={() => setRemoveImage(false)} className="mt-2 text-xs text-admin-primary hover:underline">Undo remove</button>
+                    )}
+                  </div>
+                </div>
+              )}
+              {show("ap2-media", "ap2-gallery") && (
+                <div className={cn(show("ap2-media", "ap2-image") && "border-t border-admin-gray-100 pt-4")}>
+                  <div className="mb-2 flex items-baseline justify-between">
+                    <span className="flex items-center gap-1.5 text-[13px] font-medium text-admin-gray-800"><Images className="h-3.5 w-3.5 text-admin-gray-400" /> Gallery</span>
+                    <span className="text-xs text-admin-gray-400">{gallery.length + newGallery.length} photo{gallery.length + newGallery.length === 1 ? "" : "s"} · more views of the item</span>
+                  </div>
+                  <div data-field="gallery" className="flex flex-wrap gap-2">
+                    {gallery.map((g) => (
+                      <Thumb key={g.id} src={`/${g.image}`} onRemove={() => {
+                        setGallery((list) => list.filter((x) => x.id !== g.id));
+                        setRemovedGallery((ids) => [...ids, g.id]);
+                        setDirty(true);
+                      }} />
+                    ))}
+                    {newGallery.map((g, i) => (
+                      <Thumb key={g.url} src={g.url} isNew onRemove={() => setNewGallery((list) => list.filter((_, j) => j !== i))} />
+                    ))}
+                    <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-[0.5rem] border-2 border-dashed border-admin-gray-200 text-admin-gray-400 transition-colors hover:border-admin-primary hover:text-admin-primary" title="Add photos">
+                      <Plus className="h-5 w-5" />
+                      <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => { addGalleryFiles(e.target.files); e.target.value = ""; }} aria-label="Add gallery photos" />
+                    </label>
+                  </div>
+                  {removedGallery.length > 0 && <p className="mt-2 text-xs text-admin-gray-500">{removedGallery.length} photo{removedGallery.length === 1 ? "" : "s"} will be removed when you save.</p>}
+                </div>
+              )}
             </Card>
           )}
 
@@ -860,7 +883,7 @@ function Toggle({ label, hint, checked, onChange }: { label: string; hint?: stri
 
 function BarcodeStatus({ check, blank, editing }: { check: { state: string; by?: { id: number; name: string } }; blank: boolean; editing: boolean }) {
   if (blank) {
-    return <p className="mt-1.5 text-xs text-admin-gray-400">{editing ? "Leave blank to keep the current barcode." : "Leave blank and a barcode (EM00000123) is created automatically."}</p>;
+    return <p className="mt-1.5 text-xs text-admin-gray-400">{editing ? "Blank keeps the current barcode." : "Blank = auto barcode (EM00000123)."}</p>;
   }
   if (check.state === "checking") return <p className="mt-1.5 flex items-center gap-1.5 text-xs text-admin-gray-500"><Loader2 className="h-3 w-3 animate-spin" /> Checking…</p>;
   if (check.state === "free") return <p className="mt-1.5 flex items-center gap-1.5 text-xs text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> Barcode is available</p>;

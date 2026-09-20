@@ -90,6 +90,9 @@ export interface LedgerRow {
   /** "Paid" | "Due" | "Due Cleared" */
   paymentLabel: "Paid" | "Due" | "Due Cleared";
   receipts: LedgerReceipt[];
+  /** Credits (due records) on this sale that still have a balance — what the
+   *  "Due ₹…" payment form pays into, oldest first. */
+  dueCredits: { id: number; balance: number }[];
 }
 
 // Written as plain objects (no Prisma.* type names) so this file type-checks
@@ -112,6 +115,7 @@ interface OrderIn {
   totalAmount: unknown;
   items: { qty: number; productName: string }[];
   credits: {
+    id: number;
     amount: unknown;
     amountPaid: unknown;
     status: string;
@@ -160,6 +164,10 @@ function toRow(o: OrderIn): LedgerRow {
     due,
     paymentLabel,
     receipts: [...receiptMap.entries()].map(([receiptNumber, amount]) => ({ receiptNumber, amount })),
+    dueCredits: o.credits
+      .filter((c) => c.status !== "paid")
+      .map((c) => ({ id: c.id, balance: Math.round(Math.max(0, Number(c.amount) - Number(c.amountPaid)) * 100) / 100 }))
+      .filter((c) => c.balance > 0.004),
   };
 }
 
@@ -188,7 +196,10 @@ export async function getLedgerRows(f: SalesFilters): Promise<LedgerRow[]> {
     orderBy: { createdAt: "desc" },
     include: {
       items: { select: { qty: true, productName: true } },
-      credits: { select: { amount: true, amountPaid: true, status: true, payments: { select: { receiptNumber: true, amount: true } } } },
+      credits: {
+        orderBy: { id: "asc" },
+        select: { id: true, amount: true, amountPaid: true, status: true, payments: { select: { receiptNumber: true, amount: true } } },
+      },
     },
   });
 

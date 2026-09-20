@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   TrendingUp, BarChart3, CalendarDays, CalendarRange, ArrowRight, IndianRupee, ShoppingCart, Wallet,
-  ArrowUp, ArrowDown, ChevronDown, ChevronLeft, ChevronRight, FileText, Globe, ChevronsUpDown, Loader2,
+  ArrowUp, ArrowDown, ChevronDown, ChevronLeft, ChevronRight, FileText, Globe, ChevronsUpDown, Loader2, HandCoins, CheckCircle2, X,
 } from "lucide-react";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { ChartSeries, FilterOptions, LedgerRow, Metric, SalesFilters, SalesMetrics } from "@/lib/sales-history2";
@@ -578,6 +578,7 @@ function SalesLedgerCard({ rows }: { rows: LedgerRow[] }) {
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "time", dir: "desc" });
   const [pageSize, setPageSize] = useState(20); // 0 = All
   const [page, setPage] = useState(1);
+  const [payRow, setPayRow] = useState<LedgerRow | null>(null);
   const cols = COLUMNS.filter((c) => isVisible(c.key));
   const show = (key: string) => isVisible(key);
 
@@ -718,9 +719,14 @@ function SalesLedgerCard({ rows }: { rows: LedgerRow[] }) {
                       <td className="whitespace-nowrap px-3 py-2">
                         <div className="text-admin-gray-900">{money(r.paid)}</div>
                         {r.due > 0.004 && (
-                          <Link href="/admin/ecommerce/due" className="text-xs font-semibold text-red-600 underline underline-offset-2 hover:text-red-700">
+                          <button
+                            type="button"
+                            onClick={() => setPayRow(r)}
+                            title="Record a due payment"
+                            className="text-xs font-semibold text-red-600 underline underline-offset-2 hover:text-red-700"
+                          >
                             Due {money(r.due)}
-                          </Link>
+                          </button>
                         )}
                       </td>
                     )}
@@ -749,7 +755,178 @@ function SalesLedgerCard({ rows }: { rows: LedgerRow[] }) {
         </span>
         {pageCount > 1 && <Pager page={current} pageCount={pageCount} onPage={setPage} />}
       </div>
+
+      {payRow && <DuePaymentModal row={payRow} onClose={() => setPayRow(null)} />}
     </Card>
+  );
+}
+
+/**
+ * "Record Payment" for a sale's due — the same form and the same
+ * /api/ecommerce/due-payment endpoint as EduMint's Due page (amount capped at
+ * the balance, Cash/Card/UPI/Other, one receipt). It opens right here from
+ * "Due ₹…" in the ledger; after saving it shows the receipt and refreshes the
+ * page data so the row's Paid/Due update in place.
+ */
+function DuePaymentModal({ row, onClose }: { row: LedgerRow; onClose: () => void }) {
+  const router = useRouter();
+  const balance = Math.round(row.dueCredits.reduce((s, c) => s + c.balance, 0) * 100) / 100;
+  const [amount, setAmount] = useState(balance.toFixed(2));
+  const [method, setMethod] = useState("Cash");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [done, setDone] = useState<{ receiptHref: string; receipt: string; paid: number } | null>(null);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape" && !busy) onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [busy, onClose]);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const amt = Math.round(Math.min(Math.max(0, parseFloat(amount) || 0), balance) * 100) / 100;
+    if (amt <= 0) {
+      setError("Enter a valid amount.");
+      return;
+    }
+    // Spread the payment over this sale's open due records, oldest first
+    // (almost always just one), so nothing is ever overpaid.
+    const creditIds: number[] = [];
+    const amounts: number[] = [];
+    let left = amt;
+    for (const c of row.dueCredits) {
+      if (left <= 0.004) break;
+      const part = Math.round(Math.min(left, c.balance) * 100) / 100;
+      creditIds.push(c.id);
+      amounts.push(part);
+      left = Math.round((left - part) * 100) / 100;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/ecommerce/due-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creditIds, amounts, paymentMethod: method, combineReceipt: true }),
+      });
+      const data = await res.json().catch(() => ({ success: false, message: "Unexpected server response." }));
+      if (!data.success) {
+        setError(data.message || "Could not save the payment.");
+        return;
+      }
+      const redirect: string = data.redirect || "";
+      const receipt = decodeURIComponent(redirect.split("/payment-receipt/")[1] ?? "");
+      setDone({
+        receipt,
+        receiptHref: receipt ? `${redirect}?return_to=${encodeURIComponent(PAGE_PATH)}` : "/admin/ecommerce/due",
+        paid: amt,
+      });
+      router.refresh(); // re-read the ledger, metrics and chart from the server
+    } catch {
+      setError("Could not reach the server. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return createPortal(
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={() => !busy && onClose()}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Record Payment"
+        className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-1 flex items-start justify-between gap-3">
+          <h5 className="flex items-center gap-2 text-lg font-bold text-admin-gray-900">
+            <HandCoins className="h-5 w-5 text-emerald-600" /> Record Payment
+          </h5>
+          <button type="button" onClick={onClose} disabled={busy} aria-label="Close" className="rounded p-1 text-admin-gray-400 hover:bg-admin-gray-100">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <p className="mb-4 text-sm text-admin-gray-500">
+          {row.customerName} · {row.orderNumber}
+        </p>
+
+        {done ? (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+              <div className="text-sm">
+                <div className="font-semibold text-emerald-800">Payment recorded — {money(done.paid)} ({method})</div>
+                {done.receipt && <div className="text-emerald-700">Receipt {done.receipt}</div>}
+                <div className="text-emerald-700">
+                  {done.paid >= balance - 0.004 ? "Due fully cleared." : `Still due: ${money(Math.round((balance - done.paid) * 100) / 100)}`}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <a href={done.receiptHref} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 rounded bg-admin-gray-100 px-4 py-2 text-sm hover:bg-admin-gray-200">
+                <FileText className="h-4 w-4" /> Print Receipt
+              </a>
+              <button type="button" onClick={onClose} className="rounded bg-admin-primary px-4 py-2 text-sm text-white hover:bg-admin-primary-dark">
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="mb-4 grid grid-cols-3 gap-2 rounded-lg bg-admin-gray-50 px-3 py-2.5 text-center text-xs text-admin-gray-500">
+              <div>Total<div className="mt-0.5 text-sm font-semibold text-admin-gray-900">{money(row.total)}</div></div>
+              <div>Paid<div className="mt-0.5 text-sm font-semibold text-admin-gray-900">{money(row.paid)}</div></div>
+              <div>Balance<div className="mt-0.5 text-sm font-semibold text-red-600">{money(balance)}</div></div>
+            </div>
+            {error && <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+            <form onSubmit={submit} className="space-y-3">
+              <div>
+                <label htmlFor="sh2-pay-amount" className="mb-1 block text-xs font-medium">Amount</label>
+                <input
+                  id="sh2-pay-amount"
+                  type="number"
+                  step="0.01"
+                  min={0.01}
+                  max={balance}
+                  required
+                  autoFocus
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full rounded border border-admin-gray-200 px-3 py-2 text-sm focus:border-admin-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label htmlFor="sh2-pay-method" className="mb-1 block text-xs font-medium">Payment Method</label>
+                <select
+                  id="sh2-pay-method"
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value)}
+                  className="w-full rounded border border-admin-gray-200 px-3 py-2 text-sm focus:border-admin-primary focus:outline-none"
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="Card">Card</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={onClose} disabled={busy} className="rounded bg-admin-gray-100 px-4 py-2 text-sm hover:bg-admin-gray-200">
+                  Cancel
+                </button>
+                <button type="submit" disabled={busy} className="flex items-center gap-1.5 rounded bg-admin-primary px-4 py-2 text-sm text-white hover:bg-admin-primary-dark disabled:opacity-60">
+                  {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {busy ? "Saving…" : "Record Payment"}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
+    </div>,
+    document.body
   );
 }
 

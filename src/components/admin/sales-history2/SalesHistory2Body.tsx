@@ -65,7 +65,7 @@ export function SalesHistory2Body({ rows, metrics, chart, filters, isDefaultRang
     // cards don't flash in and jump away on every open/refresh.
     <div className={cn("space-y-5", !loaded && "invisible")}>
       {(showChart || showMetrics) && (
-        <div className={cn("grid grid-cols-1 gap-5", showChart && showMetrics && "xl:grid-cols-[minmax(0,1fr)_minmax(0,1.07fr)]")}>
+        <div className={cn("grid grid-cols-1 gap-5", showChart && showMetrics && "min-[1600px]:grid-cols-[minmax(0,1fr)_minmax(0,1.18fr)]")}>
           {showChart && <SalesPerformanceCard chart={chart} />}
           {showMetrics && <KeyMetricsCard metrics={metrics} filters={filters} isDefaultRange={isDefaultRange} />}
         </div>
@@ -163,7 +163,7 @@ function SalesPerformanceCard({ chart }: { chart: ChartSeries }) {
       </div>
 
       {/* Grows to the card's height, so it lines up with Key Metrics beside it. */}
-      <div className="flex min-h-[190px] flex-1 gap-3">
+      <div className="flex min-h-[180px] flex-1 gap-3">
         {/* y-axis labels (the spacer matches the x-label row below the plot) */}
         <div className="flex shrink-0 flex-col text-right text-[11px] leading-none text-admin-gray-500">
           <div className="flex flex-1 flex-col justify-between">
@@ -246,7 +246,15 @@ function KeyMetricsCard({ metrics, filters, isDefaultRange }: { metrics: SalesMe
   const tiles: { key: string; node: React.ReactNode }[] = [
     {
       key: "sh2-m-total",
-      node: <MetricTile icon={IndianRupee} tone="green" label={`Total Sales (${isDefaultRange ? "This Month" : "Selected Range"})`} metric={metrics.rangeTotal} emptyText="No sales in this range" />,
+      node: (
+        <MetricTile
+          icon={IndianRupee}
+          tone="green"
+          label={`Total Sales (${isDefaultRange ? "This Month" : "Selected Range"})`}
+          metric={isDefaultRange ? metrics.month : metrics.rangeTotal}
+          emptyText="No sales in this range"
+        />
+      ),
     },
     { key: "sh2-m-today", node: <MetricTile icon={ShoppingCart} tone="blue" label="Today's Sale" metric={metrics.today} emptyText="No sales today" /> },
     { key: "sh2-m-yesterday", node: <MetricTile icon={CalendarDays} tone="navy" label="Yesterday's Sale" metric={metrics.yesterday} emptyText="No sales yesterday" /> },
@@ -271,7 +279,7 @@ function KeyMetricsCard({ metrics, filters, isDefaultRange }: { metrics: SalesMe
       {tiles.length === 0 ? (
         <p className="py-6 text-center text-sm text-admin-gray-400">All metrics are hidden — turn them on from Display Options.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1700px]:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {tiles.map((t) => <div key={t.key}>{t.node}</div>)}
         </div>
       )}
@@ -290,14 +298,14 @@ function TileShell({ icon: Icon, tone, label, value, children }: {
   icon: React.ComponentType<{ className?: string }>; tone: keyof typeof TONES; label: string; value: string; children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-full gap-3.5 rounded-xl border border-admin-gray-100 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
-      <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white", TONES[tone].bg)}>
-        <Icon className="h-[18px] w-[18px]" />
+    <div className="flex h-full gap-2.5 rounded-xl border border-admin-gray-100 bg-white px-3 py-3 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+      <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white", TONES[tone].bg)}>
+        <Icon className="h-4 w-4" />
       </span>
-      <div className="min-w-0">
-        <div className="truncate text-[13px] text-admin-gray-700" title={label}>{label}</div>
-        <div className={cn("mt-1 text-xl font-bold tracking-tight", TONES[tone].text)}>{value}</div>
-        <div className="mt-1.5 text-xs">{children}</div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-xs leading-5 text-admin-gray-700" title={label}>{label}</div>
+        <div className={cn("whitespace-nowrap text-xl font-bold leading-8 tracking-tight", TONES[tone].text)}>{value}</div>
+        <div className="truncate whitespace-nowrap text-xs leading-5">{children}</div>
       </div>
     </div>
   );
@@ -310,13 +318,13 @@ function MetricTile({ icon, tone, label, metric, emptyText }: {
   if (metric.change !== null) {
     const up = metric.change >= 0;
     sub = (
-      <span className={cn("flex items-center gap-1", up ? "text-emerald-600" : "text-red-500")}>
-        {up ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+      <span className={cn("inline-flex items-center gap-1", up ? "text-emerald-600" : "text-red-500")}>
+        {up ? <ArrowUp className="h-3 w-3 shrink-0" /> : <ArrowDown className="h-3 w-3 shrink-0" />}
         {Math.abs(metric.change)}% {metric.compareLabel}
       </span>
     );
   } else {
-    sub = <span className="text-admin-gray-500">— {metric.value > 0 ? `Nothing to compare ${metric.compareLabel.replace("vs. ", "with ")}` : emptyText}</span>;
+    sub = <span className="text-admin-gray-500">— {metric.value > 0 ? "No data to compare" : emptyText}</span>;
   }
   return <TileShell icon={icon} tone={tone} label={label} value={money(metric.value)}>{sub}</TileShell>;
 }

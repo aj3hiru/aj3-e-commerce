@@ -568,16 +568,29 @@ function InlineSelect({ value, onChange, label, className, grow, children }: {
 
 type SortKey = "time" | "order" | "customer" | "items" | "payment" | "total" | "paid";
 
-const COLUMNS: { key: string; sort: SortKey | null; label: string; className?: string }[] = [
-  { key: "sh2-c-time", sort: "time", label: "Time" },
-  { key: "sh2-c-order", sort: "order", label: "Order ID" },
-  { key: "sh2-c-customer", sort: "customer", label: "Customer" },
+/**
+ * Fixed column widths (table-layout: fixed). With automatic layout the
+ * browser re-sized every column to whatever rows were on screen, so each
+ * filter change made the whole table stretch and shrink sideways. Items has
+ * no width: it takes whatever is left.
+ */
+const COLUMNS: { key: string; sort: SortKey | null; label: string; width?: number }[] = [
+  { key: "sh2-c-time", sort: "time", label: "Time", width: 118 },
+  { key: "sh2-c-order", sort: "order", label: "Order ID", width: 136 },
+  { key: "sh2-c-customer", sort: "customer", label: "Customer", width: 180 },
   { key: "sh2-c-items", sort: "items", label: "Items" },
-  { key: "sh2-c-payment", sort: "payment", label: "Payment" },
-  { key: "sh2-c-total", sort: "total", label: "Total" },
-  { key: "sh2-c-paid", sort: "paid", label: "Paid" },
-  { key: "sh2-c-invoice", sort: null, label: "Invoice" },
+  { key: "sh2-c-payment", sort: "payment", label: "Payment", width: 112 },
+  { key: "sh2-c-total", sort: "total", label: "Total", width: 122 },
+  { key: "sh2-c-paid", sort: "paid", label: "Paid", width: 136 },
+  { key: "sh2-c-invoice", sort: null, label: "Invoice", width: 88 },
 ];
+
+/** Height of one ledger row and of the header row (px). Rows are fixed
+ *  height, and the table area never gets shorter than LEDGER_MIN_ROWS rows,
+ *  so a filter that returns fewer sales doesn't collapse the page under you. */
+const ROW_H = 54;
+const HEAD_H = 42;
+const LEDGER_MIN_ROWS = 10;
 
 function sortValue(r: LedgerRow, k: SortKey): string | number {
   switch (k) {
@@ -669,10 +682,15 @@ function SalesLedgerCard({ rows, resetKey }: { rows: LedgerRow[]; resetKey: stri
       {cols.length === 0 ? (
         <p className="py-10 text-center text-sm text-admin-gray-400">All ledger columns are hidden — turn them on from Display Options.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] border-collapse text-[13px]">
+        <div className="overflow-x-auto" style={{ minHeight: HEAD_H + LEDGER_MIN_ROWS * ROW_H }}>
+          <table className="w-full min-w-[980px] table-fixed border-collapse text-[13px]">
+            <colgroup>
+              {cols.map((c) => (
+                <col key={c.key} style={c.width ? { width: c.width } : undefined} />
+              ))}
+            </colgroup>
             <thead>
-              <tr className="border-b border-admin-gray-200">
+              <tr className="border-b border-admin-gray-200" style={{ height: HEAD_H }}>
                 {cols.map((c) => (
                   <th key={c.key} className="whitespace-nowrap px-3 py-2.5 text-left font-semibold text-admin-gray-900">
                     {c.sort ? (
@@ -700,7 +718,7 @@ function SalesLedgerCard({ rows, resetKey }: { rows: LedgerRow[]; resetKey: stri
                 </tr>
               ) : (
                 pageRows.map((r) => (
-                  <tr key={r.id} className="border-b border-admin-gray-100 odd:bg-white even:bg-admin-gray-50/70 hover:bg-emerald-50/40">
+                  <tr key={r.id} style={{ height: ROW_H }} className="border-b border-admin-gray-100 odd:bg-white even:bg-admin-gray-50/70 hover:bg-emerald-50/40">
                     {show("sh2-c-time") && (
                       <td className="whitespace-nowrap px-3 py-2 align-middle">
                         <div className="text-admin-gray-900">{fmtTime(r.createdAt)}</div>
@@ -714,7 +732,7 @@ function SalesLedgerCard({ rows, resetKey }: { rows: LedgerRow[]; resetKey: stri
                     )}
                     {show("sh2-c-customer") && (
                       <td className="px-3 py-2">
-                        <div className="max-w-[200px] truncate">
+                        <div className="truncate">
                           {r.customerId ? (
                             <Link href={`/admin/ecommerce/customers/${r.customerId}`} className="text-blue-600 hover:underline" title={r.customerName}>{r.customerName}</Link>
                           ) : (
@@ -730,7 +748,7 @@ function SalesLedgerCard({ rows, resetKey }: { rows: LedgerRow[]; resetKey: stri
                     )}
                     {show("sh2-c-items") && (
                       <td className="px-3 py-2 text-admin-gray-700">
-                        <div className="max-w-[260px] truncate" title={r.itemsSummary}>{r.itemsSummary}</div>
+                        <div className="truncate" title={r.itemsSummary}>{r.itemsSummary}</div>
                       </td>
                     )}
                     {show("sh2-c-payment") && <td className="whitespace-nowrap px-3 py-2 text-admin-gray-800">{r.paymentMethod}</td>}
@@ -763,7 +781,7 @@ function SalesLedgerCard({ rows, resetKey }: { rows: LedgerRow[]; resetKey: stri
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-[13px] text-admin-gray-600">
+      <div className="mt-3 flex min-h-8 flex-wrap items-center justify-between gap-3 text-[13px] text-admin-gray-600">
         <span>
           {shown.length === 0
             ? "Showing 0 entries"

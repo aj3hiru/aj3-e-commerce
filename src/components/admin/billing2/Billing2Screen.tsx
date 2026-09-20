@@ -185,7 +185,15 @@ export function Billing2Screen({
 
   // Display Options (header panel). A part shows when its own toggle and its
   // section's toggle are both on; everything is on until the viewer hides it.
-  const { isVisible } = useDashboardWidgetPrefs();
+  const { isVisible, loaded } = useDashboardWidgetPrefs();
+
+  // Saved Display Options are read from the browser right after the first
+  // render. Until then the page stays invisible (but keeps its space), so
+  // hidden parts don't flash in and then jump away on every open/refresh.
+  // Once shown, put the cursor in the scan box, ready for the scanner.
+  useEffect(() => {
+    if (loaded) scanInputRef.current?.focus();
+  }, [loaded]);
   const inCart = (k: string) => isVisible("b2-cart") && isVisible(k);
   const inFooter = (k: string) => isVisible("b2-footer") && isVisible(k);
   const inSummary = (k: string) => isVisible("b2-summary") && isVisible(k);
@@ -214,7 +222,7 @@ export function Billing2Screen({
   const itemCountLabel = `${cart.length} item${cart.length === 1 ? "" : "s"}`;
 
   return (
-    <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_350px]">
+    <div className={cn("grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_350px]", !loaded && "invisible")}>
       {/* ─────────────── LEFT: search, cart ─────────────── */}
       <div className="min-w-0 space-y-4">
         {/* Search / scan */}

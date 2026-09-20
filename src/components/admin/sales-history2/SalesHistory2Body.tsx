@@ -369,8 +369,9 @@ function longDate(ymd: string) {
  *   Showing: <range>   [Today|Yesterday|7 Days|This Month|Previous Month]   [from] to [to] [Apply]
  * followed by Order Status / Payment Status / Customer / Items-Product.
  *
- * A preset applies at once (like EduMint's preset links); dates and the four
- * dropdowns apply with Apply. Either way every current choice is kept.
+ * Presets and the four dropdowns apply at once; the from–to dates apply with
+ * Apply (a range means changing two boxes, so applying after the first one
+ * would load a half-chosen range). Every other current choice is kept.
  */
 function FilterSalesCard({ filters, options }: { filters: SalesFilters; options: FilterOptions }) {
   const router = useRouter();
@@ -396,15 +397,25 @@ function FilterSalesCard({ filters, options }: { filters: SalesFilters; options:
     ? longDate(filters.from)
     : `${longDate(filters.from)} – ${longDate(filters.to)}`;
 
-  function go(a: string, b: string) {
+  type Choice = { status: string; payment: string; customer: string; product: string };
+
+  function go(a: string, b: string, choice: Choice = { status, payment, customer, product }) {
     const [f, t] = a <= b ? [a, b] : [b, a];
     const p = new URLSearchParams({ from: f, to: t });
-    if (status !== "all") p.set("status", status);
-    if (payment !== "all") p.set("payment", payment);
-    if (customer) p.set("customer", customer);
-    if (product) p.set("product", product);
+    if (choice.status !== "all") p.set("status", choice.status);
+    if (choice.payment !== "all") p.set("payment", choice.payment);
+    if (choice.customer) p.set("customer", choice.customer);
+    if (choice.product) p.set("product", choice.product);
     if (filters.q) p.set("q", filters.q);
     startTransition(() => router.push(`${PAGE_PATH}?${p.toString()}`));
+  }
+
+  /** Dropdowns filter live: the new choice applies the moment it's picked,
+   *  together with whatever dates are in the date boxes. */
+  function pick(key: keyof Choice, value: string) {
+    const choice: Choice = { status, payment, customer, product, [key]: value };
+    setStatus(choice.status); setPayment(choice.payment); setCustomer(choice.customer); setProduct(choice.product);
+    go(from || filters.from, to || filters.to, choice);
   }
 
   const ctl =
@@ -451,27 +462,27 @@ function FilterSalesCard({ filters, options }: { filters: SalesFilters; options:
 
         {/* Four filters, each labelled by its "All …" option and a tooltip */}
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:min-w-[420px] sm:flex-1 sm:flex-nowrap sm:items-center">
-          <InlineSelect value={status} onChange={setStatus} label="Order Status" className={ctl} grow="sm:flex-[0.85]">
+          <InlineSelect value={status} onChange={(v) => pick("status", v)} label="Order Status" className={ctl} grow="sm:flex-[0.85]">
             <option value="all">All Status</option>
             <option value="Delivered">Delivered</option>
             <option value="Pending">Pending</option>
             <option value="In Progress">In Progress</option>
             <option value="Canceled">Canceled</option>
           </InlineSelect>
-          <InlineSelect value={payment} onChange={setPayment} label="Payment Status" className={ctl} grow="sm:flex-[1.02]">
+          <InlineSelect value={payment} onChange={(v) => pick("payment", v)} label="Payment Status" className={ctl} grow="sm:flex-[1.02]">
             <option value="all">All Payments</option>
             <option value="paid">Paid</option>
             <option value="due">Due</option>
             <option value="due_cleared">Due Cleared</option>
           </InlineSelect>
-          <InlineSelect value={customer} onChange={setCustomer} label="Customer" className={ctl} grow="sm:flex-[1.1]">
+          <InlineSelect value={customer} onChange={(v) => pick("customer", v)} label="Customer" className={ctl} grow="sm:flex-[1.1]">
             <option value="">All Customers</option>
             <option value="guest">Walk-in / Guest</option>
             {options.customers.map((c) => (
               <option key={c.id} value={String(c.id)}>{c.name}{c.phone ? ` (${c.phone})` : ""}</option>
             ))}
           </InlineSelect>
-          <InlineSelect value={product} onChange={setProduct} label="Items / Product" className={ctl} grow="sm:flex-[1.05]">
+          <InlineSelect value={product} onChange={(v) => pick("product", v)} label="Items / Product" className={ctl} grow="sm:flex-[1.05]">
             <option value="">All Products</option>
             {options.products.map((p) => (
               <option key={p.id} value={String(p.id)}>{p.name}</option>
@@ -603,9 +614,6 @@ function SalesLedgerCard({ rows }: { rows: LedgerRow[] }) {
 
   return (
     <Card className="p-5">
-      <h2 className="mb-3 flex items-center gap-2.5 text-base font-semibold text-admin-gray-900">
-        <FileText className="h-5 w-5 text-blue-600" /> Sales Ledger
-      </h2>
 
       {/* Show [20] entries ··········· Search: [      ] */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-sm text-admin-gray-800">

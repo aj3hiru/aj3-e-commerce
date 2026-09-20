@@ -250,9 +250,18 @@ export interface ChartSeries {
   prevMonthName: string;
 }
 
-/** Headline figures for the Key Metrics card. Independent of the ledger
- *  filters except the first one, which follows the selected date range. */
-export async function getSalesMetrics(f: SalesFilters): Promise<SalesMetrics> {
+/**
+ * Key Metrics + Sales Performance chart together, in 5 queries instead of 12.
+ *
+ * Every fixed-period figure (today, yesterday, this/last week, month-to-date,
+ * the previous month, and both months' chart weeks) falls inside one window —
+ * the 1st of last month up to today — so those orders are read once and
+ * summed here, bucketed by their India-time date. Only the user-chosen range
+ * (and the period before it, for its % change) can be anywhere, so those two
+ * stay database sums. This keeps the page well inside the database's small
+ * connection pool (connection_limit=5) instead of queueing a dozen queries.
+ */
+export async function getSalesOverview(f: SalesFilters): Promise<{ metrics: SalesMetrics; chart: ChartSeries }> {
   const today = istYmd(new Date());
   const yesterday = addDays(today, -1);
   const dayBefore = addDays(today, -2);
@@ -266,8 +275,8 @@ export async function getSalesMetrics(f: SalesFilters): Promise<SalesMetrics> {
   // Month-to-date vs the same days of last month (capped at its length).
   const [y, m, d] = today.split("-").map(Number);
   const monthStart = `${today.slice(0, 8)}01`;
-  const prevMonthDate = new Date(Date.UTC(y, m - 2, 1));
-  const prevMonthYm = prevMonthDate.toISOString().slice(0, 7);
+  const thisLen = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const prevMonthYm = new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
   const prevMonthLen = new Date(Date.UTC(y, m - 1, 0)).getUTCDate();
   const prevMonthStart = `${prevMonthYm}-01`;
   const prevMonthSameDay = `${prevMonthYm}-${String(Math.min(d, prevMonthLen)).padStart(2, "0")}`;
@@ -277,35 +286,43 @@ export async function getSalesMetrics(f: SalesFilters): Promise<SalesMetrics> {
   const prevRangeTo = addDays(f.from, -1);
   const prevRangeFrom = addDays(f.from, -rangeDays);
 
-  const [
-    rangeCur, rangePrev, todayV, yesterdayV, dayBeforeV, weekV, lastWeekV, monthV, prevMonthV,
-    collectedAgg, outstandingCredits,
-  ] = await Promise.all([
+  const windowStart = [prevMonthStart, lastWeekStart, dayBefore].sort()[0];
+
+  const [windowOrders, rangeCur, rangePrev, collectedAgg, creditAgg] = await Promise.all([
+    prisma.ecomOrder.findMany({
+      where: { AND: [saleWhere, { createdAt: { gte: istStart(windowStart), lte: istEnd(today) } }] },
+      select: { createdAt: true, totalAmount: true },
+    }),
     salesTotal(f.from, f.to),
     salesTotal(prevRangeFrom, prevRangeTo),
-    salesTotal(today, today),
-    salesTotal(yesterday, yesterday),
-    salesTotal(dayBefore, dayBefore),
-    salesTotal(weekStart, today),
-    salesTotal(lastWeekStart, lastWeekSameDay),
-    salesTotal(monthStart, today),
-    salesTotal(prevMonthStart, prevMonthSameDay),
     prisma.ecomCreditPayment.aggregate({
       where: { createdAt: { gte: istStart(today), lte: istEnd(today) } },
       _sum: { amount: true },
     }),
-    prisma.ecomCredit.findMany({
+    prisma.ecomCredit.aggregate({
       where: { status: { not: "paid" } },
-      select: { amount: true, amountPaid: true },
+      _sum: { amount: true, amountPaid: true },
     }),
   ]);
 
-  const dueOutstanding = outstandingCredits.reduce(
-    (s: number, c: { amount: unknown; amountPaid: unknown }) => s + Math.max(0, Number(c.amount) - Number(c.amountPaid)),
-    0
-  );
+  // One pass: each order's IST date and total.
+  const dated: { ymd: string; total: number }[] = windowOrders.map((o: { createdAt: Date; totalAmount: unknown }) => ({
+    ymd: istYmd(o.createdAt),
+    total: Number(o.totalAmount),
+  }));
+  const sum = (from: string, to: string) =>
+    Math.round(dated.reduce((s, o) => (o.ymd >= from && o.ymd <= to ? s + o.total : s), 0) * 100) / 100;
 
-  return {
+  const todayV = sum(today, today);
+  const yesterdayV = sum(yesterday, yesterday);
+  const dayBeforeV = sum(dayBefore, dayBefore);
+  const weekV = sum(weekStart, today);
+  const lastWeekV = sum(lastWeekStart, lastWeekSameDay);
+  const monthV = sum(monthStart, today);
+  const prevMonthV = sum(prevMonthStart, prevMonthSameDay);
+  const dueOutstanding = Math.max(0, Number(creditAgg._sum.amount ?? 0) - Number(creditAgg._sum.amountPaid ?? 0));
+
+  const metrics: SalesMetrics = {
     rangeTotal: { value: rangeCur, change: pctChange(rangeCur, rangePrev), compareLabel: "vs. previous period" },
     today: { value: todayV, change: pctChange(todayV, yesterdayV), compareLabel: "vs. yesterday" },
     yesterday: { value: yesterdayV, change: pctChange(yesterdayV, dayBeforeV), compareLabel: "vs. day before" },
@@ -314,51 +331,38 @@ export async function getSalesMetrics(f: SalesFilters): Promise<SalesMetrics> {
     dueCollectedToday: Number(collectedAgg._sum.amount ?? 0),
     dueOutstanding: Math.round(dueOutstanding * 100) / 100,
   };
-}
 
-/** This month vs previous month, bucketed by day-of-month (1–7, 8–14, 15–21, 22–28, 29–end). */
-export async function getSalesChart(): Promise<ChartSeries> {
-  const today = istYmd(new Date());
-  const [y, m, d] = today.split("-").map(Number);
-  const thisStart = `${today.slice(0, 8)}01`;
-  const thisLen = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  const prevYm = new Date(Date.UTC(y, m - 2, 1)).toISOString().slice(0, 7);
-  const prevLen = new Date(Date.UTC(y, m - 1, 0)).getUTCDate();
-  const prevStart = `${prevYm}-01`;
-
-  const orders = await prisma.ecomOrder.findMany({
-    where: { AND: [saleWhere, { createdAt: { gte: istStart(prevStart), lte: istEnd(today) } }] },
-    select: { createdAt: true, totalAmount: true },
-  });
-
+  // Chart: this month vs previous month by day-of-month week (1–7 … 29–end).
   const bucketOf = (day: number) => Math.min(4, Math.floor((day - 1) / 7));
   const thisM = [0, 0, 0, 0, 0];
   const prevM = [0, 0, 0, 0, 0];
-  for (const o of orders) {
-    const ymd = istYmd(o.createdAt);
-    const day = Number(ymd.slice(8, 10));
-    if (ymd.startsWith(today.slice(0, 7))) thisM[bucketOf(day)] += Number(o.totalAmount);
-    else if (ymd.startsWith(prevYm)) prevM[bucketOf(day)] += Number(o.totalAmount);
+  for (const o of dated) {
+    const day = Number(o.ymd.slice(8, 10));
+    if (o.ymd.startsWith(today.slice(0, 7))) thisM[bucketOf(day)] += o.total;
+    else if (o.ymd.startsWith(prevMonthYm)) prevM[bucketOf(day)] += o.total;
   }
-
-  const monthName = new Date(`${thisStart}T12:00:00Z`).toLocaleString("en-US", { month: "short", timeZone: "UTC" });
-  const prevName = new Date(`${prevStart}T12:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" });
-  const thisName = new Date(`${thisStart}T12:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" });
-  const labels = [0, 1, 2, 3, 4].map((b) => {
-    const s = b * 7 + 1;
-    const e = b === 4 ? thisLen : s + 6;
-    return `${monthName} ${s}–${e}`;
-  });
-  const currentBucket = bucketOf(d);
+  const monthShort = new Date(`${monthStart}T12:00:00Z`).toLocaleString("en-US", { month: "short", timeZone: "UTC" });
   const round = (n: number) => Math.round(n * 100) / 100;
-
-  return {
-    labels,
+  const currentBucket = bucketOf(d);
+  const chart: ChartSeries = {
+    labels: [0, 1, 2, 3, 4].map((b) => `${monthShort} ${b * 7 + 1}–${b === 4 ? thisLen : b * 7 + 7}`),
     thisMonth: thisM.map((v, i) => (i <= currentBucket ? round(v) : null)),
     prevMonth: prevM.map(round),
-    thisMonthName: thisName,
-    prevMonthName: prevName,
+    thisMonthName: new Date(`${monthStart}T12:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" }),
+    prevMonthName: new Date(`${prevMonthStart}T12:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" }),
   };
+
+  return { metrics, chart };
+}
+
+/** Key Metrics only (kept for callers/tests that need just the figures). */
+export async function getSalesMetrics(f: SalesFilters): Promise<SalesMetrics> {
+  return (await getSalesOverview(f)).metrics;
+}
+
+/** Chart only (kept for callers/tests that need just the chart). */
+export async function getSalesChart(): Promise<ChartSeries> {
+  return (await getSalesOverview(parseSalesFilters({}))).chart;
 }
 
 /** Options for the Customer and Items/Product filters. */

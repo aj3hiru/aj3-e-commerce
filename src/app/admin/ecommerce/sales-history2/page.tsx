@@ -9,7 +9,7 @@ import { SALES2_GROUPS, SALES2_PREF_KEY, SALES2_STANDALONE } from "@/components/
 import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import {
-  getFilterOptions, getLedgerRows, getSalesChart, getSalesMetrics, istYmd, parseSalesFilters, type RawSearchParams,
+  getFilterOptions, getLedgerRows, getSalesOverview, istYmd, parseSalesFilters, type RawSearchParams,
 } from "@/lib/sales-history2";
 
 interface SalesHistory2PageProps {
@@ -40,10 +40,9 @@ export default async function SalesHistory2Page({ searchParams }: SalesHistory2P
   const today = istYmd(new Date());
   const isDefaultRange = filters.from === `${today.slice(0, 8)}01` && filters.to === today;
 
-  const [rows, metrics, chart, options] = await Promise.all([
+  const [rows, { metrics, chart }, options] = await Promise.all([
     getLedgerRows(filters),
-    getSalesMetrics(filters),
-    getSalesChart(),
+    getSalesOverview(filters),
     getFilterOptions(),
   ]);
 

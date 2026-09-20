@@ -59,19 +59,38 @@ export function SalesHistory2Body({ rows, metrics, chart, filters, isDefaultRang
   const { isVisible, loaded } = useDashboardWidgetPrefs();
   const showChart = isVisible("sh2-chart");
   const showMetrics = isVisible("sh2-metrics");
+  const router = useRouter();
+  const [loading, startLoading] = useTransition();
+
+  // Every filter change goes through here: stay at the same scroll position
+  // (Next.js would jump to the top) and mark the page as loading until the
+  // new data has arrived, so a click is never followed by "nothing happened".
+  const navigate = (url: string) => startLoading(() => router.push(url, { scroll: false }));
+  const filterKey = `${filters.from}|${filters.to}|${filters.status}|${filters.payment}|${filters.customer}|${filters.product}|${filters.q}`;
+  const dim = cn("transition-opacity duration-150", loading && "pointer-events-none opacity-50");
 
   return (
     // Invisible (space kept) until saved Display Options are read, so hidden
     // cards don't flash in and jump away on every open/refresh.
-    <div className={cn("space-y-5", !loaded && "invisible")}>
+    <div className={cn("relative space-y-5", !loaded && "invisible")} aria-busy={loading}>
+      {loading && (
+        <div className="fixed left-0 right-0 top-0 z-[300] h-0.5 overflow-hidden bg-blue-100" role="progressbar" aria-label="Loading sales">
+          <div className="h-full w-1/3 animate-[sh2-progress_1s_ease-in-out_infinite] bg-blue-600" />
+          <style>{`@keyframes sh2-progress{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}`}</style>
+        </div>
+      )}
       {(showChart || showMetrics) && (
-        <div className={cn("grid grid-cols-1 gap-5", showChart && showMetrics && "min-[1600px]:grid-cols-[minmax(0,1fr)_minmax(0,1.18fr)]")}>
+        <div className={cn("grid grid-cols-1 gap-5", dim, showChart && showMetrics && "min-[1600px]:grid-cols-[minmax(0,1fr)_minmax(0,1.18fr)]")}>
           {showChart && <SalesPerformanceCard chart={chart} />}
           {showMetrics && <KeyMetricsCard metrics={metrics} filters={filters} isDefaultRange={isDefaultRange} />}
         </div>
       )}
-      {isVisible("sh2-filters") && <FilterSalesCard filters={filters} options={options} />}
-      {isVisible("sh2-ledger") && <SalesLedgerCard rows={rows} />}
+      {isVisible("sh2-filters") && <FilterSalesCard filters={filters} options={options} navigate={navigate} pending={loading} />}
+      {isVisible("sh2-ledger") && (
+        <div className={dim}>
+          <SalesLedgerCard rows={rows} resetKey={filterKey} />
+        </div>
+      )}
     </div>
   );
 }
@@ -373,9 +392,9 @@ function longDate(ymd: string) {
  * Apply (a range means changing two boxes, so applying after the first one
  * would load a half-chosen range). Every other current choice is kept.
  */
-function FilterSalesCard({ filters, options }: { filters: SalesFilters; options: FilterOptions }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
+function FilterSalesCard({ filters, options, navigate, pending }: {
+  filters: SalesFilters; options: FilterOptions; navigate: (url: string) => void; pending: boolean;
+}) {
   const [from, setFrom] = useState(filters.from);
   const [to, setTo] = useState(filters.to);
   const [status, setStatus] = useState<string>(filters.status);
@@ -407,7 +426,7 @@ function FilterSalesCard({ filters, options }: { filters: SalesFilters; options:
     if (choice.customer) p.set("customer", choice.customer);
     if (choice.product) p.set("product", choice.product);
     if (filters.q) p.set("q", filters.q);
-    startTransition(() => router.push(`${PAGE_PATH}?${p.toString()}`));
+    navigate(`${PAGE_PATH}?${p.toString()}`);
   }
 
   /** Dropdowns filter live: the new choice applies the moment it's picked,
@@ -572,7 +591,7 @@ function sortValue(r: LedgerRow, k: SortKey): string | number {
   }
 }
 
-function SalesLedgerCard({ rows }: { rows: LedgerRow[] }) {
+function SalesLedgerCard({ rows, resetKey }: { rows: LedgerRow[]; resetKey: string }) {
   const { isVisible } = useDashboardWidgetPrefs();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "time", dir: "desc" });
@@ -606,8 +625,9 @@ function SalesLedgerCard({ rows }: { rows: LedgerRow[] }) {
   const current = Math.min(page, pageCount);
   const startIdx = pageSize === 0 ? 0 : (current - 1) * pageSize;
   const pageRows = pageSize === 0 ? shown : shown.slice(startIdx, startIdx + pageSize);
-  // A new search, sort, page size or data set starts again from page 1.
-  useEffect(() => setPage(1), [search, sort, pageSize, rows]);
+  // A new search, sort, page size or filter starts again from page 1. A plain
+  // data refresh (e.g. after recording a due payment) keeps the current page.
+  useEffect(() => setPage(1), [search, sort, pageSize, resetKey]);
 
   function toggleSort(k: SortKey) {
     setSort((s) => (s.key === k ? { key: k, dir: s.dir === "asc" ? "desc" : "asc" } : { key: k, dir: k === "time" || k === "total" || k === "paid" ? "desc" : "asc" }));

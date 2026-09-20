@@ -286,7 +286,7 @@ export function Products2ExportMenu() {
 export function Products2AddButton() {
   return (
     <Link
-      href="/admin/ecommerce/products/add"
+      href="/admin/ecommerce/add-product2"
       className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[0.5rem] bg-orange-500 px-4 text-[0.875rem] font-semibold text-white shadow-sm transition-colors hover:bg-orange-600"
     >
       <Plus className="h-4 w-4" />
@@ -304,7 +304,7 @@ const ROW_H = 54;
 const HEAD_H = 42;
 const MIN_ROWS = 10;
 
-export function Products2Body() {
+export function Products2Body({ notice }: { notice?: string | null } = {}) {
   const router = useRouter();
   const { isVisible: show, loaded } = useDashboardWidgetPrefs();
   const {
@@ -316,7 +316,8 @@ export function Products2Body() {
   const [page, setPage] = useState(1);
   const [busyIds, setBusyIds] = useState<Set<number>>(new Set());
   const [confirm, setConfirm] = useState<{ ids: number[]; label: string } | null>(null);
-  const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
+  // "Product created/updated" message after coming back from Add / Edit Product.
+  const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(notice ? { ok: true, text: notice } : null);
 
   const badgeBySlug = useMemo(() => new Map(badges.map((b) => [b.slug, b])), [badges]);
   const hasUncategorized = useMemo(() => products.some((p) => p.categoryId === null), [products]);
@@ -659,7 +660,7 @@ export function Products2Body() {
                 <tr>
                   <td colSpan={cols.length} className="py-12 text-center text-admin-gray-400">
                     {products.length === 0 ? (
-                      <>No products yet. <Link href="/admin/ecommerce/products/add" className="font-semibold text-orange-600 hover:underline">Add your first product</Link></>
+                      <>No products yet. <Link href="/admin/ecommerce/add-product2" className="font-semibold text-orange-600 hover:underline">Add your first product</Link></>
                     ) : (
                       <>No products match these filters.</>
                     )}
@@ -670,7 +671,7 @@ export function Products2Body() {
                   const busy = busyIds.has(p.id);
                   const badge = badgeBySlug.get(p.badgeTag);
                   const isSel = selected.has(p.id);
-                  const editHref = `/admin/ecommerce/products/add?edit=${p.id}`;
+                  const editHref = `/admin/ecommerce/add-product2?edit=${p.id}`;
                   return (
                     <tr
                       key={p.id}

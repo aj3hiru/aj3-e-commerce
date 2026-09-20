@@ -35,7 +35,14 @@ export default async function Products2Page({ searchParams }: Products2PageProps
     redirect("/shop/login");
   }
 
-  const initialFilters = parseProducts2Filters(await searchParams);
+  const sp = await searchParams;
+  const initialFilters = parseProducts2Filters(sp);
+  // Set by Add / Edit Product 2 after a save.
+  const successRaw = Array.isArray(sp.success) ? sp.success[0] : sp.success;
+  const savedName = (Array.isArray(sp.name) ? sp.name[0] : sp.name)?.slice(0, 120);
+  const notice =
+    successRaw === "created" ? `${savedName ? `“${savedName}”` : "Product"} created.` :
+    successRaw === "updated" ? `${savedName ? `“${savedName}”` : "Product"} updated.` : null;
 
   const [products, tags, categoryRows] = await Promise.all([
     prisma.ecomProduct.findMany({
@@ -111,7 +118,7 @@ export default async function Products2Page({ searchParams }: Products2PageProps
           <Products2AddButton />
         </div>
 
-        <Products2Body />
+        <Products2Body notice={notice} />
       </AdminShell>
     </Products2Provider>
     </DashboardWidgetPrefsProvider>

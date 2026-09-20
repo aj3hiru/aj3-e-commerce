@@ -44,6 +44,8 @@ export function usePosCart() {
           subcategoryId: product.subcategoryId,
           gstRate: product.gstRate,
           unit: product.unit,
+          sku: product.sku,
+          image: product.image ?? null,
         },
       ];
     });
@@ -75,6 +77,8 @@ export function usePosCart() {
           subcategoryId: product.subcategoryId,
           gstRate: product.gstRate,
           unit: product.unit,
+          sku: product.sku,
+          image: product.image ?? null,
         },
       ];
     });

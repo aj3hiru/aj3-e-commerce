@@ -14,6 +14,9 @@ export interface PosProduct {
    *  for a plain countable product). Display-only on the billing screen —
    *  quantity itself stays a whole number either way. */
   unit: string | null;
+  /** Relative image path (rendered as `/${image}`), shown as the cart-row
+   *  thumbnail on Billing2. Optional so screens that don't load it still type-check. */
+  image?: string | null;
 }
 
 export interface PosCoupon {
@@ -44,6 +47,8 @@ export interface CartLine {
   gstRate: number;
   priceOverridden?: boolean;
   unit?: string | null;
+  sku?: string | null;
+  image?: string | null;
 }
 
 export interface PaymentRow {

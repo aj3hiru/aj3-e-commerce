@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Search, ShoppingCart, Trash2, Tag, CreditCard, PackagePlus, Phone, User, CheckCircle2,
-  Info, Lock, ArrowRight, ScanBarcode, Banknote, Smartphone, Wallet, ChevronDown, Package,
+  Info, Lock, ArrowRight, ScanBarcode, Banknote, Smartphone, Wallet, ChevronDown, Package, Plus,
 } from "lucide-react";
 import { usePosCart } from "@/hooks/usePosCart";
 import { useCustomerSearch } from "@/hooks/useCustomerSearch";
@@ -33,10 +33,10 @@ const CORAL = "#EE6A4D";
 /**
  * /admin/ecommerce/billing2 — same POS logic as PosBillingScreen (same hooks,
  * same checkout API, same business rules), laid out to match the Billing2
- * mockup: step bar, barcode search with a search button, a cart with product
+ * mockup: barcode search with a search button, a cart with product
  * thumbnails, coupon + totals boxes, and a sticky coral "Payment Summary"
- * column. Customer fields (mobile + name) live at the top of the payment
- * card, since checkout needs them for due bills.
+ * column. Customer fields (mobile + name) and the original screen's
+ * split-payment rows (Cash + UPI + Card…) live in the payment card.
  */
 export function Billing2Screen({
   allProducts,
@@ -52,7 +52,7 @@ export function Billing2Screen({
   const {
     cart, addToCart, addToCartWithQty, changeQty, setQty, removeFromCart,
     appliedCoupon, couponMessage, applyCoupon, totals,
-    payments, updatePaymentRow,
+    payments, addPaymentRow, removePaymentRow, updatePaymentRow,
     resetForNextSale,
   } = usePosCart();
 
@@ -79,10 +79,13 @@ export function Billing2Screen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preselectedCustomer]);
 
-  // One payment row (method + amount received) on screen, matching the
-  // mockup — usePosCart's payment list is still what's submitted underneath.
-  const payment = payments[0];
-  const MethodIcon = METHOD_ICON[payment.method] ?? Wallet;
+  // "+ Add" for a split payment. The single row shows the bill total only as
+  // an auto-fill until edited; pin that shown amount first so it doesn't
+  // snap back to 0 the moment a second row appears.
+  function addSplitPayment() {
+    if (payments.length === 1) updatePaymentRow(payments[0].id, { amount: payments[0].amount });
+    addPaymentRow("UPI", "");
+  }
 
   function toggleGuestBill(checked: boolean) {
     setIsGuest(checked);
@@ -173,10 +176,6 @@ export function Billing2Screen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posSettings, lastOrderId, cart, isGuest, customer.customerId, customer.name, payments, appliedCoupon, promisedDate]);
 
-  // Step bar is a status readout (every section stays on the page): it
-  // highlights where the cashier actually is in the flow.
-  const step: 1 | 2 | 3 = cart.length === 0 ? 1 : !isGuest && !customer.customerId && !customer.name.trim() ? 2 : 3;
-
   function handleProductAdded(product: PosProduct, qty: number) {
     setProducts((prev) => [...prev, product].sort((a, b) => a.name.localeCompare(b.name)));
     addToCartWithQty(product, qty);
@@ -187,17 +186,8 @@ export function Billing2Screen({
 
   return (
     <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
-      {/* ─────────────── LEFT: steps, search, cart ─────────────── */}
+      {/* ─────────────── LEFT: search, cart ─────────────── */}
       <div className="min-w-0 space-y-5">
-        {/* Step bar */}
-        <div className="rounded-2xl border border-admin-gray-200 bg-white p-2 shadow-sm">
-          <div className="flex flex-col gap-2 md:flex-row md:gap-0">
-            <StepSegment n={1} title="Add items" subtitle="Scan or search products" active={step === 1} done={step > 1} first />
-            <StepSegment n={2} title="Customer" subtitle="Enter customer details" active={step === 2} done={step > 2} />
-            <StepSegment n={3} title="Payment" subtitle="Choose method and complete" active={step === 3} done={false} last />
-          </div>
-        </div>
-
         {/* Search / scan */}
         <div className="rounded-2xl bg-[#FFF4F0] p-3">
           <div className="relative">
@@ -526,39 +516,66 @@ export function Billing2Screen({
 
           <div className="my-5 border-t border-admin-gray-100" />
 
-          {/* Payment method */}
-          <label htmlFor="b2-method" className="mb-3 flex items-center gap-2.5 text-[15px] font-semibold text-admin-gray-900">
-            <CreditCard className="h-[18px] w-[18px]" style={{ color: CORAL }} /> Payment Method
-          </label>
-          <div className="relative">
-            <MethodIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-admin-gray-700" />
-            <select
-              id="b2-method"
-              value={payment.method}
-              onChange={(e) => updatePaymentRow(payment.id, { method: e.target.value as PaymentRow["method"] })}
-              className="w-full appearance-none rounded-xl border border-admin-gray-200 bg-white py-3.5 pl-12 pr-10 text-[15px] text-admin-gray-900 focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
+          {/* Payment — split across methods like the original billing screen
+              (e.g. part Cash + part UPI). Each row is one method + amount. */}
+          <div className="mb-3 flex items-center justify-between">
+            <span className="flex items-center gap-2.5 text-[15px] font-semibold text-admin-gray-900">
+              <Wallet className="h-[18px] w-[18px]" style={{ color: CORAL }} /> Payment
+            </span>
+            <button
+              type="button"
+              onClick={addSplitPayment}
+              className="flex items-center gap-1.5 rounded-lg border border-[#F3B6A6] bg-[#FFF4F0] px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-[#FFE9E2]"
+              style={{ color: CORAL }}
             >
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-700" />
+              <Plus className="h-4 w-4" /> Add
+            </button>
           </div>
 
-          <div className="my-5 border-t border-admin-gray-100" />
-
-          <label htmlFor="b2-received" className="mb-2 block text-[15px] text-admin-gray-800">Amount Received</label>
-          <div className="relative">
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[15px] text-admin-gray-900">₹</span>
-            <input
-              id="b2-received"
-              type="number"
-              step="0.01"
-              min={0}
-              value={payment.amount}
-              onChange={(e) => updatePaymentRow(payment.id, { amount: e.target.value })}
-              className="w-full rounded-xl border border-admin-gray-200 py-3.5 pl-8 pr-4 text-[15px] text-admin-gray-900 [appearance:textfield] focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            />
+          <div className="space-y-2.5">
+            {payments.map((p, i) => {
+              const Icon = METHOD_ICON[p.method] ?? Wallet;
+              return (
+                <div key={p.id} className="flex items-center gap-2">
+                  <div className="relative w-[128px] shrink-0">
+                    <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-600" />
+                    <select
+                      aria-label={`Payment ${i + 1} method`}
+                      value={p.method}
+                      onChange={(e) => updatePaymentRow(p.id, { method: e.target.value as PaymentRow["method"] })}
+                      className="w-full appearance-none rounded-xl border border-admin-gray-200 bg-white py-3 pl-9 pr-7 text-[15px] text-admin-gray-900 focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20"
+                    >
+                      {PAYMENT_METHODS.map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-500" />
+                  </div>
+                  <div className="relative min-w-0 flex-1">
+                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] text-admin-gray-500">₹</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      placeholder="Amount"
+                      aria-label={`Payment ${i + 1} amount`}
+                      value={p.amount}
+                      onChange={(e) => updatePaymentRow(p.id, { amount: e.target.value })}
+                      className="w-full rounded-xl border border-admin-gray-200 py-3 pl-8 pr-3 text-[15px] text-admin-gray-900 [appearance:textfield] focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/20 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removePaymentRow(p.id)}
+                    disabled={payments.length <= 1}
+                    aria-label={`Remove payment ${i + 1}`}
+                    className="shrink-0 rounded-md p-2 text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+                  >
+                    <Trash2 className="h-[18px] w-[18px]" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
 
           {due > 0.004 && (
@@ -594,45 +611,6 @@ export function Billing2Screen({
       {showQuickAdd && (
         <QuickAddProductModal onClose={() => setShowQuickAdd(false)} onAdded={handleProductAdded} />
       )}
-    </div>
-  );
-}
-
-/**
- * One step of the step bar. On md+ each segment is an arrow shape
- * (clip-path chevron) so the three read as a flow, like the mockup.
- */
-function StepSegment({
-  n, title, subtitle, active, done, first, last,
-}: { n: number; title: string; subtitle: string; active: boolean; done: boolean; first?: boolean; last?: boolean }) {
-  const clip = first
-    ? "md:[clip-path:polygon(0_0,calc(100%-18px)_0,100%_50%,calc(100%-18px)_100%,0_100%)]"
-    : last
-    ? "md:[clip-path:polygon(0_0,100%_0,100%_100%,0_100%,18px_50%)]"
-    : "md:[clip-path:polygon(0_0,calc(100%-18px)_0,100%_50%,calc(100%-18px)_100%,0_100%,18px_50%)]";
-  return (
-    <div
-      className={cn(
-        "flex flex-1 items-center gap-4 rounded-xl px-5 py-3.5 md:rounded-none",
-        first ? "md:rounded-l-xl" : "md:-ml-2 md:pl-9",
-        last && "md:rounded-r-xl",
-        clip,
-        active ? "bg-[#FFEFEA]" : "bg-admin-gray-50"
-      )}
-    >
-      <span
-        className={cn(
-          "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-semibold",
-          active ? "text-white" : done ? "bg-emerald-500 text-white" : "bg-admin-gray-200 text-admin-gray-700"
-        )}
-        style={active ? { backgroundColor: CORAL } : undefined}
-      >
-        {done ? <CheckCircle2 className="h-5 w-5" /> : n}
-      </span>
-      <div className="min-w-0">
-        <div className="truncate text-base font-semibold text-admin-gray-900">{title}</div>
-        <div className="truncate text-[13px] text-admin-gray-500">{subtitle}</div>
-      </div>
     </div>
   );
 }

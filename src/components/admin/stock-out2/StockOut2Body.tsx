@@ -10,6 +10,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
+import { ActionMenu, IconAction, PillButton, StatusPill, type PillOption } from "@/components/admin/ui/buttons";
+
+const PRODUCT_STATUS: readonly PillOption<"active" | "inactive">[] = [
+  { value: "active", label: "Active", variant: "success" },
+  { value: "inactive", label: "Inactive", variant: "secondary" },
+];
 
 /* ───────────────────────── types & helpers ───────────────────────── */
 
@@ -430,13 +436,10 @@ export function StockOut2Body({ products: initial, notice }: { products: StockOu
 
             {show("so2-c-select") && (
               <>
-                <Menu
+                <ActionMenu
+                  label={`Bulk Actions${selected.size ? ` (${selected.size})` : ""}`}
                   disabled={selected.size === 0}
-                  trigger={(open) => (
-                    <span className={cn("flex h-10 items-center gap-2 rounded-[0.375rem] border border-[#dee2e6] bg-white px-3 text-sm font-medium", selected.size === 0 ? "text-admin-gray-400" : "text-admin-gray-800 hover:bg-admin-gray-50")}>
-                      <Layers className="h-4 w-4" /> Bulk Actions{selected.size ? ` (${selected.size})` : ""} <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
-                    </span>
-                  )}
+                  trigger={<><Layers className="h-3.5 w-3.5" /> Bulk Actions{selected.size ? ` (${selected.size})` : ""}</>}
                   items={[
                     { label: "Set Active", onClick: () => setStatus([...selected], "active") },
                     { label: "Set Inactive", onClick: () => setStatus([...selected], "inactive") },
@@ -542,33 +545,30 @@ export function StockOut2Body({ products: initial, notice }: { products: StockOu
                           )}
                           {show("so2-c-status") && (
                             <td className={td}>
-                              <PillMenu on={p.status === "active"} busy={isBusy} labels={["Active", "Inactive"]} name={`Status of ${p.name}`}
-                                onChange={(on) => setStatus([p.id], on ? "active" : "inactive")} />
+                              <StatusPill
+                                label={`Change status of ${p.name}`}
+                                value={p.status === "active" ? "active" : "inactive"}
+                                options={PRODUCT_STATUS}
+                                disabled={isBusy}
+                                onChange={(next) => setStatus([p.id], next)}
+                              />
                             </td>
                           )}
                           {show("so2-c-stock") && (
                             <td className={td}>
-                              <button type="button" disabled={isBusy} onClick={(e) => toggleEditor(p.id, e.currentTarget)} aria-haspopup="dialog" aria-expanded={editing}
+                              <PillButton variant="danger" caret disabled={isBusy} onClick={(e) => toggleEditor(p.id, e.currentTarget)} aria-haspopup="dialog" aria-expanded={editing}
                                 aria-label={`Update stock for ${p.name}`} title="Click to update stock"
-                                className={cn("inline-flex h-9 max-w-full items-center gap-2 rounded-[0.25rem] bg-[#dc3545] px-3 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-[#bb2d3b] disabled:cursor-wait", editing && "ring-2 ring-[#dc3545]/30 ring-offset-1")}>
-                                {isBusy ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : null}
+                                className={cn("max-w-full", editing && "ring-2 ring-[#ef4444]/30 ring-offset-1")}>
                                 <span className="truncate">{stockLabel(p)}</span>
-                                <SquarePen className="h-3.5 w-3.5 shrink-0 opacity-80" />
-                              </button>
+                              </PillButton>
                               {p.sizes.length > 0 && <div className="mt-1 text-xs text-admin-gray-500">{unitsWord(p.sizes.length)}</div>}
                             </td>
                           )}
                           {show("so2-c-actions") && (
                             <td className={td}>
-                              <div className="flex items-center gap-2">
-                                <button type="button" disabled={isBusy} onClick={(e) => toggleEditor(p.id, e.currentTarget)} aria-label={`Restock ${p.name}`} title="Restock"
-                                  className="flex h-10 w-10 items-center justify-center rounded-[0.375rem] bg-[#3d8b5f] text-white shadow-sm hover:bg-[#33774f] disabled:opacity-50">
-                                  <PackagePlus className="h-4 w-4" />
-                                </button>
-                                <Link href={EDIT_HREF(p.id)} aria-label={`Edit ${p.name}`} title="Edit product"
-                                  className="flex h-10 w-10 items-center justify-center rounded-[0.375rem] bg-[#4361ee] text-white shadow-sm hover:bg-[#3651d4]">
-                                  <SquarePen className="h-4 w-4" />
-                                </Link>
+                              <div className="flex gap-[0.4rem]">
+                                <IconAction tone="add" disabled={isBusy} onClick={(e) => toggleEditor(p.id, e.currentTarget)} title={`Restock ${p.name}`}><PackagePlus /></IconAction>
+                                <IconAction tone="edit" href={EDIT_HREF(p.id)} title={`Edit ${p.name}`}><SquarePen /></IconAction>
                               </div>
                             </td>
                           )}
@@ -816,89 +816,6 @@ function FilterSelect({ icon: Icon, label, value, onChange, dot, children }: {
       </span>
       <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-500" />
     </label>
-  );
-}
-
-/** The green "Active ▾" / grey "Inactive ▾" button from the current page; menu portalled so the table can't clip it. */
-function PillMenu({ on, busy, labels, name, onChange }: { on: boolean; busy: boolean; labels: [string, string]; name: string; onChange: (on: boolean) => void }) {
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const btn = useRef<HTMLButtonElement>(null);
-  const menu = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!pos) return;
-    const close = () => setPos(null);
-    const onDoc = (e: MouseEvent) => { const t = e.target as Node; if (!btn.current?.contains(t) && !menu.current?.contains(t)) close(); };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-    };
-  }, [pos]);
-  return (
-    <>
-      <button ref={btn} type="button" disabled={busy} aria-haspopup="menu" aria-expanded={!!pos} aria-label={`${name}: ${on ? labels[0] : labels[1]}`}
-        onClick={() => {
-          if (pos) return setPos(null);
-          const r = btn.current!.getBoundingClientRect();
-          setPos({ top: r.bottom + 4 + 84 > window.innerHeight ? r.top - 88 : r.bottom + 4, left: r.left });
-        }}
-        className={cn("inline-flex h-10 items-center gap-2 rounded-[0.25rem] px-3.5 text-[15px] font-semibold text-white shadow-sm transition-colors disabled:cursor-wait",
-          on ? "bg-[#5cc28a] hover:bg-[#4bb279]" : "bg-[#8a8f98] hover:bg-[#777c85]")}>
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : on ? labels[0] : labels[1]}
-        <ChevronDown className="h-3.5 w-3.5" />
-      </button>
-      {pos && createPortal(
-        <div ref={menu} role="menu" className="fixed z-[400] w-[150px] rounded-[0.375rem] border border-admin-gray-200 bg-white py-1 text-sm shadow-lg" style={pos}>
-          {[true, false].map((v) => (
-            <button key={String(v)} type="button" role="menuitemradio" aria-checked={on === v}
-              onClick={() => { setPos(null); if (v !== on) onChange(v); }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-admin-gray-50">
-              <span className={cn("h-2 w-2 rounded-full", v ? "bg-[#5cc28a]" : "bg-[#8a8f98]")} />
-              {v ? labels[0] : labels[1]}
-              {on === v && <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-emerald-500" />}
-            </button>
-          ))}
-        </div>,
-        document.body
-      )}
-    </>
-  );
-}
-
-function Menu({ trigger, items, disabled }: { trigger: (open: boolean) => React.ReactNode; disabled?: boolean; items: { label: string; onClick: () => void; danger?: boolean }[] }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
-  }, [open]);
-  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
-  return (
-    <div className="relative" ref={ref}>
-      <button type="button" disabled={disabled} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} title={disabled ? "Select products first" : undefined} className="block disabled:cursor-not-allowed">
-        {trigger(open)}
-      </button>
-      {open && (
-        <div role="menu" className="absolute left-0 top-full z-50 mt-1.5 min-w-[210px] rounded-[0.5rem] border border-admin-gray-200 bg-white py-1 text-sm shadow-lg">
-          {items.map((it) => (
-            <button key={it.label} type="button" role="menuitem" onClick={() => { setOpen(false); it.onClick(); }}
-              className={cn("block w-full px-3.5 py-2 text-left hover:bg-admin-gray-50", it.danger ? "text-red-600" : "text-admin-gray-800")}>
-              {it.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 

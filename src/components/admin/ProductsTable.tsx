@@ -1,10 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ImageIcon, Barcode, Pencil, Trash2, ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ImageIcon, Barcode, Pencil, Trash2 } from "lucide-react";
+import { IconAction, StatusPill, type PillOption } from "./ui/buttons";
+
+const PUBLISH_OPTIONS: readonly PillOption<"active" | "inactive">[] = [
+  { value: "active", label: "Published", variant: "success" },
+  { value: "inactive", label: "Unpublished", variant: "secondary" },
+];
 
 export interface ProductRow {
   id: number;
@@ -31,11 +35,9 @@ interface ProductsTableProps {
 export function ProductsTable({ products, badgeLabels, badgeColors }: ProductsTableProps) {
   const router = useRouter();
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
-  const [openStatusId, setOpenStatusId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function setStatus(id: number, status: "active" | "inactive") {
-    setOpenStatusId(null);
     setBusy(true);
     try {
       await fetch(`/api/ecommerce/products/${id}`, {
@@ -104,24 +106,7 @@ export function ProductsTable({ products, badgeLabels, badgeColors }: ProductsTa
                       {hasSale && <div className="text-xs text-admin-gray-400 line-through">₹{p.price.toFixed(2)}</div>}
                     </td>
                     <td className="py-2.5 px-4">
-                      <div className="relative inline-block">
-                        <button
-                          type="button"
-                          onClick={() => setOpenStatusId(openStatusId === p.id ? null : p.id)}
-                          className={cn(
-                            "flex items-center gap-1 text-xs font-semibold rounded px-2.5 py-1.5",
-                            p.status === "active" ? "bg-emerald-500 text-white" : "bg-admin-gray-400 text-white"
-                          )}
-                        >
-                          {p.status === "active" ? "Publish" : "Unpublish"} <ChevronDown className="w-3 h-3" />
-                        </button>
-                        {openStatusId === p.id && (
-                          <div className="absolute z-10 mt-1 bg-white border border-admin-gray-200 rounded shadow-lg min-w-[120px]">
-                            <button className="block w-full text-left px-3 py-1.5 text-xs hover:bg-admin-gray-50" onClick={() => setStatus(p.id, "active")}>Publish</button>
-                            <button className="block w-full text-left px-3 py-1.5 text-xs hover:bg-admin-gray-50" onClick={() => setStatus(p.id, "inactive")}>Unpublish</button>
-                          </div>
-                        )}
-                      </div>
+                      <StatusPill label={`Change status of ${p.name}`} value={p.status === "active" ? "active" : "inactive"} options={PUBLISH_OPTIONS} disabled={busy} onChange={(next) => setStatus(p.id, next)} />
                     </td>
                     <td className="py-2.5 px-4">
                       {p.badgeTag === "none" || !bcolor ? (
@@ -138,28 +123,9 @@ export function ProductsTable({ products, badgeLabels, badgeColors }: ProductsTa
                     <td className="py-2.5 px-4 capitalize">{p.itemType}</td>
                     <td className="py-2.5 px-4">
                       <div className="flex items-center gap-1.5">
-                        <a
-                          href={`/admin/ecommerce/barcode-print?ids=${p.id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          title="Print Barcode"
-                          className="w-8 h-8 flex items-center justify-center bg-admin-gray-100 hover:bg-admin-gray-200 rounded"
-                        >
-                          <Barcode className="w-3.5 h-3.5" />
-                        </a>
-                        <Link
-                          href={`/admin/ecommerce/products/add?edit=${p.id}`}
-                          className="w-8 h-8 flex items-center justify-center bg-admin-primary-lighter text-admin-primary hover:bg-admin-primary hover:text-white rounded"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget({ id: p.id, name: p.name })}
-                          className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <IconAction tone="print" href={`/admin/ecommerce/barcode-print?ids=${p.id}`} target="_blank" rel="noreferrer" title="Print Barcode"><Barcode /></IconAction>
+                        <IconAction tone="edit" href={`/admin/ecommerce/products/add?edit=${p.id}`} title="Edit"><Pencil /></IconAction>
+                        <IconAction tone="delete" title="Delete" onClick={() => setDeleteTarget({ id: p.id, name: p.name })}><Trash2 /></IconAction>
                       </div>
                     </td>
                   </tr>

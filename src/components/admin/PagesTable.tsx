@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2, Plus, ExternalLink } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { IconAction, StatusBadge } from "./ui/buttons";
 
 export interface PageRow {
   id: number;
@@ -65,28 +65,16 @@ export function PagesTable({ pages }: { pages: PageRow[] }) {
                     <td className="py-2.5 px-4 font-medium">{p.title}</td>
                     <td className="py-2.5 px-4 text-admin-gray-500">/{p.slug}</td>
                     <td className="py-2.5 px-4">
-                      <span className={cn("text-xs font-semibold rounded px-2 py-1", p.status === "published" ? "bg-emerald-100 text-emerald-700" : "bg-admin-gray-200 text-admin-gray-600")}>
-                        {p.status === "published" ? "Published" : "Draft"}
-                      </span>
+                      <StatusBadge variant={p.status === "published" ? "success" : "secondary"}>{p.status === "published" ? "Published" : "Draft"}</StatusBadge>
                     </td>
                     <td className="py-2.5 px-4">{new Date(p.updatedAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
                     <td className="py-2.5 px-4">
                       <div className="flex items-center gap-1.5">
                         {p.status === "published" && (
-                          <a href={`/${p.slug}`} target="_blank" rel="noreferrer" className="w-8 h-8 flex items-center justify-center bg-admin-gray-100 hover:bg-admin-gray-200 rounded">
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
+                          <IconAction tone="view" href={`/${p.slug}`} target="_blank" rel="noreferrer" title="View page"><ExternalLink /></IconAction>
                         )}
-                        <Link href={`/admin/pages/${p.id}`} className="w-8 h-8 flex items-center justify-center bg-admin-primary-lighter text-admin-primary hover:bg-admin-primary hover:text-white rounded">
-                          <Pencil className="w-3.5 h-3.5" />
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget({ id: p.id, title: p.title })}
-                          className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <IconAction tone="edit" href={`/admin/pages/${p.id}`} title="Edit"><Pencil /></IconAction>
+                        <IconAction tone="delete" title="Delete" onClick={() => setDeleteTarget({ id: p.id, title: p.title })}><Trash2 /></IconAction>
                       </div>
                     </td>
                   </tr>

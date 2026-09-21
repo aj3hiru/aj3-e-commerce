@@ -5,7 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2, Plus, ReceiptText } from "lucide-react";
 import { CustomerFormModal, type CustomerFormValues } from "./CustomerFormModal";
-import { cn } from "@/lib/utils";
+import { IconAction, StatusPill, type PillOption } from "./ui/buttons";
+
+const ACTIVE_INACTIVE: readonly PillOption<"active" | "inactive">[] = [
+  { value: "active", label: "Active", variant: "success" },
+  { value: "inactive", label: "Inactive", variant: "secondary" },
+];
 
 export interface CustomerRow {
   id: number;
@@ -89,30 +94,12 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                   <td className="py-2.5 px-4">{c.phone ?? "—"}</td>
                   <td className="py-2.5 px-4 capitalize">{c.customerType}</td>
                   <td className="py-2.5 px-4">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => setStatus(c.id, c.status === "active" ? "inactive" : "active")}
-                      className={cn(
-                        "text-xs font-semibold rounded px-2.5 py-1.5",
-                        c.status === "active" ? "bg-emerald-500 text-white" : "bg-admin-gray-400 text-white"
-                      )}
-                    >
-                      {c.status === "active" ? "Active" : "Inactive"}
-                    </button>
+                    <StatusPill label={`Change status of ${c.name}`} value={c.status === "active" ? "active" : "inactive"} options={ACTIVE_INACTIVE} disabled={busy} onChange={(next) => setStatus(c.id, next)} />
                   </td>
                   <td className="py-2.5 px-4">
                     <div className="flex items-center gap-1.5">
-                      <Link
-                        href={`/admin/ecommerce/billing?customer_id=${c.id}`}
-                        title="New Order for this Customer"
-                        className="w-8 h-8 flex items-center justify-center bg-admin-gray-100 hover:bg-admin-gray-200 rounded"
-                      >
-                        <ReceiptText className="w-3.5 h-3.5" />
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() =>
+                      <IconAction tone="view" href={`/admin/ecommerce/billing?customer_id=${c.id}`} title="New Order for this Customer"><ReceiptText /></IconAction>
+                      <IconAction tone="edit" title="Edit" onClick={() =>
                           setModalMode({
                             id: c.id,
                             name: c.name,
@@ -122,18 +109,8 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                             address: "",
                             status: c.status as "active" | "inactive",
                           })
-                        }
-                        className="w-8 h-8 flex items-center justify-center bg-admin-primary-lighter text-admin-primary hover:bg-admin-primary hover:text-white rounded"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget({ id: c.id, name: c.name })}
-                        className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                        }><Pencil /></IconAction>
+                      <IconAction tone="delete" title="Delete" onClick={() => setDeleteTarget({ id: c.id, name: c.name })}><Trash2 /></IconAction>
                     </div>
                   </td>
                 </tr>

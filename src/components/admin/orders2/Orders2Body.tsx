@@ -12,11 +12,18 @@ import { cn } from "@/lib/utils";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { Order2Row, Orders2Data } from "@/lib/orders2";
 import { Modal, Pager } from "@/components/admin/campaigns2/ui";
+import { orderStatusVariant, paymentStatusVariant, STATUS_BTN_STYLES } from "@/components/admin/StatusDropdown";
+import { IconAction, StatusBadge, StatusPill, type PillOption } from "@/components/admin/ui/buttons";
 import { money } from "@/components/admin/campaigns2/format";
 
 const PAGE_PATH = "/admin/ecommerce/orders2";
 const EVT_EXPORT = "orders2:export";
 const PAISA = 0.004;
+
+const PAYMENT_OPTIONS: readonly PillOption<string>[] = [
+  { value: "Paid", label: "Paid", variant: "success" },
+  { value: "Unpaid", label: "Unpaid", variant: "secondary" },
+];
 
 export function Orders2HeaderButtons() {
   return (
@@ -41,14 +48,8 @@ function fmtDateTime(iso: string) {
   return `${p.day} ${p.month} ${p.year}, ${p.hour}:${p.minute} ${String(p.dayPeriod).toUpperCase()}`;
 }
 
-/** Status colours, matching the pills the old Orders page uses. */
-const STATUS_STYLE: Record<string, string> = {
-  Pending: "bg-[#e0a100]",
-  "In Progress": "bg-[#3b82f6]",
-  "Out for Delivery": "bg-[#0ea5e9]",
-  Delivered: "bg-[#5cc28a]",
-  Canceled: "bg-[#dc3545]",
-};
+/** The colour of a status dot, taken from the same palette as the pills. */
+const statusDot = (status: string) => STATUS_BTN_STYLES[orderStatusVariant(status)].background;
 const STATUS_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   Pending: Clock, "In Progress": Package, "Out for Delivery": Truck, Delivered: CheckCircle2, Canceled: Ban,
 };
@@ -94,6 +95,10 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
   const c = data.cards;
   const range = data.range;
 
+  const orderOptions = useMemo<readonly PillOption<string>[]>(
+    () => data.statuses.map((st) => ({ value: st, label: st, variant: orderStatusVariant(st) })),
+    [data.statuses]
+  );
   const methods = useMemo(() => [...new Set(rows.map((r) => r.paymentMethod).filter(Boolean))].sort(), [rows]);
 
   const filtered = useMemo(() => {
@@ -206,7 +211,7 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
           <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Order status">
             <TabButton active={data.type === ""} onClick={() => goType("")} label="All Orders" count={data.statusCounts.reduce((s, x) => s + x.count, 0)} />
             {data.statusCounts.map((s) => (
-              <TabButton key={s.status} active={data.type === s.status} onClick={() => goType(s.status)} label={`${s.status} Orders`} count={s.count} dot={STATUS_STYLE[s.status]} />
+              <TabButton key={s.status} active={data.type === s.status} onClick={() => goType(s.status)} label={`${s.status} Orders`} count={s.count} dot={statusDot(s.status)} />
             ))}
           </div>
         </section>
@@ -353,13 +358,15 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
                         {show("or2-c-payment") && (
                           <td className={td}>
                             {canEdit ? (
-                              <button type="button" disabled={isBusy} onClick={() => patch(r, { paymentStatus: r.paymentStatus === "Paid" ? "Unpaid" : "Paid" })}
-                                aria-label={`${r.orderNumber} is ${r.paymentStatus} — click to change`} title="Click to change"
-                                className={cn("inline-flex h-8 items-center rounded-[0.25rem] px-3 text-[13px] font-semibold text-white disabled:cursor-wait", r.paymentStatus === "Paid" ? "bg-[#5cc28a] hover:bg-[#4bb279]" : "bg-[#dc3545] hover:bg-[#bb2d3b]")}>
-                                {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : r.paymentStatus}
-                              </button>
+                              <StatusPill
+                                label={`Change payment status for order ${r.orderNumber}`}
+                                value={r.paymentStatus}
+                                options={PAYMENT_OPTIONS}
+                                disabled={isBusy}
+                                onChange={(next) => patch(r, { paymentStatus: next })}
+                              />
                             ) : (
-                              <span className={cn("inline-flex h-8 items-center rounded-[0.25rem] px-3 text-[13px] font-semibold text-white", r.paymentStatus === "Paid" ? "bg-[#5cc28a]" : "bg-[#dc3545]")}>{r.paymentStatus}</span>
+                              <StatusBadge variant={paymentStatusVariant(r.paymentStatus)}>{r.paymentStatus}</StatusBadge>
                             )}
                             <div className="mt-0.5 truncate text-xs text-admin-gray-500">{r.paymentMethod}</div>
                           </td>
@@ -367,28 +374,23 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
                         {show("or2-c-status") && (
                           <td className={td}>
                             {canEdit ? (
-                              <span className="relative block">
-                                <select value={r.orderStatus} disabled={isBusy} aria-label={`Status of ${r.orderNumber}`}
-                                  onChange={(e) => patch(r, { orderStatus: e.target.value })}
-                                  className={cn("h-9 w-full cursor-pointer appearance-none rounded-[0.25rem] pl-3 pr-8 text-[14px] font-semibold text-white disabled:cursor-wait", STATUS_STYLE[r.orderStatus] ?? "bg-[#8a8f98]")}>
-                                  {data.statuses.map((st) => <option key={st} value={st} className="bg-white text-admin-gray-900">{st}</option>)}
-                                </select>
-                                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-white" />
-                              </span>
+                              <StatusPill
+                                label={`Change order status for order ${r.orderNumber}`}
+                                value={r.orderStatus}
+                                options={orderOptions}
+                                disabled={isBusy}
+                                onChange={(next) => patch(r, { orderStatus: next })}
+                              />
                             ) : (
-                              <span className={cn("inline-flex h-9 items-center rounded-[0.25rem] px-3 text-[14px] font-semibold text-white", STATUS_STYLE[r.orderStatus] ?? "bg-[#8a8f98]")}>{r.orderStatus}</span>
+                              <StatusBadge variant={orderStatusVariant(r.orderStatus)}>{r.orderStatus}</StatusBadge>
                             )}
                           </td>
                         )}
                         {show("or2-c-actions") && (
                           <td className={td}>
-                            <div className="flex items-center gap-2">
-                              <Link href={`/admin/ecommerce/orders/${r.id}`} aria-label={`Open ${r.orderNumber}`} title="Open order"
-                                className="flex h-9 w-9 items-center justify-center rounded-[0.375rem] bg-[#4361ee] text-white hover:bg-[#3651d4]"><Eye className="h-4 w-4" /></Link>
-                              {canBill && (
-                                <Link href={`/admin/ecommerce/invoice/${r.id}`} aria-label={`Invoice for ${r.orderNumber}`} title="Invoice"
-                                  className="flex h-9 w-9 items-center justify-center rounded-[0.375rem] border border-[#dee2e6] bg-white text-admin-gray-700 hover:bg-admin-gray-50"><Printer className="h-4 w-4" /></Link>
-                              )}
+                            <div className="flex gap-[0.4rem]">
+                              <IconAction tone="view" href={`/admin/ecommerce/orders/${r.id}`} title={`View order ${r.orderNumber}`}><Eye /></IconAction>
+                              {canBill && <IconAction tone="print" href={`/admin/ecommerce/invoice/${r.id}`} title={`Invoice for ${r.orderNumber}`}><Printer /></IconAction>}
                             </div>
                           </td>
                         )}
@@ -469,7 +471,7 @@ function TabButton({ active, onClick, label, count, dot }: { active: boolean; on
   return (
     <button type="button" role="tab" aria-selected={active} onClick={onClick}
       className={cn("flex h-10 items-center gap-2 rounded-[0.5rem] px-3.5 text-sm font-medium transition-colors", active ? "bg-[#2563eb] text-white" : "text-admin-gray-700 hover:bg-admin-gray-50")}>
-      {dot && <span className={cn("h-2 w-2 rounded-full", active ? "bg-white" : dot)} />}
+      {dot && <span className="h-2 w-2 rounded-full" style={{ background: active ? "#fff" : dot }} />}
       {label}
       <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", active ? "bg-white/20 text-white" : "bg-admin-gray-100 text-admin-gray-700")}>{count}</span>
     </button>

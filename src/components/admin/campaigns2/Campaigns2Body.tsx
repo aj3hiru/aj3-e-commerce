@@ -16,6 +16,7 @@ import { CampaignEditor, EMPTY_FORM, formFromCampaign, type CampaignFormState } 
 import { CampaignSalesChart } from "./CampaignSalesChart";
 import { durationText, fmtDateTime, money } from "./format";
 import { ConfirmDialog, Pager, StatePill, Thumb } from "./ui";
+import { IconAction } from "@/components/admin/ui/buttons";
 
 const PAGE_PATH = "/admin/ecommerce/campaign-offer2";
 const EVT_EXPORT = "campaigns2:export";
@@ -385,15 +386,15 @@ export function Campaigns2Body({ data, serverNow, filters, isDefaultRange, notic
                         )}
                         {show("co2-c-actions") && (
                           <td className={td}>
-                            <div className="flex items-center gap-1.5">
-                              <IconBtn label={`Edit ${c.name}`} cls="bg-[#4361ee] hover:bg-[#3651d4]" onClick={() => setEditor({ editing: c, initial: formFromCampaign(c) })}><SquarePen className="h-4 w-4" /></IconBtn>
+                            <div className="flex gap-[0.4rem]">
+                              <IconAction tone="edit" title={`Edit ${c.name}`} onClick={() => setEditor({ editing: c, initial: formFromCampaign(c) })}><SquarePen /></IconAction>
                               {st !== "ended" && (c.isPaused
-                                ? <IconBtn label={`Resume ${c.name}`} cls="bg-[#3d8b5f] hover:bg-[#33774f]" disabled={isBusy} onClick={() => quick(c, "resume")}><Play className="h-4 w-4" /></IconBtn>
-                                : <IconBtn label={`Pause ${c.name}`} cls="bg-[#e0a100] hover:bg-[#c48d00]" disabled={isBusy} onClick={() => quick(c, "pause")}><Pause className="h-4 w-4" /></IconBtn>)}
-                              <IconBtn label={`Duplicate ${c.name}`} cls="bg-[#6c757d] hover:bg-[#5c636a]" onClick={() => duplicate(c)}><Copy className="h-4 w-4" /></IconBtn>
+                                ? <IconAction tone="add" title={`Resume ${c.name}`} disabled={isBusy} onClick={() => quick(c, "resume")}><Play /></IconAction>
+                                : <IconAction tone="warn" title={`Pause ${c.name}`} disabled={isBusy} onClick={() => quick(c, "pause")}><Pause /></IconAction>)}
+                              <IconAction tone="print" title={`Duplicate ${c.name}`} onClick={() => duplicate(c)}><Copy /></IconAction>
                               {st !== "ended"
-                                ? <IconBtn label={`End ${c.name} now`} cls="bg-[#dc3545] hover:bg-[#bb2d3b]" disabled={isBusy} onClick={() => setConfirm({ kind: "end", c })}><X className="h-4 w-4" /></IconBtn>
-                                : <IconBtn label={hasSales ? "Kept in history — it has sales" : `Delete ${c.name}`} cls="bg-[#dc3545] hover:bg-[#bb2d3b]" disabled={isBusy || hasSales} onClick={() => setConfirm({ kind: "delete", c })}><Trash2 className="h-4 w-4" /></IconBtn>}
+                                ? <IconAction tone="delete" title={`End ${c.name} now`} disabled={isBusy} onClick={() => setConfirm({ kind: "end", c })}><X /></IconAction>
+                                : <IconAction tone="delete" title={hasSales ? "Kept in history — it has sales" : `Delete ${c.name}`} disabled={isBusy || hasSales} onClick={() => setConfirm({ kind: "delete", c })}><Trash2 /></IconAction>}
                             </div>
                           </td>
                         )}
@@ -476,10 +477,9 @@ export function Campaigns2Body({ data, serverNow, filters, isDefaultRange, notic
                         )}
                         {show("co2-p-actions") && (
                           <td className={td}>
-                            <div className="flex items-center gap-2">
-                              <Link href={`/admin/ecommerce/add-product2?edit=${p.id}`} aria-label={`Edit ${p.name}`} title="Edit product"
-                                className="flex h-10 w-10 items-center justify-center rounded-[0.375rem] bg-[#4361ee] text-white shadow-sm hover:bg-[#3651d4]"><SquarePen className="h-4 w-4" /></Link>
-                              {c && <IconBtn label={`Open campaign ${c.name}`} cls="bg-[#6c757d] hover:bg-[#5c636a]" onClick={() => setEditor({ editing: c, initial: formFromCampaign(c) })} size="lg"><Tag className="h-4 w-4" /></IconBtn>}
+                            <div className="flex gap-[0.4rem]">
+                              <IconAction tone="edit" href={`/admin/ecommerce/add-product2?edit=${p.id}`} title={`Edit ${p.name}`}><SquarePen /></IconAction>
+                              {c && <IconAction tone="view" title={`Open campaign ${c.name}`} onClick={() => setEditor({ editing: c, initial: formFromCampaign(c) })}><Tag /></IconAction>}
                             </div>
                           </td>
                         )}
@@ -542,15 +542,6 @@ function Countdown({ c, state, now }: { c: CampaignRowData; state: CampaignState
   if (state === "scheduled" && c.startsAt) return <div className="truncate text-xs font-medium text-[#4361ee]">Starts in {durationText(new Date(c.startsAt).getTime() - now.getTime())}</div>;
   if (state === "paused") return <div className="text-xs font-medium text-amber-600">On hold — resume to apply</div>;
   return <div className="text-xs text-admin-gray-500">Finished</div>;
-}
-
-function IconBtn({ label, cls, onClick, disabled, children, size }: { label: string; cls: string; onClick: () => void; disabled?: boolean; children: React.ReactNode; size?: "lg" }) {
-  return (
-    <button type="button" aria-label={label} title={label} disabled={disabled} onClick={onClick}
-      className={cn("flex items-center justify-center rounded-[0.375rem] text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-40", size === "lg" ? "h-10 w-10" : "h-9 w-9", cls)}>
-      {children}
-    </button>
-  );
 }
 
 function TableToolbar({ size, onSize, search }: { size: number; onSize: (n: number) => void; search: { value: string; onChange: (v: string) => void; label: string } | null }) {

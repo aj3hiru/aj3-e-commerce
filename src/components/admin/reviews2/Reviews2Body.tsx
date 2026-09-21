@@ -13,8 +13,17 @@ import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { Review2Row, Reviews2Data } from "@/lib/reviews2";
 import { parseReviewInput } from "@/lib/review2-save";
 import { ConfirmDialog, Modal, Pager, Thumb } from "@/components/admin/campaigns2/ui";
+import { IconAction, StatusPill, type PillOption } from "@/components/admin/ui/buttons";
 
 const PAGE_PATH = "/admin/ecommerce/product-reviews2";
+
+type ReviewStatus = "pending" | "approved" | "rejected";
+/** Same words and colours as the rest of the admin: Pending is amber, Approved green, Rejected red. */
+const REVIEW_STATUS: readonly PillOption<ReviewStatus>[] = [
+  { value: "pending", label: "Pending", variant: "warning" },
+  { value: "approved", label: "Approved", variant: "success" },
+  { value: "rejected", label: "Rejected", variant: "danger" },
+];
 const EVT_EXPORT = "reviews2:export";
 const EVT_NEW = "reviews2:new";
 
@@ -232,7 +241,7 @@ export function Reviews2Body({ data, range, notice }: { data: Reviews2Data; rang
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {show("rv2-k-total") && <Card icon={MessageSquare} tint="bg-blue-50 text-blue-600" value={String(c.total)} label="All Reviews" sub={`${c.withText} with a message`} on={!filtersActive} onClick={() => applyCard({})} />}
           {show("rv2-k-today") && <Card icon={Clock} tint="bg-violet-50 text-violet-600" value={String(c.today)} label="Today" sub={`${c.yesterday} yesterday`} on={false} onClick={() => { applyCard({ dateOn: true }); navigate(`${PAGE_PATH}?from=${data.today}&to=${data.today}`); }} />}
-          {show("rv2-k-pending") && <Card icon={Clock} tint="bg-amber-50 text-amber-600" value={String(c.pending)} label="Waiting for Review" sub="not shown on the shop yet" on={f.status === "pending"} onClick={() => applyCard({ status: "pending" })} />}
+          {show("rv2-k-pending") && <Card icon={Clock} tint="bg-amber-50 text-amber-600" value={String(c.pending)} label="Pending Reviews" sub="not shown on the shop yet" on={f.status === "pending"} onClick={() => applyCard({ status: "pending" })} />}
           {show("rv2-k-approved") && <Card icon={CheckCircle2} tint="bg-emerald-50 text-emerald-600" value={String(c.approved)} label="Approved" sub="live on the shop" on={f.status === "approved"} onClick={() => applyCard({ status: "approved" })} />}
           {show("rv2-k-rejected") && <Card icon={XCircle} tint="bg-slate-100 text-slate-600" value={String(c.rejected)} label="Rejected" sub="hidden from the shop" on={f.status === "rejected"} onClick={() => applyCard({ status: "rejected" })} />}
           {show("rv2-k-average") && <Card icon={Star} tint="bg-amber-50 text-amber-500" value={c.averageRating ? `${c.averageRating.toFixed(1)}★` : "—"} label="Average Rating" sub="across all reviews" on={false} onClick={() => applyCard({})} />}
@@ -265,7 +274,7 @@ export function Reviews2Body({ data, range, notice }: { data: Reviews2Data; rang
             {show("rv2-f-status") && (
               <Select icon={CheckCircle2} label="Status" value={f.status} onChange={(v) => set("status", v as Filters["status"])} on={f.status !== "all"}>
                 <option value="all">All status</option>
-                <option value="pending">Waiting for review</option>
+                <option value="pending">Pending</option>
                 <option value="approved">Approved</option>
                 <option value="rejected">Rejected</option>
               </Select>
@@ -402,16 +411,20 @@ export function Reviews2Body({ data, range, notice }: { data: Reviews2Data; rang
                         )}
                         {show("rv2-c-status") && (
                           <td className={td}>
-                            <StatusMenu status={r.status} busy={isBusy} name={r.customerName} onChange={(s) => setStatus(r, s)} />
+                            <StatusPill
+                              label={`Change status of review by ${r.customerName}`}
+                              value={(r.status === "approved" || r.status === "rejected" ? r.status : "pending") as ReviewStatus}
+                              options={REVIEW_STATUS}
+                              disabled={isBusy}
+                              onChange={(next) => setStatus(r, next)}
+                            />
                           </td>
                         )}
                         {show("rv2-c-actions") && (
                           <td className={td}>
-                            <div className="flex items-center gap-2">
-                              <button type="button" onClick={() => setEditor({ review: r })} aria-label={`Edit review by ${r.customerName}`} title="Edit review"
-                                className="flex h-9 w-9 items-center justify-center rounded-[0.375rem] bg-[#4361ee] text-white hover:bg-[#3651d4]"><SquarePen className="h-4 w-4" /></button>
-                              <button type="button" disabled={isBusy} onClick={() => setConfirmDelete(r)} aria-label={`Delete review by ${r.customerName}`} title="Delete review"
-                                className="flex h-9 w-9 items-center justify-center rounded-[0.375rem] bg-[#dc3545] text-white hover:bg-[#bb2d3b] disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
+                            <div className="flex gap-[0.4rem]">
+                              <IconAction tone="edit" onClick={() => setEditor({ review: r })} title={`Edit review by ${r.customerName}`}><SquarePen /></IconAction>
+                              <IconAction tone="delete" disabled={isBusy} onClick={() => setConfirmDelete(r)} title={`Delete review by ${r.customerName}`}><Trash2 /></IconAction>
                             </div>
                           </td>
                         )}
@@ -642,7 +655,7 @@ function ReviewEditor({ review, products, customers, onClose, onSaved }: {
         <div>
           <span className={labelCls}>Status</span>
           <div className="inline-flex gap-1 rounded-[0.5rem] border border-admin-gray-200 bg-admin-gray-50 p-1" role="radiogroup" aria-label="Status">
-            {([["approved", "Approved"], ["pending", "Waiting"], ["rejected", "Rejected"]] as const).map(([k, label]) => (
+            {([["approved", "Approved"], ["pending", "Pending"], ["rejected", "Rejected"]] as const).map(([k, label]) => (
               <button key={k} type="button" role="radio" aria-checked={status === k} onClick={() => setStatus(k)}
                 className={cn("rounded-[0.375rem] px-3.5 py-1.5 text-sm font-medium transition-colors", status === k ? "bg-white text-[#2563eb] shadow-sm" : "text-admin-gray-600 hover:text-admin-gray-900")}>
                 {label}
@@ -665,62 +678,6 @@ function Stars({ value }: { value: number }) {
     <span className="flex items-center gap-0.5" aria-label={`${value} out of 5 stars`}>
       {[1, 2, 3, 4, 5].map((n) => <Star key={n} className={cn("h-4 w-4", n <= value ? "fill-amber-400 text-amber-400" : "text-admin-gray-300")} />)}
     </span>
-  );
-}
-
-const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
-  approved: { label: "Approved", cls: "bg-[#5cc28a] hover:bg-[#4bb279]" },
-  pending: { label: "Waiting", cls: "bg-[#e0a100] hover:bg-[#c48d00]" },
-  rejected: { label: "Rejected", cls: "bg-[#8a8f98] hover:bg-[#777c85]" },
-};
-
-function StatusMenu({ status, busy, name, onChange }: { status: string; busy: boolean; name: string; onChange: (s: "pending" | "approved" | "rejected") => void }) {
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const btn = useRef<HTMLButtonElement>(null);
-  const menu = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!pos) return;
-    const close = () => setPos(null);
-    const onDoc = (e: MouseEvent) => { const t = e.target as Node; if (!btn.current?.contains(t) && !menu.current?.contains(t)) close(); };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-    };
-  }, [pos]);
-  const s = STATUS_STYLE[status] ?? STATUS_STYLE.pending;
-  return (
-    <>
-      <button ref={btn} type="button" disabled={busy} aria-haspopup="menu" aria-expanded={!!pos} aria-label={`Status of review by ${name}: ${s.label}`}
-        onClick={() => {
-          if (pos) return setPos(null);
-          const r = btn.current!.getBoundingClientRect();
-          setPos({ top: r.bottom + 4 + 120 > window.innerHeight ? r.top - 124 : r.bottom + 4, left: r.left });
-        }}
-        className={cn("inline-flex h-9 items-center gap-2 rounded-[0.25rem] px-3.5 text-[14px] font-semibold text-white disabled:cursor-wait", s.cls)}>
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : s.label}
-        <ChevronDown className="h-3.5 w-3.5" />
-      </button>
-      {pos && createPortal(
-        <div ref={menu} role="menu" className="fixed z-[400] w-[160px] rounded-[0.375rem] border border-admin-gray-200 bg-white py-1 text-sm shadow-lg" style={pos}>
-          {(["approved", "pending", "rejected"] as const).map((k) => (
-            <button key={k} type="button" role="menuitemradio" aria-checked={status === k} onClick={() => { setPos(null); onChange(k); }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-admin-gray-50">
-              <span className={cn("h-2 w-2 rounded-full", k === "approved" ? "bg-[#5cc28a]" : k === "pending" ? "bg-[#e0a100]" : "bg-[#8a8f98]")} />
-              {STATUS_STYLE[k].label}
-              {status === k && <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-emerald-500" />}
-            </button>
-          ))}
-        </div>,
-        document.body
-      )}
-    </>
   );
 }
 

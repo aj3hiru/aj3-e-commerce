@@ -10,7 +10,7 @@ export const REVIEWS2_GROUPS: readonly WidgetGroup[] = [
     items: [
       { key: "rv2-k-total", label: "All Reviews" },
       { key: "rv2-k-today", label: "Today" },
-      { key: "rv2-k-pending", label: "Waiting for Review" },
+      { key: "rv2-k-pending", label: "Pending Reviews" },
       { key: "rv2-k-approved", label: "Approved" },
       { key: "rv2-k-rejected", label: "Rejected" },
       { key: "rv2-k-average", label: "Average Rating" },

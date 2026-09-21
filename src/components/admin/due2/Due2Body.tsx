@@ -13,6 +13,7 @@ import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { Due2Data, Due2Row } from "@/lib/due2";
 import { Modal, Pager } from "@/components/admin/campaigns2/ui";
 import { money } from "@/components/admin/campaigns2/format";
+import { PillButton, StatusBadge } from "@/components/admin/ui/buttons";
 
 const PAGE_PATH = "/admin/ecommerce/due2";
 const EVT_EXPORT = "due2:export";
@@ -307,10 +308,9 @@ export function Due2Body({ data, filters: range, notice, canEdit }: Props) {
 
             {show("due2-c-select") && canEdit && (
               <>
-                <button type="button" disabled={selectedRows.length === 0} onClick={() => setCollect(selectedRows)}
-                  className="flex h-10 items-center gap-2 rounded-[0.375rem] bg-[#3d8b5f] px-3.5 text-sm font-semibold text-white hover:bg-[#33774f] disabled:cursor-not-allowed disabled:opacity-40">
-                  <HandCoins className="h-4 w-4" /> Collect{selectedRows.length ? ` (${selectedRows.length})` : ""}
-                </button>
+                <PillButton variant="success" disabled={selectedRows.length === 0} onClick={() => setCollect(selectedRows)}>
+                  <HandCoins className="h-3.5 w-3.5" /> Collect{selectedRows.length ? ` (${selectedRows.length})` : ""}
+                </PillButton>
                 {selected.size > 0 && <button type="button" onClick={() => setSelected(new Set())} className="text-[13px] text-admin-gray-500 hover:underline">Clear selection</button>}
               </>
             )}
@@ -413,25 +413,22 @@ export function Due2Body({ data, filters: range, notice, canEdit }: Props) {
                         )}
                         {show("due2-c-status") && (
                           <td className={td}>
-                            <span className={cn("inline-flex h-8 items-center rounded-[0.25rem] px-3 text-[14px] font-semibold text-white",
-                              !unpaid ? "bg-[#5cc28a]" : r.overdueDays > 0 ? "bg-[#dc3545]" : r.amountPaid > PAISA ? "bg-[#e0a100]" : "bg-[#8a8f98]")}>
+                            <StatusBadge variant={!unpaid ? "success" : r.overdueDays > 0 ? "danger" : r.amountPaid > PAISA ? "warning" : "secondary"}>
                               {!unpaid ? "Paid" : r.overdueDays > 0 ? "Overdue" : r.amountPaid > PAISA ? "Partly" : "Unpaid"}
-                            </span>
+                            </StatusBadge>
                           </td>
                         )}
                         {show("due2-c-actions") && (
                           <td className={td}>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-[0.4rem]">
                               {canEdit && unpaid && (
-                                <button type="button" onClick={() => setCollect([r])} title={`Collect from ${r.customerName}`}
-                                  className="flex h-9 items-center gap-1.5 rounded-[0.375rem] bg-[#3d8b5f] px-3 text-[13px] font-semibold text-white hover:bg-[#33774f]">
-                                  <HandCoins className="h-4 w-4" /> Collect
-                                </button>
+                                <PillButton variant="success" onClick={() => setCollect([r])} title={`Collect from ${r.customerName}`}>
+                                  <HandCoins className="h-3.5 w-3.5" /> Collect
+                                </PillButton>
                               )}
-                              <button type="button" onClick={() => setHistory(r)} title="Payment history"
-                                className="flex h-9 items-center gap-1.5 rounded-[0.375rem] border border-[#dee2e6] bg-white px-3 text-[13px] font-medium text-admin-gray-700 hover:bg-admin-gray-50">
-                                <Receipt className="h-4 w-4" /> {r.payments.length}
-                              </button>
+                              <PillButton variant="secondary" onClick={() => setHistory(r)} title="Payment history">
+                                <Receipt className="h-3.5 w-3.5" /> {r.payments.length}
+                              </PillButton>
                             </div>
                           </td>
                         )}

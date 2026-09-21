@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { BarcodeProduct, Barcodes2Data } from "@/lib/barcodes2";
 import { money } from "@/components/admin/campaigns2/format";
+import { IconAction, PillButton } from "@/components/admin/ui/buttons";
 
 const PAGE_PATH = "/admin/ecommerce/barcode-print2";
 const EVT_PRINT = "barcodes2:print";
@@ -200,9 +201,9 @@ export function Barcodes2Body({ data }: { data: Barcodes2Data }) {
                         <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-600" />
                       </span>
                     </label>
-                    <button type="button" onClick={() => setOptions(DEFAULT_OPTIONS)} className="flex h-9 items-center gap-1.5 rounded-[0.375rem] border border-[#dee2e6] bg-white px-3 text-[13px] font-medium text-admin-gray-700 hover:bg-admin-gray-50">
+                    <PillButton variant="secondary" onClick={() => setOptions(DEFAULT_OPTIONS)}>
                       <RefreshCw className="h-3.5 w-3.5" /> Reset
-                    </button>
+                    </PillButton>
                   </div>
                   <p className="text-xs text-admin-gray-500">The preview uses the first product in your list, so what you see is what prints.</p>
                 </div>
@@ -245,8 +246,8 @@ export function Barcodes2Body({ data }: { data: Barcodes2Data }) {
                     </button>
                   ))}
                 </div>
-                <button type="button" onClick={() => setLines((l) => l.map((x) => ({ ...x, qty: 1 })))} className="h-9 rounded-[0.375rem] border border-[#dee2e6] bg-white px-3 text-[13px] font-medium text-admin-gray-700 hover:bg-admin-gray-50">Reset quantities</button>
-                <button type="button" disabled={lines.length === 0} onClick={() => setLines([])} className="h-9 rounded-[0.375rem] border border-[#dee2e6] bg-white px-3 text-[13px] font-medium text-admin-gray-700 hover:bg-admin-gray-50 disabled:opacity-50">Clear list</button>
+                <PillButton variant="secondary" onClick={() => setLines((l) => l.map((x) => ({ ...x, qty: 1 })))}>Reset quantities</PillButton>
+                <PillButton variant="secondary" disabled={lines.length === 0} onClick={() => setLines([])}>Clear list</PillButton>
               </div>
             </div>
 
@@ -284,8 +285,7 @@ export function Barcodes2Body({ data }: { data: Barcodes2Data }) {
                         className="h-9 w-14 border-y border-[#dee2e6] bg-white text-center text-sm outline-none focus:border-[#86b7fe]" />
                       <button type="button" onClick={() => setQty(l.product.id, l.qty + 1)} aria-label={`One more label for ${l.product.name}`}
                         className="flex h-9 w-9 items-center justify-center rounded-r-[0.375rem] border border-[#dee2e6] bg-white text-admin-gray-700 hover:bg-admin-gray-50"><Plus className="h-4 w-4" /></button>
-                      <button type="button" onClick={() => removeLine(l.product.id)} aria-label={`Remove ${l.product.name}`} title="Remove"
-                        className="ml-1 flex h-9 w-9 items-center justify-center rounded-[0.375rem] bg-[#dc3545] text-white hover:bg-[#bb2d3b]"><Trash2 className="h-4 w-4" /></button>
+                      <span className="ml-1"><IconAction tone="delete" onClick={() => removeLine(l.product.id)} title={`Remove ${l.product.name}`}><Trash2 /></IconAction></span>
                     </span>
                   </li>
                 ))}
@@ -472,9 +472,9 @@ function ProductPicker({ onAdd, categories, inList }: { onAdd: (p: BarcodeProduc
                 <span className="block truncate text-sm text-admin-gray-900">{p.name}</span>
                 <span className="block truncate text-xs text-admin-gray-500">{p.barcode ?? "No barcode"}{p.sku ? ` · ${p.sku}` : ""} · {money(priceOf(p, true))}</span>
               </span>
-              <button type="button" onClick={() => onAdd(p)} className="flex h-9 shrink-0 items-center gap-1.5 rounded-[0.375rem] bg-[#3d8b5f] px-3 text-[13px] font-semibold text-white hover:bg-[#33774f]">
-                <Plus className="h-4 w-4" /> {inList.has(p.id) ? "One more" : "Add"}
-              </button>
+              <PillButton variant="success" onClick={() => onAdd(p)} className="shrink-0" aria-label={`${inList.has(p.id) ? "Add one more" : "Add"} ${p.name}`}>
+                <Plus className="h-3.5 w-3.5" /> {inList.has(p.id) ? "One more" : "Add"}
+              </PillButton>
             </li>
           ))}
         </ul>

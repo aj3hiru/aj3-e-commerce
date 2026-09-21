@@ -6,6 +6,13 @@ import { Pencil, Trash2, Plus, Search } from "lucide-react";
 import { UserFormModal, type UserFormValues } from "./UserFormModal";
 import { getRolePermissionDefaults } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { IconAction, StatusPill, type PillOption } from "./ui/buttons";
+
+const USER_STATUS: readonly PillOption<string>[] = [
+  { value: "active", label: "Active", variant: "success" },
+  { value: "pending", label: "Pending", variant: "warning" },
+  { value: "suspended", label: "Suspended", variant: "danger" },
+];
 
 export interface UserRow {
   id: number;
@@ -118,37 +125,13 @@ export function UsersTable({ users, currentUserId, search, roleFilter }: UsersTa
                   <td className="py-2.5 px-4">{u.email}</td>
                   <td className="py-2.5 px-4"><span className={cn("text-xs font-semibold rounded px-2 py-1 capitalize", ROLE_STYLES[u.role])}>{u.role}</span></td>
                   <td className="py-2.5 px-4">
-                    <select
-                      value={u.status}
-                      disabled={busy}
-                      onChange={(e) => setStatus(u.id, e.target.value)}
-                      className={cn(
-                        "text-xs font-semibold rounded px-2 py-1.5 border-0",
-                        u.status === "active" ? "bg-emerald-100 text-emerald-700" : u.status === "suspended" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-                      )}
-                    >
-                      <option value="active">Active</option>
-                      <option value="pending">Pending</option>
-                      <option value="suspended">Suspended</option>
-                    </select>
+                    <StatusPill label={`Change status of ${u.username}`} value={u.status} options={USER_STATUS} disabled={busy} onChange={(next) => setStatus(u.id, next)} />
                   </td>
                   <td className="py-2.5 px-4">
                     <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setModalMode({ id: u.id, username: u.username, email: u.email, role: u.role, permissions: u.permissions ?? getRolePermissionDefaults(u.role) })}
-                        className="w-8 h-8 flex items-center justify-center bg-admin-primary-lighter text-admin-primary hover:bg-admin-primary hover:text-white rounded"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                      <IconAction tone="edit" title="Edit" onClick={() => setModalMode({ id: u.id, username: u.username, email: u.email, role: u.role, permissions: u.permissions ?? getRolePermissionDefaults(u.role) })}><Pencil /></IconAction>
                       {u.id !== currentUserId && (
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget({ id: u.id, username: u.username })}
-                          className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <IconAction tone="delete" title="Delete" onClick={() => setDeleteTarget({ id: u.id, username: u.username })}><Trash2 /></IconAction>
                       )}
                     </div>
                   </td>

@@ -4,6 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Star, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { IconAction, StatusPill, type PillOption } from "./ui/buttons";
+
+const REVIEW_OPTIONS: readonly PillOption<string>[] = [
+  { value: "pending", label: "Pending", variant: "warning" },
+  { value: "approved", label: "Approved", variant: "success" },
+  { value: "rejected", label: "Rejected", variant: "danger" },
+];
 
 export interface ReviewRow {
   id: number;
@@ -80,29 +87,11 @@ export function ReviewsTable({ reviews }: { reviews: ReviewRow[] }) {
                   </td>
                   <td className="py-2.5 px-4 max-w-[280px] truncate" title={r.reviewText ?? ""}>{r.reviewText ?? "—"}</td>
                   <td className="py-2.5 px-4">
-                    <select
-                      value={r.status}
-                      disabled={busy}
-                      onChange={(e) => setStatus(r.id, e.target.value)}
-                      className={cn(
-                        "text-xs font-semibold rounded px-2 py-1.5 border-0",
-                        r.status === "approved" ? "bg-emerald-100 text-emerald-700" : r.status === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-                      )}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="approved">Approved</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
+                    <StatusPill label={`Change status of review by ${r.customerName}`} value={r.status} options={REVIEW_OPTIONS} disabled={busy} onChange={(next) => setStatus(r.id, next)} />
                   </td>
                   <td className="py-2.5 px-4">{new Date(r.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</td>
                   <td className="py-2.5 px-4">
-                    <button
-                      type="button"
-                      onClick={() => setDeleteTarget(r.id)}
-                      className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <IconAction tone="delete" title="Delete" onClick={() => setDeleteTarget(r.id)}><Trash2 /></IconAction>
                   </td>
                 </tr>
               ))}

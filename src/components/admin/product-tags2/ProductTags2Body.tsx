@@ -13,9 +13,15 @@ import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { Tag2Row, TagGroup, Tags2Data } from "@/lib/product-tags2";
 import { parseTagInput, slugify } from "@/lib/tag2-save";
 import { ConfirmDialog, Modal, Pager } from "@/components/admin/campaigns2/ui";
+import { IconAction, StatusPill, type PillOption } from "@/components/admin/ui/buttons";
 import { money } from "@/components/admin/campaigns2/format";
 
 const PAGE_PATH = "/admin/ecommerce/product-tags2";
+
+const TAG_STATUS: readonly PillOption<"active" | "inactive">[] = [
+  { value: "active", label: "Active", variant: "success" },
+  { value: "inactive", label: "Inactive", variant: "secondary" },
+];
 const EVT_EXPORT = "tags2:export";
 const EVT_NEW = "tags2:new";
 
@@ -385,20 +391,20 @@ export function Tags2Body({ data, range }: { data: Tags2Data; range: { from: str
                         {show("tg2-c-revenue") && <td className={cn(td, "whitespace-nowrap font-semibold text-admin-gray-900")}>{money(r.revenue)}</td>}
                         {show("tg2-c-status") && (
                           <td className={td}>
-                            <button type="button" disabled={isBusy} onClick={() => setStatus(r, r.status === "active" ? "inactive" : "active")}
-                              aria-label={`${r.label} is ${r.status === "active" ? "active" : "inactive"} — click to change`} title="Click to change"
-                              className={cn("inline-flex h-9 items-center gap-2 rounded-[0.25rem] px-3.5 text-[14px] font-semibold text-white disabled:cursor-wait", r.status === "active" ? "bg-[#5cc28a] hover:bg-[#4bb279]" : "bg-[#8a8f98] hover:bg-[#777c85]")}>
-                              {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : r.status === "active" ? "Active" : "Inactive"}
-                            </button>
+                            <StatusPill
+                              label={`Change status of ${r.label}`}
+                              value={r.status === "active" ? "active" : "inactive"}
+                              options={TAG_STATUS}
+                              disabled={isBusy}
+                              onChange={(next) => setStatus(r, next)}
+                            />
                           </td>
                         )}
                         {show("tg2-c-actions") && (
                           <td className={td}>
-                            <div className="flex items-center gap-2">
-                              <button type="button" onClick={() => setEditor({ tag: r, group: r.tagGroup })} aria-label={`Edit ${r.label}`} title="Edit"
-                                className="flex h-9 w-9 items-center justify-center rounded-[0.375rem] bg-[#4361ee] text-white hover:bg-[#3651d4]"><SquarePen className="h-4 w-4" /></button>
-                              <button type="button" disabled={isBusy} onClick={() => remove(r, false)} aria-label={`Delete ${r.label}`} title="Delete"
-                                className="flex h-9 w-9 items-center justify-center rounded-[0.375rem] bg-[#dc3545] text-white hover:bg-[#bb2d3b] disabled:opacity-50"><Trash2 className="h-4 w-4" /></button>
+                            <div className="flex gap-[0.4rem]">
+                              <IconAction tone="edit" onClick={() => setEditor({ tag: r, group: r.tagGroup })} title={`Edit ${r.label}`}><SquarePen /></IconAction>
+                              <IconAction tone="delete" disabled={isBusy} onClick={() => remove(r, false)} title={`Delete ${r.label}`}><Trash2 /></IconAction>
                             </div>
                           </td>
                         )}

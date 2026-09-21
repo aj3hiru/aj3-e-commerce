@@ -1015,7 +1015,7 @@ function InvoiceCell({ row }: { row: LedgerRow }) {
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const invoiceHref = `/admin/ecommerce/invoice/${row.id}`;
-  const iconBtn = "flex h-7 items-center gap-1 rounded-md bg-admin-gray-600 px-1.5 text-white transition-colors hover:bg-admin-gray-800";
+  const iconBtn = "flex h-7 items-center gap-1 rounded bg-[#858796] px-1.5 text-white transition-opacity hover:opacity-85";
 
   useEffect(() => {
     if (!open) return;
@@ -1061,8 +1061,8 @@ function InvoiceCell({ row }: { row: LedgerRow }) {
       </button>
       {open && pos &&
         createPortal(
-          <div ref={menuRef} className="fixed z-[400] w-[240px] rounded-lg border border-admin-gray-200 bg-white py-1 text-[13px] shadow-lg" style={{ top: pos.top, right: pos.right }}>
-            <a href={invoiceHref} target="_blank" rel="noreferrer" className="flex items-center justify-between px-3 py-2 hover:bg-admin-gray-50">
+          <div ref={menuRef} className="fixed z-[400] w-[240px] rounded-none border border-black/[0.175] bg-white py-2 text-sm shadow-lg" style={{ top: pos.top, right: pos.right }}>
+            <a href={invoiceHref} target="_blank" rel="noreferrer" className="flex items-center justify-between px-4 py-1 hover:bg-[#e9ecef]">
               <span className="flex items-center gap-2 text-admin-gray-900"><FileText className="h-3.5 w-3.5 text-admin-gray-500" /> Invoice</span>
               <span className="text-admin-gray-500">{money(row.total)}</span>
             </a>
@@ -1074,7 +1074,7 @@ function InvoiceCell({ row }: { row: LedgerRow }) {
                 href={`/admin/ecommerce/payment-receipt/${encodeURIComponent(rc.receiptNumber)}?return_to=${encodeURIComponent(PAGE_PATH)}`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-between px-3 py-2 hover:bg-admin-gray-50"
+                className="flex items-center justify-between px-4 py-1 hover:bg-[#e9ecef]"
               >
                 <span className="truncate text-admin-gray-900">{rc.receiptNumber}</span>
                 <span className="text-emerald-600">{money(rc.amount)}</span>

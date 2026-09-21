@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, ImageIcon, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CampaignState } from "@/lib/campaign-core";
+import { StatusBadge } from "@/components/admin/ui/buttons";
 
 /** Product image — a grey placeholder when there's none or the file is missing. */
 export function Thumb({ src, name, size = 56 }: { src: string | null; name: string; size?: number }) {
@@ -27,16 +28,16 @@ export function Thumb({ src, name, size = 56 }: { src: string | null; name: stri
   return <img src={src.startsWith("http") || src.startsWith("blob:") ? src : `/${src}`} ref={img} alt="" title={name} loading="lazy" style={box} onError={() => setBroken(true)} className="rounded-[0.375rem] border border-admin-gray-200 bg-white object-contain p-1" />;
 }
 
-export const STATE_STYLE: Record<CampaignState, { label: string; cls: string }> = {
-  live: { label: "Live", cls: "bg-[#5cc28a]" },
-  scheduled: { label: "Scheduled", cls: "bg-[#4361ee]" },
-  paused: { label: "Paused", cls: "bg-[#e0a100]" },
-  ended: { label: "Ended", cls: "bg-[#8a8f98]" },
+const STATE_BADGE: Record<CampaignState, { label: string; variant: "success" | "primary" | "warning" | "secondary" }> = {
+  live: { label: "Live", variant: "success" },
+  scheduled: { label: "Scheduled", variant: "primary" },
+  paused: { label: "Paused", variant: "warning" },
+  ended: { label: "Ended", variant: "secondary" },
 };
 
 export function StatePill({ state }: { state: CampaignState }) {
-  const s = STATE_STYLE[state];
-  return <span className={cn("inline-flex h-8 items-center rounded-[0.25rem] px-3 text-[14px] font-semibold text-white", s.cls)}>{s.label}</span>;
+  const s = STATE_BADGE[state];
+  return <StatusBadge variant={s.variant}>{s.label}</StatusBadge>;
 }
 
 /** DataTables-style pager: Previous · 1 2 3 · Next */

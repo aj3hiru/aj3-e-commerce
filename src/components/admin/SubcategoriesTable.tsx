@@ -3,7 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2, Plus } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { IconAction, StatusPill, type PillOption } from "./ui/buttons";
+
+const ACTIVE_INACTIVE: readonly PillOption<"active" | "inactive">[] = [
+  { value: "active", label: "Active", variant: "success" },
+  { value: "inactive", label: "Inactive", variant: "secondary" },
+];
 
 export interface SubcategoryRow {
   id: number;
@@ -109,31 +114,12 @@ export function SubcategoriesTable({ subcategories, categories }: SubcategoriesT
                   <td className="py-2.5 px-4 text-admin-gray-500">{s.slug}</td>
                   <td className="py-2.5 px-4">{s.categoryName}</td>
                   <td className="py-2.5 px-4">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => setStatus(s.id, s.status === "active" ? "inactive" : "active")}
-                      className={cn("text-xs font-semibold rounded px-2.5 py-1.5", s.status === "active" ? "bg-emerald-500 text-white" : "bg-admin-gray-400 text-white")}
-                    >
-                      {s.status === "active" ? "Active" : "Inactive"}
-                    </button>
+                    <StatusPill label={`Change status of ${s.name}`} value={s.status === "active" ? "active" : "inactive"} options={ACTIVE_INACTIVE} disabled={busy} onChange={(next) => setStatus(s.id, next)} />
                   </td>
                   <td className="py-2.5 px-4">
                     <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setModal({ id: s.id, name: s.name, slug: s.slug, categoryId: s.categoryId })}
-                        className="w-8 h-8 flex items-center justify-center bg-admin-primary-lighter text-admin-primary hover:bg-admin-primary hover:text-white rounded"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget({ id: s.id, name: s.name })}
-                        className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <IconAction tone="edit" title="Edit" onClick={() => setModal({ id: s.id, name: s.name, slug: s.slug, categoryId: s.categoryId })}><Pencil /></IconAction>
+                      <IconAction tone="delete" title="Delete" onClick={() => setDeleteTarget({ id: s.id, name: s.name })}><Trash2 /></IconAction>
                     </div>
                   </td>
                 </tr>

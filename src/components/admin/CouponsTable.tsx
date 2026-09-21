@@ -4,7 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2, Plus } from "lucide-react";
 import { CouponFormModal, type CouponFormValues } from "./CouponFormModal";
-import { cn } from "@/lib/utils";
+import { IconAction, StatusPill, type PillOption } from "./ui/buttons";
+
+const ACTIVE_INACTIVE: readonly PillOption<"active" | "inactive">[] = [
+  { value: "active", label: "Active", variant: "success" },
+  { value: "inactive", label: "Inactive", variant: "secondary" },
+];
 
 export interface CouponRow {
   id: number;
@@ -88,36 +93,17 @@ export function CouponsTable({ coupons, products, categories, subcategories }: C
                   <td className="py-2.5 px-4 capitalize">{c.appliesTo}</td>
                   <td className="py-2.5 px-4">{c.usedCount} / {c.numberOfTimes}</td>
                   <td className="py-2.5 px-4">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => setStatus(c.id, c.status === "active" ? "inactive" : "active")}
-                      className={cn("text-xs font-semibold rounded px-2.5 py-1.5", c.status === "active" ? "bg-emerald-500 text-white" : "bg-admin-gray-400 text-white")}
-                    >
-                      {c.status === "active" ? "Active" : "Inactive"}
-                    </button>
+                    <StatusPill label={`Change status of ${c.title}`} value={c.status === "active" ? "active" : "inactive"} options={ACTIVE_INACTIVE} disabled={busy} onChange={(next) => setStatus(c.id, next)} />
                   </td>
                   <td className="py-2.5 px-4">
                     <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setModalMode({
+                      <IconAction tone="edit" title="Edit" onClick={() => setModalMode({
                           id: c.id, title: c.title, code: c.code, numberOfTimes: c.numberOfTimes,
                           discountType: c.discountType as "percentage" | "fixed", discountValue: c.discountValue,
                           appliesTo: c.appliesTo as CouponFormValues["appliesTo"],
                           productId: c.productId, categoryId: c.categoryId, subcategoryId: c.subcategoryId,
-                        })}
-                        className="w-8 h-8 flex items-center justify-center bg-admin-primary-lighter text-admin-primary hover:bg-admin-primary hover:text-white rounded"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget({ id: c.id, title: c.title })}
-                        className="w-8 h-8 flex items-center justify-center bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                        })}><Pencil /></IconAction>
+                      <IconAction tone="delete" title="Delete" onClick={() => setDeleteTarget({ id: c.id, title: c.title })}><Trash2 /></IconAction>
                     </div>
                   </td>
                 </tr>

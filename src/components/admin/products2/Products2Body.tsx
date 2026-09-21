@@ -6,11 +6,13 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   ShoppingBag, BadgeCheck, PackageX, TriangleAlert, Search, CircleDot, Boxes, Tag, LayoutGrid, FolderTree, ChevronDown,
-  ChevronLeft, ChevronRight, Layers, Download, Barcode, SquarePen, Trash2, ImageIcon, ChevronsUpDown, ArrowUp, ArrowDown,
+  Layers, Download, Barcode, SquarePen, Trash2, ImageIcon, ChevronsUpDown, ArrowUp, ArrowDown,
   Loader2, CheckCircle2, AlertCircle, X, Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
+import { Pager } from "@/components/admin/campaigns2/ui";
+import { ActionMenu, IconAction, PillButton, StatusPill, type PillOption } from "@/components/admin/ui/buttons";
 import { EMPTY_PRODUCTS2_FILTERS, LOW_STOCK_LIMIT, type Products2Filters } from "./filters";
 
 /* ───────────────────────── types & helpers ───────────────────────── */
@@ -268,13 +270,12 @@ export function Products2ExportMenu() {
   const { filtered, selected, products, exportCsv } = useProducts2();
   const selectedRows = products.filter((p) => selected.has(p.id));
   return (
-    <Menu
+    <ActionMenu
+      label="Export"
       align="right"
-      trigger={(open) => (
-        <span className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[0.5rem] border border-[#e5e7eb] bg-white px-3.5 text-[0.875rem] font-medium text-[#374151] transition-colors hover:bg-[#f9fafb]">
-          <Download className="h-4 w-4" /> Export <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
-        </span>
-      )}
+      bare
+      triggerClassName="flex h-10 items-center gap-2 whitespace-nowrap rounded-[0.5rem] border border-[#e5e7eb] bg-white px-3.5 text-[0.875rem] font-medium text-[#374151] transition-colors hover:bg-[#f9fafb]"
+      trigger={<><Download className="h-4 w-4" /> Export <ChevronDown className="h-3.5 w-3.5" /></>}
       items={[
         { label: `Shown products (${filtered.length})`, hint: "CSV", onClick: () => exportCsv(filtered, "filtered"), disabled: filtered.length === 0 },
         { label: `Selected products (${selectedRows.length})`, hint: "CSV", onClick: () => exportCsv(selectedRows, "selected"), disabled: selectedRows.length === 0 },
@@ -297,6 +298,11 @@ export function Products2AddButton() {
     </Link>
   );
 }
+
+const PRODUCT_STATUS: readonly PillOption<"active" | "inactive">[] = [
+  { value: "active", label: "Published", variant: "success" },
+  { value: "inactive", label: "Unpublished", variant: "secondary" },
+];
 
 /* ───────────────────────── page body ───────────────────────── */
 
@@ -584,22 +590,16 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
                   type="checkbox"
                   checked={allFilteredSelected}
                   onChange={(e) => selectMany(filtered.map((p) => p.id), e.target.checked)}
-                  className="h-4 w-4 rounded border-admin-gray-300 accent-orange-500"
+                  className="h-4 w-4 rounded border-admin-gray-300 accent-[#2563eb]"
                 />
                 Select All ({selected.size})
               </label>
 
-              <Menu
+              <ActionMenu
+                label="Bulk Actions"
+                title={selected.size === 0 ? "Select products first" : undefined}
                 disabled={selected.size === 0}
-                trigger={(open) => (
-                  <span className={cn(
-                    "flex h-9 items-center gap-2 rounded-[0.5rem] border border-[#e5e7eb] bg-white px-3 text-sm font-medium text-[#374151] transition-colors",
-                    selected.size === 0 ? "opacity-50" : "hover:bg-[#f9fafb]"
-                  )}>
-                    <Layers className="h-4 w-4 text-admin-gray-500" /> Bulk Actions
-                    <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
-                  </span>
-                )}
+                trigger={<><Layers className="h-3.5 w-3.5" /> Bulk Actions</>}
                 items={[
                   { label: `Publish (${selected.size})`, onClick: () => setStatus(selectedIds, "active") },
                   { label: `Unpublish (${selected.size})`, onClick: () => setStatus(selectedIds, "inactive") },
@@ -630,28 +630,28 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
           <p className="py-10 text-center text-sm text-admin-gray-400">All table columns are hidden — turn them on from Display Options.</p>
         ) : (
         <div className="overflow-x-auto" style={{ minHeight: pageSize === 0 ? undefined : HEAD_H + Math.min(pageSize, MIN_ROWS) * ROW_H }}>
-          <table className="w-full table-fixed border-collapse text-[13px]" style={{ minWidth: tableMinW }}>
+          <table className="w-full table-fixed border-collapse text-[14px]" style={{ minWidth: tableMinW }}>
             <colgroup>
               {/* Narrower columns under 1500px so Name keeps room on laptops. */}
               {cols.map((c) => <col key={c.key} className={c.width} />)}
             </colgroup>
             <thead>
-              <tr className="border-b border-admin-gray-200 text-left" style={{ height: HEAD_H }}>
+              <tr className="bg-[#f8f9fa] text-left font-bold text-admin-gray-900" style={{ height: HEAD_H }}>
                 {cols.map((c) =>
                   c.key === "p2-c-select" ? (
-                    <th key={c.key} className="px-2 min-[1500px]:px-3">
+                    <th key={c.key} className="border border-[#dee2e6] px-2 min-[1500px]:px-3">
                       <input
                         type="checkbox"
                         checked={pageAllSelected}
                         onChange={(e) => selectMany(pageRows.map((p) => p.id), e.target.checked)}
                         aria-label="Select products on this page"
-                        className="h-4 w-4 rounded border-admin-gray-300 accent-orange-500"
+                        className="h-4 w-4 rounded border-admin-gray-300 accent-[#2563eb]"
                       />
                     </th>
                   ) : c.sort ? (
                     <SortTh key={c.key} label={c.label} k={c.sort} sort={sort} onSort={toggleSort} />
                   ) : (
-                    <th key={c.key} className="px-2 font-semibold text-admin-gray-900 min-[1500px]:px-3">{c.label}</th>
+                    <th key={c.key} className="border border-[#dee2e6] px-2 font-bold text-admin-gray-900 min-[1500px]:px-3">{c.label}</th>
                   )
                 )}
               </tr>
@@ -659,7 +659,7 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
             <tbody>
               {pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={cols.length} className="py-12 text-center text-admin-gray-400">
+                  <td colSpan={cols.length} className="border border-[#dee2e6] py-12 text-center text-admin-gray-400">
                     {products.length === 0 ? (
                       <>No products yet. <Link href="/admin/ecommerce/add-product2" className="font-semibold text-orange-600 hover:underline">Add your first product</Link></>
                     ) : (
@@ -678,24 +678,23 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
                       key={p.id}
                       style={{ height: ROW_H }}
                       className={cn(
-                        "border-b border-admin-gray-100",
-                        isSel ? "bg-orange-50/70" : "odd:bg-white even:bg-admin-gray-50/70 hover:bg-orange-50/40",
+                        isSel ? "bg-blue-50/60" : "odd:bg-[#f2f2f2] even:bg-white",
                         busy && "opacity-60"
                       )}
                     >
                       {show("p2-c-select") && (
-                        <td className="px-2 min-[1500px]:px-3">
+                        <td className="px-2 min-[1500px]:px-3 border border-[#dee2e6]">
                           <input
                             type="checkbox"
                             checked={isSel}
                             onChange={() => toggle(p.id)}
                             aria-label={`Select ${p.name}`}
-                            className="h-4 w-4 rounded border-admin-gray-300 accent-orange-500"
+                            className="h-4 w-4 rounded border-admin-gray-300 accent-[#2563eb]"
                           />
                         </td>
                       )}
                       {show("p2-c-image") && (
-                        <td className="px-1.5 min-[1500px]:px-2">
+                        <td className="px-1.5 min-[1500px]:px-2 border border-[#dee2e6]">
                           <Link href={editHref} tabIndex={-1} aria-hidden="true" className="block w-9">
                             {p.image ? (
                               // eslint-disable-next-line @next/next/no-img-element
@@ -709,7 +708,7 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
                         </td>
                       )}
                       {show("p2-c-name") && (
-                        <td className="px-2 min-[1500px]:px-3">
+                        <td className="px-2 min-[1500px]:px-3 border border-[#dee2e6]">
                           <Link href={editHref} title={`Open ${p.name}`} className="block truncate font-medium text-admin-gray-900 hover:text-admin-primary hover:underline">
                             {p.name}
                           </Link>
@@ -718,18 +717,18 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
                         </td>
                       )}
                       {show("p2-c-stock") && (
-                        <td className="px-2 min-[1500px]:px-3">
+                        <td className="px-2 min-[1500px]:px-3 border border-[#dee2e6]">
                           <StockCell p={p} busy={busy} onSave={(q) => saveStock(p.id, q)} />
                         </td>
                       )}
                       {show("p2-c-category") && (
-                        <td className="px-2 min-[1500px]:px-3">
+                        <td className="px-2 min-[1500px]:px-3 border border-[#dee2e6]">
                           {p.categoryName ? (
                             <button
                               type="button"
                               onClick={() => setFilter("category", String(p.categoryId))}
                               title={`Show only ${p.categoryName}`}
-                              className="block max-w-full truncate text-left text-admin-gray-700 hover:text-orange-600 hover:underline"
+                              className="block max-w-full truncate text-left text-admin-gray-700 hover:text-[#2563eb] hover:underline"
                             >
                               {p.categoryName}
                             </button>
@@ -739,18 +738,18 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
                         </td>
                       )}
                       {show("p2-c-price") && (
-                        <td className="whitespace-nowrap px-2 min-[1500px]:px-3">
+                        <td className="whitespace-nowrap px-2 min-[1500px]:px-3 border border-[#dee2e6]">
                           <div className="text-admin-gray-900">{money(effectivePrice(p))}</div>
                           {hasSale(p) && <div className="text-[11px] text-admin-gray-400 line-through">{money(p.price)}</div>}
                         </td>
                       )}
                       {show("p2-c-status") && (
-                        <td className="px-2 min-[1500px]:px-3">
-                          <StatusMenu status={p.status} busy={busy} onChange={(s) => setStatus([p.id], s)} />
+                        <td className="px-2 min-[1500px]:px-3 border border-[#dee2e6]">
+                          <StatusPill label={`Change status of ${p.name}`} value={p.status === "active" ? "active" : "inactive"} options={PRODUCT_STATUS} disabled={busy} onChange={(next) => setStatus([p.id], next)} />
                         </td>
                       )}
                       {show("p2-c-type") && (
-                        <td className="px-2 min-[1500px]:px-3">
+                        <td className="px-2 min-[1500px]:px-3 border border-[#dee2e6]">
                           {p.badgeTag === "none" || !badge ? (
                             <span className="text-admin-gray-500">{typeLabel(p.badgeTag)}</span>
                           ) : (
@@ -761,33 +760,13 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
                           )}
                         </td>
                       )}
-                      {show("p2-c-item") && <td className="truncate px-2 text-admin-gray-700 min-[1500px]:px-3">{itemLabel(p.itemType)}</td>}
+                      {show("p2-c-item") && <td className="truncate px-2 text-admin-gray-700 min-[1500px]:px-3 border border-[#dee2e6]">{itemLabel(p.itemType)}</td>}
                       {show("p2-c-actions") && (
-                        <td className="px-2 min-[1500px]:px-3">
-                          <div className="flex items-center gap-1">
-                            <a
-                              href={`/admin/ecommerce/barcode-print?ids=${p.id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="Print barcode"
-                              aria-label={`Print barcode for ${p.name}`}
-                              className={iconBtn("hover:text-admin-gray-900")}
-                            >
-                              <Barcode className="h-4 w-4" />
-                            </a>
-                            <Link href={editHref} title="Edit" aria-label={`Edit ${p.name}`} className={iconBtn("hover:text-admin-primary")}>
-                              <SquarePen className="h-4 w-4" />
-                            </Link>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => setConfirm({ ids: [p.id], label: `“${p.name}”` })}
-                              title="Delete"
-                              aria-label={`Delete ${p.name}`}
-                              className={iconBtn("hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-50")}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                        <td className="px-2 min-[1500px]:px-3 border border-[#dee2e6]">
+                          <div className="flex gap-[0.4rem]">
+                            <IconAction tone="print" href={`/admin/ecommerce/barcode-print?ids=${p.id}`} target="_blank" rel="noreferrer" title={`Print barcode for ${p.name}`}><Barcode /></IconAction>
+                            <IconAction tone="edit" href={editHref} title={`Edit ${p.name}`}><SquarePen /></IconAction>
+                            <IconAction tone="delete" disabled={busy} onClick={() => setConfirm({ ids: [p.id], label: `“${p.name}”` })} title={`Delete ${p.name}`}><Trash2 /></IconAction>
                           </div>
                         </td>
                       )}
@@ -800,14 +779,14 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
         </div>
         )}
 
-        <div className="mt-3 flex min-h-8 flex-wrap items-center justify-between gap-3 text-[13px] text-admin-gray-600">
+        <div className="mt-4 flex min-h-10 flex-wrap items-center justify-between gap-3 text-[15px] text-admin-gray-800">
           <span>
             {filtered.length === 0
               ? "Showing 0 entries"
               : `Showing ${start + 1} to ${start + pageRows.length} of ${filtered.length} entries`}
             {filtered.length !== products.length && ` (filtered from ${products.length} total entries)`}
           </span>
-          {pageCount > 1 && <Pager page={current} pageCount={pageCount} onPage={setPage} />}
+          {pageCount > 1 && <Pager page={current} pageCount={pageCount} onPage={setPage} label="Product pages" />}
         </div>
       </section>
       )}
@@ -835,13 +814,10 @@ const TABLE_COLS: { key: string; label: string; width?: string; base: number; so
   { key: "p2-c-status", label: "Status", width: "w-[140px] min-[1500px]:w-[150px]", base: 140, sort: "status" },
   { key: "p2-c-type", label: "Type", width: "w-[100px] min-[1500px]:w-[116px]", base: 100, sort: "type" },
   { key: "p2-c-item", label: "Item Type", width: "w-[96px] min-[1500px]:w-[124px]", base: 96, sort: "item" },
-  { key: "p2-c-actions", label: "Actions", width: "w-[126px] min-[1500px]:w-[132px]", base: 126 },
+  { key: "p2-c-actions", label: "Actions", width: "w-[142px] min-[1500px]:w-[148px]", base: 142 },
 ];
 
 /* ───────────────────────── pieces ───────────────────────── */
-
-const iconBtn = (extra: string) =>
-  cn("flex h-8 w-8 items-center justify-center rounded-[0.5rem] border border-[#e5e7eb] bg-white text-admin-gray-500 transition-colors hover:bg-admin-gray-50", extra);
 
 /**
  * Stock column: the quantity (red when out, amber when low) and a small +
@@ -875,19 +851,19 @@ function StockCell({ p, busy, onSave }: { p: Product2Row; busy: boolean; onSave:
         <span className="font-semibold">{qty.toLocaleString("en-IN")}</span>
         {p.unit && <span className="ml-1 text-[11px] font-normal text-admin-gray-500">{p.unit}</span>}
       </span>
-      <button
+      <PillButton
         ref={btn}
-        type="button"
+        variant="success"
         disabled={busy}
         onClick={() => (pos ? setPos(null) : open())}
         aria-haspopup="dialog"
         aria-expanded={!!pos}
         aria-label={`Add stock for ${p.name}`}
         title="Add stock"
-        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[0.5rem] border border-[#e5e7eb] bg-white text-admin-gray-500 transition-colors hover:border-admin-primary hover:text-admin-primary disabled:opacity-50"
+        className="shrink-0"
       >
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-      </button>
+      </PillButton>
       {pos && <StockForm p={p} pos={pos} anchor={btn} onClose={() => setPos(null)} onSave={onSave} />}
     </div>
   );
@@ -1057,7 +1033,7 @@ function FilterSelect({ icon: Icon, label, value, onChange, dot, children }: {
 function SortTh({ label, k, sort, onSort }: { label: string; k: SortKey; sort: { key: SortKey; dir: "asc" | "desc" }; onSort: (k: SortKey) => void }) {
   const active = sort.key === k;
   return (
-    <th className="whitespace-nowrap px-2 font-semibold text-admin-gray-900 min-[1500px]:px-3" aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
+    <th className="whitespace-nowrap border border-[#dee2e6] px-2 font-bold text-admin-gray-900 min-[1500px]:px-3" aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}>
       <button type="button" onClick={() => onSort(k)} className="flex w-full items-center justify-between gap-2">
         {label}
         {active ? (
@@ -1067,187 +1043,6 @@ function SortTh({ label, k, sort, onSort }: { label: string; k: SortKey; sort: {
         )}
       </button>
     </th>
-  );
-}
-
-/**
- * Minimal Published / Unpublished pill. Its menu is portalled to <body> with
- * fixed coordinates so the table's scroll container can't clip it.
- */
-const MENU_H = 82; // two items + padding
-
-function StatusMenu({ status, busy, onChange }: { status: string; busy: boolean; onChange: (s: "active" | "inactive") => void }) {
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const btn = useRef<HTMLButtonElement>(null);
-  const menu = useRef<HTMLDivElement>(null);
-  const active = status === "active";
-
-  useEffect(() => {
-    if (!pos) return;
-    const close = () => setPos(null);
-    const onDoc = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (!btn.current?.contains(t) && !menu.current?.contains(t)) setPos(null);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPos(null);
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", close, true);
-    window.addEventListener("resize", close);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", close, true);
-      window.removeEventListener("resize", close);
-    };
-  }, [pos]);
-
-  return (
-    <>
-      <button
-        ref={btn}
-        type="button"
-        disabled={busy}
-        aria-haspopup="menu"
-        aria-expanded={!!pos}
-        aria-label={`Status: ${active ? "Published" : "Unpublished"}`}
-        onClick={() => {
-          if (pos) return setPos(null);
-          const r = btn.current?.getBoundingClientRect();
-          // Opens upward when the row is near the bottom of the screen.
-          if (r) setPos({ top: r.bottom + 4 + MENU_H > window.innerHeight ? r.top - 4 - MENU_H : r.bottom + 4, left: r.left });
-        }}
-        className={cn(
-          // Same look as the header's buttons: white, 1px #e5e7eb border, 0.5rem radius.
-          "inline-flex h-8 w-[124px] items-center gap-2 rounded-[0.5rem] border border-[#e5e7eb] bg-white px-2.5 text-[13px] font-medium transition-colors hover:bg-[#f9fafb] disabled:cursor-wait",
-          active ? "text-[#374151]" : "text-admin-gray-500"
-        )}
-      >
-        {busy ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : <span className={cn("h-2 w-2 shrink-0 rounded-full", active ? "bg-emerald-500" : "bg-admin-gray-400")} />}
-        <span className="flex-1 text-left">{active ? "Published" : "Unpublished"}</span>
-        <ChevronDown className="h-3.5 w-3.5 shrink-0 text-admin-gray-400" />
-      </button>
-      {pos &&
-        createPortal(
-          <div ref={menu} role="menu" className="fixed z-[400] w-[150px] rounded-[0.5rem] border border-admin-gray-200 bg-white py-1 text-[13px] shadow-lg" style={pos}>
-            {(["active", "inactive"] as const).map((s) => (
-              <button
-                key={s}
-                type="button"
-                role="menuitemradio"
-                aria-checked={status === s}
-                onClick={() => {
-                  setPos(null);
-                  if (s !== status) onChange(s);
-                }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-admin-gray-50"
-              >
-                <span className={cn("h-2 w-2 rounded-full", s === "active" ? "bg-emerald-500" : "bg-admin-gray-400")} />
-                {s === "active" ? "Publish" : "Unpublish"}
-                {status === s && <CheckCircle2 className="ml-auto h-3.5 w-3.5 text-emerald-500" />}
-              </button>
-            ))}
-          </div>,
-          document.body
-        )}
-    </>
-  );
-}
-
-function Menu({ trigger, items, disabled, align = "left" }: {
-  trigger: (open: boolean) => React.ReactNode;
-  disabled?: boolean;
-  align?: "left" | "right";
-  items: { label: string; hint?: string; onClick: () => void; danger?: boolean; disabled?: boolean }[];
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-  useEffect(() => {
-    if (disabled) setOpen(false);
-  }, [disabled]);
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        disabled={disabled}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-        title={disabled ? "Select products first" : undefined}
-        className="block disabled:cursor-not-allowed"
-      >
-        {trigger(open)}
-      </button>
-      {open && (
-        <div role="menu" className={cn("absolute top-full z-50 mt-1.5 min-w-[220px] rounded-lg border border-admin-gray-200 bg-white py-1 text-[13px] shadow-lg", align === "right" ? "right-0" : "left-0")}>
-          {items.map((it) => (
-            <button
-              key={it.label}
-              type="button"
-              role="menuitem"
-              disabled={it.disabled}
-              onClick={() => {
-                setOpen(false);
-                it.onClick();
-              }}
-              className={cn(
-                "flex w-full items-center justify-between gap-3 px-3.5 py-2 text-left hover:bg-admin-gray-50 disabled:cursor-not-allowed disabled:text-admin-gray-300 disabled:hover:bg-transparent",
-                it.danger ? "text-red-600" : "text-admin-gray-800"
-              )}
-            >
-              {it.label}
-              {it.hint && <span className="text-[11px] text-admin-gray-400">{it.hint}</span>}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Previous · 1 2 3 … · Next — same compact pager as the Sales History ledger. */
-function Pager({ page, pageCount, onPage }: { page: number; pageCount: number; onPage: (p: number) => void }) {
-  const nums: (number | "…")[] = [];
-  for (let i = 1; i <= pageCount; i++) {
-    if (i === 1 || i === pageCount || Math.abs(i - page) <= 1) nums.push(i);
-    else if (nums[nums.length - 1] !== "…") nums.push("…");
-  }
-  const btn = "flex h-8 min-w-8 items-center justify-center border border-admin-gray-200 px-2.5 text-[13px] -ml-px first:ml-0 first:rounded-l-md last:rounded-r-md";
-  return (
-    <nav className="flex" aria-label="Product pages">
-      <button type="button" disabled={page === 1} onClick={() => onPage(page - 1)} className={cn(btn, "gap-1 text-admin-gray-700 hover:bg-admin-gray-50 disabled:cursor-not-allowed disabled:text-admin-gray-300 disabled:hover:bg-transparent")}>
-        <ChevronLeft className="h-3.5 w-3.5" /> Previous
-      </button>
-      {nums.map((n, i) =>
-        n === "…" ? (
-          <span key={`e${i}`} className={cn(btn, "text-admin-gray-400")}>…</span>
-        ) : (
-          <button
-            key={n}
-            type="button"
-            aria-current={n === page ? "page" : undefined}
-            onClick={() => onPage(n)}
-            className={cn(btn, n === page ? "relative z-10 border-orange-500 bg-orange-500 text-white" : "text-orange-600 hover:bg-admin-gray-50")}
-          >
-            {n}
-          </button>
-        )
-      )}
-      <button type="button" disabled={page === pageCount} onClick={() => onPage(page + 1)} className={cn(btn, "gap-1 text-admin-gray-700 hover:bg-admin-gray-50 disabled:cursor-not-allowed disabled:text-admin-gray-300 disabled:hover:bg-transparent")}>
-        Next <ChevronRight className="h-3.5 w-3.5" />
-      </button>
-    </nav>
   );
 }
 

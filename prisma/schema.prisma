@@ -240,8 +240,18 @@ model EcomProductReview {
   status       String   @default("pending") // "pending" | "approved" | "rejected"
   createdAt    DateTime @default(now()) @map("created_at")
 
+  // Added by /admin/ecommerce/product-reviews2. All three are optional and all
+  // existing rows keep NULL, so nothing that reads reviews today is affected.
+  // They let a review be tied to the customer and the order it came from, which
+  // is what makes searching by phone number or order number possible.
+  customerId    Int?    @map("customer_id")
+  customerPhone String? @map("customer_phone") @db.VarChar(20)
+  orderId       Int?    @map("order_id")
+
   product  EcomProduct    @relation(fields: [productId], references: [id])
 
+  @@index([customerId])
+  @@index([orderId])
   @@map("ecom_product_reviews")
 }
 

@@ -5,13 +5,14 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition }
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
-  AlertCircle, ArrowDown, ArrowUp, BadgeCheck, CalendarDays, CheckCircle2, ChevronDown, ChevronsUpDown, Download, EyeOff,
-  IndianRupee, Loader2, Mail, Phone, Plus, Search, ShoppingBag, Store, UserPlus, Users, Wallet, X,
+  AlertCircle, ArrowDown, ArrowUp, BadgeCheck, BarChart3, CalendarDays, CheckCircle2, ChevronDown, ChevronsUpDown, Download, Eye,
+  Loader2, Mail, Phone, Plus, Search, ShoppingBag, SquarePen, Store, Users, Wallet, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { Customer2Row, Customers2Data } from "@/lib/customers2";
 import { parseCustomerInput } from "@/lib/customer2-save";
+import { CustomerGrowthChart } from "@/components/admin/customers2/CustomerGrowthChart";
 import { Modal, Pager } from "@/components/admin/campaigns2/ui";
 import { money } from "@/components/admin/campaigns2/format";
 
@@ -202,26 +203,33 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
     { key: "cus2-c-orders", w: "w-[110px]" },
     { key: "cus2-c-spent", w: "w-[140px]" },
     { key: "cus2-c-due", w: "w-[130px]" },
-    { key: "cus2-c-status", w: "w-[130px]" },
-    { key: "cus2-c-actions", w: "w-[150px]" },
+    { key: "cus2-c-status", w: "w-[140px]" },
+    { key: "cus2-c-actions", w: "w-[110px]" },
   ].filter((x) => show("cus2-table") && show(x.key));
 
   return (
     <div className={cn("space-y-5", !loaded && "invisible")} aria-busy={navigating}>
-      {show("cus2-range") && <RangeBar range={range} navigate={navigate} pending={navigating} />}
-
-      {show("cus2-cards") && (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {show("cus2-k-total") && <Card icon={Users} tint="bg-blue-50 text-blue-600" value={String(c.total)} label="All Customers" sub={`${c.active} active · ${c.inactive} inactive`} on={!filtersActive} onClick={() => applyCard({})} />}
-          {show("cus2-k-online") && <Card icon={ShoppingBag} tint="bg-violet-50 text-violet-600" value={String(c.online)} label="Online Customers" sub="signed up on the shop" on={f.type === "online"} onClick={() => applyCard({ type: "online" })} />}
-          {show("cus2-k-offline") && <Card icon={Store} tint="bg-amber-50 text-amber-600" value={String(c.offline)} label="Walk-in Customers" sub="added at the counter" on={f.type === "offline"} onClick={() => applyCard({ type: "offline" })} />}
-          {show("cus2-k-dues") && <Card icon={Wallet} tint="bg-red-50 text-red-600" value={String(c.withDues)} label="With Dues" sub={`${money(c.duesAmount)} outstanding`} on={f.dues === "with"} onClick={() => applyCard({ dues: "with" })} />}
-          {show("cus2-k-new") && <Card icon={UserPlus} tint="bg-emerald-50 text-emerald-600" value={String(c.newInRange)} label="New in Range" sub="joined in this period" on={f.dateField === "created"} onClick={() => applyCard({ dateField: "created" })} />}
-          {show("cus2-k-buyers") && <Card icon={CalendarDays} tint="bg-sky-50 text-sky-600" value={String(c.buyersInRange)} label="Bought in Range" sub="customers who ordered" on={f.activity === "buyers"} onClick={() => applyCard({ activity: "buyers" })} />}
-          {show("cus2-k-spent") && <Card icon={IndianRupee} tint="bg-emerald-50 text-emerald-600" value={money(c.spentInRange)} label="Sales in Range" sub="from these customers" on={false} onClick={() => applyCard({ activity: "buyers" })} />}
-          {show("cus2-k-inactive") && <Card icon={EyeOff} tint="bg-slate-100 text-slate-600" value={String(c.inactive)} label="Inactive" sub="cannot sign in" on={f.status === "inactive"} onClick={() => applyCard({ status: "inactive" })} />}
+      {/* Same top as Sales History 2: the graph, then the Key Metrics beside it. */}
+      {(show("cus2-chart") || show("cus2-cards")) && (
+        <div className={cn("grid grid-cols-1 gap-5", show("cus2-chart") && show("cus2-cards") && "min-[1600px]:grid-cols-[minmax(0,1fr)_minmax(0,1.18fr)]")}>
+          {show("cus2-chart") && <CustomerGrowthChart growth={data.growth} />}
+          {show("cus2-cards") && (
+            <section className="rounded-xl border border-admin-gray-200 bg-white p-5 shadow-sm">
+              <h2 className="mb-4 flex items-center gap-2.5 text-base font-semibold text-admin-gray-900">
+                <BarChart3 className="h-5 w-5 text-emerald-600" /> Key Metrics
+              </h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {show("cus2-k-total") && <Tile icon={Users} tone="green" value={String(c.total)} label="All Customers" sub={`${c.active} active · ${c.inactive} inactive`} on={!filtersActive} onClick={() => applyCard({})} />}
+                {show("cus2-k-online") && <Tile icon={ShoppingBag} tone="blue" value={String(c.online)} label="Online Customers" sub="signed up on the shop" on={f.type === "online"} onClick={() => applyCard({ type: "online" })} />}
+                {show("cus2-k-offline") && <Tile icon={Store} tone="navy" value={String(c.offline)} label="Walk-in Customers" sub="added at the counter" on={f.type === "offline"} onClick={() => applyCard({ type: "offline" })} />}
+                {show("cus2-k-dues") && <Tile icon={Wallet} tone="amber" value={String(c.withDues)} label="With Dues" sub={`${money(c.duesAmount)} outstanding`} on={f.dues === "with"} onClick={() => applyCard({ dues: "with" })} />}
+              </div>
+            </section>
+          )}
         </div>
       )}
+
+      {show("cus2-range") && <RangeBar range={range} navigate={navigate} pending={navigating} />}
 
       {show("cus2-filters") && (
         <section className="rounded-xl border border-admin-gray-200 bg-white p-3.5 shadow-sm">
@@ -361,20 +369,16 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
                         )}
                         {show("cus2-c-status") && (
                           <td className={td}>
-                            <button type="button" disabled={isBusy} onClick={() => setStatus(r, r.status === "active" ? "inactive" : "active")}
-                              aria-label={`${r.name} is ${r.status === "active" ? "active" : "inactive"} — click to change`} title="Click to change"
-                              className={cn("inline-flex h-9 items-center gap-2 rounded-[0.25rem] px-3.5 text-[14px] font-semibold text-white disabled:cursor-wait", r.status === "active" ? "bg-[#5cc28a] hover:bg-[#4bb279]" : "bg-[#8a8f98] hover:bg-[#777c85]")}>
-                              {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : r.status === "active" ? "Active" : "Inactive"}
-                            </button>
+                            <StatusMenu status={r.status} busy={isBusy} name={r.name} onChange={(next) => setStatus(r, next)} />
                           </td>
                         )}
                         {show("cus2-c-actions") && (
                           <td className={td}>
                             <div className="flex items-center gap-2">
-                              <button type="button" onClick={() => setEditor({ customer: r })} title={`Edit ${r.name}`}
-                                className="flex h-9 items-center rounded-[0.375rem] bg-[#4361ee] px-3 text-[13px] font-semibold text-white hover:bg-[#3651d4]">Edit</button>
-                              <Link href={`/admin/ecommerce/customers/${r.id}`} title={`Open ${r.name}'s profile`}
-                                className="flex h-9 items-center rounded-[0.375rem] border border-[#dee2e6] bg-white px-3 text-[13px] font-medium text-admin-gray-700 hover:bg-admin-gray-50">Profile</Link>
+                              <Link href={`/admin/ecommerce/customers/${r.id}`} aria-label={`Open ${r.name}'s profile`} title="Profile"
+                                className="flex h-9 w-9 items-center justify-center rounded-[0.375rem] bg-[#8a8f98] text-white hover:bg-[#777c85]"><Eye className="h-4 w-4" /></Link>
+                              <button type="button" onClick={() => setEditor({ customer: r })} aria-label={`Edit ${r.name}`} title="Edit"
+                                className="flex h-9 w-9 items-center justify-center rounded-[0.375rem] bg-[#4361ee] text-white hover:bg-[#3651d4]"><SquarePen className="h-4 w-4" /></button>
                             </div>
                           </td>
                         )}
@@ -530,19 +534,85 @@ function SortTh({ label, active, onClick }: { label: string; active: "asc" | "de
   );
 }
 
-function Card({ icon: Icon, tint, value, label, sub, on, onClick }: {
-  icon: React.ComponentType<{ className?: string }>; tint: string; value: string; label: string; sub: string; on: boolean; onClick: () => void;
+const TONES = {
+  green: { bg: "bg-emerald-600", text: "text-emerald-600" },
+  blue: { bg: "bg-blue-600", text: "text-blue-600" },
+  navy: { bg: "bg-blue-600", text: "text-slate-800" },
+  amber: { bg: "bg-amber-400", text: "text-amber-500" },
+} as const;
+
+/** A Key Metrics tile, identical in look to Sales History 2's; clicking it filters the table below. */
+function Tile({ icon: Icon, tone, value, label, sub, on, onClick }: {
+  icon: React.ComponentType<{ className?: string }>; tone: keyof typeof TONES; value: string; label: string; sub: string; on: boolean; onClick: () => void;
 }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={on} title={`Show ${label.toLowerCase()}`}
-      className={cn("flex items-center gap-3.5 rounded-xl border bg-white px-4 py-4 text-left shadow-sm transition-colors", on ? "border-[#2563eb]/40 ring-1 ring-[#2563eb]/25" : "border-admin-gray-200 hover:border-[#2563eb]/30")}>
-      <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-full", tint)}><Icon className="h-5 w-5" /></span>
-      <span className="min-w-0">
-        <span className="block truncate text-xl font-bold leading-tight text-admin-gray-900" title={value}>{value}</span>
-        <span className="block truncate text-sm text-admin-gray-700">{label}</span>
-        <span className="block truncate text-xs text-admin-gray-500">{sub}</span>
+      className={cn("flex h-full w-full gap-2.5 rounded-xl border bg-white px-3 py-3 text-left shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-colors",
+        on ? "border-[#2563eb]/40 ring-1 ring-[#2563eb]/25" : "border-admin-gray-100 hover:border-[#2563eb]/30")}>
+      <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white", TONES[tone].bg)}><Icon className="h-4 w-4" /></span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-xs leading-5 text-admin-gray-700" title={label}>{label}</span>
+        <span className={cn("block whitespace-nowrap text-xl font-bold leading-8 tracking-tight", TONES[tone].text)}>{value}</span>
+        <span className="block truncate whitespace-nowrap text-xs leading-5 text-admin-gray-500">{sub}</span>
       </span>
     </button>
+  );
+}
+
+/**
+ * The status pill: a coloured button with a small caret that opens a plain
+ * white list — the same control the Orders page uses. Opens over everything
+ * (not clipped by the table) and closes on outside click, scroll or Escape.
+ */
+function StatusMenu({ status, busy, name, onChange }: { status: string; busy: boolean; name: string; onChange: (s: "active" | "inactive") => void }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!pos) return;
+    const close = () => setPos(null);
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!btn.current?.contains(t) && !menu.current?.contains(t)) close();
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [pos]);
+
+  const isActive = status === "active";
+  return (
+    <>
+      <button ref={btn} type="button" disabled={busy} aria-haspopup="menu" aria-expanded={!!pos} aria-label={`Status of ${name}: ${isActive ? "Active" : "Inactive"}`}
+        onClick={() => {
+          if (pos) return setPos(null);
+          const r = btn.current!.getBoundingClientRect();
+          setPos({ top: r.bottom + 4 + 96 > window.innerHeight ? r.top - 100 : r.bottom + 4, left: r.left });
+        }}
+        className={cn("inline-flex h-9 items-center gap-2 rounded-[0.25rem] px-3.5 text-[14px] font-semibold text-white disabled:cursor-wait", isActive ? "bg-[#5cc28a] hover:bg-[#4bb279]" : "bg-[#8a8f98] hover:bg-[#777c85]")}>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : isActive ? "Active" : "Inactive"}
+        <span aria-hidden className="inline-block h-0 w-0 border-x-[4px] border-t-[5px] border-x-transparent border-t-white" />
+      </button>
+      {pos && createPortal(
+        <div ref={menu} role="menu" className="fixed z-[400] min-w-[150px] rounded-[0.375rem] border border-[#ced4da] bg-white py-1.5 shadow-lg" style={pos}>
+          {([["active", "Active"], ["inactive", "Inactive"]] as const).map(([k, label]) => (
+            <button key={k} type="button" role="menuitemradio" aria-checked={status === k} onClick={() => { setPos(null); onChange(k); }}
+              className={cn("block w-full px-4 py-2 text-left text-[15px] text-admin-gray-900 hover:bg-[#e9ecef]", status === k && "font-semibold")}>
+              {label}
+            </button>
+          ))}
+        </div>,
+        document.body
+      )}
+    </>
   );
 }
 

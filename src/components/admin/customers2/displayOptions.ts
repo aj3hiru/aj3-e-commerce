@@ -6,16 +6,12 @@ export const CUSTOMERS2_PREF_KEY = "ecom_customers2_display";
 export const CUSTOMERS2_GROUPS: readonly WidgetGroup[] = [
   {
     group: "cus2-cards",
-    groupLabel: "Summary Cards",
+    groupLabel: "Key Metrics",
     items: [
       { key: "cus2-k-total", label: "All Customers" },
       { key: "cus2-k-online", label: "Online Customers" },
       { key: "cus2-k-offline", label: "Walk-in Customers" },
       { key: "cus2-k-dues", label: "With Dues" },
-      { key: "cus2-k-new", label: "New in Range" },
-      { key: "cus2-k-buyers", label: "Bought in Range" },
-      { key: "cus2-k-spent", label: "Sales in Range" },
-      { key: "cus2-k-inactive", label: "Inactive" },
     ],
   },
   {
@@ -47,5 +43,6 @@ export const CUSTOMERS2_GROUPS: readonly WidgetGroup[] = [
 ];
 
 export const CUSTOMERS2_STANDALONE: readonly { key: string; label: string }[] = [
+  { key: "cus2-chart", label: "Customer Growth graph" },
   { key: "cus2-range", label: "Date Range Bar" },
 ];

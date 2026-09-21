@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { buildGrowth, type GrowthSeries } from "@/lib/customers2-growth";
 
 /**
  * Data for /admin/ecommerce/customers2.
@@ -55,6 +56,8 @@ export interface Customer2Cards {
 export interface Customers2Data {
   rows: Customer2Row[];
   cards: Customer2Cards;
+  /** Who joined when, for the Customer Growth graph. */
+  growth: GrowthSeries;
   range: { from: string; to: string };
   today: string;
 }
@@ -151,6 +154,7 @@ export async function getCustomers2Data(range: { from: string; to: string }): Pr
       buyersInRange: buyers.length,
       spentInRange: r2([...agg.values()].reduce((s, a) => s + a.spentInRange, 0)),
     },
+    growth: buildGrowth(rows.map((r) => new Date(r.createdAt).getTime()), range),
     range,
     today: istYmd(new Date()),
   };

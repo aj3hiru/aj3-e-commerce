@@ -16,10 +16,6 @@ export const DUE2_GROUPS: readonly WidgetGroup[] = [
       { key: "due2-k-overdue", label: "Overdue" },
       { key: "due2-k-today", label: "Due Today" },
       { key: "due2-k-people", label: "People with Dues" },
-      { key: "due2-k-newtoday", label: "Today's New Due" },
-      { key: "due2-k-collected", label: "Today's Collection" },
-      { key: "due2-k-range", label: "Collected in Range" },
-      { key: "due2-k-nodate", label: "No Promise Date" },
     ],
   },
   {

@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle, AlertTriangle, ArrowDown, ArrowRight, ArrowUp, CalendarClock, CalendarDays, CheckCircle2, ChevronDown, ChevronsUpDown,
-  Clock, Download, HandCoins, IndianRupee, Loader2, Package, Receipt, Search, Users, Wallet, X,
+  Download, HandCoins, IndianRupee, Loader2, Package, Receipt, Search, Users, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
@@ -37,7 +37,6 @@ function shiftYmd(ymd: string, days: number) {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
-const dmy = (ymd: string) => `${ymd.slice(8, 10)}/${ymd.slice(5, 7)}/${ymd.slice(0, 4)}`;
 const longDate = (ymd: string) => new Date(`${ymd}T12:00:00Z`).toLocaleDateString("en-GB", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" });
 const dtFmt = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
 function fmtDateTime(iso: string) {
@@ -242,10 +241,6 @@ export function Due2Body({ data, filters: range, notice, canEdit }: Props) {
           {show("due2-k-overdue") && <Card icon={AlertTriangle} tint="bg-orange-50 text-orange-600" value={money(c.overdueAmount)} label="Overdue" sub={`${c.overdueCount} past promise date`} on={f.promise === "overdue"} onClick={() => applyCard({ promise: "overdue" })} />}
           {show("due2-k-today") && <Card icon={CalendarClock} tint="bg-amber-50 text-amber-600" value={money(c.dueTodayAmount)} label="Due Today" sub={`${c.dueTodayCount} promised for today`} on={f.promise === "today"} onClick={() => applyCard({ promise: "today" })} />}
           {show("due2-k-people") && <Card icon={Users} tint="bg-sky-50 text-sky-600" value={String(c.totalDuePeople)} label="People with Dues" sub="customers who owe money" on={false} onClick={() => applyCard({})} />}
-          {show("due2-k-newtoday") && <Card icon={Clock} tint="bg-violet-50 text-violet-600" value={money(c.todayNewDue)} label="Today's New Due" sub={`${c.todayNewCount} new today`} on={false} onClick={() => applyCard({ status: "all", dateField: "created" })} />}
-          {show("due2-k-collected") && <Card icon={HandCoins} tint="bg-emerald-50 text-emerald-600" value={money(c.todayCollected)} label="Today's Collection" sub={`${c.todayCollectedCount} payment${c.todayCollectedCount === 1 ? "" : "s"} today`} on={false} onClick={() => applyCard({ status: "all", dateField: "paid" })} />}
-          {show("due2-k-range") && <Card icon={Wallet} tint="bg-emerald-50 text-emerald-600" value={money(c.rangeCollected)} label="Collected in Range" sub={`${dmy(range.from)} – ${dmy(range.to)}`} on={f.dateField === "paid"} onClick={() => applyCard({ status: "all", dateField: "paid" })} />}
-          {show("due2-k-nodate") && <Card icon={CalendarDays} tint="bg-slate-100 text-slate-600" value={money(c.noDateAmount)} label="No Promise Date" sub={`${c.noDateCount} need a date`} on={f.promise === "none"} onClick={() => applyCard({ promise: "none" })} />}
         </div>
       )}
 
@@ -758,7 +753,7 @@ function RangeBar({ range, navigate, pending }: { range: { from: string; to: str
         </form>
       </div>
       <p className="mt-2 flex items-center gap-1.5 text-xs text-admin-gray-500">
-        <ArrowRight className="h-3 w-3" /> The date range changes the &ldquo;Collected in Range&rdquo; card. To filter the table by date too, set &ldquo;Date range applies to&rdquo;.
+        <ArrowRight className="h-3 w-3" /> To filter the table by these dates, set &ldquo;Date range applies to&rdquo; (created, promise date or payment received).
       </p>
     </section>
   );

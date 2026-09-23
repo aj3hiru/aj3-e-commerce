@@ -68,6 +68,19 @@ function cloneDefaults(): PermissionsShape {
   return JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS));
 }
 
+/** Counts how many individual permission leaves (across every group) are
+ *  `true` in a given permissions object — used by user-manager2 to show a
+ *  quick "42 / 85 granted" summary per user without listing every checkbox. */
+export function countGrantedPermissions(permissions: PermissionsShape): number {
+  let count = 0;
+  const walk = (obj: unknown) => {
+    if (typeof obj === "boolean") { if (obj) count++; return; }
+    if (obj && typeof obj === "object") Object.values(obj).forEach(walk);
+  };
+  walk(permissions);
+  return count;
+}
+
 /** Verified against getRolePermissionDefaults() — role-based presets used to
  *  pre-fill the permission checkboxes when creating a user with "Advance Access". */
 export function getRolePermissionDefaults(role: "admin" | "editor" | "author"): PermissionsShape {

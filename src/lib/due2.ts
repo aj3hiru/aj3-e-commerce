@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 
 /**
- * Data for /admin/ecommerce/due2.
+ * Data for /admin/ecommerce/due.
  *
  * A "due" is one EcomCredit row: money still owed on one order. Balance is
  * always amount − amountPaid, the same sum the old Due page and the dashboard

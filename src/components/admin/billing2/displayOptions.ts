@@ -2,7 +2,7 @@ import type { WidgetGroup } from "@/hooks/useDashboardWidgetPrefs";
 
 /**
  * Display Options for /admin/ecommerce/billing2 — same panel and store as
- * /admin/dashboard2, with its own localStorage key so hiding something here
+ * /admin/dashboard, with its own localStorage key so hiding something here
  * never hides a dashboard card (visibility is stored by key name).
  *
  * A group's checkbox shows/hides that whole section; the items inside it

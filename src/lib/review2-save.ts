@@ -1,5 +1,5 @@
 /**
- * Rules for saving a review from /admin/ecommerce/product-reviews2. Pure (no
+ * Rules for saving a review from /admin/ecommerce/product-reviews. Pure (no
  * database), so the form and the API apply exactly the same checks.
  */
 export interface CleanReview {

@@ -1,6 +1,6 @@
 import type { WidgetGroup } from "@/hooks/useDashboardWidgetPrefs";
 
-/** Display Options for /admin/ecommerce/product-tags2 (own localStorage key). */
+/** Display Options for /admin/ecommerce/product-tags (own localStorage key). */
 export const TAGS2_PREF_KEY = "ecom_product_tags2_display";
 
 export const TAGS2_GROUPS: readonly WidgetGroup[] = [

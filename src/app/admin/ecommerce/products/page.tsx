@@ -1,112 +1,128 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { Plus } from "lucide-react";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { ProductsTable } from "@/components/admin/ProductsTable";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import {
+  Products2AddButton, Products2Body, Products2ExportMenu, Products2HeaderSearch, Products2Provider, type Product2Row,
+} from "@/components/admin/products2/Products2Body";
+import { parseProducts2Filters } from "@/components/admin/products2/filters";
+import { PRODUCTS2_GROUPS, PRODUCTS2_PREF_KEY, PRODUCTS2_STANDALONE } from "@/components/admin/products2/displayOptions";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 
-interface ProductsPageProps {
-  searchParams: Promise<{ success?: string; error?: string }>;
+/**
+ * /admin/ecommerce/products2 — a trial redesign of All Products, kept
+ * alongside the original /admin/ecommerce/products so the two can be compared
+ * (same idea as dashboard2, billing2, sales-history2). Same access rule
+ * (manage_products), same data, same publish/delete/barcode endpoints; header
+ * and sidebar are the shared AdminShell.
+ *
+ * All products are sent once and every filter runs in the browser, so
+ * filtering is instant with no server round-trip.
+ *
+ * To remove it once a choice is made, delete:
+ *   src/app/admin/ecommerce/products2/
+ *   src/components/admin/products2/
+ * Nothing else imports them.
+ */
+interface Products2PageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-const SUCCESS_MESSAGES: Record<string, string> = {
-  created: "Product created successfully!",
-  updated: "Product updated successfully!",
-  deleted: "Product deleted successfully!",
-};
-
-/** Verified against admin/ecommerce/products.php — stat mini-grid, notifications
- *  banner, and the full products table. */
-export default async function ProductsPage({ searchParams }: ProductsPageProps) {
+export default async function Products2Page({ searchParams }: Products2PageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
     redirect("/shop/login");
   }
 
-  const params = await searchParams;
+  const sp = await searchParams;
+  const initialFilters = parseProducts2Filters(sp);
+  // Set by Add / Edit Product 2 after a save.
+  const successRaw = Array.isArray(sp.success) ? sp.success[0] : sp.success;
+  const savedName = (Array.isArray(sp.name) ? sp.name[0] : sp.name)?.slice(0, 120);
+  const notice =
+    successRaw === "created" ? `${savedName ? `“${savedName}”` : "Product"} created.` :
+    successRaw === "updated" ? `${savedName ? `“${savedName}”` : "Product"} updated.` : null;
 
-  const [products, badgeTagRows] = await Promise.all([
-    prisma.ecomProduct.findMany({ orderBy: { createdAt: "desc" } }),
-    prisma.ecomProductTag.findMany({ where: { tagGroup: "badge" }, select: { slug: true, label: true, color: true } }),
+  const [products, tags, categoryRows] = await Promise.all([
+    prisma.ecomProduct.findMany({
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true, name: true, image: true, sku: true, barcode: true, price: true, salePrice: true,
+        status: true, productType: true, stockQty: true, badgeTag: true, itemType: true, unit: true, createdAt: true,
+        categoryId: true, category: { select: { name: true } }, brand: { select: { name: true } },
+      },
+    }),
+    prisma.ecomProductTag.findMany({
+      orderBy: { sortOrder: "asc" },
+      select: { slug: true, label: true, color: true, tagGroup: true },
+    }),
+    prisma.ecomCategory.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
 
-  const badgeLabels: Record<string, string> = {};
-  const badgeColors: Record<string, string | null> = {};
-  for (const bt of badgeTagRows) {
-    badgeLabels[bt.slug] = bt.label;
-    badgeColors[bt.slug] = bt.color;
-  }
+  type TagRow = { slug: string; label: string; color: string | null; tagGroup: string };
+  const badges = (tags as TagRow[]).filter((t) => t.tagGroup === "badge").map((t) => ({ slug: t.slug, label: t.label, color: t.color }));
+  const itemTypes = (tags as TagRow[]).filter((t) => t.tagGroup === "item_type").map((t) => ({ slug: t.slug, label: t.label }));
 
-  const totalAll = products.length;
-  const totalActive = products.filter((p: (typeof products)[number]) => p.status === "active").length;
-  const totalOutstock = products.filter(
-    (p: (typeof products)[number]) => p.productType === "physical" && (p.stockQty ?? 0) <= 0
-  ).length;
+  const rows: Product2Row[] = products.map((p: {
+    id: number; name: string; image: string | null; sku: string | null; barcode: string | null; price: unknown;
+    salePrice: unknown; status: string; productType: string; stockQty: number | null; badgeTag: string;
+    itemType: string; unit: string | null; createdAt: Date; categoryId: number | null; category: { name: string } | null;
+    brand: { name: string } | null;
+  }) => ({
+    id: p.id,
+    name: p.name,
+    image: p.image,
+    sku: p.sku,
+    barcode: p.barcode,
+    price: Number(p.price),
+    salePrice: p.salePrice === null || p.salePrice === undefined ? null : Number(p.salePrice),
+    status: p.status,
+    productType: p.productType,
+    stockQty: p.stockQty,
+    badgeTag: p.badgeTag,
+    itemType: p.itemType,
+    unit: p.unit,
+    categoryId: p.categoryId,
+    categoryName: p.category?.name ?? null,
+    brandName: p.brand?.name ?? null,
+    createdAt: p.createdAt.toISOString(),
+  }));
 
-  const successMessage = params.success ? SUCCESS_MESSAGES[params.success] : undefined;
+  const categories = (categoryRows as { id: number; name: string }[]).map((c) => ({ id: c.id, name: c.name }));
 
   return (
-    <AdminShell
-      siteName="EduMint24"
-      pageTitle="All Products"
-      pageSubtitle="Manage everything you sell in your store"
-      username={session.username}
-      role={session.role}
-      permissions={session.permissions}
-    >
-      {successMessage && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded px-4 py-2.5 mb-4">
-          {successMessage}
+    // The provider wraps the shell: the header's search and Export work on the
+    // same product list, filters and selection as the table below.
+    <DashboardWidgetPrefsProvider prefKey={PRODUCTS2_PREF_KEY} groups={PRODUCTS2_GROUPS} standalone={PRODUCTS2_STANDALONE}>
+    <Products2Provider products={rows} badges={badges} itemTypes={itemTypes} categories={categories} initialFilters={initialFilters}>
+      <AdminShell
+        siteName="EduMint24"
+        pageTitle="All Products"
+        pageSubtitle="Manage everything you sell in your store"
+        username={session.username}
+        role={session.role}
+        permissions={session.permissions}
+        headerActions={
+          <div className="hidden items-center gap-3 xl:flex">
+            <Products2HeaderSearch className="w-[190px] min-[1440px]:w-[240px] min-[1600px]:w-[300px]" />
+            <DisplayOptionsPanel variant="header" />
+            <Products2ExportMenu />
+            <Products2AddButton />
+          </div>
+        }
+      >
+        {/* Below 1280px the header has no room, so the same controls move here. */}
+        <div className="mb-5 flex flex-wrap items-center gap-3 xl:hidden">
+          <Products2HeaderSearch className="w-full sm:w-auto sm:min-w-[240px] sm:flex-1" />
+          <DisplayOptionsPanel variant="toolbar" />
+          <Products2ExportMenu />
+          <Products2AddButton />
         </div>
-      )}
-      {params.error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-4 py-2.5 mb-4">
-          Delete failed. Please try again.
-        </div>
-      )}
 
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="bg-white rounded-lg border border-admin-gray-200 p-4 text-center">
-          <div className="text-xl font-bold text-admin-gray-900">{totalAll.toLocaleString("en-IN")}</div>
-          <div className="text-xs text-admin-gray-500 mt-1">Total Products</div>
-        </div>
-        <div className="bg-white rounded-lg border border-admin-gray-200 p-4 text-center">
-          <div className="text-xl font-bold text-emerald-600">{totalActive.toLocaleString("en-IN")}</div>
-          <div className="text-xs text-admin-gray-500 mt-1">Published</div>
-        </div>
-        <div className="bg-white rounded-lg border border-admin-gray-200 p-4 text-center">
-          <div className="text-xl font-bold text-red-600">{totalOutstock.toLocaleString("en-IN")}</div>
-          <div className="text-xs text-admin-gray-500 mt-1">Out of Stock</div>
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold text-lg">All Products</h3>
-        <Link
-          href="/admin/ecommerce/products/add"
-          className="flex items-center gap-1.5 bg-admin-primary hover:bg-admin-primary-dark text-white text-sm font-medium rounded px-3.5 py-2"
-        >
-          <Plus className="w-4 h-4" /> Add
-        </Link>
-      </div>
-
-      <ProductsTable
-        products={products.map((p: (typeof products)[number]) => ({
-          id: p.id,
-          name: p.name,
-          image: p.image,
-          price: Number(p.price),
-          salePrice: p.salePrice ? Number(p.salePrice) : null,
-          status: p.status,
-          productType: p.productType,
-          itemType: p.itemType,
-          stockQty: p.stockQty,
-          badgeTag: p.badgeTag,
-        }))}
-        badgeLabels={badgeLabels}
-        badgeColors={badgeColors}
-      />
-    </AdminShell>
+        <Products2Body notice={notice} />
+      </AdminShell>
+    </Products2Provider>
+    </DashboardWidgetPrefsProvider>
   );
 }

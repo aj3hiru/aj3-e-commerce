@@ -1,6 +1,6 @@
 /**
  * Rules for saving a badge tag / item type from
- * /admin/ecommerce/product-tags2. Pure (no database), so the form and the API
+ * /admin/ecommerce/product-tags. Pure (no database), so the form and the API
  * apply exactly the same checks.
  */
 export interface CleanTag {

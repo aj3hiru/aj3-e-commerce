@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 
 /**
- * Data for /admin/ecommerce/barcode-print2.
+ * Data for /admin/ecommerce/barcode-print.
  *
  * Built for a shop with thousands of products: the page does NOT load every
  * product. It loads only what you are likely to print today — products added

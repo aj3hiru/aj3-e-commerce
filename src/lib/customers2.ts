@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { buildGrowth, type GrowthSeries } from "@/lib/customers2-growth";
 
 /**
- * Data for /admin/ecommerce/customers2.
+ * Data for /admin/ecommerce/customers.
  *
  * Every customer comes with what the shop actually knows about them: how many
  * orders, how much they've spent, what they still owe, and when they last

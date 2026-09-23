@@ -1,7 +1,7 @@
 import type { WidgetGroup } from "@/hooks/useDashboardWidgetPrefs";
 
 /**
- * Display Options for /admin/ecommerce/stock-out-products2 — same panel and
+ * Display Options for /admin/ecommerce/stock-out-products — same panel and
  * store as the other "2" pages, with its own localStorage key so hiding
  * something here never hides anything on another page.
  */

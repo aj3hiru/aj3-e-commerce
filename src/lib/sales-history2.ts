@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 
 /**
- * Data for /admin/ecommerce/sales-history2 (and its CSV export).
+ * Data for /admin/ecommerce/sales-history (and its CSV export).
  *
  * A "sale" is the same as on the original Sales History page: every in-store
  * (offline/POS) order, plus every online order that has been Delivered.

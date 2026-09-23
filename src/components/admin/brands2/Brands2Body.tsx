@@ -399,7 +399,7 @@ export function Brands2Body({ brands: initial }: { brands: Brand2Row[] }) {
                         {show("b2-c-products") && (
                           <td className={td}>
                             {b.products > 0 ? (
-                              <a href={`/admin/ecommerce/products2?q=${encodeURIComponent(b.name)}`} title="See these products" className="hover:text-[#2563eb] hover:underline">{b.products.toLocaleString("en-IN")}</a>
+                              <a href={`/admin/ecommerce/products?q=${encodeURIComponent(b.name)}`} title="See these products" className="hover:text-[#2563eb] hover:underline">{b.products.toLocaleString("en-IN")}</a>
                             ) : <span>0</span>}
                           </td>
                         )}
@@ -639,7 +639,7 @@ function BrandModal({ brand, onClose, onSaved, onDelete }: {
                 <span className="block truncate font-semibold text-admin-gray-900">{brand.name}</span>
                 <span className="block text-xs text-admin-gray-500">{brand.products.toLocaleString("en-IN")} product{brand.products === 1 ? "" : "s"} · ID #{brand.id}</span>
               </span>
-              {brand.products > 0 && <a href={`/admin/ecommerce/products2?q=${encodeURIComponent(brand.name)}`} className="text-xs font-medium text-[#2563eb] hover:underline">View products</a>}
+              {brand.products > 0 && <a href={`/admin/ecommerce/products?q=${encodeURIComponent(brand.name)}`} className="text-xs font-medium text-[#2563eb] hover:underline">View products</a>}
             </div>
           )}
           {err && <div role="alert" className="rounded-[0.375rem] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err.text}</div>}

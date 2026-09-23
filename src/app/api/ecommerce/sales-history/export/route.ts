@@ -3,7 +3,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { getLedgerRows, parseSalesFilters, type RawSearchParams } from "@/lib/sales-history2";
 
 /**
- * CSV export for /admin/ecommerce/sales-history2 — the same rows the Sales
+ * CSV export for /admin/ecommerce/sales-history — the same rows the Sales
  * Ledger shows for the same filters (it reads the page's own query string).
  * Dates/times are India time. A UTF-8 BOM makes Excel read ₹ and names
  * correctly.

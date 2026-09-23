@@ -1,7 +1,7 @@
 import type { WidgetGroup } from "@/hooks/useDashboardWidgetPrefs";
 
 /**
- * Display Options for /admin/dashboard2.
+ * Display Options for /admin/dashboard.
  *
  * Its own localStorage key on purpose: visibility is stored by widget name, so
  * sharing the original dashboard's key would let hiding a card here hide an

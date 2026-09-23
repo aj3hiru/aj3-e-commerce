@@ -6,7 +6,7 @@ import { generateSlug, makeUniqueSlug } from "@/lib/slug";
 import { saveUploadedImage } from "@/lib/upload";
 
 /**
- * "+ Add new…" from inside the product form on /admin/ecommerce/add-product2:
+ * "+ Add new…" from inside the product form on /admin/ecommerce/products/add:
  * brand (with optional logo — the PHP's add-brand-ajax.php), category (with optional image),
  * sub-category (under a chosen category) and item type. Returns the new
  * option so the form selects it without leaving the page. An existing name is

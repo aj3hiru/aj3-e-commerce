@@ -14,7 +14,7 @@ import type { BarcodeProduct, Barcodes2Data } from "@/lib/barcodes2";
 import { money } from "@/components/admin/campaigns2/format";
 import { IconAction, PillButton } from "@/components/admin/ui/buttons";
 
-const PAGE_PATH = "/admin/ecommerce/barcode-print2";
+const PAGE_PATH = "/admin/ecommerce/barcode-print";
 const EVT_PRINT = "barcodes2:print";
 
 export function Barcodes2HeaderButtons() {

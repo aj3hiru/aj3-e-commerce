@@ -3,7 +3,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { SaveError, updateProduct2 } from "@/lib/product2-save";
 
-/** Update a product from /admin/ecommerce/add-product2?edit=ID (multipart form). */
+/** Update a product from /admin/ecommerce/products/add?edit=ID (multipart form). */
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {

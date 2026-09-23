@@ -8,7 +8,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { getTags2Data, parseTagRange } from "@/lib/product-tags2";
 
 /**
- * /admin/ecommerce/product-tags2 — "Badge Tags & Item Types", with how many
+ * /admin/ecommerce/product-tags — "Badge Tags & Item Types", with how many
  * products use each tag and how much each one has sold.
  *
  * Reads and writes the existing ecom_product_tags table, so no database

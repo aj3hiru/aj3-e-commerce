@@ -1,6 +1,6 @@
 import type { WidgetGroup } from "@/hooks/useDashboardWidgetPrefs";
 
-/** Display Options for /admin/ecommerce/customers2 (own localStorage key). */
+/** Display Options for /admin/ecommerce/customers (own localStorage key). */
 export const CUSTOMERS2_PREF_KEY = "ecom_customers2_display";
 
 export const CUSTOMERS2_GROUPS: readonly WidgetGroup[] = [

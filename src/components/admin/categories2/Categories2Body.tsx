@@ -422,7 +422,7 @@ export function Categories2Body({ categories: initial }: { categories: Category2
                         {show("c2-c-products") && (
                           <td className={td}>
                             {c.products > 0 ? (
-                              <a href={`/admin/ecommerce/products2?q=${encodeURIComponent(c.name)}`} title="See these products" className="hover:text-[#2563eb] hover:underline">{c.products.toLocaleString("en-IN")}</a>
+                              <a href={`/admin/ecommerce/products?q=${encodeURIComponent(c.name)}`} title="See these products" className="hover:text-[#2563eb] hover:underline">{c.products.toLocaleString("en-IN")}</a>
                             ) : <span>0</span>}
                           </td>
                         )}
@@ -453,7 +453,7 @@ export function Categories2Body({ categories: initial }: { categories: Category2
                                 trigger={<span className="text-lg leading-none">⋯</span>}
                                 label="More actions"
                                 items={[
-                                  { label: "View products", onClick: () => router.push(`/admin/ecommerce/products2?q=${encodeURIComponent(c.name)}`) },
+                                  { label: "View products", onClick: () => router.push(`/admin/ecommerce/products?q=${encodeURIComponent(c.name)}`) },
                                   { label: "Delete", danger: true, onClick: () => setConfirm([c]), disabled: isBusy },
                                 ]}
                               />
@@ -653,7 +653,7 @@ function CategoryModal({ category, onClose, onSaved, onDelete }: {
           {category && category.products > 0 && (
             <div className="flex items-center justify-between rounded-[0.5rem] border border-[#dee2e6] bg-[#f8f9fa] px-3 py-2.5 text-sm text-admin-gray-700">
               <span>{category.products.toLocaleString("en-IN")} product{category.products === 1 ? "" : "s"} in this category · ID #{category.id}</span>
-              <a href={`/admin/ecommerce/products2?q=${encodeURIComponent(category.name)}`} className="text-xs font-medium text-[#2563eb] hover:underline">View</a>
+              <a href={`/admin/ecommerce/products?q=${encodeURIComponent(category.name)}`} className="text-xs font-medium text-[#2563eb] hover:underline">View</a>
             </div>
           )}
           {err && <div role="alert" className="rounded-[0.375rem] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err.text}</div>}

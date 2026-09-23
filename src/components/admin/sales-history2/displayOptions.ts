@@ -1,7 +1,7 @@
 import type { WidgetGroup } from "@/hooks/useDashboardWidgetPrefs";
 
 /**
- * Display Options for /admin/ecommerce/sales-history2 — same panel and store
+ * Display Options for /admin/ecommerce/sales-history — same panel and store
  * as dashboard2/billing2, with its own localStorage key so nothing hidden here
  * hides anything on another page. A group's checkbox shows/hides the whole
  * card; its items show/hide the parts inside it.

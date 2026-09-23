@@ -41,7 +41,7 @@ export interface Product2Badge { slug: string; label: string; color: string | nu
 export interface Product2ItemType { slug: string; label: string }
 export interface Product2Category { id: number; name: string }
 
-const PAGE_PATH = "/admin/ecommerce/products2";
+const PAGE_PATH = "/admin/ecommerce/products";
 
 const money = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const hasSale = (p: Product2Row) => p.salePrice !== null && p.salePrice > 0 && p.salePrice < p.price;
@@ -288,7 +288,7 @@ export function Products2ExportMenu() {
 export function Products2AddButton() {
   return (
     <Link
-      href="/admin/ecommerce/add-product2"
+      href="/admin/ecommerce/products/add"
       className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[0.5rem] bg-orange-500 px-4 text-[0.875rem] font-semibold text-white shadow-sm transition-colors hover:bg-orange-600"
     >
       <Plus className="h-4 w-4" />
@@ -661,7 +661,7 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
                 <tr>
                   <td colSpan={cols.length} className="border border-[#dee2e6] py-12 text-center text-admin-gray-400">
                     {products.length === 0 ? (
-                      <>No products yet. <Link href="/admin/ecommerce/add-product2" className="font-semibold text-orange-600 hover:underline">Add your first product</Link></>
+                      <>No products yet. <Link href="/admin/ecommerce/products/add" className="font-semibold text-orange-600 hover:underline">Add your first product</Link></>
                     ) : (
                       <>No products match these filters.</>
                     )}
@@ -672,7 +672,7 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
                   const busy = busyIds.has(p.id);
                   const badge = badgeBySlug.get(p.badgeTag);
                   const isSel = selected.has(p.id);
-                  const editHref = `/admin/ecommerce/add-product2?edit=${p.id}`;
+                  const editHref = `/admin/ecommerce/products/add?edit=${p.id}`;
                   return (
                     <tr
                       key={p.id}

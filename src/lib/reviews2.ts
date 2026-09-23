@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 
 /**
- * Data for /admin/ecommerce/product-reviews2.
+ * Data for /admin/ecommerce/product-reviews.
  *
  * Reviews with everything the page needs to search and filter them: the
  * product, its category, the customer (and phone) where one is linked, and

@@ -1,123 +1,70 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { DueTable } from "@/components/admin/DueTable";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import { Due2Body, Due2HeaderButtons } from "@/components/admin/due2/Due2Body";
+import { DUE2_GROUPS, DUE2_PREF_KEY, DUE2_STANDALONE } from "@/components/admin/due2/displayOptions";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
-import { prisma } from "@/lib/db";
+import { getDue2Data, parseDueRange } from "@/lib/due2";
 
-interface DuePageProps {
-  searchParams: Promise<{ filter?: string; success?: string; error?: string; receipts?: string }>;
+/**
+ * /admin/ecommerce/due — a redesign of the Due page, kept alongside
+ * /admin/ecommerce/due so the two can be compared (same idea as products2 /
+ * brands2 / sales-history2). Same access rule as the old page.
+ *
+ * Needs no database change: it reads the same ecom_credits and
+ * ecom_credit_payments, and records payments through the same APIs, so the
+ * numbers match the old page and the dashboard.
+ *
+ * To remove it once a choice is made, delete:
+ *   src/app/admin/ecommerce/due/  src/components/admin/due2/  src/lib/due2.ts
+ */
+interface PageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export default async function DuePage({ searchParams }: DuePageProps) {
+export default async function Due2Page({ searchParams }: PageProps) {
   const session = await getAdminSession();
-  if (
-    !session ||
-    (!hasPermission(session.permissions, "ecommerce", "manage_credits") &&
-      !hasPermission(session.permissions, "ecommerce", "manage_billing"))
-  ) {
-    redirect("/shop/login");
-  }
+  const canView =
+    !!session &&
+    (hasPermission(session.permissions, "ecommerce", "manage_credits") ||
+      hasPermission(session.permissions, "ecommerce", "manage_billing"));
+  if (!session || !canView) redirect("/shop/login");
 
-  const params = await searchParams;
-  const filter = params.filter ?? "pending";
+  // Recording a payment needs the same permission the payment API itself checks.
+  const canEdit =
+    hasPermission(session.permissions, "ecommerce", "manage_credits") ||
+    hasPermission(session.permissions, "ecommerce", "manage_billing") ||
+    hasPermission(session.permissions, "ecommerce", "manage_customers");
 
-  const where =
-    filter === "due"
-      ? { status: "pending", promisedDate: { not: null, lte: new Date() } }
-      : filter === "paid"
-      ? { status: "paid" }
-      : filter === "all"
-      ? {}
-      : { status: "pending" };
-
-  const [credits, totalOutstandingAgg, totalDueTodayAgg, totalPeopleGrouped, totalNewTodayAgg] = await Promise.all([
-    prisma.ecomCredit.findMany({
-      where,
-      include: { order: { select: { orderNumber: true } }, payments: { orderBy: { createdAt: "asc" } } },
-      orderBy: [{ promisedDate: "asc" }, { createdAt: "desc" }],
-    }),
-    prisma.ecomCredit.aggregate({ where: { status: "pending" }, _sum: { amount: true, amountPaid: true } }),
-    prisma.ecomCredit.aggregate({
-      where: { status: "pending", promisedDate: { not: null, lte: new Date() } },
-      _sum: { amount: true, amountPaid: true },
-    }),
-    prisma.ecomCredit.groupBy({ by: ["customerName"], where: { status: "pending" } }),
-    prisma.ecomCredit.aggregate({
-      where: { createdAt: { gte: new Date(new Date().toDateString()) } },
-      _sum: { amount: true },
-    }),
-  ]);
-
-  const totalOutstanding = Number(totalOutstandingAgg._sum.amount ?? 0) - Number(totalOutstandingAgg._sum.amountPaid ?? 0);
-  const totalDueToday = Number(totalDueTodayAgg._sum.amount ?? 0) - Number(totalDueTodayAgg._sum.amountPaid ?? 0);
-  const totalNewToday = Number(totalNewTodayAgg._sum.amount ?? 0);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const sp = await searchParams;
+  const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const range = parseDueRange({ from: first(sp.from), to: first(sp.to) });
+  const data = await getDue2Data(range);
 
   return (
-    <AdminShell
-      siteName="EduMint24"
-      pageTitle="Due"
-      pageSubtitle="Track customer dues, promised payment dates, and collections"
-      username={session.username}
-      role={session.role}
-      permissions={session.permissions}
-    >
-      {params.success === "payment" && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded px-4 py-2.5 mb-4">
-          Payment recorded! {params.receipts && `Receipts: ${params.receipts}`}
+    <DashboardWidgetPrefsProvider prefKey={DUE2_PREF_KEY} groups={DUE2_GROUPS} standalone={DUE2_STANDALONE}>
+      <AdminShell
+        siteName="EduMint24"
+        pageTitle="Due"
+        pageSubtitle="Who owes what, when they promised to pay, and what has been collected"
+        username={session.username}
+        role={session.role}
+        permissions={session.permissions}
+        headerActions={
+          <div className="hidden items-center gap-3 xl:flex">
+            <DisplayOptionsPanel variant="header" />
+            <Due2HeaderButtons />
+          </div>
+        }
+      >
+        {/* Below 1280px the header has no room, so the same controls move here. */}
+        <div className="mb-5 flex flex-wrap items-center justify-end gap-3 xl:hidden">
+          <DisplayOptionsPanel variant="toolbar" />
+          <Due2HeaderButtons />
         </div>
-      )}
-      {params.success === "date" && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded px-4 py-2.5 mb-4">
-          Promised date updated!
-        </div>
-      )}
-      {params.error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-4 py-2.5 mb-4">{params.error}</div>
-      )}
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-        <div className="bg-white rounded-lg border border-admin-gray-200 p-4 text-center">
-          <div className="text-xl font-bold text-red-600">₹{totalOutstanding.toFixed(2)}</div>
-          <div className="text-xs text-admin-gray-500 mt-1">Total Due</div>
-        </div>
-        <div className="bg-white rounded-lg border border-admin-gray-200 p-4 text-center">
-          <div className="text-xl font-bold text-amber-600">₹{totalDueToday.toFixed(2)}</div>
-          <div className="text-xs text-admin-gray-500 mt-1">Due Today / Overdue</div>
-        </div>
-        <div className="bg-white rounded-lg border border-admin-gray-200 p-4 text-center">
-          <div className="text-xl font-bold text-sky-600">{totalPeopleGrouped.length}</div>
-          <div className="text-xs text-admin-gray-500 mt-1">People with Dues</div>
-        </div>
-        <div className="bg-white rounded-lg border border-admin-gray-200 p-4 text-center">
-          <div className="text-xl font-bold text-admin-gray-900">₹{totalNewToday.toFixed(2)}</div>
-          <div className="text-xs text-admin-gray-500 mt-1">Today Due</div>
-        </div>
-      </div>
-
-      <DueTable
-        currentFilter={filter}
-        credits={credits.map((c: (typeof credits)[number]) => ({
-          id: c.id,
-          customerName: c.customerName,
-          customerPhone: c.customerPhone,
-          orderId: c.orderId,
-          orderNumber: c.order?.orderNumber ?? null,
-          amount: Number(c.amount),
-          amountPaid: Number(c.amountPaid),
-          promisedDate: c.promisedDate ? c.promisedDate.toISOString().slice(0, 10) : null,
-          status: c.status,
-          isOverdue: c.status === "pending" && !!c.promisedDate && c.promisedDate <= today,
-          history: c.payments.map((p: (typeof c.payments)[number]) => ({
-            receiptNumber: p.receiptNumber,
-            amount: Number(p.amount),
-            paymentMethod: p.paymentMethod,
-            createdAt: p.createdAt.toISOString(),
-          })),
-        }))}
-      />
-    </AdminShell>
+        <Due2Body data={data} filters={range} canEdit={canEdit} />
+      </AdminShell>
+    </DashboardWidgetPrefsProvider>
   );
 }

@@ -1,62 +1,75 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { CategoriesTable } from "@/components/admin/CategoriesTable";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import { Categories2Body, Categories2HeaderButtons, type Category2Row } from "@/components/admin/categories2/Categories2Body";
+import { CATEGORIES2_GROUPS, CATEGORIES2_PREF_KEY, CATEGORIES2_STANDALONE } from "@/components/admin/categories2/displayOptions";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 
-interface CategoriesPageProps {
-  searchParams: Promise<{ success?: string; error?: string }>;
-}
-
-const SUCCESS_MESSAGES: Record<string, string> = {
-  created: "Category created successfully!",
-  updated: "Category updated successfully!",
-  deleted: "Category deleted successfully!",
-};
-
-/** Verified against admin/ecommerce/categories.php. */
-export default async function CategoriesPage({ searchParams }: CategoriesPageProps) {
+/**
+ * /admin/ecommerce/categories2 — a trial redesign of Categories, kept
+ * alongside /admin/ecommerce/categories so the two can be compared (same
+ * idea as products2, brands2, orders2, ...). Same access rule
+ * (manage_categories), same data, same create/update/delete endpoints
+ * underneath (via category2-save.ts); header and sidebar are the shared
+ * AdminShell.
+ *
+ * To remove it once a choice is made, delete:
+ *   src/app/admin/ecommerce/categories2/
+ *   src/components/admin/categories2/
+ *   src/app/api/ecommerce/categories2/
+ *   src/lib/category2-save.ts
+ * (the ecom_categories.updated_at column added for this page's "Last
+ * Updated" can stay — nothing else needs it removed).
+ */
+export default async function Categories2Page() {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_categories")) {
     redirect("/shop/login");
   }
 
-  const params = await searchParams;
-  const categories = await prisma.ecomCategory.findMany({ orderBy: { createdAt: "desc" } });
-  const successMessage = params.success ? SUCCESS_MESSAGES[params.success] : undefined;
+  const rows = await prisma.ecomCategory.findMany({
+    orderBy: { id: "desc" },
+    select: {
+      id: true, name: true, slug: true, image: true, metaKeywords: true, metaDescription: true,
+      serial: true, status: true, updatedAt: true, _count: { select: { products: true } },
+    },
+  });
+
+  const categories: Category2Row[] = (rows as {
+    id: number; name: string; slug: string; image: string | null; metaKeywords: string | null;
+    metaDescription: string | null; serial: number; status: string; updatedAt: Date | null;
+    _count: { products: number };
+  }[]).map((c) => ({
+    id: c.id, name: c.name, slug: c.slug, image: c.image, metaKeywords: c.metaKeywords,
+    metaDescription: c.metaDescription, serial: c.serial, status: c.status,
+    products: c._count.products, updatedAt: c.updatedAt ? c.updatedAt.toISOString() : null,
+  }));
 
   return (
-    <AdminShell
-      siteName="EduMint24"
-      pageTitle="Categories"
-      pageSubtitle="Organize your product catalog"
-      username={session.username}
-      role={session.role}
-      permissions={session.permissions}
-    >
-      {successMessage && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded px-4 py-2.5 mb-4">
-          {successMessage}
+    <DashboardWidgetPrefsProvider prefKey={CATEGORIES2_PREF_KEY} groups={CATEGORIES2_GROUPS} standalone={CATEGORIES2_STANDALONE}>
+      <AdminShell
+        siteName="EduMint24"
+        pageTitle="Categories"
+        pageSubtitle="Manage and organize your product catalog"
+        username={session.username}
+        role={session.role}
+        permissions={session.permissions}
+        headerActions={
+          <div className="hidden items-center gap-3 xl:flex">
+            <DisplayOptionsPanel variant="header" />
+            <Categories2HeaderButtons />
+          </div>
+        }
+      >
+        {/* Below 1280px the header has no room, so the same controls move here. */}
+        <div className="mb-5 flex flex-wrap items-center justify-end gap-3 xl:hidden">
+          <DisplayOptionsPanel variant="toolbar" />
+          <Categories2HeaderButtons />
         </div>
-      )}
-      {params.error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-4 py-2.5 mb-4">
-          Delete failed: this category may still have subcategories linked to it.
-        </div>
-      )}
-
-      <CategoriesTable
-        categories={categories.map((c: (typeof categories)[number]) => ({
-          id: c.id,
-          name: c.name,
-          slug: c.slug,
-          image: c.image,
-          metaKeywords: c.metaKeywords,
-          metaDescription: c.metaDescription,
-          serial: c.serial,
-          status: c.status,
-        }))}
-      />
-    </AdminShell>
+        <Categories2Body categories={categories} />
+      </AdminShell>
+    </DashboardWidgetPrefsProvider>
   );
 }

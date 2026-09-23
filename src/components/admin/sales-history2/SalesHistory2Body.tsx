@@ -12,7 +12,7 @@ import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { ChartSeries, FilterOptions, LedgerRow, Metric, SalesFilters, SalesMetrics } from "@/lib/sales-history2";
 import { cn } from "@/lib/utils";
 
-const PAGE_PATH = "/admin/ecommerce/sales-history2";
+const PAGE_PATH = "/admin/ecommerce/sales-history";
 
 /* ───────────────────────── formatting (same on server and browser) ───────────────────────── */
 

@@ -1,105 +1,70 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { DateRangeBar } from "@/components/admin/DateRangeBar";
-import { TopProductsTable, CategoryBreakdownList, LowStockAlert, OrderTypeFilter } from "@/components/admin/AnalyticsWidgets";
-import { StatCard } from "@/components/admin/StatCard";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import { RangeBar2 } from "@/components/admin/analytics2/RangeBar2";
+import { Analytics2Body } from "@/components/admin/analytics2/Analytics2Body";
+import { ANALYTICS2_GROUPS, ANALYTICS2_PREF_KEY, ANALYTICS2_STANDALONE } from "@/components/admin/analytics2/displayOptions";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
-import { resolveDashboardRange } from "@/lib/dashboard-range";
-import { getEcommerceAnalytics } from "@/lib/ecommerce-analytics";
-import { IndianRupee, ShoppingCart, Package, Users } from "lucide-react";
-
-interface AnalyticsPageProps {
-  searchParams: Promise<{ range?: string; from?: string; to?: string; type?: string }>;
-}
+import { resolveAnalytics2Range } from "@/lib/analytics2-range";
+import { getAnalytics2Data } from "@/lib/analytics2";
 
 /**
- * Ecommerce product/sales analytics dashboard. This is a NEW feature, not a port —
- * the original admin/blog/analytics.php is purely blog-post analytics (views,
- * authors) with no ecommerce or product content at all. Built here on the same
- * verified ecom_orders/ecom_order_items/ecom_products schema used throughout the
- * rest of the admin ecommerce section.
+ * /admin/ecommerce/analytics2 — a trial redesign of the ecommerce Analytics
+ * page (itself a NEW feature, not a PHP port — admin/blog/analytics.php is
+ * purely blog analytics, see /admin/ecommerce/analytics's own notes). Same
+ * access rule (manage_orders), same underlying verified tables
+ * (ecom_orders, ecom_order_items, ecom_products, ecom_categories,
+ * ecom_customers, ecom_order_payments) via lib/ecommerce-analytics.ts and
+ * the new lib/analytics2.ts (Gross/Net split + payment-method breakdown +
+ * previous-period deltas).
+ *
+ * Deliberately NOT included: a "Sales Funnel" (Visits → Product Views →
+ * Add to Cart → Checkout) or a "Conversion Rate" card. Nothing in this
+ * schema tracks page views, product views or add-to-cart events — only
+ * completed orders — so those numbers would have to be invented. Every
+ * figure on this page is real, computed straight from orders.
+ *
+ * To remove it once a choice is made, delete:
+ *   src/app/admin/ecommerce/analytics2/
+ *   src/components/admin/analytics2/
+ *   src/lib/analytics2.ts
+ *   src/lib/analytics2-range.ts
+ * (lib/ecommerce-analytics.ts stays — the original /analytics page still uses it.)
  */
-export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
+interface Analytics2PageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function Analytics2Page({ searchParams }: Analytics2PageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_orders")) {
     redirect("/shop/login");
   }
 
-  const params = await searchParams;
-  const range = resolveDashboardRange(params.range, params.from, params.to);
-  const orderType = (["all", "online", "offline"].includes(params.type ?? "") ? params.type : "all") as "all" | "online" | "offline";
+  const sp = await searchParams;
+  const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const range = resolveAnalytics2Range(one(sp.preset), one(sp.from), one(sp.to));
+  const compare = one(sp.compare) !== "0";
+  const orderType = (["all", "online", "offline"].includes(one(sp.type) ?? "") ? one(sp.type) : "all") as "all" | "online" | "offline";
 
-  const data = await getEcommerceAnalytics(range, orderType);
-
-  const maxDailyRevenue = Math.max(1, ...data.dailyRevenue.map((d) => d.revenue));
+  const data = await getAnalytics2Data(range, orderType);
 
   return (
-    <AdminShell
-      siteName="EduMint24"
-      pageTitle="Analytics"
-      pageSubtitle="Product and sales performance insights"
-      username={session.username}
-      role={session.role}
-      permissions={session.permissions}
-    >
-      <DateRangeBar currentRange={range.range} rangeLabel={range.rangeLabel} dateFrom={range.dateFrom} dateTo={range.dateTo} />
-
-      <div className="mb-4">
-        <OrderTypeFilter current={orderType} range={range.range} />
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-        <StatCard color="green" icon={IndianRupee} label={`Revenue (${range.rangeLabel})`} value={`₹${data.totalRevenue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`} widgetKey="an-revenue" />
-        <StatCard color="blue" icon={ShoppingCart} label="Orders" value={data.totalOrders.toLocaleString("en-IN")} widgetKey="an-orders" />
-        <StatCard color="orange" icon={Package} label="Units Sold" value={data.totalUnitsSold.toLocaleString("en-IN")} widgetKey="an-units" />
-        <StatCard color="cyan" icon={Users} label="Avg. Order Value" value={`₹${data.avgOrderValue.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`} widgetKey="an-aov" />
-      </div>
-
-      {/* Revenue trend — simple inline bar visualization, no extra chart dependency needed */}
-      <div className="bg-white rounded-lg border border-admin-gray-200 p-5 mb-5">
-        <h5 className="font-bold mb-4">Daily Revenue Trend</h5>
-        {data.dailyRevenue.length === 0 ? (
-          <p className="text-sm text-admin-gray-400">No sales in this period.</p>
-        ) : (
-          <div className="flex items-end gap-1 h-40">
-            {data.dailyRevenue.map((d) => (
-              <div key={d.date} className="flex-1 flex flex-col items-center justify-end group relative">
-                <div
-                  className="w-full bg-admin-primary hover:bg-admin-primary-dark rounded-t transition-colors"
-                  style={{ height: `${Math.max(2, (d.revenue / maxDailyRevenue) * 100)}%` }}
-                  title={`${d.date}: ₹${d.revenue.toFixed(2)} (${d.orderCount} orders)`}
-                />
-                <span className="text-[9px] text-admin-gray-400 mt-1 rotate-45 origin-top-left whitespace-nowrap">
-                  {new Date(d.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <TopProductsTable title="Top Selling Products" products={data.topProducts} icon="up" />
-        <TopProductsTable title="Lowest Selling Products" products={data.worstProducts} icon="down" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <CategoryBreakdownList categories={data.categoryBreakdown} />
-        <div className="space-y-4">
-          <LowStockAlert products={data.lowStockProducts} />
-          <div className="bg-white rounded-lg border border-admin-gray-200 p-5">
-            <h5 className="font-bold mb-3">Customers ({range.rangeLabel})</h5>
-            <div className="flex justify-between text-sm mb-2">
-              <span>New Customers</span>
-              <strong>{data.newVsReturningCustomers.newCustomers}</strong>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Returning Customers</span>
-              <strong>{data.newVsReturningCustomers.returningCustomers}</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-    </AdminShell>
+    <DashboardWidgetPrefsProvider prefKey={ANALYTICS2_PREF_KEY} groups={ANALYTICS2_GROUPS} standalone={ANALYTICS2_STANDALONE}>
+      <AdminShell
+        siteName="EduMint24"
+        pageTitle="Analytics"
+        pageSubtitle="Track performance, analyze trends, and grow your sales"
+        username={session.username}
+        role={session.role}
+        permissions={session.permissions}
+        headerActions={<div className="hidden items-center gap-3 xl:flex"><DisplayOptionsPanel variant="header" /></div>}
+      >
+        <div className="mb-5 flex justify-end xl:hidden"><DisplayOptionsPanel variant="toolbar" /></div>
+        <RangeBar2 preset={range.preset} dateFrom={range.dateFrom} dateTo={range.dateTo} compare={compare} data={data} />
+        <Analytics2Body data={data} rangeLabel={range.label} compare={compare} />
+      </AdminShell>
+    </DashboardWidgetPrefsProvider>
   );
 }

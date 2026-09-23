@@ -59,7 +59,7 @@ const NO_FILTERS: Filters = { status: "all", category: "all", units: "all", stoc
 /** Header buttons (in the AdminShell header) talk to the body through this event. */
 const EVT_EXPORT = "stockout2:export";
 
-const EDIT_HREF = (id: number) => `/admin/ecommerce/add-product2?edit=${id}&from=stock-out-products2`;
+const EDIT_HREF = (id: number) => `/admin/ecommerce/products/add?edit=${id}&from=stock-out-products2`;
 
 const money = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const hasSale = (p: StockOut2Row) => p.salePrice !== null && p.salePrice > 0 && p.salePrice < p.price;

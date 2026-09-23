@@ -6,7 +6,7 @@ import { computeDelta, type Delta } from "./dashboard2-delta";
 export { computeDelta, type Delta };
 
 /**
- * Data for the `/admin/dashboard2` layout.
+ * Data for the `/admin/dashboard` layout.
  *
  * It reuses `getDashboardStats()` unchanged for the current period, then adds
  * the two things that layout shows and the original dashboard does not:

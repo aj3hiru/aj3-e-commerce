@@ -1,5 +1,5 @@
 /**
- * Numbers behind the "Customer Growth" graph on /admin/ecommerce/customers2:
+ * Numbers behind the "Customer Growth" graph on /admin/ecommerce/customers:
  * how many customers joined, when, compared with the period just before.
  *
  * Pure (no database, no clock unless passed in), so it can be tested on its

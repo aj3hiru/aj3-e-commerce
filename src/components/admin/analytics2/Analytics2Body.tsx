@@ -276,7 +276,7 @@ function TopProducts({ products }: { products: Analytics2Data["current"]["topPro
     <div className={CARD}>
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-base font-bold text-admin-gray-900">Top Products</h3>
-        <Link href="/admin/ecommerce/products2" className="flex items-center gap-1 text-sm font-medium text-[#2563eb] hover:underline">View All Products <ChevronRight className="h-3.5 w-3.5" /></Link>
+        <Link href="/admin/ecommerce/products" className="flex items-center gap-1 text-sm font-medium text-[#2563eb] hover:underline">View All Products <ChevronRight className="h-3.5 w-3.5" /></Link>
       </div>
       {products.length === 0 ? <p className="py-8 text-center text-sm text-admin-gray-400">No sales in this period.</p> : (
         <div className="overflow-x-auto">
@@ -292,7 +292,7 @@ function TopProducts({ products }: { products: Analytics2Data["current"]["topPro
                     ) : (
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.375rem] bg-admin-gray-100 text-admin-gray-300"><ImageIcon className="h-4 w-4" /></span>
                     )}
-                    <a href={`/admin/ecommerce/products2?q=${encodeURIComponent(p.name)}`} className="truncate font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{p.name}</a>
+                    <a href={`/admin/ecommerce/products?q=${encodeURIComponent(p.name)}`} className="truncate font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{p.name}</a>
                   </td>
                   <td className="py-2.5 text-admin-gray-600">{formatInt(p.unitsSold)}</td>
                   <td className="py-2.5 text-right font-semibold text-admin-gray-900">{formatMoney(p.revenue)}</td>

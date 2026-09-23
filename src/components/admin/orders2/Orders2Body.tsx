@@ -16,7 +16,7 @@ import { orderStatusVariant, paymentStatusVariant, STATUS_BTN_STYLES } from "@/c
 import { IconAction, StatusBadge, StatusPill, type PillOption } from "@/components/admin/ui/buttons";
 import { money } from "@/components/admin/campaigns2/format";
 
-const PAGE_PATH = "/admin/ecommerce/orders2";
+const PAGE_PATH = "/admin/ecommerce/orders";
 const EVT_EXPORT = "orders2:export";
 const PAISA = 0.004;
 

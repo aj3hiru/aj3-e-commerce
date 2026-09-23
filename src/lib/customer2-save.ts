@@ -1,5 +1,5 @@
 /**
- * Rules for saving a customer from /admin/ecommerce/customers2. Pure (no
+ * Rules for saving a customer from /admin/ecommerce/customers. Pure (no
  * database), so the form and the API apply exactly the same checks.
  *
  * One difference from the old Customers page: an email is NOT required. A

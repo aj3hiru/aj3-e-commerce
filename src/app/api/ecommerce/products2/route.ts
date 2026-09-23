@@ -3,7 +3,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { createProduct2, SaveError } from "@/lib/product2-save";
 
-/** Create a product from /admin/ecommerce/add-product2 (multipart form). */
+/** Create a product from /admin/ecommerce/products/add (multipart form). */
 export async function POST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {

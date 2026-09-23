@@ -15,7 +15,7 @@ import { Modal, Pager } from "@/components/admin/campaigns2/ui";
 import { money } from "@/components/admin/campaigns2/format";
 import { PillButton, StatusBadge } from "@/components/admin/ui/buttons";
 
-const PAGE_PATH = "/admin/ecommerce/due2";
+const PAGE_PATH = "/admin/ecommerce/due";
 const EVT_EXPORT = "due2:export";
 const PAISA = 0.004;
 

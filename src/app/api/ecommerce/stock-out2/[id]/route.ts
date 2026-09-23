@@ -6,7 +6,7 @@ import { logActivity } from "@/lib/activity-log";
 const MAX_QTY = 2_147_483_647; // the stock columns are 32-bit integers
 
 /**
- * PUT /api/ecommerce/stock-out2/[id] — used by /admin/ecommerce/stock-out-products2.
+ * PUT /api/ecommerce/stock-out2/[id] — used by /admin/ecommerce/stock-out-products.
  *
  * Updates a physical product's stock and, in the same request, the stock of
  * any of its Sizes / Units (EcomProductSize). Both parts are optional:

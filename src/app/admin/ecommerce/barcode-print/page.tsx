@@ -1,18 +1,30 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { BarcodePrinter } from "@/components/admin/BarcodePrinter";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import { Barcodes2Body, Barcodes2HeaderButtons } from "@/components/admin/barcodes2/Barcodes2Body";
+import { BARCODES2_GROUPS, BARCODES2_PREF_KEY, BARCODES2_STANDALONE } from "@/components/admin/barcodes2/displayOptions";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
-import { prisma } from "@/lib/db";
+import { getBarcodes2Data, parseBarcodeRange } from "@/lib/barcodes2";
 
-interface BarcodePrintPageProps {
-  searchParams: Promise<{ ids?: string }>;
+/**
+ * /admin/ecommerce/barcode-print — a redesign of Print Barcodes, kept
+ * alongside /admin/ecommerce/barcode-print. Same access rule, no database
+ * change.
+ *
+ * Unlike the old page it does NOT load every product: it starts with the
+ * products added or changed in the chosen dates (today by default) and finds
+ * anything else through a server-side search, so it stays fast with thousands
+ * of products.
+ *
+ * ?ids=1,1,2 still works, so the "Print Barcode" button on other pages can
+ * link here; a repeated id means a bigger quantity.
+ */
+interface PageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-/** Verified against admin/ecommerce/barcode-print.php — the ?ids=1,1,2 repeated-id
- *  convention for quantity is handled in the client component (BarcodePrinter),
- *  this page just makes sure the linked-from-Products "Print Barcode" button still
- *  preselects that one product. */
-export default async function BarcodePrintPage({ searchParams }: BarcodePrintPageProps) {
+export default async function BarcodePrint2Page({ searchParams }: PageProps) {
   const session = await getAdminSession();
   if (
     !session ||
@@ -22,29 +34,39 @@ export default async function BarcodePrintPage({ searchParams }: BarcodePrintPag
     redirect("/shop/login");
   }
 
-  const [allProducts, biz] = await Promise.all([
-    prisma.ecomProduct.findMany({
-      select: { id: true, name: true, sku: true, barcode: true, price: true, salePrice: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.ecomBusinessSettings.findFirst({ orderBy: { id: "asc" }, select: { barcodeFooterText: true } }),
-  ]);
+  const sp = await searchParams;
+  const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const range = parseBarcodeRange({ from: first(sp.from), to: first(sp.to) });
+
+  const ids = (first(sp.ids) ?? "")
+    .split(",")
+    .map((x) => Number(x.trim()))
+    .filter((n) => Number.isInteger(n) && n > 0);
+  const data = await getBarcodes2Data(range, [...new Set(ids)]);
 
   return (
-    <AdminShell
-      siteName="EduMint24"
-      pageTitle="Print Barcodes"
-      pageSubtitle="Generate and print barcode labels for your products"
-      username={session.username}
-      role={session.role}
-      permissions={session.permissions}
-    >
-      <BarcodePrinter
-        allProducts={allProducts.map((p: (typeof allProducts)[number]) => ({
-          id: p.id, name: p.name, sku: p.sku, barcode: p.barcode, price: Number(p.price), salePrice: p.salePrice ? Number(p.salePrice) : null,
-        }))}
-        barcodeFooter={biz?.barcodeFooterText ?? ""}
-      />
-    </AdminShell>
+    <DashboardWidgetPrefsProvider prefKey={BARCODES2_PREF_KEY} groups={BARCODES2_GROUPS} standalone={BARCODES2_STANDALONE}>
+      <AdminShell
+        siteName="EduMint24"
+        pageTitle="Print Barcodes"
+        pageSubtitle="Print price labels for the products you added or restocked"
+        username={session.username}
+        role={session.role}
+        permissions={session.permissions}
+        headerActions={
+          <div className="hidden items-center gap-3 xl:flex">
+            <DisplayOptionsPanel variant="header" />
+            <Barcodes2HeaderButtons />
+          </div>
+        }
+      >
+        {/* Below 1280px the header has no room, so the same controls move here. */}
+        <div className="mb-5 flex flex-wrap items-center justify-end gap-3 xl:hidden">
+          <DisplayOptionsPanel variant="toolbar" />
+          <Barcodes2HeaderButtons />
+        </div>
+        <Barcodes2Body data={data} />
+      </AdminShell>
+    </DashboardWidgetPrefsProvider>
   );
 }

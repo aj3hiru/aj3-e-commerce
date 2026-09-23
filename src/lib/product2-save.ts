@@ -3,7 +3,7 @@ import { generateSlug } from "@/lib/slug";
 import { deleteUploadedImage, saveUploadedImage } from "@/lib/upload";
 
 /**
- * Save logic for /admin/ecommerce/add-product2 (create + edit), following
+ * Save logic for /admin/ecommerce/products/add (create + edit), following
  * admin/ecommerce/add-product-form.php:
  *   - slug auto-generated from the name and made unique (excluding the row
  *     being edited)

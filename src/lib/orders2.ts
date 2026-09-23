@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { ORDER_STATUSES } from "@/lib/order-statuses";
 
 /**
- * Data for /admin/ecommerce/orders2 — the redesigned All Orders page.
+ * Data for /admin/ecommerce/orders — the redesigned All Orders page.
  *
  * The five entries in the sidebar (All / Pending / Progress / Delivered /
  * Canceled) are all this one page with a different ?type=, exactly as the old

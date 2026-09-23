@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 
 /**
- * Data for /admin/ecommerce/product-tags2 — "Badge Tags & Item Types".
+ * Data for /admin/ecommerce/product-tags — "Badge Tags & Item Types".
  *
  * A badge tag is the little label shown on a product card in the shop
  * ("New", "Best Seller"…). An item type groups products in a way that suits

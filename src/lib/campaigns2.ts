@@ -3,7 +3,7 @@ import { campaignState, type CampaignDef } from "@/lib/campaign-core";
 import { priceRows, toCampaignDef } from "@/lib/campaign-pricing";
 
 /**
- * Data for /admin/ecommerce/campaign-offer2.
+ * Data for /admin/ecommerce/campaign-offer.
  *
  * "Campaign sales" are counted the same way as Sales History: every in-store
  * (POS) bill plus every online order that has been Delivered. Day boundaries

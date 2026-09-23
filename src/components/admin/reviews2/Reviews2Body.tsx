@@ -15,7 +15,7 @@ import { parseReviewInput } from "@/lib/review2-save";
 import { ConfirmDialog, Modal, Pager, Thumb } from "@/components/admin/campaigns2/ui";
 import { IconAction, StatusPill, type PillOption } from "@/components/admin/ui/buttons";
 
-const PAGE_PATH = "/admin/ecommerce/product-reviews2";
+const PAGE_PATH = "/admin/ecommerce/product-reviews";
 
 type ReviewStatus = "pending" | "approved" | "rejected";
 /** Same words and colours as the rest of the admin: Pending is amber, Approved green, Rejected red. */
@@ -379,7 +379,7 @@ export function Reviews2Body({ data, range, notice }: { data: Reviews2Data; rang
                             <div className="flex items-center gap-2.5">
                               <Thumb src={r.productImage} name={r.productName} size={44} />
                               <span className="min-w-0">
-                                <Link href={`/admin/ecommerce/add-product2?edit=${r.productId}`} title={`Edit ${r.productName}`} className="block truncate text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.productName}</Link>
+                                <Link href={`/admin/ecommerce/products/add?edit=${r.productId}`} title={`Edit ${r.productName}`} className="block truncate text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.productName}</Link>
                                 <span className="block truncate text-xs text-admin-gray-500">{r.categoryName ?? "Uncategorized"}</span>
                               </span>
                             </div>

@@ -18,7 +18,7 @@ import { durationText, fmtDateTime, money } from "./format";
 import { ConfirmDialog, Pager, StatePill, Thumb } from "./ui";
 import { IconAction } from "@/components/admin/ui/buttons";
 
-const PAGE_PATH = "/admin/ecommerce/campaign-offer2";
+const PAGE_PATH = "/admin/ecommerce/campaign-offer";
 const EVT_EXPORT = "campaigns2:export";
 const EVT_NEW = "campaigns2:new";
 
@@ -455,7 +455,7 @@ export function Campaigns2Body({ data, serverNow, filters, isDefaultRange, notic
                       <tr key={o.productId} style={{ height: 76 }} className="odd:bg-[#f2f2f2] even:bg-white">
                         {show("co2-p-image") && <td className={td}><Thumb src={p.image} name={p.name} size={52} /></td>}
                         <td className={td}>
-                          <Link href={`/admin/ecommerce/add-product2?edit=${p.id}`} title={`Edit ${p.name}`} className="block max-w-full truncate text-admin-gray-900 hover:text-[#2563eb] hover:underline">{p.name}</Link>
+                          <Link href={`/admin/ecommerce/products/add?edit=${p.id}`} title={`Edit ${p.name}`} className="block max-w-full truncate text-admin-gray-900 hover:text-[#2563eb] hover:underline">{p.name}</Link>
                         </td>
                         {show("co2-p-price") && (
                           <td className={cn(td, "whitespace-nowrap")}>
@@ -478,7 +478,7 @@ export function Campaigns2Body({ data, serverNow, filters, isDefaultRange, notic
                         {show("co2-p-actions") && (
                           <td className={td}>
                             <div className="flex gap-[0.4rem]">
-                              <IconAction tone="edit" href={`/admin/ecommerce/add-product2?edit=${p.id}`} title={`Edit ${p.name}`}><SquarePen /></IconAction>
+                              <IconAction tone="edit" href={`/admin/ecommerce/products/add?edit=${p.id}`} title={`Edit ${p.name}`}><SquarePen /></IconAction>
                               {c && <IconAction tone="view" title={`Open campaign ${c.name}`} onClick={() => setEditor({ editing: c, initial: formFromCampaign(c) })}><Tag /></IconAction>}
                             </div>
                           </td>

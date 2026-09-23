@@ -1,57 +1,94 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { DateRangeBar } from "@/components/admin/DateRangeBar";
-import { DashboardSections } from "@/components/admin/DashboardSections";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import { GlobalSearchBar } from "@/components/admin/GlobalSearchBar";
+import { RangeFilter } from "@/components/admin/dashboard/RangeFilter";
+import { Dashboard2Body } from "@/components/admin/dashboard/Dashboard2Body";
+import { DASHBOARD2_GROUPS, DASHBOARD2_PREF_KEY, DASHBOARD2_STANDALONE } from "@/components/admin/dashboard/widgets";
 import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
-import { getAdminSession, hasPermission } from "@/lib/admin-auth";
+import { getAdminSession } from "@/lib/admin-auth";
 import { resolveDashboardRange } from "@/lib/dashboard-range";
-import { getDashboardStats } from "@/lib/dashboard-stats";
+import { getDashboard2Stats } from "@/lib/dashboard2-stats";
 
-interface DashboardPageProps {
+interface Dashboard2PageProps {
   searchParams: Promise<{ range?: string; from?: string; to?: string }>;
 }
 
 /**
- * Verified against admin/dashboard.php:
- * - Access denied if not logged in / inactive / missing 'dashboard_access' permission
- * - Date range resolution (today/yesterday/7days/this_month/prev_month/custom)
- * - All stat queries, and the Recent Orders table
+ * /admin/dashboard — a trial redesign of the e-commerce dashboard, kept
+ * alongside the original so the two can be compared. Same data, same access
+ * rule, same sidebar and header; only the body layout differs.
+ *
+ * To remove it once a choice is made, delete:
+ *   src/app/admin/dashboard/
+ *   src/components/admin/dashboard/
+ *   src/lib/dashboard2-stats.ts
+ * Nothing else imports them.
  */
-export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+export default async function Dashboard2Page({ searchParams }: Dashboard2PageProps) {
   const session = await getAdminSession();
-  // NOTE: dashboard_access is a top-level permission key (not nested under a group
-  // like "ecommerce"), matching `empty($permissions['dashboard_access'])` in the PHP.
+  // Same gate as the original dashboard: top-level `dashboard_access`.
   if (!session || !(session.permissions as unknown as Record<string, boolean>).dashboard_access) {
     redirect("/shop/login");
   }
 
   const params = await searchParams;
   const range = resolveDashboardRange(params.range, params.from, params.to);
-  const stats = await getDashboardStats(range);
+  const stats = await getDashboard2Stats(range);
+
+  const filterProps = {
+    currentRange: range.range,
+    rangeLabel: range.rangeLabel,
+    dateFrom: range.dateFrom,
+    dateTo: range.dateTo,
+  };
 
   return (
-    <AdminShell
-      showSearch
-      siteName="EduMint24"
-      pageTitle="E-commerce Dashboard"
-      pageSubtitle="A live overview of your store"
-      username={session.username}
-      role={session.role}
-      permissions={session.permissions}
+    // The provider wraps the whole shell because the Display Options control
+    // lives in the header while the cards it hides live in the body.
+    <DashboardWidgetPrefsProvider
+      prefKey={DASHBOARD2_PREF_KEY}
+      groups={DASHBOARD2_GROUPS}
+      standalone={DASHBOARD2_STANDALONE}
     >
-      {/* The Display Options panel lives inside DateRangeBar while the widgets
-          it controls live in DashboardSections, so both must sit under one
-          provider or a toggle would not reach the cards. */}
-      <DashboardWidgetPrefsProvider>
-        <DateRangeBar
-          currentRange={range.range}
-          rangeLabel={range.rangeLabel}
-          dateFrom={range.dateFrom}
-          dateTo={range.dateTo}
-          showDisplayOptions
-        />
-        <DashboardSections stats={stats} rangeLabel={range.rangeLabel} />
-      </DashboardWidgetPrefsProvider>
-    </AdminShell>
+      <AdminShell
+        siteName="EduMint24"
+        pageTitle="E-commerce Dashboard"
+        pageSubtitle="A live overview of your store"
+        username={session.username}
+        role={session.role}
+        permissions={session.permissions}
+        headerActions={
+          // In the header from 1280px up. The full segmented bar needs ~470px,
+          // which only fits beside the search box and user menu from 1800px;
+          // between those widths the same filter collapses to one button.
+          // The search box is grouped in here (not passed via AdminShell's
+          // own `showSearch`) so it picks up the "toolbar" variant and sits
+          // flush — same height, same pill treatment — with its neighbours,
+          // instead of the shorter PHP-matched box AdminHeader would render
+          // for `showSearch` on its own.
+          <div className="hidden items-center gap-3 xl:flex">
+            <div className="hidden min-[1800px]:block">
+              <RangeFilter mode="segmented" {...filterProps} />
+            </div>
+            <div className="min-[1800px]:hidden">
+              <RangeFilter mode="compact" {...filterProps} />
+            </div>
+            <DisplayOptionsPanel variant="header" />
+            <GlobalSearchBar variant="toolbar" />
+          </div>
+        }
+      >
+        {/* Below 1280px the header has no room, so the same controls move to
+            a toolbar at the top of the page instead of vanishing. */}
+        <div className="mb-6 flex flex-wrap items-center justify-end gap-3 xl:hidden">
+          <RangeFilter mode="compact" {...filterProps} />
+          <DisplayOptionsPanel variant="toolbar" />
+          <GlobalSearchBar variant="toolbar" />
+        </div>
+
+        <Dashboard2Body stats={stats} rangeLabel={range.rangeLabel} />
+      </AdminShell>
+    </DashboardWidgetPrefsProvider>
   );
 }

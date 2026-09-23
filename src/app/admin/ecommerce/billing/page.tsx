@@ -1,21 +1,39 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { PosBillingScreen } from "@/components/admin/PosBillingScreen";
+import { Billing2Screen } from "@/components/admin/billing2/Billing2Screen";
+import { BILLING2_GROUPS, BILLING2_PREF_KEY, BILLING2_STANDALONE } from "@/components/admin/billing2/displayOptions";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import { GlobalSearchBar } from "@/components/admin/GlobalSearchBar";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { campaignSalePrices } from "@/lib/campaign-pricing";
 
-interface BillingPageProps {
+interface Billing2PageProps {
   searchParams: Promise<{ customer_id?: string }>;
 }
 
 /**
- * Verified against the top of admin/ecommerce/billing.php:
- * - Access denied if not logged in / inactive / missing 'ecommerce.manage_billing'
- * - Preloads active products, active coupons, active customers
- * - Supports ?customer_id=42 to preselect a customer (e.g. arriving from their profile)
+ * /admin/ecommerce/billing2 — a trial redesign of the Billing / POS screen,
+ * matching a new mockup (step chips, a right-hand "Payment Summary" card,
+ * per-line unit, and a quick-add for a product not yet in the catalog).
+ *
+ * Kept alongside the original /admin/ecommerce/billing so the two can be
+ * compared before choosing one, the same way /admin/dashboard was. Same
+ * session gate, same header/sidebar (via AdminShell) and the same checkout
+ * API as the original — only the on-page layout and a couple of extra
+ * fields (unit, quick-add) are new.
+ *
+ * Display Options (header, like dashboard2) are listed in
+ * src/components/admin/billing2/displayOptions.ts.
+ *
+ * To remove it once a choice is made, delete:
+ *   src/app/admin/ecommerce/billing2/
+ *   src/components/admin/billing2/
+ * Nothing else imports them. (The quick-add API route and the `unit` field
+ * are shared with the original billing screen, so those stay either way.)
  */
-export default async function BillingPage({ searchParams }: BillingPageProps) {
+export default async function Billing2Page({ searchParams }: Billing2PageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_billing")) {
     redirect("/admin/admin-login-portal");
@@ -29,7 +47,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
       orderBy: { name: "asc" },
       select: {
         id: true, name: true, sku: true, barcode: true, price: true, salePrice: true,
-        gstRate: true, stockQty: true, productType: true, categoryId: true, subcategoryId: true, unit: true, brandId: true,
+        gstRate: true, stockQty: true, productType: true, categoryId: true, subcategoryId: true, unit: true, image: true, brandId: true,
       },
     }),
     prisma.ecomCoupon.findMany({
@@ -57,32 +75,35 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
     });
   }
 
-  const pageTitle = preselectedCustomer ? `New Order — ${preselectedCustomer.name}` : "Billing / POS";
-  const pageSubtitle = preselectedCustomer
-    ? "Add products and complete the order for this customer"
-    : "Scan a barcode or search a product to start a sale";
-
   return (
+    // Provider wraps the shell: the Display Options control sits in the
+    // header while the parts it hides live in the page body (same as dashboard2).
+    <DashboardWidgetPrefsProvider prefKey={BILLING2_PREF_KEY} groups={BILLING2_GROUPS} standalone={BILLING2_STANDALONE}>
     <AdminShell
-      showSearch
       siteName="EduMint24"
-      pageTitle={pageTitle}
-      pageSubtitle={pageSubtitle}
+      pageTitle="Billing / POS"
+      pageSubtitle="Scan a barcode or search a product to start a sale"
       username={session.username}
       role={session.role}
       permissions={session.permissions}
+      headerActions={
+        <div className="hidden items-center gap-3 xl:flex">
+          <DisplayOptionsPanel variant="header" />
+          <GlobalSearchBar variant="toolbar" />
+        </div>
+      }
     >
-      <PosBillingScreen
-        // NOTE: `p`/`c` show as implicit-any here ONLY because this sandbox
-        // could not download the Prisma query engine (network restricted) to
-        // run `prisma generate`. In your real environment, run `npx prisma
-        // generate` after setting DATABASE_URL and these will be fully typed
-        // from schema.prisma automatically — no code change needed.
+      {/* Below 1280px the header has no room, so the same controls move here. */}
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-3 xl:hidden">
+        <DisplayOptionsPanel variant="toolbar" />
+        <GlobalSearchBar variant="toolbar" />
+      </div>
+      <Billing2Screen
         allProducts={products.map((p: (typeof products)[number]) => ({
           id: p.id, name: p.name, sku: p.sku, barcode: p.barcode,
           price: Number(p.price), salePrice: campaign.get(p.id) ?? (p.salePrice ? Number(p.salePrice) : null),
           gstRate: Number(p.gstRate), stockQty: p.stockQty, productType: p.productType,
-          categoryId: p.categoryId, subcategoryId: p.subcategoryId, unit: p.unit,
+          categoryId: p.categoryId, subcategoryId: p.subcategoryId, unit: p.unit, image: p.image,
         }))}
         allCoupons={coupons.map((c: (typeof coupons)[number]) => ({
           code: c.code, discountType: c.discountType as "percentage" | "fixed",
@@ -100,5 +121,6 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         preselectedCustomer={preselectedCustomer}
       />
     </AdminShell>
+    </DashboardWidgetPrefsProvider>
   );
 }

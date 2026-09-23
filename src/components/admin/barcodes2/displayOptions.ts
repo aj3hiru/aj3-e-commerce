@@ -1,6 +1,6 @@
 import type { WidgetGroup } from "@/hooks/useDashboardWidgetPrefs";
 
-/** Display Options for /admin/ecommerce/barcode-print2 (own localStorage key). */
+/** Display Options for /admin/ecommerce/barcode-print (own localStorage key). */
 export const BARCODES2_PREF_KEY = "ecom_barcodes2_display";
 
 export const BARCODES2_GROUPS: readonly WidgetGroup[] = [

@@ -1,51 +1,72 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { CampaignOfferManager } from "@/components/admin/CampaignOfferManager";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import { Campaigns2Body, Campaigns2HeaderButtons } from "@/components/admin/campaigns2/Campaigns2Body";
+import { CAMPAIGNS2_GROUPS, CAMPAIGNS2_PREF_KEY, CAMPAIGNS2_STANDALONE } from "@/components/admin/campaigns2/displayOptions";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
-import { prisma } from "@/lib/db";
+import { getCampaigns2Data, istYmd, parseRange } from "@/lib/campaigns2";
 
-interface CampaignOfferPageProps {
-  searchParams: Promise<{ success?: string }>;
+/**
+ * /admin/ecommerce/campaign-offer — a redesign of Campaign Offer, kept
+ * alongside /admin/ecommerce/campaign-offer so the two can be compared (same
+ * idea as products2 / brands2 / sales-history2). Same access rule
+ * (manage_products).
+ *
+ * Unlike the old page — which only kept a list of "campaign prices" that the
+ * shop never used — a campaign here really changes prices: for all products,
+ * some categories, some brands or chosen products, between a start and an end
+ * time. The rules live in src/lib/campaign-core.ts and are applied in the
+ * shop and at billing by src/lib/campaign-pricing.ts.
+ *
+ * To remove it once a choice is made, delete:
+ *   src/app/admin/ecommerce/campaign-offer/   src/components/admin/campaigns2/
+ *   src/app/api/ecommerce/campaigns2/          src/lib/campaigns2.ts
+ * (the pricing files campaign-core / campaign-pricing / campaign-validate /
+ * campaign-refs are used by the shop and billing — keep those unless you also
+ * take the campaign hooks out of them).
+ */
+interface PageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-const SUCCESS_MESSAGES: Record<string, string> = {
-  added: "Product added to campaign!",
-  removed: "Product removed from campaign.",
-};
-
-export default async function CampaignOfferPage({ searchParams }: CampaignOfferPageProps) {
+export default async function CampaignOffer2Page({ searchParams }: PageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
     redirect("/shop/login");
   }
-  const params = await searchParams;
 
-  const [campaignProducts, availableProducts] = await Promise.all([
-    prisma.ecomProduct.findMany({ where: { isCampaign: true }, orderBy: { updatedAt: "desc" } }),
-    prisma.ecomProduct.findMany({ where: { isCampaign: false }, select: { id: true, name: true, price: true }, orderBy: { name: "asc" } }),
-  ]);
+  const sp = await searchParams;
+  const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const filters = parseRange({ from: first(sp.from), to: first(sp.to) });
+  const today = istYmd(new Date());
+  const isDefaultRange = filters.from === `${today.slice(0, 8)}01` && filters.to === today;
+
+  const data = await getCampaigns2Data(filters);
 
   return (
-    <AdminShell
-      siteName="EduMint24"
-      pageTitle="Campaign Offer"
-      pageSubtitle="Products currently discounted as part of a campaign"
-      username={session.username}
-      role={session.role}
-      permissions={session.permissions}
-    >
-      {params.success && SUCCESS_MESSAGES[params.success] && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded px-4 py-2.5 mb-4">
-          {SUCCESS_MESSAGES[params.success]}
+    <DashboardWidgetPrefsProvider prefKey={CAMPAIGNS2_PREF_KEY} groups={CAMPAIGNS2_GROUPS} standalone={CAMPAIGNS2_STANDALONE}>
+      <AdminShell
+        siteName="EduMint24"
+        pageTitle="Campaign Offer"
+        pageSubtitle="Run timed offers on all products, categories, brands or chosen products"
+        username={session.username}
+        role={session.role}
+        permissions={session.permissions}
+        headerActions={
+          <div className="hidden items-center gap-3 xl:flex">
+            <DisplayOptionsPanel variant="header" />
+            <Campaigns2HeaderButtons />
+          </div>
+        }
+      >
+        {/* Below 1280px the header has no room, so the same controls move here. */}
+        <div className="mb-5 flex flex-wrap items-center justify-end gap-3 xl:hidden">
+          <DisplayOptionsPanel variant="toolbar" />
+          <Campaigns2HeaderButtons />
         </div>
-      )}
-
-      <CampaignOfferManager
-        campaignProducts={campaignProducts.map((p: (typeof campaignProducts)[number]) => ({
-          id: p.id, name: p.name, price: Number(p.price), campaignPrice: Number(p.campaignPrice ?? 0), showOnHome: p.showOnHome,
-        }))}
-        availableProducts={availableProducts.map((p: (typeof availableProducts)[number]) => ({ id: p.id, name: p.name, price: Number(p.price) }))}
-      />
-    </AdminShell>
+        <Campaigns2Body data={data} serverNow={new Date().toISOString()} filters={filters} isDefaultRange={isDefaultRange} />
+      </AdminShell>
+    </DashboardWidgetPrefsProvider>
   );
 }

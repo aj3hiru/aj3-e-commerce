@@ -1,7 +1,7 @@
 import type { WidgetGroup } from "@/hooks/useDashboardWidgetPrefs";
 
 /**
- * Display Options for /admin/ecommerce/add-product2. Only optional things can
+ * Display Options for /admin/ecommerce/products/add. Only optional things can
  * be hidden — Product Name and Price are always shown. Hiding a field only
  * hides it: when editing, its saved value is kept and saved back unchanged.
  */

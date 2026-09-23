@@ -23,7 +23,7 @@ interface GlobalSearchBarProps {
    * "toolbar" — same box, sized and coloured to sit flush with the `h-10`
    * pill buttons (RangeFilter, Display Options) beside it in a header row,
    * and free to grow/shrink instead of a fixed px width. Used only on
-   * /admin/dashboard2's own toolbar, which is new UI with no PHP page to
+   * /admin/dashboard's own toolbar, which is new UI with no PHP page to
    * match, so this variant is free to prioritise visual consistency with
    * its neighbours instead.
    */

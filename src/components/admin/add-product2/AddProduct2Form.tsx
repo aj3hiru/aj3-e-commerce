@@ -62,7 +62,7 @@ type QuickKind = "brand" | "category" | "subcategory" | "item_type";
 
 /** Preset units — same list as the current product form; "Custom…" allows any text. */
 const UNIT_PRESETS = ["KG", "Gram", "Liter", "ml", "cm", "Meter", "Piece"];
-const LIST_PATH = "/admin/ecommerce/products2";
+const LIST_PATH = "/admin/ecommerce/products";
 /** Four fields in one row; 2 × 2 while the form shares the screen with the side column on laptops (1280–1439px). */
 const ROW4 = "grid items-start gap-4 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-2 min-[1440px]:grid-cols-4";
 const FORM_ID = "add-product2-form";
@@ -1072,7 +1072,7 @@ function BarcodeStatus({ check, blank, editing }: { check: { state: string; by?:
     return (
       <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-red-600">
         <AlertCircle className="h-3.5 w-3.5" /> Already used by “{check.by.name}”.
-        <Link href={`/admin/ecommerce/add-product2?edit=${check.by.id}`} className="inline-flex items-center gap-1 font-medium underline"><Link2 className="h-3 w-3" /> Open it</Link>
+        <Link href={`/admin/ecommerce/products/add?edit=${check.by.id}`} className="inline-flex items-center gap-1 font-medium underline"><Link2 className="h-3 w-3" /> Open it</Link>
       </p>
     );
   }

@@ -1,6 +1,6 @@
 import type { WidgetGroup } from "@/hooks/useDashboardWidgetPrefs";
 
-/** Display Options for /admin/ecommerce/product-reviews2 (own localStorage key). */
+/** Display Options for /admin/ecommerce/product-reviews (own localStorage key). */
 export const REVIEWS2_PREF_KEY = "ecom_reviews2_display";
 
 export const REVIEWS2_GROUPS: readonly WidgetGroup[] = [

@@ -6,7 +6,7 @@ import { BARCODE_SELECT, toBarcodeProduct, type BarcodeProduct } from "@/lib/bar
 /**
  * GET /api/ecommerce/barcodes2/search?q=...&category=...&limit=...
  *
- * Used by the "add a product" box on /admin/ecommerce/barcode-print2. The page
+ * Used by the "add a product" box on /admin/ecommerce/barcode-print. The page
  * deliberately doesn't hold every product in the browser (a shop can have
  * thousands), so searching asks the server and gets back a small page.
  */

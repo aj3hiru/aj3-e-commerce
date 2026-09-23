@@ -1,6 +1,6 @@
 import type { WidgetGroup } from "@/hooks/useDashboardWidgetPrefs";
 
-/** Display Options for /admin/ecommerce/orders2 (own localStorage key). */
+/** Display Options for /admin/ecommerce/orders (own localStorage key). */
 export const ORDERS2_PREF_KEY = "ecom_orders2_display";
 
 export const ORDERS2_GROUPS: readonly WidgetGroup[] = [

@@ -16,7 +16,7 @@ import { ConfirmDialog, Modal, Pager } from "@/components/admin/campaigns2/ui";
 import { IconAction, StatusPill, type PillOption } from "@/components/admin/ui/buttons";
 import { money } from "@/components/admin/campaigns2/format";
 
-const PAGE_PATH = "/admin/ecommerce/product-tags2";
+const PAGE_PATH = "/admin/ecommerce/product-tags";
 
 const TAG_STATUS: readonly PillOption<"active" | "inactive">[] = [
   { value: "active", label: "Active", variant: "success" },
@@ -371,7 +371,7 @@ export function Tags2Body({ data, range }: { data: Tags2Data; range: { from: str
                         {show("tg2-c-products") && (
                           <td className={td}>
                             {r.products > 0 ? (
-                              <Link href={`/admin/ecommerce/products2?${r.tagGroup === "badge" ? "badge" : "itemType"}=${encodeURIComponent(r.slug)}`}
+                              <Link href={`/admin/ecommerce/products?${r.tagGroup === "badge" ? "badge" : "itemType"}=${encodeURIComponent(r.slug)}`}
                                 className="font-medium text-[#2563eb] hover:underline">{r.products}</Link>
                             ) : <span className="text-admin-gray-400">0</span>}
                             <div className="text-xs text-admin-gray-500">{r.activeProducts} active</div>

@@ -17,7 +17,7 @@ import { Modal, Pager } from "@/components/admin/campaigns2/ui";
 import { IconAction, StatusPill, type PillOption } from "@/components/admin/ui/buttons";
 import { money } from "@/components/admin/campaigns2/format";
 
-const PAGE_PATH = "/admin/ecommerce/customers2";
+const PAGE_PATH = "/admin/ecommerce/customers";
 
 const CUSTOMER_STATUS: readonly PillOption<"active" | "inactive">[] = [
   { value: "active", label: "Active", variant: "success" },
@@ -369,7 +369,7 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
                         {show("cus2-c-due") && (
                           <td className={cn(td, "whitespace-nowrap")}>
                             {r.dueBalance > PAISA
-                              ? <Link href={`/admin/ecommerce/due2?from=${range.from}&to=${range.to}`} className="font-bold text-[#dc3545] hover:underline">{money(r.dueBalance)}</Link>
+                              ? <Link href={`/admin/ecommerce/due?from=${range.from}&to=${range.to}`} className="font-bold text-[#dc3545] hover:underline">{money(r.dueBalance)}</Link>
                               : <span className="text-admin-gray-400">—</span>}
                           </td>
                         )}

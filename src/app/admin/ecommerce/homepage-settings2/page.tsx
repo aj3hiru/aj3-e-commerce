@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
+import { AdminShell } from "@/components/admin/AdminShell";
 import { HomepageBuilder2, type Section2, type Slide2, type StripItem2 } from "@/components/admin/homepage-settings2/HomepageBuilder2";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
@@ -74,20 +74,18 @@ export default async function HomepageSettings2Page() {
   }));
 
   return (
-    <div className="min-h-screen bg-[#f7f8f9] p-4 sm:p-6">
-      <div className="mx-auto max-w-[1800px]">
-        <div className="mb-1 flex items-center gap-2">
-          <Link href="/admin/dashboard" className="text-sm font-medium text-admin-gray-400 hover:text-[#2563eb]">← Back to Admin</Link>
-        </div>
-        <div className="mb-1 flex items-center gap-2">
-          <h1 className="text-2xl font-bold text-admin-gray-900">Homepage Builder</h1>
-        </div>
-        <p className="text-sm text-admin-gray-500">Visually build and customize your storefront homepage sections</p>
-        <HomepageBuilder2
-          slides={slides} stripItems={stripItems} stripMode={settingsMap.category_strip_mode ?? "pinned"} stripCount={Number(settingsMap.category_strip_count ?? 10)}
-          sections={sections} categories={categories} products={products}
-        />
-      </div>
-    </div>
+    <AdminShell
+      siteName="EduMint24"
+      pageTitle="Homepage Builder"
+      pageSubtitle="Visually build and customize your storefront homepage sections"
+      username={session.username}
+      role={session.role}
+      permissions={session.permissions}
+    >
+      <HomepageBuilder2
+        slides={slides} stripItems={stripItems} stripMode={settingsMap.category_strip_mode ?? "pinned"} stripCount={Number(settingsMap.category_strip_count ?? 10)}
+        sections={sections} categories={categories} products={products}
+      />
+    </AdminShell>
   );
 }

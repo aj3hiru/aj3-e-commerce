@@ -183,6 +183,7 @@ export function Coupons2Body({ coupons: initial, activity, options }: { coupons:
       )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_320px]">
+        {show("cp2-grid") && (
         <section className="space-y-4">
           {show("cp2-search") && (
             <div className={cn(CARD, "flex flex-wrap items-center gap-3 p-3.5")}>
@@ -219,6 +220,7 @@ export function Coupons2Body({ coupons: initial, activity, options }: { coupons:
             {pageCount > 1 && <Pager page={current} pageCount={pageCount} onPage={setPage} />}
           </div>
         </section>
+        )}
 
         {show("cp2-activity-panel") && <RecentActivity activity={activity} />}
       </div>

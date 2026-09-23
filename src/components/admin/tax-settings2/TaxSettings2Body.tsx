@@ -93,6 +93,7 @@ export function TaxSettings2Body({ rates: initial, orphanProducts }: { rates: Ta
         </div>
       )}
 
+      {show("tx2-table") && (
       <section className={cn(CARD, "p-5 sm:p-7")}>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <h3 className="text-base font-bold text-admin-gray-900">GST Slabs</h3>
@@ -155,6 +156,7 @@ export function TaxSettings2Body({ rates: initial, orphanProducts }: { rates: Ta
           </div>
         )}
       </section>
+      )}
 
       {editing && (
         <RateModal rate={editing === "new" ? null : editing}

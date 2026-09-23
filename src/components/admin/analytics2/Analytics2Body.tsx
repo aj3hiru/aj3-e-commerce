@@ -58,20 +58,51 @@ function StatCard2({ icon: Icon, tint, label, value, delta, sparkline, compare }
   );
 }
 
-/* ───────────────────────── dual-line chart ───────────────────────── */
+/* ───────────────────────── dual-line chart (sales-history2 quality) ───────────────────────── */
 
+const moneyShort = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+
+/** A round axis maximum: the next 1/1.5/2/2.5/3/4/5/6/8 × 10ⁿ above the data. */
+function niceMax(v: number) {
+  if (v <= 0) return 1000;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
+  return 10 * p;
+}
+
+/**
+ * Smooth line through every point using monotone cubic interpolation
+ * (Fritsch–Carlson) — same technique as sales-history2's Sales Performance
+ * chart. Unlike a plain Catmull-Rom spline, it never bulges past its
+ * neighbouring points, so a revenue/order line can't dip below 0 or peak
+ * above a real total between two days.
+ */
 function smoothPath(points: [number, number][]): string {
-  if (points.length < 2) return "";
-  if (points.length === 2) return `M${points[0][0]},${points[0][1]} L${points[1][0]},${points[1][1]}`;
-  const d: string[] = [`M${points[0][0]},${points[0][1]}`];
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i - 1] ?? points[i], p1 = points[i], p2 = points[i + 1], p3 = points[i + 2] ?? p2;
-    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
-    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
-    d.push(`C${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`);
+  const n = points.length;
+  if (n < 2) return "";
+  if (n === 2) return `M${points[0][0]},${points[0][1]} L${points[1][0]},${points[1][1]}`;
+  const dx = (i: number) => points[i + 1][0] - points[i][0];
+  const slope = points.slice(0, -1).map((p, i) => (points[i + 1][1] - p[1]) / dx(i));
+  const m = points.map((_, i) =>
+    i === 0 ? slope[0] : i === n - 1 ? slope[n - 2] : slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2
+  );
+  for (let i = 0; i < n - 1; i++) {
+    if (slope[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / slope[i], b = m[i + 1] / slope[i];
+    const h = a * a + b * b;
+    if (h > 9) { const t = 3 / Math.sqrt(h); m[i] = t * a * slope[i]; m[i + 1] = t * b * slope[i]; }
+  }
+  const d = [`M${points[0][0]},${points[0][1]}`];
+  for (let i = 0; i < n - 1; i++) {
+    const h = dx(i) / 3;
+    const [x0, y0] = points[i], [x1, y1] = points[i + 1];
+    d.push(`C${x0 + h},${y0 + m[i] * h} ${x1 - h},${y1 - m[i + 1] * h} ${x1},${y1}`);
   }
   return d.join(" ");
 }
+
+const REV_COLOR = "#7c3aed";
+const ORD_COLOR = "#2563eb";
 
 function RevenueOrdersChart({ series }: { series: { date: string; revenue: number; orders: number }[] }) {
   const [hover, setHover] = useState<number | null>(null);
@@ -93,23 +124,28 @@ function RevenueOrdersChart({ series }: { series: { date: string; revenue: numbe
   }, [series, grain]);
 
   const n = points.length;
-  const empty = n === 0;
-  const maxRev = Math.max(1, ...points.map((p) => p.revenue));
-  const maxOrd = Math.max(1, ...points.map((p) => p.orders));
-  const x = (i: number) => (n > 1 ? (i / (n - 1)) * 100 : 50);
+  const empty = n === 0 || points.every((p) => p.revenue === 0 && p.orders === 0);
+  const maxRev = niceMax(Math.max(0, ...points.map((p) => p.revenue)));
+  const maxOrd = niceMax(Math.max(0, ...points.map((p) => p.orders)));
+  const revTicks = [maxRev, (maxRev * 3) / 4, maxRev / 2, maxRev / 4, 0];
+  const ordTicks = [maxOrd, (maxOrd * 3) / 4, maxOrd / 2, maxOrd / 4, 0];
+  // Points sit at the centre of n equal columns so labels line up beneath them.
+  const x = (i: number) => ((i + 0.5) / n) * 100;
   const yRev = (v: number) => 100 - (v / maxRev) * 100;
   const yOrd = (v: number) => 100 - (v / maxOrd) * 100;
-  const revPath = smoothPath(points.map((p, i) => [x(i), yRev(p.revenue)]));
-  const ordPath = smoothPath(points.map((p, i) => [x(i), yOrd(p.orders)]));
+
+  const revPts: [number, number][] = points.map((p, i) => [x(i), yRev(p.revenue)]);
+  const ordPts: [number, number][] = points.map((p, i) => [x(i), yOrd(p.orders)]);
+  const area = (pts: [number, number][]) => (pts.length < 2 ? "" : `${smoothPath(pts)} L${pts[pts.length - 1][0]},100 L${pts[0][0]},100 Z`);
   const label = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
 
   return (
     <div className={CARD}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="flex items-center gap-2 text-base font-bold text-admin-gray-900"><ChartBar className="h-4 w-4 text-admin-gray-400" /> Revenue & Orders Overview</h3>
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5 text-xs text-admin-gray-600"><span className="h-2 w-2 rounded-full bg-[#7c3aed]" /> Revenue</span>
-          <span className="flex items-center gap-1.5 text-xs text-admin-gray-600"><span className="h-2 w-2 rounded-full bg-[#2563eb]" /> Orders</span>
+        <h3 className="flex items-center gap-2.5 text-base font-semibold text-admin-gray-900"><ChartBar className="h-5 w-5" style={{ color: REV_COLOR }} /> Revenue & Orders Overview</h3>
+        <div className="flex items-center gap-5 text-[13px] text-admin-gray-700">
+          <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: REV_COLOR }} /> Revenue</span>
+          <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full" style={{ background: ORD_COLOR }} /> Orders</span>
           <select value={grain} onChange={(e) => setGrain(e.target.value as "daily" | "weekly")}
             className="h-8 rounded-[0.375rem] border border-[#dee2e6] bg-white px-2 text-xs font-medium text-admin-gray-700 focus:outline-none">
             <option value="daily">Daily</option>
@@ -118,37 +154,69 @@ function RevenueOrdersChart({ series }: { series: { date: string; revenue: numbe
         </div>
       </div>
 
-      {empty ? (
-        <div className="flex h-48 flex-col items-center justify-center text-center">
-          <span className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-admin-gray-100 text-admin-gray-400"><ChartBar className="h-5 w-5" /></span>
-          <p className="text-sm font-semibold text-admin-gray-900">No sales in this period</p>
+      <div className="flex min-h-[220px] gap-3">
+        {/* left axis — revenue */}
+        <div className="flex shrink-0 flex-col text-right text-[11px] leading-none text-admin-gray-500">
+          <div className="flex flex-1 flex-col justify-between">
+            {revTicks.map((t, i) => <span key={i} className={cn("-my-[5px]", i === revTicks.length - 1 && "text-admin-gray-300")}>{moneyShort(t)}</span>)}
+          </div>
+          <div className="h-6" />
         </div>
-      ) : (
-        <>
-          <div className="relative h-56" onMouseLeave={() => setHover(null)}>
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="relative flex-1" onMouseLeave={() => setHover(null)}>
+            {revTicks.map((_, i) => (
+              <div key={i} className="absolute left-0 right-0 border-t border-dashed border-admin-gray-100" style={{ top: `${(i / (revTicks.length - 1)) * 100}%` }} />
+            ))}
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible">
-              <path d={revPath} fill="none" stroke="#7c3aed" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-              <path d={ordPath} fill="none" stroke="#2563eb" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" strokeDasharray="4 3" />
+              <defs>
+                <linearGradient id="a2-fill-rev" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={REV_COLOR} stopOpacity="0.16" />
+                  <stop offset="100%" stopColor={REV_COLOR} stopOpacity="0" />
+                </linearGradient>
+                <linearGradient id="a2-fill-ord" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={ORD_COLOR} stopOpacity="0.12" />
+                  <stop offset="100%" stopColor={ORD_COLOR} stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path d={area(ordPts)} fill="url(#a2-fill-ord)" />
+              <path d={area(revPts)} fill="url(#a2-fill-rev)" />
+              <path d={smoothPath(ordPts)} fill="none" stroke={ORD_COLOR} strokeWidth="2" vectorEffect="non-scaling-stroke" />
+              <path d={smoothPath(revPts)} fill="none" stroke={REV_COLOR} strokeWidth="2" vectorEffect="non-scaling-stroke" />
             </svg>
-            <div className="absolute inset-0 grid" style={{ gridTemplateColumns: `repeat(${n}, 1fr)` }}>
-              {points.map((p, i) => <div key={p.date} onMouseEnter={() => setHover(i)} />)}
-            </div>
-            {hover !== null && (
-              <div className="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-[0.5rem] border border-[#e5e7eb] bg-white px-3 py-2 shadow-lg"
-                style={{ left: `clamp(60px, ${x(hover)}%, calc(100% - 60px))`, top: `calc(${Math.min(yRev(points[hover].revenue), yOrd(points[hover].orders))}% - 60px)` }}>
-                <div className="text-[0.6875rem] text-admin-gray-500">{label(points[hover].date)}</div>
-                <div className="text-sm font-bold text-[#7c3aed]">{formatMoney(points[hover].revenue)}</div>
-                <div className="text-xs font-medium text-[#2563eb]">{points[hover].orders} order{points[hover].orders === 1 ? "" : "s"}</div>
+            {/* dots as HTML so they stay round when the plot stretches */}
+            {ordPts.map(([px, py], i) => <span key={`o${i}`} className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white" style={{ left: `${px}%`, top: `${py}%`, background: ORD_COLOR }} />)}
+            {revPts.map(([px, py], i) => <span key={`r${i}`} className="pointer-events-none absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white" style={{ left: `${px}%`, top: `${py}%`, background: REV_COLOR }} />)}
+            {/* hover columns + tooltip */}
+            {points.map((p, i) => (
+              <div key={p.date} className="absolute bottom-0 top-0" style={{ left: `${(i / n) * 100}%`, width: `${100 / n}%` }} onMouseEnter={() => setHover(i)}>
+                {hover === i && (
+                  <>
+                    <div className="absolute bottom-0 left-1/2 top-0 border-l border-admin-gray-200" />
+                    <div className={cn("absolute top-1 z-10 w-max rounded-lg border border-admin-gray-200 bg-white px-3 py-2 text-xs shadow-md", i >= n - 2 ? "right-1/2 mr-2" : "left-1/2 ml-2")}>
+                      <div className="mb-1 font-semibold text-admin-gray-900">{label(p.date)}</div>
+                      <div className="flex items-center gap-2 text-admin-gray-600"><span className="h-2 w-2 rounded-full" style={{ background: REV_COLOR }} /> Revenue: <b className="text-admin-gray-900">{formatMoney(p.revenue)}</b></div>
+                      <div className="flex items-center gap-2 text-admin-gray-600"><span className="h-2 w-2 rounded-full" style={{ background: ORD_COLOR }} /> Orders: <b className="text-admin-gray-900">{p.orders}</b></div>
+                    </div>
+                  </>
+                )}
               </div>
-            )}
+            ))}
+            {empty && <div className="absolute inset-0 flex items-center justify-center text-sm text-admin-gray-400">No sales in this period</div>}
           </div>
-          <div className="mt-2 flex justify-between text-[0.6875rem] text-admin-gray-400">
-            <span>{label(points[0].date)}</span>
-            {n > 2 && <span>{label(points[Math.floor((n - 1) / 2)].date)}</span>}
-            <span>{label(points[n - 1].date)}</span>
+          <div className="grid h-6 items-end whitespace-nowrap text-center text-[10px] text-admin-gray-500 sm:text-xs" style={{ gridTemplateColumns: `repeat(${n || 1}, minmax(0, 1fr))` }}>
+            {points.map((p) => <span key={p.date}>{label(p.date)}</span>)}
           </div>
-        </>
-      )}
+        </div>
+
+        {/* right axis — orders */}
+        <div className="flex shrink-0 flex-col text-left text-[11px] leading-none text-admin-gray-500">
+          <div className="flex flex-1 flex-col justify-between">
+            {ordTicks.map((t, i) => <span key={i} className={cn("-my-[5px]", i === ordTicks.length - 1 && "text-admin-gray-300")}>{Math.round(t)}</span>)}
+          </div>
+          <div className="h-6" />
+        </div>
+      </div>
     </div>
   );
 }

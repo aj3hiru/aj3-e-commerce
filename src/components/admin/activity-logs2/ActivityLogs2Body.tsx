@@ -145,7 +145,7 @@ export function ActivityLogs2Body({ logs, stats, actions, users, filters, page, 
           </div>
         </section>
 
-        <LogsTable logs={logs} show={show} selectedId={selected?.id ?? null} onSelect={setSelected} />
+        {show("al2-table") && <LogsTable logs={logs} show={show} selectedId={selected?.id ?? null} onSelect={setSelected} />}
 
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-admin-gray-700">
           <span>{totalLogs === 0 ? "Showing 0 events" : `Showing ${(page - 1) * pageSize + 1} to ${Math.min(page * pageSize, totalLogs)} of ${totalLogs} events`}</span>

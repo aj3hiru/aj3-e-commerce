@@ -326,7 +326,7 @@ export function Categories2Body({ categories: initial }: { categories: Category2
               </div>
             )}
 
-            {show("c2-f-status") && (
+            {show("c2-filters") && show("c2-f-status") && (
               <FilterSelect label="Status" value={filters.status} onChange={(v) => setFilters({ status: v as Filters["status"] })}>
                 <option value="all">All</option>
                 <option value="active">Active</option>
@@ -334,7 +334,7 @@ export function Categories2Body({ categories: initial }: { categories: Category2
               </FilterSelect>
             )}
 
-            {show("c2-f-sort") && (
+            {show("c2-filters") && show("c2-f-sort") && (
               <FilterSelect label="Sort by" value={sortValue} onChange={setSortValue}>
                 {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
               </FilterSelect>

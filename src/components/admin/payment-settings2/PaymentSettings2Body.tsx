@@ -123,7 +123,7 @@ export function PaymentSettings2Body({ methods: initial }: { methods: PaymentMet
           </div>
         </section>
 
-        {show("pm2-default-panel") && (
+        {show("pm2-default") && show("pm2-default-panel") && (
           <aside className={cn(CARD, "h-fit p-5")}>
             <h3 className="mb-1 text-base font-bold text-admin-gray-900">Default Payment Method</h3>
             <p className="mb-4 text-sm text-admin-gray-500">Pre-selected at checkout. Customers can still choose another.</p>

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
@@ -43,7 +44,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     // Products store the slug, so if the slug changes they must follow, or
     // they would silently lose their tag.
     const slugChanged = t.slug !== g.tag.slug || t.tagGroup !== g.tag.tagGroup;
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.ecomProductTag.update({ where: { id: g.id }, data: t });
       if (slugChanged) {
         if (g.tag.tagGroup === "item_type") await tx.ecomProduct.updateMany({ where: { itemType: g.tag.slug }, data: { itemType: t.tagGroup === "item_type" ? t.slug : "normal" } });
@@ -92,7 +93,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
       return NextResponse.json({ success: false, needsConfirm: true, used, message: `${used} product${used === 1 ? "" : "s"} use this tag.` }, { status: 409 });
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       if (used > 0) {
         if (g.tag.tagGroup === "item_type") await tx.ecomProduct.updateMany({ where: { itemType: g.tag.slug }, data: { itemType: "normal" } });
         else await tx.ecomProduct.updateMany({ where: { badgeTag: g.tag.slug }, data: { badgeTag: "none" } });

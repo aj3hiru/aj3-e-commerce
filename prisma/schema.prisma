@@ -77,6 +77,7 @@ model EcomCategory {
   status           String   @default("active")
   serial           Int      @default(0)
   createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime? @updatedAt @map("updated_at") // categories2 — see prisma/categories2.sql
 
   subcategories EcomSubcategory[]
   products      EcomProduct[]
@@ -368,6 +369,9 @@ model EcomCoupon {
   subcategoryId    Int?     @map("subcategory_id")
   status           String   @default("active")
   createdAt        DateTime @default(now()) @map("created_at")
+  startsAt         DateTime? @map("starts_at") // coupons2 — see prisma/coupons2.sql
+  endsAt           DateTime? @map("ends_at")   // coupons2
+  isPaused         Boolean  @default(false) @map("is_paused") // coupons2
 
   product      EcomProduct?     @relation("CouponProduct", fields: [productId], references: [id])
   category     EcomCategory?    @relation("CouponCategory", fields: [categoryId], references: [id])
@@ -489,6 +493,7 @@ model EcomPaymentSettings {
   text      String? @db.Text // customer-facing instructions/description for this method
   config    Json?           // arbitrary key-value pairs (API keys, UPI ID, bank details, etc.)
   isEnabled Boolean @default(false) @map("is_enabled")
+  isDefault Boolean @default(false) @map("is_default") // payment-settings2 — see prisma/payment-settings2.sql
 
   @@map("ecom_payment_settings")
 }

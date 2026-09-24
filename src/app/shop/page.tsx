@@ -1,52 +1,47 @@
 import { ShopLayout } from "@/components/shop/ShopLayout";
-import { ProductCard } from "@/components/shop/ProductCard";
-import { Card2Product } from "@/components/shop/Card2Product";
 import { BannerSlider } from "@/components/shop/BannerSlider";
-import { HomeCategoryStrip } from "@/components/shop/HomeCategoryStrip";
 import { CatCardsRow } from "@/components/shop/CatCardsRow";
 import { FestiveBanner } from "@/components/shop/FestiveBanner";
+import { CategoryCircles } from "@/components/shop/home/CategoryCircles";
+import { ProductFeed } from "@/components/shop/home/ProductFeed";
+import { HomeRow } from "@/components/shop/home/HomeRow";
+import { MobileBottomNav } from "@/components/shop/home/MobileBottomNav";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
+import { FEED_SELECT, enrichProducts, getFeedFacets, getShopFeed, parseFeedFilters, publicProducts, type FeedRow } from "@/lib/shop-feed";
 import { prisma } from "@/lib/db";
-import { PackageSearch, Store } from "lucide-react";
-import { campaignSalePrices } from "@/lib/campaign-pricing";
 
 interface ShopHomePageProps {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-/** Verified against shop/index.php. */
+/**
+ * Storefront home, in the style of Meesho's mobile site (used at every screen
+ * size): banner slider → round category shortcuts → the admin's homepage
+ * sections → "Products For You" with Sort / Category / Brand / Filters and
+ * endless scrolling, plus a bottom tab bar on phones. The site header and
+ * footer are unchanged. A search (?q=) shows the same feed for the results.
+ */
 export default async function ShopHomePage({ searchParams }: ShopHomePageProps) {
-  const layoutData = await getShopLayoutData();
-  const { q } = await searchParams;
-  const query = (q ?? "").trim();
+  const raw = await searchParams;
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(raw)) if (typeof v === "string") sp.set(k, v);
+  const filters = parseFeedFilters(sp);
 
-  // ── Search mode: simple results grid, no homepage sections ──────────────
-  if (query !== "") {
-    const products = await prisma.ecomProduct.findMany({
-      where: { status: "active", name: { contains: query } },
-      orderBy: { createdAt: "desc" },
-      take: 60,
-    });
-    const campaign = await campaignSalePrices(products); // campaign prices, when a campaign is live
+  const [layoutData, facets, feed] = await Promise.all([getShopLayoutData(), getFeedFacets(), getShopFeed(filters)]);
+  const wishlisted = layoutData.customer
+    ? ((await prisma.ecomWishlist.findMany({ where: { customerId: layoutData.customer.id }, select: { productId: true } })) as { productId: number }[]).map((w) => w.productId)
+    : [];
 
+  const feedEl = (
+    <ProductFeed title={filters.q ? `Results for "${filters.q}"` : "Products For You"} initial={feed} filters={filters} facets={facets} wishlisted={wishlisted} />
+  );
+
+  // ── Search: just the results feed ─────────────────────────────────────────
+  if (filters.q) {
     return (
       <ShopLayout {...layoutData}>
-        <h2 className="text-lg font-bold mb-3">Search results for &quot;{query}&quot;</h2>
-        {products.length === 0 ? (
-          <div className="text-center py-16 text-storefront-muted">
-            <PackageSearch className="w-10 h-10 mx-auto mb-3" />
-            <p>No products found for your search.</p>
-          </div>
-        ) : (
-          <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
-            {products.map((p: (typeof products)[number]) => (
-              <ProductCard
-                key={p.id}
-                product={{ id: p.id, slug: p.slug, name: p.name, image: p.image, price: Number(p.price), salePrice: campaign.get(p.id) ?? (p.salePrice ? Number(p.salePrice) : null), productType: p.productType, stockQty: p.stockQty }}
-              />
-            ))}
-          </div>
-        )}
+        <div className="-mx-8 -mt-6 shop:mx-0 shop:mt-0">{feedEl}</div>
+        <MobileBottomNav loggedIn={!!layoutData.customer} />
       </ShopLayout>
     );
   }
@@ -67,146 +62,88 @@ export default async function ShopHomePage({ searchParams }: ShopHomePageProps) 
   for (const row of homeSettingsRows) homeSettings[row.settingKey] = row.settingValue;
   const stripMode = homeSettings.category_strip_mode ?? "pinned";
   const stripCount = Math.max(1, Number(homeSettings.category_strip_count ?? 10));
-
+  const circle = (c: { slug: string; name: string; image: string | null }) => ({ slug: c.slug, name: c.name, image: c.image });
   const stripCategories =
     stripMode === "all"
-      ? allCategories.slice(0, stripCount).map((c: (typeof allCategories)[number]) => ({ slug: c.slug, name: c.name, image: c.image }))
+      ? allCategories.slice(0, stripCount).map(circle)
       : (
           await prisma.ecomHomeCategoryStrip.findMany({
             where: { category: { status: "active" } },
-            include: { category: { select: { slug: true, name: true, image: true, status: true } } },
+            include: { category: { select: { slug: true, name: true, image: true } } },
             orderBy: { sortOrder: "asc" },
           })
-        ).map((s: { category: { slug: string; name: string; image: string | null } }) => ({ slug: s.category.slug, name: s.category.name, image: s.category.image }));
-
-  // Auto category rows: every active category with products, excluding none (matches PHP: no exclusion logic)
-  const autoCategoryRows = await Promise.all(
-    allCategories.map(async (cat: (typeof allCategories)[number]) => {
-      const products = await prisma.ecomProduct.findMany({
-        where: { status: "active", categoryId: cat.id },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      });
-      return { category: cat, products };
-    })
-  );
-  const autoCampaign = await campaignSalePrices(autoCategoryRows.flatMap((r) => r.products));
+        ).map((s: { category: { slug: string; name: string; image: string | null } }) => circle(s.category));
 
   return (
     <ShopLayout {...layoutData}>
-      <BannerSlider slides={slides.map((s: (typeof slides)[number]) => ({ id: s.id, image: s.image, buttonLink: s.buttonLink }))} />
+      <div className="-mx-8 -mt-6 shop:mx-0 shop:mt-0">
+        {slides.length > 0 && (
+          <div className="px-3 shop:px-0">
+            <BannerSlider slides={slides.map((s: (typeof slides)[number]) => ({ id: s.id, image: s.image, buttonLink: s.buttonLink }))} />
+          </div>
+        )}
 
-      <HomeCategoryStrip categories={stripCategories} />
+        <CategoryCircles strip={stripCategories} all={allCategories.map(circle)} />
 
-      {sections.map((sec: (typeof sections)[number]) => {
-        if (sec.sectionType === "manual_products") {
-          const cards = sec.items
-            .filter((it: (typeof sec.items)[number]) => it.productId && it.product)
-            .map((it: (typeof sec.items)[number]) => ({ href: `/shop/product?slug=${it.product!.slug}`, image: it.product!.image, label: it.product!.name }));
-          return <CatCardsRow key={sec.id} title={sec.title} cards={cards} />;
-        }
+        {sections.map((sec: (typeof sections)[number]) => {
+          if (sec.sectionType === "manual_products") {
+            const cards = sec.items
+              .filter((it: (typeof sec.items)[number]) => it.productId && it.product)
+              .map((it: (typeof sec.items)[number]) => ({ href: `/shop/product?slug=${it.product!.slug}`, image: it.product!.image, label: it.product!.name }));
+            return <div key={sec.id} className="px-4 shop:px-0"><CatCardsRow title={sec.title} cards={cards} /></div>;
+          }
+          if (sec.sectionType === "category_row") {
+            const cards = sec.items
+              .filter((it: (typeof sec.items)[number]) => it.categoryId && it.category)
+              .map((it: (typeof sec.items)[number]) => ({
+                href: `/shop/category?slug=${it.category!.slug}`,
+                image: it.customImage || it.category!.image,
+                label: it.customLabel || it.category!.name,
+              }));
+            return <div key={sec.id} className="px-4 shop:px-0"><CatCardsRow title={sec.title} cards={cards} /></div>;
+          }
+          if (sec.sectionType === "festive_banner") {
+            return (
+              <div key={sec.id} className="px-3 shop:px-0">
+                <FestiveBanner banner={{ id: sec.id, bannerText: sec.bannerText, bannerImage: sec.bannerImage, title: sec.title, dismissible: sec.dismissible }} />
+              </div>
+            );
+          }
+          return <ProductRowSection key={sec.id} section={sec} wishlisted={wishlisted} />;
+        })}
 
-        if (sec.sectionType === "category_row") {
-          const itemCards = sec.items
-            .filter((it: (typeof sec.items)[number]) => it.categoryId && it.category)
-            .map((it: (typeof sec.items)[number]) => ({
-              href: `/shop/category?slug=${it.category!.slug}`,
-              image: it.customImage || it.category!.image,
-              label: it.customLabel || it.category!.name,
-            }));
-          return <CatCardsRow key={sec.id} title={sec.title} cards={itemCards} />;
-        }
-
-        if (sec.sectionType === "festive_banner") {
-          return (
-            <FestiveBanner
-              key={sec.id}
-              banner={{ id: sec.id, bannerText: sec.bannerText, bannerImage: sec.bannerImage, title: sec.title, dismissible: sec.dismissible }}
-            />
-          );
-        }
-
-        // product_grid is resolved async below via IIFE-style await in a wrapper — see ProductGridSection
-        return <ProductGridSectionServer key={sec.id} section={sec} />;
-      })}
-
-      {autoCategoryRows
-        .filter((row) => row.products.length > 0)
-        .map((row) => (
-          <section key={row.category.id} className="mb-5">
-            <h2 className="text-lg font-bold mb-2.5">{row.category.name}</h2>
-            <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
-              {row.products.map((p: (typeof row.products)[number]) => (
-                <ProductCard
-                  key={p.id}
-                  product={{ id: p.id, slug: p.slug, name: p.name, image: p.image, price: Number(p.price), salePrice: autoCampaign.get(p.id) ?? (p.salePrice ? Number(p.salePrice) : null), productType: p.productType, stockQty: p.stockQty }}
-                />
-              ))}
-            </div>
-            <div className="text-center mt-3">
-              <a href={`/shop/category?slug=${row.category.slug}`} className="inline-block bg-white border border-storefront-green text-storefront-green-dark text-xs font-bold rounded-full px-6 py-2.5">
-                View More →
-              </a>
-            </div>
-          </section>
-        ))}
-
-      {sections.length === 0 && slides.length === 0 && allCategories.length === 0 && (
-        <div className="text-center py-16 text-storefront-muted">
-          <Store className="w-10 h-10 mx-auto mb-3" />
-          <p>The homepage hasn&apos;t been set up yet.</p>
-        </div>
-      )}
+        <div className="border-t-8 border-[#f5f5f8] shop:border-t-0">{feedEl}</div>
+      </div>
+      <MobileBottomNav loggedIn={!!layoutData.customer} />
     </ShopLayout>
   );
 }
 
-/** Resolves and renders a single product_grid section — separated out because it
- *  needs its own async product query depending on source_type (manual/category/latest). */
-async function ProductGridSectionServer({ section }: { section: { id: number; title: string | null; sourceType: string; categoryId: number | null; productLimit: number; cardDesign: string; items: { productId: number | null }[] } }) {
+/** An admin "product grid" section (manual / category / latest products) as a swipeable row. */
+async function ProductRowSection({ section, wishlisted }: {
+  section: { id: number; title: string | null; sourceType: string; categoryId: number | null; productLimit: number; items: { productId: number | null }[] };
+  wishlisted: number[];
+}) {
   const limit = Math.max(1, section.productLimit || 10);
-  let products: Awaited<ReturnType<typeof prisma.ecomProduct.findMany>> = [];
+  let rows: FeedRow[] = [];
   let viewMoreUrl: string | null = null;
 
   if (section.sourceType === "manual") {
     const ids = section.items.map((it) => it.productId).filter((id): id is number => !!id);
     if (ids.length > 0) {
-      const found = await prisma.ecomProduct.findMany({ where: { id: { in: ids }, status: "active" } });
-      const byId = new Map(found.map((p: (typeof found)[number]) => [p.id, p]));
-      products = ids.map((id) => byId.get(id)).filter((p): p is NonNullable<typeof p> => !!p);
+      const found = (await prisma.ecomProduct.findMany({ where: { id: { in: ids }, status: "active" }, select: FEED_SELECT })) as FeedRow[];
+      const byId = new Map(found.map((p) => [p.id, p]));
+      rows = ids.map((id) => byId.get(id)).filter((p): p is FeedRow => !!p);
     }
   } else if (section.sourceType === "category" && section.categoryId) {
-    products = await prisma.ecomProduct.findMany({ where: { status: "active", categoryId: section.categoryId }, orderBy: { createdAt: "desc" }, take: limit });
+    rows = (await prisma.ecomProduct.findMany({ where: { status: "active", categoryId: section.categoryId }, orderBy: { createdAt: "desc" }, take: limit, select: FEED_SELECT })) as FeedRow[];
     const cat = await prisma.ecomCategory.findUnique({ where: { id: section.categoryId }, select: { slug: true } });
     if (cat) viewMoreUrl = `/shop/category?slug=${cat.slug}`;
   } else {
-    products = await prisma.ecomProduct.findMany({ where: { status: "active" }, orderBy: { createdAt: "desc" }, take: limit });
+    rows = (await prisma.ecomProduct.findMany({ where: { status: "active" }, orderBy: { createdAt: "desc" }, take: limit, select: FEED_SELECT })) as FeedRow[];
+    viewMoreUrl = "/shop?sort=new";
   }
-
-  if (products.length === 0) return null;
-
-  const campaign = await campaignSalePrices(products);
-  const design = (section.cardDesign || "design1") as "design1" | "design2" | "design3" | "design4";
-
-  return (
-    <section className="mb-5">
-      {section.title && <h2 className="text-lg font-bold mb-2.5">{section.title}</h2>}
-      <div className="grid grid-cols-1 md:[grid-template-columns:repeat(2,minmax(240px,1fr))] lg:[grid-template-columns:repeat(3,minmax(240px,1fr))] gap-[18px]">
-        {products.map((p: (typeof products)[number]) => (
-          <Card2Product
-            key={p.id}
-            design={design}
-            product={{ id: p.id, slug: p.slug, name: p.name, image: p.image, price: Number(p.price), salePrice: campaign.get(p.id) ?? (p.salePrice ? Number(p.salePrice) : null), productType: p.productType, stockQty: p.stockQty }}
-          />
-        ))}
-      </div>
-      {viewMoreUrl && (
-        <div className="text-center mt-3">
-          <a href={viewMoreUrl} className="inline-block bg-white border border-storefront-green text-storefront-green-dark text-xs font-bold rounded-full px-6 py-2.5">
-            View More →
-          </a>
-        </div>
-      )}
-    </section>
-  );
+  if (rows.length === 0) return null;
+  const products = publicProducts(await enrichProducts(rows));
+  return <HomeRow title={section.title} products={products} viewMoreUrl={viewMoreUrl} wishlisted={wishlisted} />;
 }

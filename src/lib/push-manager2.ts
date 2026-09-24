@@ -69,9 +69,10 @@ export async function queueCampaign(input: ComposeInput): Promise<{ campaignId: 
 const BATCH_SIZE = 300; // same as cron-process-push-queue.php
 const MAX_ATTEMPTS = 3;
 const SEND_CONCURRENCY = 10; // parallel requests to push services within one batch
+const CHUNK_SIZE = 20; // progress is saved after every chunk
 const SEND_TIMEOUT_MS = 15_000; // a hung push service must not stall the queue
 const LOCK_KEY = "push_queue_lock";
-const LOCK_TTL_MS = 2 * 60_000;
+const LOCK_TTL_MS = 60_000; // renewed after every chunk (worst case ~30s apart)
 
 /**
  * Sends one batch (up to 300) for the OLDEST pending/processing campaign —
@@ -83,7 +84,10 @@ const LOCK_TTL_MS = 2 * 60_000;
  * Only the queue worker below should call this — it guarantees a single
  * caller at a time, so a batch is never sent twice.
  */
-export async function processPushQueue(batchSize = BATCH_SIZE): Promise<{ processed: number; campaignId: number | null }> {
+export async function processPushQueue(
+  batchSize = BATCH_SIZE,
+  heartbeat: () => Promise<boolean> = async () => true,
+): Promise<{ processed: number; campaignId: number | null }> {
   const settings = await getPushSettings();
   if (!settings.configured) return { processed: 0, campaignId: null };
   webpush.setVapidDetails(settings.subject, settings.publicKey, settings.privateKey);
@@ -116,14 +120,14 @@ export async function processPushQueue(batchSize = BATCH_SIZE): Promise<{ proces
   const subById = new Map(subs.map((s) => [s.id, s]));
 
   const payload = JSON.stringify({ title: campaign.title, body: campaign.body, image: campaign.image, url: campaign.url });
-  const toDeleteQueue: number[] = [];
-  const toDeleteSubs: number[] = [];
-  const retries: { id: number; attempts: number; lastError: string }[] = [];
-  let batchSent = 0, batchFailed = 0;
+  let toDeleteQueue: number[] = [];
+  let toDeleteSubs: number[] = [];
+  let retries: { id: number; attempts: number; lastError: string }[] = [];
+  let chunkSent = 0, chunkFailed = 0;
 
   async function sendOne(row: (typeof rows)[number]) {
     const sub = subById.get(row.subscriptionId);
-    if (!sub) { toDeleteQueue.push(row.id); batchFailed++; return; }
+    if (!sub) { toDeleteQueue.push(row.id); chunkFailed++; return; }
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
@@ -131,46 +135,59 @@ export async function processPushQueue(batchSize = BATCH_SIZE): Promise<{ proces
         { TTL: 24 * 60 * 60, timeout: SEND_TIMEOUT_MS }
       );
       toDeleteQueue.push(row.id);
-      batchSent++;
+      chunkSent++;
     } catch (err) {
       const statusCode = (err as { statusCode?: number }).statusCode;
       if (statusCode === 410 || statusCode === 404) {
         toDeleteSubs.push(row.subscriptionId);
         toDeleteQueue.push(row.id);
-        batchFailed++;
+        chunkFailed++;
         return;
       }
       const attempts = (row.attempts ?? 0) + 1;
       if (attempts >= MAX_ATTEMPTS) {
         toDeleteQueue.push(row.id);
-        batchFailed++;
+        chunkFailed++;
       } else {
         retries.push({ id: row.id, attempts, lastError: (err instanceof Error ? err.message : "Unknown error").slice(0, 1000) });
       }
     }
   }
 
-  // A small fixed pool: fast enough, but never thousands of open sockets at once.
-  let next = 0;
-  await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, rows.length) }, async () => {
-    while (next < rows.length) await sendOne(rows[next++]);
-  }));
-
-  for (const r of retries) {
-    await prisma.pushQueue.updateMany({ where: { id: r.id }, data: { attempts: r.attempts, lastError: r.lastError } });
+  /** Writes a chunk's outcome right away, so a crash or restart mid-batch
+   *  re-sends at most the one chunk that was in flight — not the whole batch. */
+  async function flush() {
+    for (const r of retries) {
+      await prisma.pushQueue.updateMany({ where: { id: r.id }, data: { attempts: r.attempts, lastError: r.lastError } });
+    }
+    if (toDeleteQueue.length) await prisma.pushQueue.deleteMany({ where: { id: { in: toDeleteQueue } } });
+    if (toDeleteSubs.length) await prisma.pushSubscription.deleteMany({ where: { id: { in: toDeleteSubs } } });
+    if (chunkSent || chunkFailed) {
+      await prisma.pushCampaign.updateMany({
+        where: { id: campaign!.id },
+        data: { sent: { increment: chunkSent }, failed: { increment: chunkFailed } },
+      });
+    }
+    toDeleteQueue = []; toDeleteSubs = []; retries = []; chunkSent = 0; chunkFailed = 0;
   }
-  if (toDeleteQueue.length) await prisma.pushQueue.deleteMany({ where: { id: { in: toDeleteQueue } } });
-  if (toDeleteSubs.length) await prisma.pushSubscription.deleteMany({ where: { id: { in: toDeleteSubs } } });
 
-  await prisma.pushCampaign.updateMany({
-    where: { id: campaign.id },
-    data: { sent: { increment: batchSent }, failed: { increment: batchFailed } },
-  });
+  let processed = 0;
+  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+    const chunk = rows.slice(i, i + CHUNK_SIZE);
+    // A small fixed pool: fast enough, but never hundreds of open sockets at once.
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, chunk.length) }, async () => {
+      while (next < chunk.length) await sendOne(chunk[next++]);
+    }));
+    await flush();
+    processed += chunk.length;
+    if (!(await heartbeat())) break; // lost the queue lease — stop, the new owner carries on
+  }
 
   const remaining = await prisma.pushQueue.count({ where: { campaignId: campaign.id } });
   if (remaining === 0) await prisma.pushCampaign.updateMany({ where: { id: campaign.id }, data: { status: "completed" } });
 
-  return { processed: rows.length, campaignId: campaign.id };
+  return { processed, campaignId: campaign.id };
 }
 
 /* ───────────────────────── the single queue worker ───────────────────────── */
@@ -219,7 +236,7 @@ async function runWorker(): Promise<void> {
       let processed = 0;
       let campaignId: number | null = null;
       try {
-        ({ processed, campaignId } = await processPushQueue());
+        ({ processed, campaignId } = await processPushQueue(BATCH_SIZE, renewLock));
         errors = 0;
       } catch (e) {
         // A DB blip or bad row must never kill the process — back off and retry,

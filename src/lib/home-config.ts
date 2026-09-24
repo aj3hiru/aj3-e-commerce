@@ -69,7 +69,7 @@ function block(v: unknown): HomeBlock | null {
 function card(v: unknown): CardOptions {
   const r = (v ?? {}) as Record<string, unknown>, d = DEFAULT_HOME.card;
   return { showWishlist: bool(r.showWishlist, d.showWishlist), showRating: bool(r.showRating, d.showRating), showDiscount: bool(r.showDiscount, d.showDiscount),
-    showDealTimer: bool(r.showDealTimer, d.showDealTimer), showBadge: bool(r.showBadge, d.showBadge) };
+    showDealTimer: bool(r.showDealTimer, d.showDealTimer), showBadge: bool(r.showBadge, d.showBadge), gap: bool(r.gap, d.gap) };
 }
 
 export function sanitizeHome(input: unknown): HomeConfig {

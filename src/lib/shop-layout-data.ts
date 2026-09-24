@@ -8,6 +8,8 @@ import { getStorefrontConfig } from "@/lib/storefront-config";
 import { getLiveHome } from "@/lib/home-config";
 import type { PromoBar } from "@/types/home";
 import type { StorefrontConfig } from "@/types/storefront";
+import type { CartUi } from "@/types/product-page";
+import { getLiveProductPage } from "./product-page-config";
 
 export interface ShopLayoutData {
   business: ShopBusinessSettings;
@@ -16,6 +18,8 @@ export interface ShopLayoutData {
   customer: ShopCustomer | null;
   cartCount: number;
   cartTotal: number;
+  cartItems: Record<string, number>;
+  cartUi: CartUi;
   storefront: StorefrontConfig;
   promo: PromoBar;
 }
@@ -31,7 +35,8 @@ export async function getShopLayoutData(): Promise<ShopLayoutData> {
     getCart(),
     getStorefrontConfig(),
   ]);
-  const promo = (await getLiveHome()).promo;
+  const [home, productPage] = await Promise.all([getLiveHome(), getLiveProductPage()]);
+  const promo = home.promo;
 
   let customer: ShopCustomer | null = null;
   if (customerSession) {
@@ -63,6 +68,8 @@ export async function getShopLayoutData(): Promise<ShopLayoutData> {
     customer,
     cartCount: cartCount(cart),
     cartTotal,
+    cartItems: cart,
+    cartUi: productPage.cart,
     storefront,
     promo,
   };

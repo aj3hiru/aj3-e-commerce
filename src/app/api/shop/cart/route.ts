@@ -4,12 +4,12 @@ import { getCart, setCart, cartCount, cartKey, parseCartKey, type CartMap } from
 import { cartTotal, loadCartLines, priceLine, type CartProduct, type CartSize } from "@/lib/cart-lines";
 import { loadLiveCampaigns } from "@/lib/campaign-pricing";
 
-const summary = async (cart: CartMap) => ({ cart_count: cartCount(cart), cart_total: cartTotal(await loadCartLines(cart)) });
+const summary = async (cart: CartMap) => ({ cart_count: cartCount(cart), cart_total: cartTotal(await loadCartLines(cart)), items: cart });
 
 /** GET the current cart (for hydrating the header cart badge on load). */
 export async function GET() {
   const cart = await getCart();
-  return NextResponse.json({ success: true, ...(await summary(cart)), items: cart });
+  return NextResponse.json({ success: true, ...(await summary(cart)) });
 }
 
 /** Line key from the request: `key` ("12" / "12:5") or product_id (+ size_id). */
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     }
     cart[s.key] = newQty;
     await setCart(cart);
-    return NextResponse.json({ success: true, ...(await summary(cart)) });
+    return NextResponse.json({ success: true, key: s.key, qty: newQty, ...(await summary(cart)) });
   }
 
   if (action === "update_cart_qty") {

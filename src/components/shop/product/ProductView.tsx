@@ -4,12 +4,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Award, Banknote, BadgeCheck, BadgePercent, Box, ChevronDown, ChevronRight, FastForward, Gift, Headphones, Heart, ImageIcon, Leaf, Loader2,
+  Award, Banknote, BadgeCheck, BadgePercent, Box, Check, ChevronDown, ChevronRight, FastForward, Gift, Headphones, Heart, ImageIcon, Leaf, Loader2, Minus, Plus,
   PackageCheck, RotateCcw, Share2, ShieldCheck, ShoppingCart, Star, Store, Tag, Timer, Truck, User, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAddToCart } from "@/hooks/useAddToCart";
-import { ProductTile } from "@/components/shop/home/ProductTile";
+import { ProductTile, tileGridClass } from "@/components/shop/home/ProductTile";
+import { useHomeTheme } from "@/components/shop/home/HomeTheme";
+import { useCart } from "@/hooks/useCart";
 import type { ProductPageData } from "@/lib/product-page-data";
 import type { AssuranceIcon, PPSectionKey, ProductPageConfig, TrustIcon } from "@/types/product-page";
 
@@ -57,9 +59,10 @@ function DealTimer({ endsAt }: { endsAt: string }) {
 
 /* ───────────────────────── gallery ───────────────────────── */
 
-function Gallery({ images, name, cfg }: { images: string[]; name: string; cfg: ProductPageConfig["gallery"] }) {
-  const track = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(0);
+function Gallery({ images, name, cfg, track, active, setActive }: {
+  images: string[]; name: string; cfg: ProductPageConfig["gallery"];
+  track: React.RefObject<HTMLDivElement | null>; active: number; setActive: (i: number) => void;
+}) {
   const [zoom, setZoom] = useState<number | null>(null);
   useEffect(() => {
     if (zoom === null) return;
@@ -113,6 +116,31 @@ function Gallery({ images, name, cfg }: { images: string[]; name: string; cfg: P
         </div>
       )}
     </>
+  );
+}
+
+/** Flipkart-style strip of all the product's photos; tapping one shows it in the gallery above. */
+function Thumbs({ images, active, onPick, cfg }: { images: string[]; active: number; onPick: (i: number) => void; cfg: ProductPageConfig["thumbs"] }) {
+  const row = useRef<HTMLDivElement>(null);
+  useEffect(() => { // keep the selected thumbnail in view while swiping the gallery
+    const el = row.current?.children[active] as HTMLElement | undefined;
+    el?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  }, [active]);
+  if (images.length < 2) return null;
+  return (
+    <div className="px-4 pt-4">
+      {cfg.title && <p className="text-[14px] font-medium text-[#8b8ba3]">{cfg.showCount ? `${images.length} ` : ""}{cfg.title}</p>}
+      <div ref={row} className="mt-2.5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {images.map((img, i) => (
+          <button key={img} type="button" onClick={() => onPick(i)} aria-label={`Show photo ${i + 1}`} aria-pressed={i === active}
+            className={cn("h-[60px] w-[60px] shrink-0 overflow-hidden rounded-lg border-2 bg-white p-0.5 transition",
+              i === active ? "border-[var(--hp-accent)]" : "border-[#eaeaf2] opacity-80 hover:opacity-100")}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src(img)} alt="" loading="lazy" className="h-full w-full rounded-md object-contain" />
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -237,6 +265,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
   const router = useRouter();
   const { addToCart, adding } = useAddToCart();
   const [toast, setToast] = useToast();
+  const { card } = useHomeTheme();
   const defSize = d.sizes.find((z) => z.isDefault) ?? d.sizes[0] ?? null;
   const [sizeId, setSizeId] = useState<number | null>(defSize?.id ?? null);
   const size = d.sizes.find((z) => z.id === sizeId) ?? null;
@@ -248,6 +277,12 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
   const [buying, setBuying] = useState(false);
   const slot = useRef<HTMLDivElement>(null);
   const [docked, setDocked] = useState(false);
+  const galleryTrack = useRef<HTMLDivElement>(null);
+  const [photo, setPhoto] = useState(0);
+  const { items, ui } = useCart();
+  const { setQty } = useAddToCart();
+  const lineKey = sizeId ? `${d.product.id}:${sizeId}` : String(d.product.id);
+  const inCart = items[lineKey] ?? 0;
 
   const hidden = new Set(cfg.hidden);
   const show = (k: PPSectionKey) => !hidden.has(k);
@@ -271,9 +306,10 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
   const floating = actionsShown && cfg.actions.sticky && !docked;
   useEffect(() => {
     if (!floating) return;
-    const prev = document.body.style.paddingBottom;
+    const prev = document.body.style.paddingBottom, root = document.documentElement;
     document.body.style.paddingBottom = "65px";
-    return () => { document.body.style.paddingBottom = prev; };
+    root.style.setProperty("--fcb-offset", "65px"); // the floating View Cart bar sits above the Buy Now bar
+    return () => { document.body.style.paddingBottom = prev; root.style.removeProperty("--fcb-offset"); };
   }, [floating]);
 
   async function toggleWish() {
@@ -305,7 +341,12 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
       else { setBuying(false); setToast(res?.message || "Couldn't add to cart"); }
       return;
     }
-    if (res?.success) setToast("Added to cart");
+    if (res?.success && !ui.floatingBar) setToast("Added to cart");
+  }
+
+  async function changeQty(next: number) {
+    const res = await setQty(lineKey, next);
+    if (res && !res.success) setToast(res.message || "Couldn't update the cart");
   }
 
   const highlights = useMemo(() => {
@@ -322,7 +363,13 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
       {out ? (
         <button type="button" disabled className="h-10 flex-1 rounded-[4px] bg-[#cfcedc] text-[16px] font-medium text-white">Out of Stock</button>
       ) : <>
-        {cfg.actions.showCart && (
+        {cfg.actions.showCart && inCart > 0 && ui.stepper ? (
+          <div className="grid h-10 flex-1 grid-cols-[44px_1fr_44px] items-center overflow-hidden rounded-[4px] border border-[var(--hp-accent)] text-[var(--hp-accent)]">
+            <button type="button" onClick={() => changeQty(inCart - 1)} disabled={adding} aria-label="Decrease quantity" className="grid h-full place-items-center active:bg-[var(--hp-accent)]/10 disabled:opacity-50"><Minus className="h-[18px] w-[18px]" strokeWidth={2.5} /></button>
+            <span className="text-center text-[15px] font-semibold leading-tight">{adding && !buying ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : <>{inCart} <span className="text-[12px] font-normal">in cart</span></>}</span>
+            <button type="button" onClick={() => changeQty(inCart + 1)} disabled={adding} aria-label="Increase quantity" className="grid h-full place-items-center active:bg-[var(--hp-accent)]/10 disabled:opacity-50"><Plus className="h-[18px] w-[18px]" strokeWidth={2.5} /></button>
+          </div>
+        ) : cfg.actions.showCart && (
           <button type="button" onClick={() => add(false)} disabled={adding}
             className="flex h-10 flex-1 items-center justify-center gap-2 rounded-[4px] border border-[var(--hp-accent)] bg-white text-[16px] font-medium text-[var(--hp-accent)] disabled:opacity-60">
             {adding && !buying ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShoppingCart className="h-5 w-5 fill-[var(--hp-accent)]/15" strokeWidth={2} />}{cfg.actions.cartLabel}
@@ -349,7 +396,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
             <span className="inline-block max-w-[170px] truncate align-bottom">{d.product.name}</span>
           </nav>
         );
-      case "gallery": return <Gallery images={d.product.images} name={d.product.name} cfg={cfg.gallery} />;
+      case "gallery": return <Gallery images={d.product.images} name={d.product.name} cfg={cfg.gallery} track={galleryTrack} active={photo} setActive={setPhoto} />;
       case "trust": {
         const t = cfg.trust;
         if (!t.badge && t.items.length === 0) return null;
@@ -368,23 +415,9 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
           </div>
         );
       }
-      case "similar": {
-        const thumbs = [{ id: d.product.id, slug: d.product.slug, image: d.product.images[0] ?? null, name: d.product.name }, ...d.similar];
-        return (
-          <div className="px-4 pt-4">
-            <p className="text-[16px] font-medium text-[#8b8ba3]">{thumbs.length} {cfg.similar.title}</p>
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {thumbs.map((t, i) => (
-                <Link key={t.id} href={`/shop/product?slug=${encodeURIComponent(t.slug)}`} title={t.name} aria-current={i === 0 ? "page" : undefined}
-                  className={cn("h-16 w-12 shrink-0 overflow-hidden rounded-[4px] border bg-[#f5f5f8]", i === 0 ? "border-2 border-[var(--hp-accent)]" : "border-[#dfdfe9]")}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {t.image ? <img src={src(t.image)} alt="" className="h-full w-full object-cover" loading="lazy" /> : <ImageIcon className="m-auto mt-5 h-5 w-5 text-[#c9c9d6]" />}
-                </Link>
-              ))}
-            </div>
-          </div>
-        );
-      }
+      case "thumbs":
+        return <Thumbs images={d.product.images} active={photo} cfg={cfg.thumbs}
+          onPick={(i) => { setPhoto(i); const t = galleryTrack.current; t?.scrollTo({ left: i * t.clientWidth, behavior: "smooth" }); }} />;
       case "info": {
         const i = cfg.info;
         return (
@@ -432,27 +465,40 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
           </div>
         );
       }
-      case "sizes":
+      case "sizes": {
         if (d.sizes.length === 0) return null;
+        // Cards with price when sizes cost differently; simple pills when they don't.
+        const priced = cfg.sizes.showPrice && d.sizes.some((x) => x.final !== d.sizes[0].final || x.mrp !== d.sizes[0].mrp);
         return (
-          <div className="px-4 pb-6 pt-5">
-            <h2 className="text-[18px] font-semibold leading-6">{cfg.sizes.title}</h2>
-            <div className="mt-5 flex flex-wrap gap-3">
+          <div className="px-4 pb-5 pt-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="text-[18px] font-semibold leading-6">{cfg.sizes.title}</h2>
+              {size && <span className="truncate text-[13px] text-[#8b8ba3]">Selected: <b className="font-semibold text-[#353543]">{size.label}</b></span>}
+            </div>
+            <div className={cn("mt-4", priced ? "grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2.5" : "flex flex-wrap gap-2.5")}>
               {d.sizes.map((z) => {
                 const on = z.id === sizeId, no = z.stock === "out";
                 return (
                   <button key={z.id} type="button" onClick={() => setSizeId(z.id)} aria-pressed={on}
-                    className={cn("flex min-h-8 flex-col items-center justify-center rounded-full border px-5 py-1 text-[16px] leading-5",
-                      on ? "border-[var(--hp-accent)] text-[var(--hp-accent)]" : "border-[#cfcedc] text-[#353543]", no && "text-[#b8b8c8] line-through")}
-                    style={on ? { background: "color-mix(in srgb, var(--hp-accent) 9%, white)" } : undefined}>
-                    {z.label}
-                    {cfg.sizes.showPrice && d.sizes.some((x) => x.final !== z.final) && <span className="text-[11px] leading-4 opacity-80">{rupees(z.final)}</span>}
+                    className={cn("relative border text-center transition active:scale-[0.97]",
+                      priced ? "flex flex-col items-center gap-0.5 rounded-xl px-2 py-2.5" : "h-9 min-w-[64px] rounded-full px-4",
+                      on ? "border-[1.5px] border-[var(--hp-accent)] shadow-[0_2px_10px_-4px_var(--hp-accent)]" : "border-[#dcdce6] hover:border-[#b9b9c9]",
+                      no && "border-dashed")}
+                    style={on ? { background: "color-mix(in srgb, var(--hp-accent) 7%, white)" } : undefined}>
+                    <span className={cn("block truncate text-[14px] font-semibold leading-5", on ? "text-[var(--hp-accent)]" : "text-[#353543]", no && "text-[#b8b8c8]")}>{z.label}</span>
+                    {priced && <>
+                      <span className={cn("text-[14px] font-bold leading-5", no ? "text-[#b8b8c8]" : "text-[#353543]")}>{rupees(z.final)}</span>
+                      {z.discountPct > 0 && !no && <span className="text-[11px] leading-4 text-[#8b8ba3]"><s>{rupees(z.mrp)}</s> <span className="font-semibold text-[#038d63]">{z.discountPct}% off</span></span>}
+                    </>}
+                    {no && <span className={cn("block text-[10.5px] font-medium leading-4 text-[#e5485f]", !priced && "absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-1")}>Out of stock</span>}
+                    {on && priced && <Check className="absolute right-1.5 top-1.5 h-3.5 w-3.5 text-[var(--hp-accent)]" strokeWidth={3} />}
                   </button>
                 );
               })}
             </div>
           </div>
         );
+      }
       case "soldBy": {
         const s = cfg.soldBy;
         return (
@@ -537,7 +583,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
         return (
           <div>
             <h2 className="px-4 pb-4 pt-5 text-[20px] font-semibold leading-7">{cfg.related.title}</h2>
-            <div className="grid grid-cols-2 border-t border-[#eaeaf2] shop:grid-cols-3">
+            <div className={cn("grid grid-cols-2 border-t border-[#eaeaf2] shop:grid-cols-3", tileGridClass(card.gap))}>
               {d.related.map((p) => <ProductTile key={p.id} p={p} wished={wish.has(p.id)} onWish={onWish} />)}
             </div>
           </div>

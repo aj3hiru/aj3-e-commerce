@@ -488,6 +488,7 @@ export function HomeCustomizer({ initialDraft, initialLive, categories, products
               <Toggle on={config.card.showDealTimer} onChange={(v) => setCard({ showDealTimer: v })}>Deal countdown timer</Toggle>
               <Toggle on={config.card.showDiscount} onChange={(v) => setCard({ showDiscount: v })}>MRP &amp; % off</Toggle>
               <Toggle on={config.card.showRating} onChange={(v) => setCard({ showRating: v })}>Rating &amp; reviews</Toggle>
+              <Toggle on={config.card.gap} onChange={(v) => setCard({ gap: v })}>Space between products (rounded cards)</Toggle>
             </div>
           </Card>
 

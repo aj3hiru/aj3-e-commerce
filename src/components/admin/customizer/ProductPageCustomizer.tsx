@@ -18,7 +18,7 @@ import {
 import { isSafeHref } from "@/types/storefront";
 
 const SECTION_ICON: Record<PPSectionKey, typeof Box> = {
-  breadcrumb: Navigation, gallery: Images, trust: BadgeInfo, similar: LayoutGrid, info: FileText, sizes: Ruler, soldBy: Store,
+  breadcrumb: Navigation, gallery: Images, trust: BadgeInfo, thumbs: LayoutGrid, info: FileText, sizes: Ruler, soldBy: Store,
   highlights: ListChecks, reviews: MessageSquareText, assurance: ShieldPlus, actions: ShoppingCart, related: Rows3,
 };
 const TRUST_ICON: Record<TrustIcon, typeof Box> = { check: BadgeCheck, box: Box, star: Star, shield: ShieldCheck, truck: Truck, tag: Tag, award: Award, leaf: Leaf };
@@ -120,11 +120,12 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
             )}
           </div>
         </>;
-      case "similar":
-        return <div className="grid grid-cols-[1fr_110px] gap-3">
-          <Text label="Title (after the count)" value={c.similar.title} onChange={(v) => setPart("similar", { title: v })} max={40} placeholder="Similar Products" />
-          <Num label="Max" value={c.similar.limit} onChange={(n) => setPart("similar", { limit: n })} min={1} max={20} />
-        </div>;
+      case "thumbs":
+        return <>
+          <Text label="Label above the photos" value={c.thumbs.title} onChange={(v) => setPart("thumbs", { title: v })} max={40} placeholder="Product Photos" hint="Blank = no label" />
+          <Toggle on={c.thumbs.showCount} onChange={(v) => setPart("thumbs", { showCount: v })}>Show the number of photos (e.g. &ldquo;4 Product Photos&rdquo;)</Toggle>
+          <p className="text-xs text-admin-gray-500">Shown when a product has 2 or more photos. Tapping a thumbnail shows that photo in the gallery.</p>
+        </>;
       case "info":
         return <>
           <div className="divide-y divide-admin-gray-100 rounded-lg border border-admin-gray-200 px-2">
@@ -257,6 +258,21 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
 
         <Card icon={Palette} title="Theme colour" subtitle={c.accent.toUpperCase()} open={open === "theme"} onToggle={() => toggle("theme")}>
           <ColorInput label="Buttons, links, selected size" value={c.accent} onChange={(v) => update((p) => ({ ...p, accent: v }))} swatches={ACCENTS} />
+        </Card>
+
+        <Card icon={ShoppingCart} title="Cart buttons & floating bar" subtitle="Add to Cart on product cards · − / + · View Cart bar" open={open === "cart"} onToggle={() => toggle("cart")}>
+          <p className="-mt-1 text-xs text-admin-gray-500">Applies across the store — homepage, product page and every product grid.</p>
+          <div className="divide-y divide-admin-gray-100 rounded-lg border border-admin-gray-200 px-2">
+            <Toggle on={c.cart.tileButton} onChange={(v) => setPart("cart", { tileButton: v })}>Add to Cart button on product cards</Toggle>
+            <Toggle on={c.cart.stepper} onChange={(v) => setPart("cart", { stepper: v })}>Turn it into − qty + after adding</Toggle>
+            <Toggle on={c.cart.floatingBar} onChange={(v) => setPart("cart", { floatingBar: v })}>Floating View Cart bar (items &amp; total)</Toggle>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Text label="Card button text" value={c.cart.tileLabel} onChange={(v) => setPart("cart", { tileLabel: v })} max={20} />
+            <Text label="Bar button text" value={c.cart.barLabel} onChange={(v) => setPart("cart", { barLabel: v })} max={20} />
+          </div>
+          <ColorInput label="Floating bar colour" value={c.cart.barColor} onChange={(v) => setPart("cart", { barColor: v })} swatches={["#16a34a", "#9f2089", "#7c3aed", "#0284c7", "#ea580c", "#353543"]} />
+          <p className="text-xs text-admin-gray-500">The live preview shows these after you Publish on the homepage; the product page preview shows them straight away.</p>
         </Card>
 
         <p className="px-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-admin-gray-400">Page sections · drag to reorder · switch to hide</p>

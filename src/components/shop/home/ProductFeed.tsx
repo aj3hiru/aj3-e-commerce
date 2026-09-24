@@ -5,7 +5,8 @@ import { createPortal } from "react-dom";
 import { ArrowDownUp, Check, ChevronDown, ListFilter, Loader2, PackageSearch, Star, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FEED_SORTS, type FeedFilters, type FeedProduct, type FeedResult, type FeedSort } from "@/lib/shop-feed-shared";
-import { ProductTile, ProductTileSkeleton } from "./ProductTile";
+import { ProductTile, ProductTileSkeleton, tileGridClass } from "./ProductTile";
+import { useHomeTheme } from "./HomeTheme";
 
 export interface FeedFacets {
   categories: { slug: string; name: string; image: string | null; count: number }[];
@@ -54,6 +55,7 @@ export interface FeedBar { showSort: boolean; showCategory: boolean; showBrand: 
 export function ProductFeed({ title, initial, filters, facets, wishlisted, bar = { showSort: true, showCategory: true, showBrand: true, showFilters: true } }: {
   title: string; initial: FeedResult; filters: FeedFilters; facets: FeedFacets; wishlisted: number[]; bar?: FeedBar;
 }) {
+  const { card } = useHomeTheme();
   const q = filters.q;
   const [applied, setApplied] = useState<Draft>({ ...EMPTY, ...filters });
   const [items, setItems] = useState<FeedProduct[]>(initial.products);
@@ -173,7 +175,7 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted, bar =
           )}
         </div>
       ) : (
-        <div className={cn("grid grid-cols-2 bg-white sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5", loading === "replace" && "opacity-60")}>
+        <div className={cn("grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5", tileGridClass(card.gap), loading === "replace" && "opacity-60")}>
           {items.map((p, i) => <ProductTile key={p.id} p={p} wished={wish.has(p.id)} onWish={onWish} priority={i < 4} />)}
           {loading === "replace" && items.length === 0 && Array.from({ length: 6 }, (_, i) => <ProductTileSkeleton key={i} />)}
           {loading === "more" && Array.from({ length: 4 }, (_, i) => <ProductTileSkeleton key={`s${i}`} />)}

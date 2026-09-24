@@ -49,7 +49,7 @@ export default async function ProductPage({ searchParams }: ProductPageProps) {
     : [];
 
   return (
-    <ShopLayout {...layoutData} promo={home.promo}>
+    <ShopLayout {...layoutData} promo={home.promo} cartUi={cfg.cart}>
       <HomeTheme accent={cfg.accent} card={home.card}>
         {preview && (
           <div className="sticky top-0 z-[950] -mx-8 -mt-6 mb-6 bg-[#353543] px-4 py-1.5 text-center text-xs font-semibold text-white shop:mx-0 shop:mt-0">

@@ -5,14 +5,14 @@
  */
 
 export type PPSectionKey =
-  | "breadcrumb" | "gallery" | "trust" | "similar" | "info" | "sizes" | "soldBy"
+  | "breadcrumb" | "gallery" | "trust" | "thumbs" | "info" | "sizes" | "soldBy"
   | "highlights" | "reviews" | "assurance" | "actions" | "related";
 
 export const PP_SECTION_LABEL: Record<PPSectionKey, string> = {
   breadcrumb: "Breadcrumb",
   gallery: "Image gallery",
   trust: "Trust strip",
-  similar: "Similar products",
+  thumbs: "Photo thumbnails",
   info: "Title, price & rating",
   sizes: "Select size",
   soldBy: "Sold by",
@@ -27,7 +27,7 @@ export const PP_SECTION_HINT: Record<PPSectionKey, string> = {
   breadcrumb: "Home / Category / Product links",
   gallery: "Swipeable product photos with dots",
   trust: "Badge + “Original Brands” strip under the photos",
-  similar: "Small thumbnails of products from the same category",
+  thumbs: "All photos of the product — tap one to show it above",
   info: "Name, price, offer, deal timer, delivery, rating",
   sizes: "Size chips — only for products sold in sizes",
   soldBy: "Your store card with rating and View Shop",
@@ -50,7 +50,7 @@ export interface ProductPageConfig {
   hidden: PPSectionKey[];
   gallery: { dots: boolean; zoom: boolean };
   trust: { badge: string; badgeColor: string; bg: string; items: TrustItem[] };
-  similar: { title: string; limit: number };
+  thumbs: { title: string; showCount: boolean };
   info: {
     showWishlist: boolean; showShare: boolean; showOffer: boolean; showDeal: boolean; showStock: boolean; showRating: boolean;
     deliveryText: string; deliveryStrike: string;
@@ -65,10 +65,12 @@ export interface ProductPageConfig {
   assurance: { bg: string; items: AssuranceItem[] };
   actions: { showCart: boolean; showBuy: boolean; cartLabel: string; buyLabel: string; sticky: boolean };
   related: { title: string; limit: number; source: "category" | "latest" };
+  /** Add-to-cart on product cards, the − / + stepper, and the floating View Cart bar (whole store). */
+  cart: { tileButton: boolean; tileLabel: string; stepper: boolean; floatingBar: boolean; barLabel: string; barColor: string };
 }
 
 export const PP_DEFAULT_ORDER: PPSectionKey[] = [
-  "breadcrumb", "gallery", "trust", "similar", "info", "sizes", "soldBy", "highlights", "reviews", "assurance", "actions", "related",
+  "breadcrumb", "gallery", "trust", "thumbs", "info", "sizes", "soldBy", "highlights", "reviews", "assurance", "actions", "related",
 ];
 
 export const TRUST_ICONS: TrustIcon[] = ["check", "box", "star", "shield", "truck", "tag", "award", "leaf"];
@@ -86,7 +88,7 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageConfig = {
       { id: "t2", icon: "star", label: "Direct From Store" },
     ],
   },
-  similar: { title: "Similar Products", limit: 8 },
+  thumbs: { title: "Product Photos", showCount: true },
   info: {
     showWishlist: true, showShare: true, showOffer: false, showDeal: true, showStock: true, showRating: true,
     deliveryText: "Free Delivery", deliveryStrike: "",
@@ -108,4 +110,7 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageConfig = {
   },
   actions: { showCart: true, showBuy: true, cartLabel: "Add to Cart", buyLabel: "Buy Now", sticky: true },
   related: { title: "People also viewed", limit: 10, source: "category" },
+  cart: { tileButton: true, tileLabel: "Add to Cart", stepper: true, floatingBar: true, barLabel: "View Cart", barColor: "#16a34a" },
 };
+
+export type CartUi = ProductPageConfig["cart"];

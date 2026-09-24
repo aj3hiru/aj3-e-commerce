@@ -27,12 +27,18 @@ const image = (v: unknown) => { const s = str(v, 400, ""); return /^uploads\/[\w
 export function sanitizeProductPage(input: unknown): ProductPageConfig {
   const r = obj(input), D = DEFAULT_PRODUCT_PAGE;
   const keys = new Set<string>(PP_DEFAULT_ORDER);
-  // Keep the saved order, then append any section added since it was saved.
-  const saved = Array.isArray(r.order) ? r.order.filter((k): k is PPSectionKey => typeof k === "string" && keys.has(k)) : [];
-  const order = [...new Set([...saved, ...PP_DEFAULT_ORDER])];
-  const hidden = Array.isArray(r.hidden) ? [...new Set(r.hidden.filter((k): k is PPSectionKey => typeof k === "string" && keys.has(k)))] : D.hidden;
+  // "similar" was replaced by the photo thumbnails, in the same place.
+  const rename = (k: unknown) => (k === "similar" ? "thumbs" : k);
+  // Keep the saved order; a section added since goes after its neighbour in the default order.
+  const order = [...new Set(Array.isArray(r.order) ? r.order.map(rename).filter((k): k is PPSectionKey => typeof k === "string" && keys.has(k)) : [])];
+  PP_DEFAULT_ORDER.forEach((k, i) => {
+    if (order.includes(k)) return;
+    const prev = i > 0 ? order.indexOf(PP_DEFAULT_ORDER[i - 1]) : -1;
+    order.splice(prev + 1, 0, k);
+  });
+  const hidden = Array.isArray(r.hidden) ? [...new Set(r.hidden.map(rename).filter((k): k is PPSectionKey => typeof k === "string" && keys.has(k)))] : D.hidden;
 
-  const g = obj(r.gallery), t = obj(r.trust), sm = obj(r.similar), inf = obj(r.info), sz = obj(r.sizes), sb = obj(r.soldBy);
+  const g = obj(r.gallery), t = obj(r.trust), th = obj(r.thumbs), ct = obj(r.cart), inf = obj(r.info), sz = obj(r.sizes), sb = obj(r.soldBy);
   const h = obj(r.highlights), rv = obj(r.reviews), as = obj(r.assurance), ac = obj(r.actions), rl = obj(r.related);
 
   return {
@@ -45,7 +51,7 @@ export function sanitizeProductPage(input: unknown): ProductPageConfig {
         ? t.items.slice(0, 3).map((x) => { const o = obj(x); return { id: id(o.id), icon: TRUST_ICONS.includes(o.icon as TrustIcon) ? (o.icon as TrustIcon) : "check", label: str(o.label, 30, "") }; }).filter((x) => x.label)
         : D.trust.items,
     },
-    similar: { title: str(sm.title, 40, D.similar.title), limit: int(sm.limit, 1, 20, D.similar.limit) },
+    thumbs: { title: str(th.title, 40, D.thumbs.title), showCount: bool(th.showCount, D.thumbs.showCount) },
     info: {
       showWishlist: bool(inf.showWishlist, D.info.showWishlist), showShare: bool(inf.showShare, D.info.showShare),
       showOffer: bool(inf.showOffer, D.info.showOffer), showDeal: bool(inf.showDeal, D.info.showDeal),
@@ -80,6 +86,11 @@ export function sanitizeProductPage(input: unknown): ProductPageConfig {
       sticky: bool(ac.sticky, D.actions.sticky),
     },
     related: { title: str(rl.title, 40, D.related.title) || D.related.title, limit: int(rl.limit, 2, 30, D.related.limit), source: rl.source === "latest" ? "latest" : "category" },
+    cart: {
+      tileButton: bool(ct.tileButton, D.cart.tileButton), tileLabel: str(ct.tileLabel, 20, D.cart.tileLabel) || D.cart.tileLabel,
+      stepper: bool(ct.stepper, D.cart.stepper), floatingBar: bool(ct.floatingBar, D.cart.floatingBar),
+      barLabel: str(ct.barLabel, 20, D.cart.barLabel) || D.cart.barLabel, barColor: color(ct.barColor, D.cart.barColor),
+    },
   };
 }
 

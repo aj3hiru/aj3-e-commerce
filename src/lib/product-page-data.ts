@@ -20,7 +20,6 @@ export interface ProductPageData {
   rating: { avg: number | null; count: number; withText: number; dist: [number, number, number, number, number] };
   reviews: { id: number; name: string; rating: number; text: string | null; date: string }[];
   offer: { price: number; count: number; codes: { code: string; title: string; label: string }[] } | null;
-  similar: { id: number; slug: string; image: string | null; name: string }[];
   related: FeedProduct[];
   store: { name: string; rating: number | null; count: number };
 }
@@ -44,7 +43,7 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
 
   const now = new Date();
   const hidden = new Set(cfg.hidden);
-  const [campaigns, reviewRows, dist, storeAgg, biz, relatedRows, similarRows] = await Promise.all([
+  const [campaigns, reviewRows, dist, storeAgg, biz, relatedRows] = await Promise.all([
     loadLiveCampaigns().catch(() => []),
     hidden.has("reviews") ? Promise.resolve([]) : prisma.ecomProductReview.findMany({ where: { productId: p.id, status: "approved" }, orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.ecomProductReview.groupBy({ by: ["rating"], where: { productId: p.id, status: "approved" }, _count: { _all: true } }),
@@ -53,10 +52,6 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
     hidden.has("related") ? Promise.resolve([]) : prisma.ecomProduct.findMany({
       where: { status: "active", id: { not: p.id }, ...(cfg.related.source === "category" && p.categoryId ? { categoryId: p.categoryId } : {}) },
       orderBy: { createdAt: "desc" }, take: cfg.related.limit, select: FEED_SELECT,
-    }),
-    hidden.has("similar") || !p.categoryId ? Promise.resolve([]) : prisma.ecomProduct.findMany({
-      where: { status: "active", categoryId: p.categoryId, id: { not: p.id } }, orderBy: { createdAt: "desc" }, take: cfg.similar.limit,
-      select: { id: true, slug: true, image: true, name: true },
     }),
   ]);
 
@@ -124,7 +119,6 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
     reviews: (reviewRows as { id: number; customerName: string; rating: number; reviewText: string | null; createdAt: Date }[])
       .map((r) => ({ id: r.id, name: r.customerName, rating: r.rating, text: r.reviewText, date: r.createdAt.toISOString() })),
     offer,
-    similar: similarRows as ProductPageData["similar"],
     related,
     store: {
       name: biz?.businessName ?? "Our Store",

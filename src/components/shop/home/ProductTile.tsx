@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BadgeCheck, Heart, ImageIcon, Star, Timer } from "lucide-react";
+import { BadgeCheck, Check, Heart, ImageIcon, Loader2, Minus, Plus, ShoppingCart, Star, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FeedProduct } from "@/lib/shop-feed-shared";
 import { MEESHO } from "@/types/home";
 import { useHomeTheme } from "./HomeTheme";
+import { productKeys, useCart } from "@/hooks/useCart";
+import { useAddToCart } from "@/hooks/useAddToCart";
 
 const rupees = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 const BADGE: Record<string, string> = { new: "New", best: "Bestseller", hot: "Trending", featured: "Featured" };
@@ -29,6 +31,37 @@ function DealTimer({ endsAt }: { endsAt: string }) {
     <span className="inline-flex h-[22px] items-center gap-1 whitespace-nowrap rounded-full bg-[#ffe7d6] px-2 text-[12px] font-medium tabular-nums leading-none text-[#f16b24]">
       <Timer className="h-3 w-3" strokeWidth={2.5} />{pad(Math.floor(s / 3600))}h : {pad(Math.floor((s % 3600) / 60))}m : {pad(s % 60)}s
     </span>
+  );
+}
+
+/** Add to Cart button that turns into − qty + once the product is in the cart. */
+export function TileCartButton({ p }: { p: FeedProduct }) {
+  const { items, ui } = useCart();
+  const { addToCart, setQty } = useAddToCart();
+  const [busy, setBusy] = useState(false);
+  if (!ui.tileButton || p.stock === "out") return null;
+  const keys = productKeys(items, p.id);
+  const qty = keys.reduce((n, k) => n + (items[k] ?? 0), 0);
+  const run = async (fn: () => Promise<unknown>) => { if (busy) return; setBusy(true); try { await fn(); } finally { setBusy(false); } };
+
+  if (qty > 0 && ui.stepper && keys.length === 1) {
+    const key = keys[0];
+    return (
+      <div className="grid h-[34px] grid-cols-[34px_1fr_34px] items-center overflow-hidden rounded-lg bg-[var(--hp-accent)] text-white" aria-busy={busy}>
+        <button type="button" onClick={() => run(() => setQty(key, qty - 1))} aria-label="Decrease quantity" className="grid h-full place-items-center active:bg-black/15"><Minus className="h-4 w-4" strokeWidth={2.6} /></button>
+        <span className="grid place-items-center text-[14px] font-bold tabular-nums">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : qty}</span>
+        <button type="button" onClick={() => run(() => setQty(key, qty + 1))} aria-label="Increase quantity" className="grid h-full place-items-center active:bg-black/15"><Plus className="h-4 w-4" strokeWidth={2.6} /></button>
+      </div>
+    );
+  }
+  const inCart = qty > 0;
+  return (
+    <button type="button" onClick={() => run(() => addToCart(p.id))}
+      className={cn("flex h-[34px] w-full items-center justify-center gap-1.5 rounded-lg border-[1.5px] text-[13px] font-semibold transition active:scale-[0.98]",
+        inCart ? "border-[var(--hp-accent)] bg-[var(--hp-accent)] text-white" : "border-[var(--hp-accent)] bg-white text-[var(--hp-accent)]")}>
+      {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : inCart ? <Check className="h-4 w-4" strokeWidth={2.6} /> : <ShoppingCart className="h-[15px] w-[15px]" strokeWidth={2.2} />}
+      {inCart ? `In cart · ${qty}` : ui.tileLabel}
+    </button>
   );
 }
 
@@ -67,9 +100,11 @@ export function ProductTile({ p, wished, onWish, priority, lines = true }: {
 
   const badge = card.showBadge ? BADGE[p.badge] : undefined;
   const timer = card.showDealTimer && p.dealEndsAt;
+  const boxed = card.gap && lines; // grid tiles become small rounded cards with a gap between them
   return (
+    <div className={cn("flex min-w-0 flex-col bg-white pb-3", boxed ? "overflow-hidden rounded-[10px] border border-[#eaeaf2]" : lines && "shadow-[inset_-1px_-1px_0_#eaeaf2]")}>
     <Link href={`/shop/product?slug=${encodeURIComponent(p.slug)}`}
-      className={cn("group flex min-w-0 flex-col bg-white pb-3 outline-none focus-visible:ring-2 focus-visible:ring-[var(--hp-accent)]", lines && "shadow-[inset_-1px_-1px_0_#eaeaf2]")}>
+      className="group flex min-w-0 flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--hp-accent)]">
       <div className="relative aspect-[1/1.1] w-full overflow-hidden bg-white">
         {p.image && imgOk ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -116,12 +151,18 @@ export function ProductTile({ p, wished, onWish, priority, lines = true }: {
         )}
       </div>
     </Link>
+    <div className="px-2 pt-2.5"><TileCartButton p={p} /></div>
+    </div>
   );
 }
 
+/** Grid classes matching the card style: a small gap on a light grey background, or edge-to-edge tiles. */
+export const tileGridClass = (gap: boolean) => (gap ? "gap-2 bg-[#f3f3f8] p-2" : "bg-white");
+
 export function ProductTileSkeleton() {
+  const { card } = useHomeTheme();
   return (
-    <div className="bg-white pb-3 shadow-[inset_-1px_-1px_0_#eaeaf2]" aria-hidden>
+    <div className={cn("bg-white pb-3", card.gap ? "overflow-hidden rounded-[10px] border border-[#eaeaf2]" : "shadow-[inset_-1px_-1px_0_#eaeaf2]")} aria-hidden>
       <div className="aspect-[1/1.1] w-full animate-pulse bg-[#f0f0f5]" />
       <div className="space-y-2 px-2 pt-2.5">
         <div className="h-3.5 w-4/5 animate-pulse rounded bg-[#f0f0f5]" />

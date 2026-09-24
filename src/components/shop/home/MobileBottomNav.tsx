@@ -16,10 +16,14 @@ export function MobileBottomNav({ loggedIn }: { loggedIn: boolean }) {
   const { count } = useCart();
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 900px)");
-    const apply = () => { document.body.style.paddingBottom = mq.matches ? "58px" : ""; };
+    const root = document.documentElement;
+    const apply = () => {
+      document.body.style.paddingBottom = mq.matches ? "58px" : "";
+      if (mq.matches) root.style.setProperty("--fcb-offset", "58px"); else root.style.removeProperty("--fcb-offset"); // floating cart bar sits above
+    };
     apply();
     mq.addEventListener("change", apply);
-    return () => { mq.removeEventListener("change", apply); document.body.style.paddingBottom = ""; };
+    return () => { mq.removeEventListener("change", apply); document.body.style.paddingBottom = ""; root.style.removeProperty("--fcb-offset"); };
   }, []);
   const item = "flex flex-col items-center justify-center gap-[3px] text-[11.5px] leading-none text-[#8b8ba3]";
   const icon = "h-6 w-6 text-[#666]";

@@ -9,6 +9,8 @@ import { PromoBar } from "./PromoBar";
 import type { PromoBar as PromoConfig } from "@/types/home";
 import { resolveMenu } from "./menu/StoreMenus";
 import { CartProvider } from "@/hooks/useCart";
+import { FloatingCartBar } from "./FloatingCartBar";
+import type { CartUi } from "@/types/product-page";
 import { defaultShopHeaderSettings } from "@/lib/shop-header-defaults";
 import { DEFAULT_STOREFRONT, type StorefrontConfig } from "@/types/storefront";
 import type { ShopBusinessSettings, ShopCategoryNavItem, ShopCustomer, ShopHeaderSettings } from "@/types/shop";
@@ -22,6 +24,10 @@ interface ShopLayoutProps {
   customer: ShopCustomer | null;
   cartCount: number;
   cartTotal: number;
+  /** Cart lines (key → qty) for the − / + steppers. */
+  cartItems?: Record<string, number>;
+  /** Add-to-cart / floating bar options (Customizer → Product Page). */
+  cartUi?: CartUi;
   /** Menus, menu design, push bell/prompt and footer from Business Settings. */
   storefront?: StorefrontConfig;
   /** Offer strip above the header, from the Homepage Customizer. */
@@ -29,7 +35,7 @@ interface ShopLayoutProps {
   children: React.ReactNode;
 }
 
-export function ShopLayout({ business, header, categories, customer, cartCount, cartTotal, storefront = DEFAULT_STOREFRONT, promo = null, children }: ShopLayoutProps) {
+export function ShopLayout({ business, header, categories, customer, cartCount, cartTotal, cartItems, cartUi, storefront = DEFAULT_STOREFRONT, promo = null, children }: ShopLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   const headerSettings = header ?? defaultShopHeaderSettings(business.businessHours);
@@ -38,7 +44,7 @@ export function ShopLayout({ business, header, categories, customer, cartCount, 
   const sidebarMenu = useMemo(() => resolveMenu(storefront.sidebarMenu, loggedIn, categories), [storefront.sidebarMenu, loggedIn, categories]);
 
   return (
-    <CartProvider initialCount={cartCount} initialTotal={cartTotal}>
+    <CartProvider initialCount={cartCount} initialTotal={cartTotal} initialItems={cartItems} ui={cartUi}>
       <PushProvider config={storefront.push}>
         {/* font-storefront: the shop uses Segoe UI, not the admin's Inter — see
             the `body` rule at the top of shop-header.php. */}
@@ -67,6 +73,7 @@ export function ShopLayout({ business, header, categories, customer, cartCount, 
             {children}
           </div>
           <ShopFooter business={business} footer={storefront.footer} />
+          <FloatingCartBar />
         </div>
       </PushProvider>
     </CartProvider>

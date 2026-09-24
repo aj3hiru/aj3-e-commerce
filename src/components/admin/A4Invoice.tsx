@@ -1,3 +1,4 @@
+import { PrintButton } from "./PrintButton";
 import type { InvoiceData, InvoiceBusinessSettings } from "@/lib/invoice-data";
 
 interface A4InvoiceProps {
@@ -19,7 +20,7 @@ export function A4Invoice({ data, biz, siteName }: A4InvoiceProps) {
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", background: "#f3f4f6", color: "#1f2937", minHeight: "100vh" }}>
       <div className="print-bar" style={{ maxWidth: 800, margin: "0 auto 1rem", display: "flex", justifyContent: "flex-end", gap: "0.5rem", paddingTop: "1rem" }}>
-        <button onClick={() => window.print()} className="btn btn-primary" style={btnPrimary}>Print</button>
+        <PrintButton className="btn btn-primary" style={btnPrimary} />
         <a href={`?format=thermal_80`} className="btn btn-secondary" style={btnSecondary}>Thermal View</a>
       </div>
 

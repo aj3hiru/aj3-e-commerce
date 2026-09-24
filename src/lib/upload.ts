@@ -1,5 +1,6 @@
 import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
+import { prisma } from "@/lib/db";
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
@@ -36,7 +37,14 @@ export async function saveUploadedImage(
   const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(path.join(uploadDir, filename), buffer);
 
-  return `uploads/${subfolder}/${filename}`;
+  const rel = `uploads/${subfolder}/${filename}`;
+  // Also list it in the File Manager (best-effort — the upload itself already worked).
+  try {
+    await prisma.media.create({ data: { filePath: rel, fileType: "image", altText: "", title: file.name.replace(/\.[^.]+$/, "").slice(0, 190) } });
+  } catch (e) {
+    console.error("media register failed", e);
+  }
+  return rel;
 }
 
 /** Best-effort delete, mirrors the PHP's `@unlink()` error suppression when
@@ -47,5 +55,10 @@ export async function deleteUploadedImage(relativePath: string | null | undefine
     await unlink(path.join(process.cwd(), "public", relativePath));
   } catch {
     // best-effort, matches PHP's @unlink()
+  }
+  try {
+    await prisma.media.deleteMany({ where: { filePath: relativePath } });
+  } catch {
+    // still linked from a post, or the table is missing — leave the row
   }
 }

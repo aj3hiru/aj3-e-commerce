@@ -44,7 +44,7 @@ export type HomeBlock =
 
 export type HomeBlockType = HomeBlock["type"];
 
-export interface CardOptions { showWishlist: boolean; showRating: boolean; showDiscount: boolean; showDealTimer: boolean; showBadge: boolean }
+export interface CardOptions { showWishlist: boolean; showRating: boolean; showDiscount: boolean; showDealTimer: boolean; showBadge: boolean; /** Small gap + rounded cards instead of edge-to-edge tiles. */ gap: boolean }
 
 export interface HomeConfig {
   accent: string;
@@ -88,6 +88,6 @@ export const DEFAULT_HOME: HomeConfig = {
     { id: "b-cats", type: "categories", enabled: true, source: "all", slugs: [], limit: 12, showAllButton: true },
     { id: "b-feed", type: "feed", enabled: true, title: "Products For You", showSort: true, showCategory: true, showBrand: true, showFilters: true },
   ],
-  card: { showWishlist: true, showRating: true, showDiscount: true, showDealTimer: true, showBadge: true },
+  card: { showWishlist: true, showRating: true, showDiscount: true, showDealTimer: true, showBadge: true, gap: true },
   bottomNav: true,
 };

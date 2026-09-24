@@ -83,8 +83,8 @@ export const PUSH2_GROUPS: readonly WidgetGroup[] = [
     groupLabel: "Settings",
     items: [
       { key: "pm2-st-form", label: "VAPID keys form" },
-      { key: "pm2-st-status", label: "Status panel" },
-      { key: "pm2-st-help", label: "Key pair help" },
+      { key: "pm2-st-status", label: "Key tools (generate / backup)" },
+      { key: "pm2-st-help", label: "Where to get keys guide" },
     ],
   },
 ];

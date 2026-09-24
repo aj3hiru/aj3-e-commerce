@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  AlertTriangle, CheckCircle2, Download, FileUp, Loader2, RotateCcw, ShieldCheck, Square, Upload, X, XCircle,
+  AlertTriangle, CheckCircle2, Download, FileUp, KeyRound, Loader2, RotateCcw, ShieldCheck, ShieldAlert, Square, Upload, X, XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatInt } from "@/lib/format";
@@ -25,7 +25,10 @@ const COLORS = {
   add: "#16a34a", update: "#2563eb", same: "#94a3b8", reject: "#dc2626", dup: "#f59e0b",
 };
 
-export function ImportWizard({ onClose, onDone }: { onClose: () => void; onDone: (text: string) => void }) {
+export function ImportWizard({ siteKey, onOpenSettings, onClose, onDone }: {
+  siteKey: { configured: boolean; fingerprint: string }; onOpenSettings: () => void;
+  onClose: () => void; onDone: (text: string) => void;
+}) {
   const [phase, setPhase] = useState<Phase>("pick");
   const [file, setFile] = useState<File | null>(null);
   const [drag, setDrag] = useState(false);
@@ -157,6 +160,7 @@ export function ImportWizard({ onClose, onDone }: { onClose: () => void; onDone:
               <span className="text-xs text-admin-gray-500">CSV or JSON · up to 10MB · 100,000 rows</span>
               <input ref={input} type="file" accept=".csv,.json,.txt,text/csv,application/json" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
             </div>
+            <KeyNotice siteKey={siteKey} onOpenSettings={onOpenSettings} />
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-[0.5rem] bg-admin-gray-50 px-3.5 py-3 text-xs text-admin-gray-600">
                 <p className="mb-1.5 font-semibold text-admin-gray-800">Accepted formats</p>
@@ -189,7 +193,7 @@ export function ImportWizard({ onClose, onDone }: { onClose: () => void; onDone:
           </div>
         )}
 
-        {phase === "review" && report && <Review report={report} />}
+        {phase === "review" && report && <><KeyCheck report={report} onOpenSettings={onOpenSettings} /><Review report={report} /></>}
 
         {(phase === "importing" || phase === "done" || phase === "error") && report && progress && (
           <div className="space-y-5">
@@ -391,6 +395,50 @@ function Review({ report }: { report: ImportAnalysis }) {
           subscribers that have left are removed automatically on the first send.
         </p>
       )}
+    </div>
+  );
+}
+
+/** Upload step: which keys this site uses, and what that means for imports. */
+function KeyNotice({ siteKey, onOpenSettings }: { siteKey: { configured: boolean; fingerprint: string }; onOpenSettings: () => void }) {
+  if (!siteKey.configured) {
+    return (
+      <div className="flex flex-wrap items-start gap-3 rounded-[0.5rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
+        <span className="min-w-0 flex-1"><b>Set up VAPID keys first.</b> Imported subscribers can only be reached with the keys they signed up with — add those keys in Settings, then import.</span>
+        <button type="button" onClick={onOpenSettings} className="h-8 rounded-[0.375rem] bg-amber-600 px-3 text-xs font-semibold text-white hover:bg-amber-700">Open Settings</button>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-start gap-3 rounded-[0.5rem] border border-blue-100 bg-blue-50/70 px-4 py-3 text-xs text-blue-950">
+      <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-[#2563eb]" />
+      <span className="min-w-0 flex-1">
+        This site&apos;s keys: <b className="font-mono">ID {siteKey.fingerprint}</b>. Import subscribers that signed up with <b>these same keys</b>.
+        Coming from another server? Copy that server&apos;s keys into Settings first.
+      </span>
+      <button type="button" onClick={onOpenSettings} className="font-semibold text-[#2563eb] hover:underline">Settings →</button>
+    </div>
+  );
+}
+
+/** Review step: do the file's subscribers belong to this site's keys? */
+function KeyCheck({ report, onOpenSettings }: { report: ImportAnalysis; onOpenSettings: () => void }) {
+  const m = {
+    match: { cls: "border-emerald-200 bg-emerald-50 text-emerald-900", icon: <CheckCircle2 className="h-5 w-5 shrink-0" />,
+      text: <><b>Keys match.</b> These subscribers signed up with this site&apos;s keys (ID <span className="font-mono">{report.siteKeyFingerprint}</span>) — they can receive notifications.</> },
+    mismatch: { cls: "border-red-200 bg-red-50 text-red-900", icon: <ShieldAlert className="h-5 w-5 shrink-0" />,
+      text: <><b>Different keys.</b> The file was exported with key ID <span className="font-mono">{report.fileKeyFingerprint}</span>, this site uses <span className="font-mono">{report.siteKeyFingerprint}</span>. These subscribers won&apos;t get notifications unless you put the old server&apos;s keys in Settings.</> },
+    unknown: { cls: "border-amber-200 bg-amber-50 text-amber-900", icon: <AlertTriangle className="h-5 w-5 shrink-0" />,
+      text: <><b>Keys can&apos;t be checked</b> — CSV / old PHP files don&apos;t say which keys were used. Import only if they came from a site using this site&apos;s keys (ID <span className="font-mono">{report.siteKeyFingerprint}</span>). Tip: JSON exports from this panel are checked automatically.</> },
+    "no-keys": { cls: "border-amber-200 bg-amber-50 text-amber-900", icon: <ShieldAlert className="h-5 w-5 shrink-0" />,
+      text: <><b>This site has no VAPID keys yet.</b> Add the keys these subscribers signed up with in Settings, otherwise they can&apos;t be reached.</> },
+  }[report.keyCheck];
+  return (
+    <div className={cn("flex flex-wrap items-start gap-3 rounded-xl border px-4 py-3 text-sm", m.cls)}>
+      {m.icon}
+      <span className="min-w-0 flex-1">{m.text}</span>
+      {report.keyCheck !== "match" && <button type="button" onClick={onOpenSettings} className="text-sm font-semibold underline-offset-2 hover:underline">Open Settings</button>}
     </div>
   );
 }

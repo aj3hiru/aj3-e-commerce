@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { getPushSettings, keyFingerprint } from "@/lib/push-settings";
 import { BROWSER_LABEL, browserOf, parseSubscriptionFile, verifySubscription, type CleanSubscription, type PushBrowser } from "@/lib/push-subscriptions";
 
 /**
@@ -30,6 +31,11 @@ export interface ImportAnalysis {
   reasons: { reason: string; count: number }[];
   browsers: { browser: PushBrowser; label: string; count: number }[];
   rejectedSample: RejectedRow[];
+  /** Were these subscribers created with this site's VAPID public key?
+   *  "unknown" when the file doesn't say (CSV, old PHP data). */
+  keyCheck: "match" | "mismatch" | "unknown" | "no-keys";
+  fileKeyFingerprint: string;
+  siteKeyFingerprint: string;
 }
 
 export interface ImportProgress { processed: number; total: number; added: number; updated: number; unchanged: number; done: boolean }
@@ -105,6 +111,7 @@ export async function analyzeImport(text: string, fileName: string, userId: numb
   const byBrowser = new Map<PushBrowser, number>();
   for (const r of rows) { const b = browserOf(r.endpoint); byBrowser.set(b, (byBrowser.get(b) ?? 0) + 1); }
 
+  const site = await getPushSettings();
   prune();
   const token = randomBytes(18).toString("base64url");
   const analysis: ImportAnalysis = {
@@ -114,6 +121,9 @@ export async function analyzeImport(text: string, fileName: string, userId: numb
     browsers: (["chrome", "firefox", "safari", "edge", "other"] as PushBrowser[])
       .map((b) => ({ browser: b, label: BROWSER_LABEL[b], count: byBrowser.get(b) ?? 0 })).filter((b) => b.count > 0),
     rejectedSample: rejected.slice(0, 100),
+    keyCheck: !site.configured ? "no-keys" : !parsed.vapidPublicKey ? "unknown" : parsed.vapidPublicKey === site.publicKey ? "match" : "mismatch",
+    fileKeyFingerprint: parsed.vapidPublicKey ? keyFingerprint(parsed.vapidPublicKey) : "",
+    siteKeyFingerprint: site.configured ? keyFingerprint(site.publicKey) : "",
   };
   batches.set(token, {
     userId, createdAt: Date.now(), analysis, rows, rejected, running: false,

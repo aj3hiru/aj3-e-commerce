@@ -9,7 +9,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { getPushCatalog } from "@/lib/push-catalog";
 import { getCampaignHistory } from "@/lib/push-manager2";
-import { getPushSettings } from "@/lib/push-settings";
+import { getPushSettings, keyFingerprint } from "@/lib/push-settings";
 import { BROWSER_LABEL, browserOf, subscriberBreakdown } from "@/lib/push-subscriptions";
 
 const HISTORY_PAGE_SIZE = 10; // same as view-logs.php's $limit
@@ -103,8 +103,12 @@ export default async function PushManager2Page({ searchParams }: { searchParams:
             configured: settings.configured,
             // The private key never leaves the server — only whether one is saved.
             ...(canManage
-              ? { publicKey: settings.publicKey, subject: settings.subject, hasPrivateKey: !!settings.privateKey }
-              : { publicKey: "", subject: "", hasPrivateKey: false }),
+              ? {
+                  publicKey: settings.publicKey, subject: settings.subject, hasPrivateKey: !!settings.privateKey,
+                  // Fingerprints are hashes — safe to show, reveal nothing of the keys.
+                  publicFingerprint: keyFingerprint(settings.publicKey), privateFingerprint: keyFingerprint(settings.privateKey),
+                }
+              : { publicKey: "", subject: "", hasPrivateKey: false, publicFingerprint: "", privateFingerprint: "" }),
           }}
         />
       </AdminShell>

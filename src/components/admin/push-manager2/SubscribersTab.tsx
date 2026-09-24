@@ -26,8 +26,9 @@ export function exportSubscribers(format: "csv" | "json") {
 }
 
 /** Subscribers: who can receive pushes, by browser — plus import/export and removal. */
-export function SubscribersTab({ data, onPage, onChanged, onError }: {
-  data: SubscribersData; onPage: (p: number) => void; onChanged: (text: string) => void; onError: (text: string) => void;
+export function SubscribersTab({ data, siteKey, onPage, onChanged, onError, onOpenSettings }: {
+  data: SubscribersData; siteKey: { configured: boolean; fingerprint: string };
+  onPage: (p: number) => void; onChanged: (text: string) => void; onError: (text: string) => void; onOpenSettings: () => void;
 }) {
   const { isVisible: show } = useDashboardWidgetPrefs();
   const [importOpen, setImportOpen] = useState(false);
@@ -128,7 +129,8 @@ export function SubscribersTab({ data, onPage, onChanged, onError }: {
 
       {show("pm2-s-pager") && <Pager page={data.page} pageCount={data.pageCount} onPage={onPage} label="Subscriber pages" />}
 
-      {importOpen && <ImportWizard onClose={() => setImportOpen(false)} onDone={(text) => { setImportOpen(false); onChanged(text); }} />}
+      {importOpen && <ImportWizard siteKey={siteKey} onOpenSettings={() => { setImportOpen(false); onOpenSettings(); }}
+        onClose={() => setImportOpen(false)} onDone={(text) => { setImportOpen(false); onChanged(text); }} />}
       {confirm && (
         <ConfirmDialog icon={<Trash2 className="h-6 w-6" />} tone="red" title="Remove subscriber?"
           text={<>{confirm.browserLabel} subscriber #{confirm.id} will stop receiving notifications. They can subscribe again from the store.</>}

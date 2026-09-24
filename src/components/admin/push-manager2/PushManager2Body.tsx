@@ -164,13 +164,14 @@ export function PushManager2Body({ tab, canManageSettings, appName, siteUrl, cat
           onError={(text) => setToast({ ok: false, text })} />
       )}
       {tab === "subscribers" && canManageSettings && subscribers && show("pm2-subs") && (
-        <SubscribersTab data={subscribers} onPage={(p) => go("subscribers", p)}
+        <SubscribersTab data={subscribers} siteKey={{ configured: settings.configured, fingerprint: settings.publicFingerprint }}
+          onOpenSettings={() => go("settings")} onPage={(p) => go("subscribers", p)}
           onChanged={(text) => { setToast({ ok: true, text }); router.refresh(); }}
           onError={(text) => setToast({ ok: false, text })} />
       )}
       {tab === "settings" && canManageSettings && show("pm2-settings") && (
         <SettingsTab settings={settings} subscribers={stats.subscribers}
-          onSaved={() => { setToast({ ok: true, text: "Push settings saved." }); router.refresh(); }}
+          onSaved={(text) => { setToast({ ok: true, text: text ?? "Push settings saved." }); router.refresh(); }}
           onError={(text) => setToast({ ok: false, text })} />
       )}
 

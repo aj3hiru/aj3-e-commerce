@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
-import { getPushSettings, savePushSettings } from "@/lib/push-settings";
+import { getPushSettings, savePushSettings, validateVapidPair } from "@/lib/push-settings";
 import { prisma } from "@/lib/db";
 
 export async function GET() {
@@ -45,6 +45,8 @@ export async function POST(req: NextRequest) {
   if (!privateKey) {
     return NextResponse.json({ success: false, error: "Private key is required." }, { status: 400 });
   }
+  const pairError = validateVapidPair(publicKey, privateKey);
+  if (pairError) return NextResponse.json({ success: false, error: pairError }, { status: 400 });
 
   await savePushSettings({ publicKey, privateKey, subject });
   await logActivity(req, session.userId, "push_settings_update", "Updated push notification VAPID settings");

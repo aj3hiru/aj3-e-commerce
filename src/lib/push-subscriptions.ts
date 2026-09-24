@@ -127,12 +127,14 @@ export function cleanSubscription(input: unknown): CleanSubscription | null {
 }
 
 /** Parses an uploaded CSV or JSON file into candidate subscriptions. */
-export function parseSubscriptionFile(text: string): { rows: unknown[]; format: "json" | "csv" } {
+export function parseSubscriptionFile(text: string): { rows: unknown[]; format: "json" | "csv"; vapidPublicKey?: string } {
   const trimmed = text.replace(/^﻿/, "").trim();
   if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
     const data = JSON.parse(trimmed);
     const list = Array.isArray(data) ? data : Array.isArray(data?.subscriptions) ? data.subscriptions : [data];
-    return { rows: list, format: "json" };
+    // Our JSON export records which public key the subscribers belong to.
+    const vapidPublicKey = !Array.isArray(data) && typeof data?.vapidPublicKey === "string" ? data.vapidPublicKey.trim() : undefined;
+    return { rows: list, format: "json", vapidPublicKey };
   }
   const lines = splitCsv(trimmed);
   if (lines.length === 0) return { rows: [], format: "csv" };

@@ -29,8 +29,6 @@ export function FloatingCartBar() {
 
   if (!ui.floatingBar || HIDE_ON.some((p) => pathname?.startsWith(p))) return null;
   const show = mounted && count > 0;
-  const dark = `color-mix(in srgb, ${ui.barColor} 78%, black)`;
-
   function ripple(e: React.MouseEvent<HTMLAnchorElement>) {
     const el = bar.current;
     if (!el) return;
@@ -48,19 +46,25 @@ export function FloatingCartBar() {
     {show && <div aria-hidden className="h-[76px] shrink-0" />}
     <div className="pointer-events-none fixed inset-x-0 z-[950] flex justify-center px-3 transition-[bottom] duration-300" style={{ bottom: "calc(var(--fcb-offset, 0px) + 12px)" }}>
       <Link ref={bar} href="/shop/cart" onClick={ripple} aria-live="polite" aria-hidden={!show} tabIndex={show ? 0 : -1}
-        className="relative flex w-full max-w-[560px] items-center gap-3 overflow-hidden rounded-2xl px-3.5 py-2.5 text-white no-underline"
+        className="relative flex h-[56px] w-full max-w-[560px] items-center gap-3 overflow-hidden rounded-[8px] pl-3 pr-2 text-white no-underline"
         style={{
-          background: `linear-gradient(135deg, ${dark}, ${ui.barColor})`,
-          boxShadow: `0 10px 28px color-mix(in srgb, ${ui.barColor} 38%, transparent), 0 2px 8px rgba(0,0,0,.12)`,
+          background: ui.barColor,
+          boxShadow: `0 8px 22px color-mix(in srgb, ${ui.barColor} 35%, transparent), 0 2px 6px rgba(0,0,0,.1)`,
           transform: show ? "translateY(0)" : "translateY(120px)", opacity: show ? 1 : 0, pointerEvents: show ? "auto" : "none",
           transition: "transform .4s cubic-bezier(.34,1.56,.64,1), opacity .25s ease",
         }}>
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/20"><ShoppingCart className="h-5 w-5" strokeWidth={2} /></span>
-        <span className="flex min-w-0 flex-1 flex-col leading-tight">
-          <span className="truncate text-[13px] font-semibold opacity-90">{count} item{count === 1 ? "" : "s"}</span>
-          <span className="text-[18px] font-extrabold tracking-tight">₹{total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+        <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/20">
+          <ShoppingCart className="h-[19px] w-[19px]" strokeWidth={2} />
+          <span className="absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-white px-1 text-[11px] font-bold tabular-nums" style={{ color: ui.barColor }}>{count}</span>
         </span>
-        <span className="flex shrink-0 items-center gap-1 rounded-xl bg-white/20 px-3.5 py-2 text-[14px] font-bold">{ui.barLabel}<ChevronRight className="h-4 w-4" strokeWidth={2.5} /></span>
+        <span className="flex min-w-0 flex-1 flex-col leading-tight">
+          <span className="truncate text-[12px] opacity-90">{count} item{count === 1 ? "" : "s"} added</span>
+          <span className="text-[17px] font-bold tracking-tight">₹{total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+        </span>
+        {/* White button with accent text — the inverse of Meesho's Buy Now */}
+        <span className="flex h-10 shrink-0 items-center gap-1 rounded-[4px] bg-white px-3.5 text-[15px] font-semibold" style={{ color: ui.barColor }}>
+          {ui.barLabel}<ChevronRight className="h-[18px] w-[18px]" strokeWidth={2.5} />
+        </span>
       </Link>
     </div>
     </>

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { LogIn, MapPin, UserPlus, UserRound, X } from "lucide-react";
+import { LogIn, LogOut, MapPin, Package, UserPlus, UserRound, X } from "lucide-react";
 import { SocialIcon } from "./SocialIcon";
 import { PushBell } from "./push/PushContext";
 import { SidebarMenu, type ResolvedItem } from "./menu/StoreMenus";
@@ -59,82 +59,81 @@ export function ShopMobileDrawer({ business, header, customer, menu, design, isO
     <>
       <div className={cn("fixed inset-0 z-[999] bg-black/45 transition-opacity shop:hidden", isOpen ? "visible opacity-100" : "invisible opacity-0")} onClick={onClose} />
       <aside aria-label="Mobile Navigation" aria-hidden={!isOpen} inert={!isOpen}
-        className={cn("fixed bottom-0 left-0 top-0 z-[1001] flex w-[min(360px,86vw)] flex-col bg-white shop:hidden",
+        className={cn("fixed bottom-0 left-0 top-0 z-[1001] flex w-[min(340px,85vw)] flex-col bg-white font-storefront text-[#353543] shop:hidden",
           "shadow-[6px_0_24px_rgba(0,0,0,0.18)] transition-transform duration-[240ms] ease-[cubic-bezier(.23,1,.32,1)]",
           isOpen ? "translate-x-0" : "-translate-x-[105%]")}
         style={{ ["--menu-accent" as string]: design.accent }}>
 
-        {/* Location · bell · close */}
-        <div className="flex shrink-0 items-center gap-2.5 border-b border-storefront-border px-4 py-3">
+        {/* Store / location · bell · close */}
+        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-[#eaeaf2] pl-4 pr-2">
           {showLocation ? (
-            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-storefront-green-light px-2.5 py-1.5">
-              <MapPin className="h-[18px] w-[18px] shrink-0 text-storefront-green" fill="currentColor" strokeWidth={0} />
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <MapPin className="h-[18px] w-[18px] shrink-0 text-[#5d7eea]" fill="#8aa4f4" strokeWidth={1.6} />
               <span className="min-w-0 leading-tight">
-                <span className="block truncate text-[13px] font-bold text-storefront-text">{clip(business.location ?? "", 22)}</span>
-                {business.address && <span className="block truncate text-[11px] text-storefront-muted">{business.address}</span>}
+                <span className="block truncate text-[14px] font-semibold text-[#353543]">{clip(business.location ?? "", 26)}</span>
+                {business.address && <span className="block truncate text-[11.5px] text-[#8b8ba3]">{business.address}</span>}
               </span>
             </div>
           ) : (
-            <span className="min-w-0 flex-1 truncate text-[15px] font-extrabold text-storefront-green-dark">{business.businessName}</span>
+            <span className="min-w-0 flex-1 truncate text-[17px] font-bold" style={{ color: design.accent }}>{business.businessName}</span>
           )}
-          <PushBell className="h-9 w-9 rounded-full border border-storefront-border text-storefront-green" iconClassName="h-[18px] w-[18px]" />
-          <button type="button" onClick={onClose} aria-label="Close menu"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-storefront-border text-[#333] hover:border-storefront-green hover:text-storefront-green">
-            <X className="h-5 w-5" strokeWidth={2} />
+          <PushBell className="h-10 w-10 rounded-full text-[#353543] hover:bg-[#f8f9fe]" iconClassName="h-[21px] w-[21px]" />
+          <button type="button" onClick={onClose} aria-label="Close menu" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[#666] hover:bg-[#f8f9fe]">
+            <X className="h-[22px] w-[22px]" strokeWidth={2} />
           </button>
         </div>
 
-        {/* Profile */}
-        <div className="shrink-0 border-b border-storefront-border px-4 py-4">
+        {/* Profile — buttons styled like Meesho's Add to Cart (outline) / Buy Now (solid) */}
+        <div className="shrink-0 bg-[#f8f9fe] px-4 pb-4 pt-4">
           <div className="flex items-center gap-3">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-lg font-bold text-white"
-              style={{ background: `linear-gradient(135deg, ${design.accent}, color-mix(in srgb, ${design.accent} 60%, black))` }}>
-              {customer ? customer.name.trim().charAt(0).toUpperCase() : <UserRound className="h-6 w-6" strokeWidth={2} />}
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#feeff6] text-[17px] font-bold" style={{ color: design.accent }}>
+              {customer ? customer.name.trim().charAt(0).toUpperCase() : <UserRound className="h-[22px] w-[22px]" strokeWidth={1.8} />}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[15px] font-bold text-storefront-text">{customer ? customer.name : "Hello, Guest"}</p>
-              <p className="truncate text-xs text-storefront-muted">{customer ? "Welcome back!" : `Welcome to ${business.businessName}`}</p>
+              <p className="truncate text-[16px] font-semibold text-[#353543]">{customer ? `Hello, ${customer.name.split(" ")[0]}` : "Hello, Guest"}</p>
+              <p className="truncate text-[12px] text-[#8b8ba3]">{customer ? "Welcome back!" : `Login to see your orders & wishlist`}</p>
             </div>
           </div>
-          {customer ? (
-            <Link href="/shop/account" onClick={onClose}
-              className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-lg border-2 text-sm font-semibold transition-colors hover:text-white"
-              style={{ borderColor: design.accent, color: design.accent }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = design.accent; e.currentTarget.style.color = "#fff"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = ""; e.currentTarget.style.color = design.accent; }}>
-              <UserRound className="h-4 w-4" /> View Profile
-            </Link>
-          ) : (
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <Link href="/shop/login" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold text-white" style={{ background: design.accent }}>
-                <LogIn className="h-4 w-4" /> Login
+          <div className="mt-3.5 grid grid-cols-2 gap-2">
+            {customer ? <>
+              <Link href="/shop/account#orders" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-[4px] border bg-white text-[15px] font-medium" style={{ borderColor: design.accent, color: design.accent }}>
+                <Package className="h-[18px] w-[18px]" strokeWidth={1.9} />My Orders
               </Link>
-              <Link href="/shop/register" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-lg border-2 text-sm font-semibold" style={{ borderColor: design.accent, color: design.accent }}>
-                <UserPlus className="h-4 w-4" /> Sign up
+              <Link href="/shop/account" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-[4px] text-[15px] font-medium text-white" style={{ background: design.accent }}>
+                <UserRound className="h-[18px] w-[18px]" strokeWidth={1.9} />Profile
               </Link>
-            </div>
-          )}
+            </> : <>
+              <Link href="/shop/register" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-[4px] border bg-white text-[15px] font-medium" style={{ borderColor: design.accent, color: design.accent }}>
+                <UserPlus className="h-[18px] w-[18px]" strokeWidth={1.9} />Sign up
+              </Link>
+              <Link href="/shop/login" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-[4px] text-[15px] font-medium text-white" style={{ background: design.accent }}>
+                <LogIn className="h-[18px] w-[18px]" strokeWidth={1.9} />Login
+              </Link>
+            </>}
+          </div>
         </div>
+        <div className="h-2 shrink-0 bg-[#eaeaf2]" aria-hidden />
 
         {/* Menu */}
         <nav aria-label="Menu" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <p className="px-4 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wider text-storefront-muted">Menu</p>
           <SidebarMenu items={menu} design={design} isActive={isActive} onNavigate={onClose} />
           {customer && (
-            <form action="/api/auth/customer-logout" method="POST" className="px-4 py-4">
-              <button type="submit" className="text-sm font-semibold text-red-600 hover:underline">Logout</button>
+            <form action="/api/auth/customer-logout" method="POST" className={cn(design.dividers && "border-b border-[#eaeaf2]")}>
+              <button type="submit" className="flex min-h-[50px] w-full items-center gap-3.5 px-4 text-left text-[15px] text-[#e5485f]">
+                {design.showIcons && <LogOut className="h-5 w-5" strokeWidth={1.7} />}Logout
+              </button>
             </form>
           )}
         </nav>
 
         {/* Follow us */}
         {!!business.socialMedia?.length && (
-          <div className="shrink-0 border-t border-storefront-border bg-storefront-bg px-4 py-3.5">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-storefront-muted">Follow Us</p>
+          <div className="shrink-0 border-t border-[#eaeaf2] bg-[#f8f9fe] px-4 py-3.5">
+            <p className="mb-2.5 text-[13px] font-medium text-[#8b8ba3]">Follow Us</p>
             <div className="flex flex-wrap gap-2.5">
               {business.socialMedia.map((s) => (
                 <a key={s.platform + s.url} href={s.url} target="_blank" rel="noopener noreferrer" aria-label={s.platform}
-                  className="grid h-9 w-9 place-items-center rounded-full text-white transition-transform hover:-translate-y-0.5" style={{ background: design.accent }}>
+                  className="grid h-9 w-9 place-items-center rounded-full text-white transition-transform active:scale-90" style={{ background: design.accent }}>
                   <SocialIcon platform={s.platform} className="h-4 w-4 fill-white text-white" />
                 </a>
               ))}

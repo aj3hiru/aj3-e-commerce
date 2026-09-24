@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
-  ChevronDown, CircleHelp, FileText, Gift, Grid2x2, Heart, House, Info, Link2, Mail, MapPin, Package, Percent, Phone,
+  ChevronDown, ChevronRight, CircleHelp, FileText, Gift, Grid2x2, Heart, House, Info, Link2, Mail, MapPin, Package, Percent, Phone,
   ShoppingCart, Star, Store, Tag, Truck, User, type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -91,40 +91,36 @@ export function SidebarMenu({ items, design, isActive, onNavigate }: {
   items: ResolvedItem[]; design: MenuDesign; isActive: (href: string) => boolean; onNavigate?: () => void;
 }) {
   const [open, setOpen] = useState<string | null>(null);
+  // Meesho-style rows: grey outline icon, dark label, light chevron, hairline dividers;
+  // the current page gets the accent colour and a bar on the left.
   return (
     <ul className="w-full" style={{ ["--menu-accent" as string]: design.accent }}>
       {items.map((it) => {
         const Icon = MENU_ICON[it.icon];
         const active = isActive(it.href);
-        const row = cn("flex min-h-[46px] w-full items-center gap-3 px-4 text-left text-[15px] font-medium text-[#1d1d1f] transition-colors",
-          "hover:bg-[color-mix(in_srgb,var(--menu-accent)_8%,white)]");
-        const icon = design.showIcons && (
-          <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
-            active ? "bg-[var(--menu-accent)] text-white" : "bg-[color-mix(in_srgb,var(--menu-accent)_10%,white)] text-[var(--menu-accent)]")}>
-            <Icon className="h-[17px] w-[17px]" strokeWidth={2} />
-          </span>
-        );
+        const expanded = open === it.id;
+        const row = cn("relative flex min-h-[50px] w-full items-center gap-3.5 px-4 text-left text-[15px] transition-colors active:bg-[#f8f9fe]",
+          active ? "font-semibold text-[var(--menu-accent)]" : "text-[#353543]");
+        const bar = active && <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-[var(--menu-accent)]" />;
+        const icon = design.showIcons && <Icon className={cn("h-5 w-5 shrink-0", active || expanded ? "text-[var(--menu-accent)]" : "text-[#666]")} strokeWidth={1.7} />;
         return (
-          <li key={it.id} className={cn(design.dividers && "border-b border-storefront-border")}>
+          <li key={it.id} className={cn(design.dividers && "border-b border-[#eaeaf2]")}>
             {it.children.length > 0 ? (
               <>
-                <button type="button" onClick={() => setOpen((o) => (o === it.id ? null : it.id))} aria-expanded={open === it.id}
-                  className={cn(row, open === it.id && "bg-[color-mix(in_srgb,var(--menu-accent)_8%,white)]")}>
-                  {icon}
-                  <span className={cn("flex-1", active && "font-semibold text-[var(--menu-accent)]")}>{it.label}</span>
-                  <span className={cn("flex h-7 w-7 items-center justify-center rounded-md transition-colors",
-                    open === it.id ? "bg-[var(--menu-accent)] text-white" : "bg-storefront-bg text-storefront-muted")}>
-                    <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", open === it.id && "rotate-180")} />
-                  </span>
+                <button type="button" onClick={() => setOpen((o) => (o === it.id ? null : it.id))} aria-expanded={expanded} className={cn(row, expanded && "bg-[#f8f9fe]")}>
+                  {bar}{icon}
+                  <span className="flex-1">{it.label}</span>
+                  <ChevronDown className={cn("h-[18px] w-[18px] text-[#a7a9b6] transition-transform duration-200", expanded && "rotate-180 text-[var(--menu-accent)]")} strokeWidth={2} />
                 </button>
-                <Accordion open={open === it.id}>
-                  <ul className="ml-[30px] border-l-2 border-[color-mix(in_srgb,var(--menu-accent)_35%,white)] py-1 pl-3 pr-4">
+                <Accordion open={expanded}>
+                  <ul className="bg-[#f8f9fe] pb-1.5">
                     {it.children.map((c) => (
                       <li key={c.id}>
                         <Link href={c.href} onClick={onNavigate} {...linkProps(c.href, false)}
-                          className={cn("block rounded-md px-2.5 py-2 text-[14px] text-[#444] hover:bg-[color-mix(in_srgb,var(--menu-accent)_8%,white)] hover:text-[var(--menu-accent)]",
-                            isActive(c.href) && "font-semibold text-[var(--menu-accent)]")}>
-                          {c.label}
+                          className={cn("flex min-h-[42px] items-center justify-between gap-2 pr-4 text-[14px]", design.showIcons ? "pl-[52px]" : "pl-7",
+                            isActive(c.href) ? "font-semibold text-[var(--menu-accent)]" : "text-[#616173]")}>
+                          <span className="min-w-0 truncate">{c.label}</span>
+                          <ChevronRight className="h-4 w-4 shrink-0 text-[#c4c5d0]" strokeWidth={2} />
                         </Link>
                       </li>
                     ))}
@@ -133,8 +129,9 @@ export function SidebarMenu({ items, design, isActive, onNavigate }: {
               </>
             ) : (
               <Link href={it.href} onClick={onNavigate} {...linkProps(it.href, it.newTab)} className={row}>
-                {icon}
-                <span className={cn("flex-1", active && "font-semibold text-[var(--menu-accent)]")}>{it.label}</span>
+                {bar}{icon}
+                <span className="flex-1">{it.label}</span>
+                <ChevronRight className="h-[18px] w-[18px] text-[#a7a9b6]" strokeWidth={2} />
               </Link>
             )}
           </li>

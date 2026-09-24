@@ -47,7 +47,7 @@ export function TileCartButton({ p }: { p: FeedProduct }) {
   if (qty > 0 && ui.stepper && keys.length === 1) {
     const key = keys[0];
     return (
-      <div className="grid h-[34px] grid-cols-[34px_1fr_34px] items-center overflow-hidden rounded-lg bg-[var(--hp-accent)] text-white" aria-busy={busy}>
+      <div className="grid h-[34px] grid-cols-[34px_1fr_34px] items-center overflow-hidden rounded-[4px] bg-[var(--hp-accent)] text-white" aria-busy={busy}>
         <button type="button" onClick={() => run(() => setQty(key, qty - 1))} aria-label="Decrease quantity" className="grid h-full place-items-center active:bg-black/15"><Minus className="h-4 w-4" strokeWidth={2.6} /></button>
         <span className="grid place-items-center text-[14px] font-bold tabular-nums">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : qty}</span>
         <button type="button" onClick={() => run(() => setQty(key, qty + 1))} aria-label="Increase quantity" className="grid h-full place-items-center active:bg-black/15"><Plus className="h-4 w-4" strokeWidth={2.6} /></button>
@@ -57,7 +57,7 @@ export function TileCartButton({ p }: { p: FeedProduct }) {
   const inCart = qty > 0;
   return (
     <button type="button" onClick={() => run(() => addToCart(p.id))}
-      className={cn("flex h-[34px] w-full items-center justify-center gap-1.5 rounded-lg border-[1.5px] text-[13px] font-semibold transition active:scale-[0.98]",
+      className={cn("flex h-[34px] w-full items-center justify-center gap-1.5 rounded-[4px] border text-[14px] font-medium transition active:scale-[0.98]",
         inCart ? "border-[var(--hp-accent)] bg-[var(--hp-accent)] text-white" : "border-[var(--hp-accent)] bg-white text-[var(--hp-accent)]")}>
       {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : inCart ? <Check className="h-4 w-4" strokeWidth={2.6} /> : <ShoppingCart className="h-[15px] w-[15px]" strokeWidth={2.2} />}
       {inCart ? `In cart · ${qty}` : ui.tileLabel}

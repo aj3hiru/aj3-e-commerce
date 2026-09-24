@@ -88,7 +88,7 @@ export const DEFAULT_SIDEBAR_MENU: MenuItem[] = [
   item("s-track", "Track Order", "/shop/order", "truck"),
 ];
 
-export const DEFAULT_MENU_DESIGN: MenuDesign = { accent: "#2e8b3d", showIcons: true, dividers: true };
+export const DEFAULT_MENU_DESIGN: MenuDesign = { accent: "#9f2089", showIcons: true, dividers: true }; // Meesho jamun
 
 export const DEFAULT_PUSH_UI: PushUiConfig = { showBell: true, autoPrompt: true };
 

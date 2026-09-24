@@ -110,7 +110,7 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageConfig = {
   },
   actions: { showCart: true, showBuy: true, cartLabel: "Add to Cart", buyLabel: "Buy Now", sticky: true },
   related: { title: "People also viewed", limit: 10, source: "category" },
-  cart: { tileButton: true, tileLabel: "Add to Cart", stepper: true, floatingBar: true, barLabel: "View Cart", barColor: "#16a34a" },
+  cart: { tileButton: true, tileLabel: "Add to Cart", stepper: true, floatingBar: true, barLabel: "View Cart", barColor: "#9f2089" },
 };
 
 export type CartUi = ProductPageConfig["cart"];

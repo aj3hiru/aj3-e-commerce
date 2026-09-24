@@ -271,7 +271,7 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
             <Text label="Card button text" value={c.cart.tileLabel} onChange={(v) => setPart("cart", { tileLabel: v })} max={20} />
             <Text label="Bar button text" value={c.cart.barLabel} onChange={(v) => setPart("cart", { barLabel: v })} max={20} />
           </div>
-          <ColorInput label="Floating bar colour" value={c.cart.barColor} onChange={(v) => setPart("cart", { barColor: v })} swatches={["#16a34a", "#9f2089", "#7c3aed", "#0284c7", "#ea580c", "#353543"]} />
+          <ColorInput label="Floating bar colour" value={c.cart.barColor} onChange={(v) => setPart("cart", { barColor: v })} swatches={["#9f2089", "#16a34a", "#7c3aed", "#0284c7", "#ea580c", "#353543"]} />
           <p className="text-xs text-admin-gray-500">The live preview shows these after you Publish on the homepage; the product page preview shows them straight away.</p>
         </Card>
 

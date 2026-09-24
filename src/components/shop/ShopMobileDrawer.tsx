@@ -51,7 +51,8 @@ export function ShopMobileDrawer({ business, header, customer, menu, design, isO
     const [path, query = ""] = href.split("#")[0].split("?");
     if (path !== pathname) return false;
     const slug = new URLSearchParams(query).get("slug");
-    return slug ? searchParams?.get("slug") === slug : !searchParams?.get("slug") || path !== "/shop/category";
+    // Same rule as the header: #anchor links (e.g. All Categories) never mark the page itself as current.
+    return slug ? searchParams?.get("slug") === slug : path !== "/shop/category" && !href.includes("#");
   };
 
   return (

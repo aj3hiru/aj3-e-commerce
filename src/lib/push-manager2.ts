@@ -165,17 +165,18 @@ export async function processPushQueue(
     const snap = { q: toDeleteQueue, subs: toDeleteSubs, retries, sent: chunkSent, failed: chunkFailed };
     toDeleteQueue = []; toDeleteSubs = []; retries = []; chunkSent = 0; chunkFailed = 0;
     saving = saving.then(async () => {
-      for (const r of snap.retries) {
-        await prisma.pushQueue.updateMany({ where: { id: r.id }, data: { attempts: r.attempts, lastError: r.lastError } });
-      }
-      if (snap.q.length) await prisma.pushQueue.deleteMany({ where: { id: { in: snap.q } } });
-      if (snap.subs.length) await prisma.pushSubscription.deleteMany({ where: { id: { in: snap.subs } } });
-      if (snap.sent || snap.failed) {
-        await prisma.pushCampaign.updateMany({
+      // One transaction: removing the finished queue rows and counting them
+      // happen together, so a crash can never leave the counters short.
+      await prisma.$transaction([
+        ...snap.retries.map((r) =>
+          prisma.pushQueue.updateMany({ where: { id: r.id }, data: { attempts: r.attempts, lastError: r.lastError } })),
+        prisma.pushQueue.deleteMany({ where: { id: { in: snap.q } } }),
+        prisma.pushSubscription.deleteMany({ where: { id: { in: snap.subs } } }),
+        prisma.pushCampaign.updateMany({
           where: { id: campaign!.id },
           data: { sent: { increment: snap.sent }, failed: { increment: snap.failed } },
-        });
-      }
+        }),
+      ]);
       if (!(await heartbeat())) stop = true; // lost the queue lease — the new owner carries on
     }).catch((e) => {
       // Never let a background save reject unhandled (that would crash Node).

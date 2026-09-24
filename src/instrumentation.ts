@@ -12,5 +12,6 @@ export async function register() {
     const { kickPushQueueIfWaiting } = await import("@/lib/push-manager2");
     setTimeout(() => void kickPushQueueIfWaiting(), 10_000);
     setInterval(() => void kickPushQueueIfWaiting(), 30_000).unref();
+    console.log("[push-queue] resume timer started (checks every 30s)");
   }
 }

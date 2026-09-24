@@ -244,8 +244,11 @@ async function releaseLock(): Promise<void> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const debug = (...a: unknown[]) => { if (process.env.PUSH_QUEUE_DEBUG) console.log(`[push-queue ${worker.owner}]`, ...a); };
+
 async function runWorker(): Promise<void> {
-  if (!(await acquireLock())) return; // another process is already sending
+  if (!(await acquireLock())) { debug("lock busy"); return; } // another process is already sending
+  debug("lock acquired");
   let errors = 0;
   try {
     for (;;) {
@@ -259,18 +262,18 @@ async function runWorker(): Promise<void> {
         // A DB blip or bad row must never kill the process — back off and retry,
         // and give up after a few in a row (the next kick resumes the queue).
         console.error("[push-queue] batch failed:", e instanceof Error ? e.message : e);
-        if (++errors >= 5) break;
+        if (++errors >= 5) { debug("stop: 5 errors in a row"); break; }
         await sleep(5_000 * errors);
         continue;
       }
-      if (campaignId === null) break; // nothing to send, or VAPID keys missing
+      if (campaignId === null) { debug("stop: nothing to send"); break; } // nothing to send, or VAPID keys missing
       if (processed === 0 && !worker.again) {
         // Nothing sent this round: either the queue is empty, or the oldest
         // campaign just got marked completed and the next one is waiting.
         const waiting = await prisma.pushCampaign.count({ where: { status: { in: ["pending", "processing"] } } });
-        if (waiting === 0) break;
+        if (waiting === 0) { debug("stop: queue empty"); break; }
       }
-      if (!(await renewLock())) break; // lease lost — someone else owns the queue now
+      if (!(await renewLock())) { debug("stop: lease lost"); break; } // lease lost — someone else owns the queue now
     }
   } finally {
     await releaseLock();

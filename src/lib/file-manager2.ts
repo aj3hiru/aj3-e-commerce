@@ -50,8 +50,8 @@ export async function getSiteFiles(): Promise<FileAsset[]> {
     prisma.ecomProductImage.findMany({ include: { product: { select: { name: true } } } }),
     prisma.ecomCategory.findMany({ where: { image: { not: null } }, select: { id: true, name: true, image: true } }),
     prisma.ecomBrand.findMany({ where: { logo: { not: null } }, select: { id: true, name: true, logo: true } }),
-    prisma.ecomHomeSlide.findMany({ select: { id: true, image: true, createdAt: true } }),
-    prisma.ecomHomeSection.findMany({ where: { bannerImage: { not: null } }, select: { id: true, title: true, bannerImage: true, createdAt: true } }),
+    prisma.ecomHomeSlide.findMany({ select: { id: true, image: true } }),
+    prisma.ecomHomeSection.findMany({ where: { bannerImage: { not: null } }, select: { id: true, title: true, bannerImage: true } }),
     prisma.ecomHomeSectionItem.findMany({ where: { customImage: { not: null } }, select: { id: true, customLabel: true, customImage: true } }),
     prisma.ecomPaymentSettings.findMany({ where: { image: { not: null } }, select: { methodKey: true, name: true, image: true } }),
     prisma.ecomBusinessSettings.findFirst({ select: { logo: true, updatedAt: true } }),
@@ -68,10 +68,10 @@ export async function getSiteFiles(): Promise<FileAsset[]> {
     entries.push({ relPath: c.image!, category: "category", usedBy: c.name, manageUrl: "/admin/ecommerce/categories", createdAt: null, idPart: `category:${c.id}` });
   for (const b of brands as { id: number; name: string; logo: string | null }[])
     entries.push({ relPath: b.logo!, category: "brand", usedBy: b.name, manageUrl: "/admin/ecommerce/brands", createdAt: null, idPart: `brand:${b.id}` });
-  for (const s of slides as { id: number; image: string; createdAt: Date }[])
-    entries.push({ relPath: s.image, category: "banner", usedBy: "Homepage hero slide", manageUrl: "/admin/ecommerce/homepage-settings", createdAt: s.createdAt.toISOString(), idPart: `slide:${s.id}` });
-  for (const sec of sections as { id: number; title: string | null; bannerImage: string | null; createdAt: Date }[])
-    entries.push({ relPath: sec.bannerImage!, category: "banner", usedBy: sec.title || "Festive banner section", manageUrl: "/admin/ecommerce/homepage-settings", createdAt: sec.createdAt.toISOString(), idPart: `section:${sec.id}` });
+  for (const s of slides as { id: number; image: string }[])
+    entries.push({ relPath: s.image, category: "banner", usedBy: "Homepage hero slide", manageUrl: "/admin/ecommerce/homepage-settings", createdAt: null, idPart: `slide:${s.id}` });
+  for (const sec of sections as { id: number; title: string | null; bannerImage: string | null }[])
+    entries.push({ relPath: sec.bannerImage!, category: "banner", usedBy: sec.title || "Festive banner section", manageUrl: "/admin/ecommerce/homepage-settings", createdAt: null, idPart: `section:${sec.id}` });
   for (const it of sectionItems as { id: number; customLabel: string | null; customImage: string | null }[])
     entries.push({ relPath: it.customImage!, category: "banner", usedBy: it.customLabel || "Homepage section item", manageUrl: "/admin/ecommerce/homepage-settings", createdAt: null, idPart: `secitem:${it.id}` });
   for (const pm of payments as { methodKey: string; name: string; image: string | null }[])

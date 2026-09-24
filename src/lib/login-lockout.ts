@@ -19,7 +19,11 @@ interface AttemptState {
 const memory = new Map<string, AttemptState>();
 
 function keysFor(identity: string, ip: string): string[] {
-  return [`login-lock:id:${identity.trim().toLowerCase()}`, `login-lock:ip:${ip}`];
+  const keys = [`login-lock:id:${identity.trim().toLowerCase()}`];
+  // Without a known client IP every visitor would share one counter and five
+  // bad guesses from anyone would lock the whole site out — skip it instead.
+  if (ip && ip !== "UNKNOWN") keys.push(`login-lock:ip:${ip}`);
+  return keys;
 }
 
 async function readKey(key: string): Promise<AttemptState> {

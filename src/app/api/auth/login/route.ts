@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
   }
   const { identity, password, redirect } = parsed.data;
 
-  const ipAddress = req.headers.get("x-real-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "UNKNOWN";
+  // Same header order as lib/activity-log.ts (the live proxy sets x-forwarded-for).
+  const ipAddress = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "UNKNOWN";
 
   const attemptState = await getAttemptState(identity, ipAddress);
   if (isLocked(attemptState)) {

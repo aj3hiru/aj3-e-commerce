@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowDownUp, Check, ChevronDown, Loader2, PackageSearch, SlidersHorizontal, Star, X } from "lucide-react";
+import { ArrowDownUp, Check, ChevronDown, ListFilter, Loader2, PackageSearch, Star, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FEED_SORTS, type FeedFilters, type FeedProduct, type FeedResult, type FeedSort } from "@/lib/shop-feed-shared";
 import { ProductTile, ProductTileSkeleton } from "./ProductTile";
@@ -49,8 +49,10 @@ const activeCount = (d: Draft) =>
  * two-column (wider on bigger screens) grid that loads more as you scroll.
  * Filters live in the URL, so a filtered view can be shared or reloaded.
  */
-export function ProductFeed({ title, initial, filters, facets, wishlisted }: {
-  title: string; initial: FeedResult; filters: FeedFilters; facets: FeedFacets; wishlisted: number[];
+export interface FeedBar { showSort: boolean; showCategory: boolean; showBrand: boolean; showFilters: boolean }
+
+export function ProductFeed({ title, initial, filters, facets, wishlisted, bar = { showSort: true, showCategory: true, showBrand: true, showFilters: true } }: {
+  title: string; initial: FeedResult; filters: FeedFilters; facets: FeedFacets; wishlisted: number[]; bar?: FeedBar;
 }) {
   const q = filters.q;
   const [applied, setApplied] = useState<Draft>({ ...EMPTY, ...filters });
@@ -112,36 +114,45 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted }: {
     ...(applied.inStock ? [{ key: "stock", label: "In stock", remove: { ...applied, inStock: false } }] : []),
   ];
 
-  const barBtn = "flex min-w-0 items-center justify-center gap-1.5 border-r border-[#e7e5ec] px-1 text-[14px] font-bold text-[#333] last:border-r-0 sm:text-[15px]";
+  const barCount = [bar.showSort, bar.showCategory, bar.showBrand, bar.showFilters].filter(Boolean).length;
+  const barBtn = "flex min-w-0 items-center justify-center gap-1.5 border-r border-[#eaeaf2] px-1 text-[15px] font-medium text-[#353543] last:border-r-0";
 
   return (
     <section ref={top} aria-label={title} className="bg-white">
-      <h2 className="border-b border-[#e7e5ec] px-4 pb-3 pt-5 text-[22px] font-normal text-[#333] sm:text-[24px]">
-        {title} {total > 0 && <span className="text-[13px] text-[#8b8ba3]">({total.toLocaleString("en-IN")})</span>}
-      </h2>
+      <h2 className="border-b border-[#eaeaf2] px-4 pb-3 pt-4 text-[20px] font-normal leading-7 text-[#353543]">{title}</h2>
 
       {/* Sticky filter bar */}
-      <div className="sticky top-0 z-30 bg-white shadow-[0_1px_0_#e7e5ec]">
-        <div className="grid h-[52px] grid-cols-4">
-          <button type="button" onClick={() => setSheet("sort")} className={barBtn}>
-            <ArrowDownUp className="h-4 w-4 shrink-0" /> <span className="truncate">Sort</span>
-            {applied.sort !== "relevance" && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-storefront-green" />}
-          </button>
-          <button type="button" onClick={() => setSheet("category")} className={barBtn}>
-            <span className="truncate">Category</span>{applied.cat.length > 0 ? <Count n={applied.cat.length} /> : <ChevronDown className="h-4 w-4 shrink-0" />}
-          </button>
-          <button type="button" onClick={() => setSheet("brand")} disabled={facets.brands.length === 0} className={cn(barBtn, "disabled:text-[#bbb]")}>
-            <span className="truncate">Brand</span>{applied.brand.length > 0 ? <Count n={applied.brand.length} /> : <ChevronDown className="h-4 w-4 shrink-0" />}
-          </button>
-          <button type="button" onClick={() => setSheet("filters")} className={barBtn}>
-            <SlidersHorizontal className="h-4 w-4 shrink-0" /> <span className="truncate">Filters</span>{n > 0 && <Count n={n} />}
-          </button>
-        </div>
+      <div className="sticky top-0 z-30 bg-white">
+        {barCount > 0 && (
+          <div className="grid h-[52px] border-b border-[#cfcedc]" style={{ gridTemplateColumns: `repeat(${barCount}, minmax(0, 1fr))` }}>
+            {bar.showSort && (
+              <button type="button" onClick={() => setSheet("sort")} className={barBtn}>
+                <ArrowDownUp className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} /> <span className="truncate">Sort</span>
+                {applied.sort !== "relevance" && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--hp-accent)]" />}
+              </button>
+            )}
+            {bar.showCategory && (
+              <button type="button" onClick={() => setSheet("category")} className={barBtn}>
+                <span className="truncate">Category</span>{applied.cat.length > 0 ? <Count n={applied.cat.length} /> : <ChevronDown className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />}
+              </button>
+            )}
+            {bar.showBrand && (
+              <button type="button" onClick={() => setSheet("brand")} disabled={facets.brands.length === 0} className={cn(barBtn, "disabled:text-[#c9c9d6]")}>
+                <span className="truncate">Brand</span>{applied.brand.length > 0 ? <Count n={applied.brand.length} /> : <ChevronDown className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />}
+              </button>
+            )}
+            {bar.showFilters && (
+              <button type="button" onClick={() => setSheet("filters")} className={barBtn}>
+                <ListFilter className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} /> <span className="truncate">Filters</span>{n > 0 && <Count n={n} />}
+              </button>
+            )}
+          </div>
+        )}
         {chips.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto border-t border-[#e7e5ec] px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex gap-2 overflow-x-auto border-t border-[#eaeaf2] px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {chips.map((c) => (
               <button key={c.key} type="button" onClick={() => apply(c.remove)}
-                className="flex shrink-0 items-center gap-1 rounded-full border border-storefront-green bg-storefront-green-light px-3 py-1 text-[12px] font-semibold text-storefront-green-dark">
+                className="flex shrink-0 items-center gap-1 rounded-full border border-[var(--hp-accent)] bg-[color-mix(in_srgb,var(--hp-accent)_8%,white)] px-3 py-1 text-[12px] font-semibold text-[var(--hp-accent)]">
                 {c.label} <X className="h-3.5 w-3.5" />
               </button>
             ))}
@@ -158,7 +169,7 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted }: {
           <p className="mb-5 text-sm">{error ? "Please check your connection and try again." : n > 0 ? "Try removing some filters." : q ? `Nothing matches "${q}".` : "New products are coming soon."}</p>
           {(n > 0 || error) && (
             <button type="button" onClick={() => (error ? load(applied, 1, "replace") : apply({ ...EMPTY, sort: applied.sort }))}
-              className="rounded-lg bg-storefront-green px-5 py-2.5 text-sm font-bold text-white">{error ? "Try again" : "Clear filters"}</button>
+              className="rounded-lg bg-[var(--hp-accent)] px-5 py-2.5 text-sm font-bold text-white">{error ? "Try again" : "Clear filters"}</button>
           )}
         </div>
       ) : (
@@ -170,9 +181,9 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted }: {
       )}
 
       <div ref={sentinel} className="py-6 text-center text-[13px] text-[#8b8ba3]">
-        {loading === "more" ? <Loader2 className="mx-auto h-5 w-5 animate-spin text-storefront-green" />
-          : error && items.length > 0 ? <button type="button" onClick={() => load(applied, page + 1, "more")} className="font-bold text-storefront-green">Couldn&apos;t load more — tap to retry</button>
-          : page < pageCount ? <button type="button" onClick={() => load(applied, page + 1, "more")} className="font-bold text-storefront-green">Load more</button>
+        {loading === "more" ? <Loader2 className="mx-auto h-5 w-5 animate-spin text-[var(--hp-accent)]" />
+          : error && items.length > 0 ? <button type="button" onClick={() => load(applied, page + 1, "more")} className="font-bold text-[var(--hp-accent)]">Couldn&apos;t load more — tap to retry</button>
+          : page < pageCount ? <button type="button" onClick={() => load(applied, page + 1, "more")} className="font-bold text-[var(--hp-accent)]">Load more</button>
           : items.length > 0 ? `You've seen all ${total.toLocaleString("en-IN")} products` : null}
       </div>
 
@@ -183,8 +194,8 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted }: {
               <button key={s.value} type="button" onClick={() => apply({ ...applied, sort: s.value as FeedSort })}
                 className="flex w-full items-center justify-between px-5 py-3.5 text-left text-[15px] text-[#333] hover:bg-[#f7f7ff]">
                 {s.label}
-                <span className={cn("grid h-5 w-5 place-items-center rounded-full border-2", applied.sort === s.value ? "border-storefront-green" : "border-[#bbb]")}>
-                  {applied.sort === s.value && <span className="h-2.5 w-2.5 rounded-full bg-storefront-green" />}
+                <span className={cn("grid h-5 w-5 place-items-center rounded-full border-2", applied.sort === s.value ? "border-[var(--hp-accent)]" : "border-[#bbb]")}>
+                  {applied.sort === s.value && <span className="h-2.5 w-2.5 rounded-full bg-[var(--hp-accent)]" />}
                 </span>
               </button>
             ))}
@@ -205,7 +216,7 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted }: {
 }
 
 function Count({ n }: { n: number }) {
-  return <span className="grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-storefront-green px-1 text-[11px] font-bold text-white">{n}</span>;
+  return <span className="grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-[var(--hp-accent)] px-1 text-[11px] font-bold text-white">{n}</span>;
 }
 
 /** Bottom sheet on phones, centered dialog on larger screens. */
@@ -224,12 +235,12 @@ function Sheet({ title, onClose, children, footer, tall }: { title: string; onCl
       <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
         className={cn("flex w-full flex-col overflow-hidden rounded-t-[18px] bg-white font-storefront shadow-2xl transition-transform duration-200 sm:max-w-md sm:rounded-2xl",
           tall ? "h-[80vh] sm:h-[70vh]" : "max-h-[82vh]", shown ? "translate-y-0" : "translate-y-full sm:translate-y-4")}>
-        <div className="flex items-center justify-between border-b border-[#e7e5ec] px-5 py-3.5">
+        <div className="flex items-center justify-between border-b border-[#eaeaf2] px-5 py-3.5">
           <h3 className="text-[17px] font-bold text-[#333]">{title}</h3>
           <button type="button" onClick={onClose} aria-label="Close" className="grid h-8 w-8 place-items-center rounded-full bg-[#f1eff5] text-[#333]"><X className="h-4 w-4" /></button>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-        {footer && <div className="border-t border-[#e7e5ec] px-4 py-3">{footer}</div>}
+        {footer && <div className="border-t border-[#eaeaf2] px-4 py-3">{footer}</div>}
       </div>
     </div>,
     document.body
@@ -240,7 +251,7 @@ function SheetFooter({ onClear, onApply }: { onClear: () => void; onApply: () =>
   return (
     <div className="grid grid-cols-2 gap-3">
       <button type="button" onClick={onClear} className="h-11 rounded-lg border border-[#ccc] text-[15px] font-bold text-[#333]">Clear</button>
-      <button type="button" onClick={onApply} className="h-11 rounded-lg bg-storefront-green text-[15px] font-bold text-white">Apply</button>
+      <button type="button" onClick={onApply} className="h-11 rounded-lg bg-[var(--hp-accent)] text-[15px] font-bold text-white">Apply</button>
     </div>
   );
 }
@@ -249,7 +260,7 @@ function CheckRow({ checked, onClick, children, count }: { checked: boolean; onC
   return (
     <button type="button" role="checkbox" aria-checked={checked} onClick={onClick}
       className="flex w-full items-center gap-3 px-5 py-3 text-left text-[15px] text-[#333] hover:bg-[#f7f7ff]">
-      <span className={cn("grid h-5 w-5 shrink-0 place-items-center rounded border-2", checked ? "border-storefront-green bg-storefront-green" : "border-[#bbb]")}>
+      <span className={cn("grid h-5 w-5 shrink-0 place-items-center rounded border-2", checked ? "border-[var(--hp-accent)] bg-[var(--hp-accent)]" : "border-[#bbb]")}>
         {checked && <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
       </span>
       <span className="flex min-w-0 flex-1 items-center gap-2.5">{children}</span>
@@ -271,7 +282,7 @@ function ListSheet({ title, options, selected, onClose, onApply }: {
       {options.length > 8 && (
         <div className="px-4 pt-3">
           <input type="search" value={find} onChange={(e) => setFind(e.target.value)} placeholder={`Search ${title.toLowerCase()}`}
-            className="h-10 w-full rounded-xl border border-[#aaa8b8] px-3 text-sm outline-none focus:border-storefront-green" />
+            className="h-10 w-full rounded-xl border border-[#aaa8b8] px-3 text-sm outline-none focus:border-[var(--hp-accent)]" />
         </div>
       )}
       <div className="py-1">
@@ -282,7 +293,7 @@ function ListSheet({ title, options, selected, onClose, onApply }: {
               o.image
                 // eslint-disable-next-line @next/next/no-img-element
                 ? <img src={`/${o.image}`} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
-                : <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-storefront-green-light text-xs font-bold text-storefront-green">{o.label.charAt(0)}</span>
+                : <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--hp-accent)_8%,white)] text-xs font-bold text-[var(--hp-accent)]">{o.label.charAt(0)}</span>
             )}
             <span className="truncate">{o.label}</span>
           </CheckRow>
@@ -310,7 +321,7 @@ function FiltersSheet({ value, facets, onClose, onApply }: { value: Draft; facet
   const [maxIn, setMaxIn] = useState(d.max !== null ? String(d.max) : "");
   const setPrice = (min: number | null, max: number | null) => { setD((x) => ({ ...x, min, max })); setMinIn(min !== null ? String(min) : ""); setMaxIn(max !== null ? String(max) : ""); };
   const radio = (on: boolean) => (
-    <span className={cn("grid h-5 w-5 shrink-0 place-items-center rounded-full border-2", on ? "border-storefront-green" : "border-[#bbb]")}>{on && <span className="h-2.5 w-2.5 rounded-full bg-storefront-green" />}</span>
+    <span className={cn("grid h-5 w-5 shrink-0 place-items-center rounded-full border-2", on ? "border-[var(--hp-accent)]" : "border-[#bbb]")}>{on && <span className="h-2.5 w-2.5 rounded-full bg-[var(--hp-accent)]" />}</span>
   );
   const optCls = "flex w-full items-center gap-3 px-4 py-3 text-left text-[14px] text-[#333] hover:bg-[#f7f7ff]";
 
@@ -326,8 +337,8 @@ function FiltersSheet({ value, facets, onClose, onApply }: { value: Draft; facet
           {tabs.map((t) => (
             <button key={t.key} type="button" onClick={() => setTab(t.key)}
               className={cn("relative flex w-full items-center justify-between gap-1 px-3 py-3.5 text-left text-[13px] font-semibold",
-                tab === t.key ? "bg-white text-storefront-green-dark before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-storefront-green" : "text-[#555]")}>
-              {t.label}{t.on && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-storefront-green" />}
+                tab === t.key ? "bg-white text-[var(--hp-accent)] before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[var(--hp-accent)]" : "text-[#555]")}>
+              {t.label}{t.on && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--hp-accent)]" />}
             </button>
           ))}
         </nav>
@@ -354,10 +365,10 @@ function FiltersSheet({ value, facets, onClose, onApply }: { value: Draft; facet
                 <p className="mb-2 text-[12px] font-semibold text-[#8b8ba3]">Or enter your own range</p>
                 <div className="flex items-center gap-2">
                   <input inputMode="numeric" value={minIn} onChange={(e) => setMinIn(e.target.value.replace(/\D/g, ""))} placeholder="Min ₹" aria-label="Minimum price"
-                    className="h-10 w-full min-w-0 rounded-lg border border-[#ccc] px-3 text-sm outline-none focus:border-storefront-green" />
+                    className="h-10 w-full min-w-0 rounded-lg border border-[#ccc] px-3 text-sm outline-none focus:border-[var(--hp-accent)]" />
                   <span className="text-[#999]">–</span>
                   <input inputMode="numeric" value={maxIn} onChange={(e) => setMaxIn(e.target.value.replace(/\D/g, ""))} placeholder="Max ₹" aria-label="Maximum price"
-                    className="h-10 w-full min-w-0 rounded-lg border border-[#ccc] px-3 text-sm outline-none focus:border-storefront-green" />
+                    className="h-10 w-full min-w-0 rounded-lg border border-[#ccc] px-3 text-sm outline-none focus:border-[var(--hp-accent)]" />
                 </div>
               </div>
             </div>

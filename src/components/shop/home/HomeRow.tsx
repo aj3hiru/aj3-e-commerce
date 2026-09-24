@@ -12,14 +12,14 @@ export function HomeRow({ title, products, viewMoreUrl, wishlisted }: { title: s
   const onWish = useCallback((id: number, next: boolean) => setWish((s) => { const n = new Set(s); if (next) n.add(id); else n.delete(id); return n; }), []);
   if (products.length === 0) return null;
   return (
-    <section className="border-t-8 border-[#f5f5f8] bg-white py-3">
-      <div className="mb-2 flex items-center justify-between px-4">
-        {title && <h2 className="text-[17px] font-bold text-[#333]">{title}</h2>}
-        {viewMoreUrl && <Link href={viewMoreUrl} className="flex items-center text-[13px] font-bold text-storefront-green">View all <ChevronRight className="h-4 w-4" /></Link>}
+    <section className="bg-white pb-3 pt-4">
+      <div className="mb-3 flex items-center justify-between px-4">
+        <h2 className="text-[18px] font-medium leading-6 text-[#353543]">{title || "Top picks for you"}</h2>
+        {viewMoreUrl && <Link href={viewMoreUrl} className="flex items-center text-[13px] font-bold text-[var(--hp-accent)]">View all <ChevronRight className="h-4 w-4" /></Link>}
       </div>
-      <div className="flex gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {products.map((p) => (
-          <div key={p.id} className="w-[46%] max-w-[210px] shrink-0 overflow-hidden rounded-lg border border-[#e7e5ec] sm:w-[200px]">
+          <div key={p.id} className="w-[44%] max-w-[210px] shrink-0 overflow-hidden rounded-lg border border-[#eaeaf2] sm:w-[200px]">
             <ProductTile p={p} wished={wish.has(p.id)} onWish={onWish} lines={false} />
           </div>
         ))}

@@ -5,6 +5,8 @@ import { ShopHeader } from "./ShopHeader";
 import { ShopMobileDrawer } from "./ShopMobileDrawer";
 import { ShopFooter } from "./ShopFooter";
 import { PushProvider } from "./push/PushContext";
+import { PromoBar } from "./PromoBar";
+import type { PromoBar as PromoConfig } from "@/types/home";
 import { resolveMenu } from "./menu/StoreMenus";
 import { CartProvider } from "@/hooks/useCart";
 import { defaultShopHeaderSettings } from "@/lib/shop-header-defaults";
@@ -22,10 +24,12 @@ interface ShopLayoutProps {
   cartTotal: number;
   /** Menus, menu design, push bell/prompt and footer from Business Settings. */
   storefront?: StorefrontConfig;
+  /** Offer strip above the header, from the Homepage Customizer. */
+  promo?: PromoConfig | null;
   children: React.ReactNode;
 }
 
-export function ShopLayout({ business, header, categories, customer, cartCount, cartTotal, storefront = DEFAULT_STOREFRONT, children }: ShopLayoutProps) {
+export function ShopLayout({ business, header, categories, customer, cartCount, cartTotal, storefront = DEFAULT_STOREFRONT, promo = null, children }: ShopLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   const headerSettings = header ?? defaultShopHeaderSettings(business.businessHours);
@@ -39,6 +43,7 @@ export function ShopLayout({ business, header, categories, customer, cartCount, 
         {/* font-storefront: the shop uses Segoe UI, not the admin's Inter — see
             the `body` rule at the top of shop-header.php. */}
         <div className="font-storefront min-h-screen flex flex-col bg-white">
+          {promo && <PromoBar promo={promo} />}
           <ShopHeader
             business={business}
             header={headerSettings}

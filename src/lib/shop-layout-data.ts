@@ -5,6 +5,8 @@ import { getShopHeaderSettings } from "./header-settings";
 import type { ShopBusinessSettings, ShopCategoryNavItem, ShopCustomer, ShopHeaderSettings } from "@/types/shop";
 import { campaignSalePrices } from "@/lib/campaign-pricing";
 import { getStorefrontConfig } from "@/lib/storefront-config";
+import { getLiveHome } from "@/lib/home-config";
+import type { PromoBar } from "@/types/home";
 import type { StorefrontConfig } from "@/types/storefront";
 
 export interface ShopLayoutData {
@@ -15,6 +17,7 @@ export interface ShopLayoutData {
   cartCount: number;
   cartTotal: number;
   storefront: StorefrontConfig;
+  promo: PromoBar;
 }
 
 /** Loads everything ShopLayout needs — used at the top of every storefront page
@@ -28,6 +31,7 @@ export async function getShopLayoutData(): Promise<ShopLayoutData> {
     getCart(),
     getStorefrontConfig(),
   ]);
+  const promo = (await getLiveHome()).promo;
 
   let customer: ShopCustomer | null = null;
   if (customerSession) {
@@ -60,6 +64,7 @@ export async function getShopLayoutData(): Promise<ShopLayoutData> {
     cartCount: cartCount(cart),
     cartTotal,
     storefront,
+    promo,
   };
 }
 

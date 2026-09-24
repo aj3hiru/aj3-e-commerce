@@ -21,6 +21,7 @@ export type NavPermissionPath =
   | "ecommerce.manage_customers"
   | "ecommerce.manage_coupons"
   | "ecommerce.manage_payment"
+  | "ecommerce.manage_homepage"
   | "ecommerce.manage_credits"
   | "files.access_file_manager"
   | "pages.create"
@@ -185,7 +186,7 @@ export const ADMIN_NAV: NavSection[] = [
     links: [
       { href: "/admin/ecommerce/payment-settings", label: "Payment", icon: faCreditCard, permission: "ecommerce.manage_payment" },
       { href: "/admin/ecommerce/business-settings", label: "Business Setting", icon: faBuilding, permission: "ecommerce.manage_payment" },
-      { href: "/admin/ecommerce/homepage-settings", label: "Homepage Settings", icon: faHome, permission: "ecommerce.manage_payment" },
+      { href: "/admin/ecommerce/homepage-settings", label: "Homepage Customizer", icon: faHome, permission: "ecommerce.manage_homepage" },
       { href: "/admin/ecommerce/tax-settings", label: "GST / Tax Settings", icon: faReceipt, permission: "ecommerce.manage_products" },
     ],
   },

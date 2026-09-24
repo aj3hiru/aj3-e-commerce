@@ -116,3 +116,33 @@ export async function getFeedFacets(): Promise<{ categories: { slug: string; nam
     brands: (brands as { id: number; name: string }[]).map((x) => ({ id: x.id, name: x.name, count: b.get(x.id) ?? 0 })).filter((x) => x.count > 0),
   };
 }
+
+/** Products for a homepage "Product row" block. */
+export async function getProductRow(block: { source: "latest" | "deals" | "top_rated" | "category" | "manual"; category: string; productIds: number[]; limit: number }):
+  Promise<{ products: FeedProduct[]; viewAll: string | null }> {
+  const take = Math.max(1, Math.min(30, block.limit));
+  if (block.source === "manual") {
+    if (!block.productIds.length) return { products: [], viewAll: null };
+    const rows = (await prisma.ecomProduct.findMany({ where: { id: { in: block.productIds }, status: "active" }, select: FEED_SELECT })) as FeedRow[];
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    const ordered = block.productIds.map((id) => byId.get(id)).filter((r): r is FeedRow => !!r);
+    return { products: publicProducts(await enrichProducts(ordered)), viewAll: null };
+  }
+  if (block.source === "category") {
+    if (!block.category) return { products: [], viewAll: null };
+    const rows = (await prisma.ecomProduct.findMany({
+      where: { status: "active", category: { slug: block.category, status: "active" } }, orderBy: { createdAt: "desc" }, take, select: FEED_SELECT,
+    })) as FeedRow[];
+    return { products: publicProducts(await enrichProducts(rows)), viewAll: `/shop/category?slug=${encodeURIComponent(block.category)}` };
+  }
+  if (block.source === "latest") {
+    const rows = (await prisma.ecomProduct.findMany({ where: { status: "active" }, orderBy: { createdAt: "desc" }, take, select: FEED_SELECT })) as FeedRow[];
+    return { products: publicProducts(await enrichProducts(rows)), viewAll: "/shop?sort=new" };
+  }
+  // Deals / top rated need live prices and ratings, so rank a recent pool.
+  const pool = await enrichProducts((await prisma.ecomProduct.findMany({ where: { status: "active" }, orderBy: { createdAt: "desc" }, take: 400, select: FEED_SELECT })) as FeedRow[]);
+  const ranked = block.source === "deals"
+    ? pool.filter((p) => p.discountPct > 0 && p.stock !== "out").sort((a, b) => Number(!!b.dealEndsAt) - Number(!!a.dealEndsAt) || b.discountPct - a.discountPct)
+    : pool.filter((p) => p.rating !== null).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || b.reviews - a.reviews);
+  return { products: publicProducts(ranked.slice(0, take)), viewAll: block.source === "deals" ? "/shop?sort=discount" : "/shop?sort=rating" };
+}

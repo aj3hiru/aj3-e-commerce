@@ -35,8 +35,10 @@ function DealTimer({ endsAt }: { endsAt: string }) {
  * Product tile in the style of Meesho's mobile grid: tall image with a
  * wishlist heart, one-line title, price / MRP / % off, and a green rating pill.
  */
-export function ProductTile({ p, wished, onWish, priority }: {
+export function ProductTile({ p, wished, onWish, priority, lines = true }: {
   p: FeedProduct; wished: boolean; onWish: (id: number, next: boolean) => void; priority?: boolean;
+  /** Hairline right/bottom dividers, for tiles sitting edge-to-edge in the feed grid. */
+  lines?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -59,7 +61,7 @@ export function ProductTile({ p, wished, onWish, priority }: {
   }
 
   return (
-    <Link href={`/shop/product?slug=${encodeURIComponent(p.slug)}`} className="group flex min-w-0 flex-col bg-white pb-3 outline-none focus-visible:ring-2 focus-visible:ring-storefront-green">
+    <Link href={`/shop/product?slug=${encodeURIComponent(p.slug)}`} className={cn("group flex min-w-0 flex-col bg-white pb-3 outline-none focus-visible:ring-2 focus-visible:ring-storefront-green", lines && "shadow-[inset_-1px_-1px_0_#e7e5ec]")}>
       <div className="relative aspect-[1/1.12] w-full overflow-hidden bg-[#f7f7f7]">
         {p.image && imgOk ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -106,7 +108,7 @@ export function ProductTile({ p, wished, onWish, priority }: {
 
 export function ProductTileSkeleton() {
   return (
-    <div className="bg-white pb-3" aria-hidden>
+    <div className="bg-white pb-3 shadow-[inset_-1px_-1px_0_#e7e5ec]" aria-hidden>
       <div className="aspect-[1/1.12] w-full animate-pulse bg-[#eeeef3]" />
       <div className="space-y-2 px-2.5 pt-2.5">
         <div className="h-3.5 w-4/5 animate-pulse rounded bg-[#eeeef3]" />

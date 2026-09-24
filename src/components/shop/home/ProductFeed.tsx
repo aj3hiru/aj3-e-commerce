@@ -150,7 +150,7 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted }: {
         )}
       </div>
 
-      {/* Grid: 1px lines between tiles, like Meesho */}
+      {/* Grid: hairline dividers drawn by each tile, like Meesho (no grey gaps in a short last row) */}
       {items.length === 0 && loading !== "replace" ? (
         <div className="px-6 py-16 text-center text-[#666]">
           <PackageSearch className="mx-auto mb-3 h-12 w-12 text-[#c4c4cc]" />
@@ -162,7 +162,7 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted }: {
           )}
         </div>
       ) : (
-        <div className={cn("grid grid-cols-2 gap-px bg-[#e7e5ec] sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5", loading === "replace" && "opacity-60")}>
+        <div className={cn("grid grid-cols-2 bg-white sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5", loading === "replace" && "opacity-60")}>
           {items.map((p, i) => <ProductTile key={p.id} p={p} wished={wish.has(p.id)} onWish={onWish} priority={i < 4} />)}
           {loading === "replace" && items.length === 0 && Array.from({ length: 6 }, (_, i) => <ProductTileSkeleton key={i} />)}
           {loading === "more" && Array.from({ length: 4 }, (_, i) => <ProductTileSkeleton key={`s${i}`} />)}

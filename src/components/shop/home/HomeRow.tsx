@@ -20,7 +20,7 @@ export function HomeRow({ title, products, viewMoreUrl, wishlisted }: { title: s
       <div className="flex gap-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {products.map((p) => (
           <div key={p.id} className="w-[46%] max-w-[210px] shrink-0 overflow-hidden rounded-lg border border-[#e7e5ec] sm:w-[200px]">
-            <ProductTile p={p} wished={wish.has(p.id)} onWish={onWish} />
+            <ProductTile p={p} wished={wish.has(p.id)} onWish={onWish} lines={false} />
           </div>
         ))}
       </div>

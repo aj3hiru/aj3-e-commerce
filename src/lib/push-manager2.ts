@@ -69,10 +69,10 @@ export async function queueCampaign(input: ComposeInput): Promise<{ campaignId: 
 const BATCH_SIZE = 300; // same as cron-process-push-queue.php
 const MAX_ATTEMPTS = 3;
 const SEND_CONCURRENCY = 10; // parallel requests to push services within one batch
-const CHUNK_SIZE = 20; // progress is saved after every chunk
+const CHUNK_SIZE = 20; // progress is saved roughly every 20 finished sends
 const SEND_TIMEOUT_MS = 15_000; // a hung push service must not stall the queue
 const LOCK_KEY = "push_queue_lock";
-const LOCK_TTL_MS = 60_000; // renewed after every chunk (worst case ~30s apart)
+const LOCK_TTL_MS = 60_000; // renewed on every progress save
 
 /**
  * Sends one batch (up to 300) for the OLDEST pending/processing campaign —
@@ -154,35 +154,52 @@ export async function processPushQueue(
     }
   }
 
-  /** Writes a chunk's outcome right away, so a crash or restart mid-batch
-   *  re-sends at most the one chunk that was in flight — not the whole batch. */
-  async function flush() {
-    for (const r of retries) {
-      await prisma.pushQueue.updateMany({ where: { id: r.id }, data: { attempts: r.attempts, lastError: r.lastError } });
-    }
-    if (toDeleteQueue.length) await prisma.pushQueue.deleteMany({ where: { id: { in: toDeleteQueue } } });
-    if (toDeleteSubs.length) await prisma.pushSubscription.deleteMany({ where: { id: { in: toDeleteSubs } } });
-    if (chunkSent || chunkFailed) {
-      await prisma.pushCampaign.updateMany({
-        where: { id: campaign!.id },
-        data: { sent: { increment: chunkSent }, failed: { increment: chunkFailed } },
-      });
-    }
+  /** Saves finished sends as they pile up (every ~20), so a crash or restart
+   *  mid-batch re-sends only what was in flight or not yet saved — never the
+   *  whole batch. Saves run one after another; sending never waits on them
+   *  except when the batch ends. */
+  let saving: Promise<void> = Promise.resolve();
+  let stop = false;
+  function save(): Promise<void> {
+    // Take a snapshot synchronously so sends finishing meanwhile go to the next save.
+    const snap = { q: toDeleteQueue, subs: toDeleteSubs, retries, sent: chunkSent, failed: chunkFailed };
     toDeleteQueue = []; toDeleteSubs = []; retries = []; chunkSent = 0; chunkFailed = 0;
+    saving = saving.then(async () => {
+      for (const r of snap.retries) {
+        await prisma.pushQueue.updateMany({ where: { id: r.id }, data: { attempts: r.attempts, lastError: r.lastError } });
+      }
+      if (snap.q.length) await prisma.pushQueue.deleteMany({ where: { id: { in: snap.q } } });
+      if (snap.subs.length) await prisma.pushSubscription.deleteMany({ where: { id: { in: snap.subs } } });
+      if (snap.sent || snap.failed) {
+        await prisma.pushCampaign.updateMany({
+          where: { id: campaign!.id },
+          data: { sent: { increment: snap.sent }, failed: { increment: snap.failed } },
+        });
+      }
+      if (!(await heartbeat())) stop = true; // lost the queue lease — the new owner carries on
+    }).catch((e) => {
+      // Never let a background save reject unhandled (that would crash Node).
+      // Stop this batch; the error is re-thrown below so the worker backs off,
+      // and unsaved rows simply stay in the queue to be sent again.
+      saveError ??= e;
+      stop = true;
+    });
+    return saving;
   }
+  let saveError: unknown = null;
 
+  let next = 0;
   let processed = 0;
-  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
-    const chunk = rows.slice(i, i + CHUNK_SIZE);
-    // A small fixed pool: fast enough, but never hundreds of open sockets at once.
-    let next = 0;
-    await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, chunk.length) }, async () => {
-      while (next < chunk.length) await sendOne(chunk[next++]);
-    }));
-    await flush();
-    processed += chunk.length;
-    if (!(await heartbeat())) break; // lost the queue lease — stop, the new owner carries on
-  }
+  // A small fixed pool: fast enough, but never hundreds of open sockets at once.
+  await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, rows.length) }, async () => {
+    while (next < rows.length && !stop) {
+      await sendOne(rows[next++]);
+      processed++;
+      if (toDeleteQueue.length + retries.length >= CHUNK_SIZE) void save();
+    }
+  }));
+  await save(); // whatever is left, and wait for every earlier save to land
+  if (saveError) throw saveError;
 
   const remaining = await prisma.pushQueue.count({ where: { campaignId: campaign.id } });
   if (remaining === 0) await prisma.pushCampaign.updateMany({ where: { id: campaign.id }, data: { status: "completed" } });

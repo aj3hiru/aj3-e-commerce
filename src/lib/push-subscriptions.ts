@@ -1,3 +1,4 @@
+import { createECDH } from "crypto";
 import { prisma } from "@/lib/db";
 
 /**
@@ -47,21 +48,82 @@ export function parseEndpoint(raw: unknown): string | null {
 
 export interface CleanSubscription { endpoint: string; p256dh: string; auth: string }
 
-/** Validates one subscription in any of the shapes we accept:
- *  the browser's own `{ endpoint, keys: { p256dh, auth } }`, a flat
- *  `{ endpoint, p256dh, auth }` row, or the PHP app's JSON column text. */
-export function cleanSubscription(input: unknown): CleanSubscription | null {
+export type VerifyResult = { ok: true; sub: CleanSubscription } | { ok: false; reason: string };
+
+// Each push service issues endpoints of a known shape. A row that only has the
+// right host but not the right path is almost certainly made up.
+const PATH_RULES: { re: RegExp; path: RegExp }[] = [
+  { re: /^fcm\.googleapis\.com$/, path: /^\/(fcm\/send|wp)\/[A-Za-z0-9_:\-]{20,}$/ },
+  { re: /^android\.googleapis\.com$/, path: /^\/gcm\/send\/[A-Za-z0-9_:\-]{20,}$/ },
+  { re: /^updates\.push\.services\.mozilla\.com$/, path: /^\/(wpush\/v[12]|push\/v1)\/[A-Za-z0-9_=\-]{20,}$/ },
+  { re: /(^|\.)push\.apple\.com$/, path: /^\/[A-Za-z0-9_\-]{20,}$/ },
+  { re: /(^|\.)notify\.windows\.com$/, path: /.{20,}/ },
+];
+
+function b64urlBytes(s: string): Buffer | null {
+  if (!B64URL.test(s)) return null;
+  try { return Buffer.from(s.replace(/=+$/, ""), "base64url"); } catch { return null; }
+}
+
+// One reusable key pair: computeSecret() throws if the other key is not a real
+// point on the P-256 curve — a random 65-byte string fails this check.
+let ecdh: ReturnType<typeof createECDH> | null = null;
+function isP256Point(key: Buffer): boolean {
+  if (key.length !== 65 || key[0] !== 0x04) return false;
+  try {
+    if (!ecdh) { ecdh = createECDH("prime256v1"); ecdh.generateKeys(); }
+    ecdh.computeSecret(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Full check of one subscription, with the reason when it fails. Accepts the
+ * browser's own `{ endpoint, keys: { p256dh, auth } }`, a flat
+ * `{ endpoint, p256dh, auth }` row, or the PHP app's JSON column text.
+ *   - endpoint: https, a known browser push service, and that service's path shape
+ *   - p256dh:  base64url of a 65-byte uncompressed point that is really on P-256
+ *   - auth:    base64url of exactly 16 bytes
+ */
+export function verifySubscription(input: unknown): VerifyResult {
   let v = input as Record<string, unknown> | null;
   if (typeof input === "string") {
-    try { v = JSON.parse(input); } catch { return null; }
+    const t = input.trim();
+    if (!t) return { ok: false, reason: "Empty row" };
+    try { v = JSON.parse(t); } catch { return { ok: false, reason: "Not valid subscription JSON" }; }
   }
-  if (!v || typeof v !== "object") return null;
+  if (!v || typeof v !== "object" || Array.isArray(v)) return { ok: false, reason: "Not a subscription object" };
+  const rawEndpoint = typeof v.endpoint === "string" ? v.endpoint.trim() : "";
+  if (!rawEndpoint) return { ok: false, reason: "Missing endpoint" };
+  if (rawEndpoint.length > 768) return { ok: false, reason: "Endpoint too long" };
+  let u: URL;
+  try { u = new URL(rawEndpoint); } catch { return { ok: false, reason: "Endpoint is not a URL" }; }
+  if (u.protocol !== "https:") return { ok: false, reason: "Endpoint is not https" };
+  const rule = PATH_RULES.find((r) => r.re.test(u.hostname));
+  if (!rule) return { ok: false, reason: "Unknown push service" };
+  if (!rule.path.test(u.pathname + (u.hostname.endsWith("notify.windows.com") ? u.search : ""))) {
+    return { ok: false, reason: "Endpoint doesn't look like a real subscription" };
+  }
+
   const keys = (v.keys && typeof v.keys === "object" ? v.keys : v) as Record<string, unknown>;
-  const endpoint = parseEndpoint(v.endpoint);
   const p256dh = typeof keys.p256dh === "string" ? keys.p256dh.trim() : "";
   const auth = typeof keys.auth === "string" ? keys.auth.trim() : "";
-  if (!endpoint || !B64URL.test(p256dh) || !B64URL.test(auth) || p256dh.length > 200 || auth.length > 100) return null;
-  return { endpoint, p256dh, auth };
+  if (!p256dh) return { ok: false, reason: "Missing p256dh key" };
+  const key = b64urlBytes(p256dh);
+  if (!key || !isP256Point(key)) return { ok: false, reason: "p256dh is not a valid P-256 public key" };
+  if (!auth) return { ok: false, reason: "Missing auth secret" };
+  const secret = b64urlBytes(auth);
+  if (!secret || secret.length !== 16) return { ok: false, reason: "auth secret must be 16 bytes" };
+
+  return { ok: true, sub: { endpoint: u.toString(), p256dh, auth } };
+}
+
+/** The subscription if it passes verifySubscription(), else null. */
+export function cleanSubscription(input: unknown): CleanSubscription | null {
+  const r = verifySubscription(input);
+  return r.ok ? r.sub : null;
 }
 
 /** Parses an uploaded CSV or JSON file into candidate subscriptions. */
@@ -111,44 +173,6 @@ function splitCsv(text: string): string[][] {
   row.push(cell);
   if (row.some((c) => c.trim() !== "")) out.push(row);
   return out;
-}
-
-export interface ImportResult { total: number; added: number; updated: number; unchanged: number; invalid: number; duplicates: number }
-
-/** Upserts subscriptions by endpoint in chunks. Rows that fail validation are
- *  counted, never stored; repeated endpoints inside the file count once. */
-export async function importSubscriptions(rows: readonly unknown[]): Promise<ImportResult> {
-  const result: ImportResult = { total: rows.length, added: 0, updated: 0, unchanged: 0, invalid: 0, duplicates: 0 };
-  const seen = new Map<string, CleanSubscription>();
-  for (const r of rows) {
-    const c = cleanSubscription(r);
-    if (!c) { result.invalid++; continue; }
-    if (seen.has(c.endpoint)) result.duplicates++;
-    seen.set(c.endpoint, c); // last one wins
-  }
-  const all = [...seen.values()];
-  for (let i = 0; i < all.length; i += 500) {
-    const chunk = all.slice(i, i + 500);
-    const existing = (await prisma.pushSubscription.findMany({
-      where: { endpoint: { in: chunk.map((c) => c.endpoint) } },
-      select: { id: true, endpoint: true, p256dh: true, auth: true },
-    })) as { id: number; endpoint: string; p256dh: string; auth: string }[];
-    const byEndpoint = new Map(existing.map((e) => [e.endpoint, e]));
-    const fresh = chunk.filter((c) => !byEndpoint.has(c.endpoint));
-    if (fresh.length) {
-      const res = await prisma.pushSubscription.createMany({ data: fresh, skipDuplicates: true });
-      result.added += res.count;
-      result.unchanged += fresh.length - res.count; // subscribed meanwhile
-    }
-    for (const c of chunk) {
-      const e = byEndpoint.get(c.endpoint);
-      if (!e) continue;
-      if (e.p256dh === c.p256dh && e.auth === c.auth) { result.unchanged++; continue; }
-      await prisma.pushSubscription.update({ where: { id: e.id }, data: { p256dh: c.p256dh, auth: c.auth } });
-      result.updated++;
-    }
-  }
-  return result;
 }
 
 /** How many subscribers each browser family has (for the Subscribers tab). */

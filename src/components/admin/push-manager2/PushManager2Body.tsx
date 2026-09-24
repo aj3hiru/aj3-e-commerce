@@ -24,28 +24,30 @@ const EVT_TAB = "push2:tab";
 /** Header buttons (like coupons2): Export ▾, Import, New Push. They talk to the
  *  body through window events because AdminShell renders them in its top bar. */
 export function PushManager2HeaderButtons({ canManage }: { canManage: boolean }) {
+  const { isVisible: show, loaded } = useDashboardWidgetPrefs();
   const go = (tab: PushTab, then?: string) => window.dispatchEvent(new CustomEvent(EVT_TAB, { detail: { tab, then } }));
+  if (!loaded || !show("pm2-header")) return null;
   return (
     <>
       {canManage && (
         <>
-          <ActionMenu label="Export subscribers" bare align="right"
+          {show("pm2-b-export") && <ActionMenu label="Export subscribers" bare align="right"
             triggerClassName="flex h-10 items-center gap-2 whitespace-nowrap rounded-[0.5rem] border border-[#dee2e6] bg-white px-3.5 text-[0.875rem] font-medium text-[#374151] transition-colors hover:bg-[#f9fafb]"
             trigger={<><Download className="h-4 w-4" /> Export</>}
             items={[
               { label: "Subscribers (CSV)", hint: "CSV", onClick: () => exportSubscribers("csv") },
               { label: "Subscribers (JSON)", hint: "JSON", onClick: () => exportSubscribers("json") },
-            ]} />
-          <button type="button" onClick={() => go("subscribers", EVT_IMPORT)}
+            ]} />}
+          {show("pm2-b-import") && <button type="button" onClick={() => go("subscribers", EVT_IMPORT)}
             className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[0.5rem] border border-[#dee2e6] bg-white px-3.5 text-[0.875rem] font-medium text-[#374151] transition-colors hover:bg-[#f9fafb]">
             <Upload className="h-4 w-4" /> Import
-          </button>
+          </button>}
         </>
       )}
-      <button type="button" onClick={() => go("compose")}
+      {show("pm2-b-new") && <button type="button" onClick={() => go("compose")}
         className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[0.5rem] bg-[#2563eb] px-4 text-[0.875rem] font-semibold text-white shadow-sm transition-colors hover:bg-[#1d4ed8]">
         <Plus className="h-4 w-4" /> New Push
-      </button>
+      </button>}
     </>
   );
 }

@@ -9,6 +9,15 @@ export const PUSH2_PREF_KEY = "push_manager2_display";
 
 export const PUSH2_GROUPS: readonly WidgetGroup[] = [
   {
+    group: "pm2-header",
+    groupLabel: "Header buttons",
+    items: [
+      { key: "pm2-b-export", label: "Export" },
+      { key: "pm2-b-import", label: "Import" },
+      { key: "pm2-b-new", label: "New Push" },
+    ],
+  },
+  {
     group: "pm2-cards",
     groupLabel: "Summary Cards",
     items: [
@@ -17,6 +26,17 @@ export const PUSH2_GROUPS: readonly WidgetGroup[] = [
       { key: "pm2-k-sent", label: "Delivered" },
       { key: "pm2-k-failed", label: "Failed" },
       { key: "pm2-k-rate", label: "Delivery Rate" },
+    ],
+  },
+  {
+    group: "pm2-types",
+    groupLabel: "Promote options",
+    items: [
+      { key: "pm2-t-product", label: "Product" },
+      { key: "pm2-t-category", label: "Category" },
+      { key: "pm2-t-brand", label: "Brand" },
+      { key: "pm2-t-post", label: "Blog Post" },
+      { key: "pm2-t-custom", label: "Custom URL" },
     ],
   },
   {
@@ -70,5 +90,20 @@ export const PUSH2_GROUPS: readonly WidgetGroup[] = [
 ];
 
 export const PUSH2_STANDALONE: readonly { key: string; label: string }[] = [
-  { key: "pm2-notice", label: "Setup warning" },
+  { key: "pm2-notice", label: "Setup warning (only when keys are missing)" },
 ];
+
+// Subscribers and Settings (and the header's Import/Export) need the
+// push_notifications.manage_templates permission; without it those sections
+// don't exist on the page, so the panel mustn't offer them either.
+const MANAGE_ONLY = new Set(["pm2-subs", "pm2-settings"]);
+
+export function push2Groups(canManage: boolean): readonly WidgetGroup[] {
+  if (canManage) return PUSH2_GROUPS;
+  return PUSH2_GROUPS.filter((g) => !MANAGE_ONLY.has(g.group)).map((g) =>
+    g.group === "pm2-header" ? { ...g, items: g.items.filter((i) => i.key === "pm2-b-new") } : g);
+}
+
+export function push2Standalone(canManage: boolean): readonly { key: string; label: string }[] {
+  return canManage ? PUSH2_STANDALONE : [];
+}

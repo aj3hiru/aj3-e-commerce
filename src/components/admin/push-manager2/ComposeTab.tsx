@@ -146,6 +146,16 @@ export function ComposeTab({ draft, setDraft, catalog, appName, siteUrl, configu
   useEffect(() => { if (!siteUrl) setOrigin(window.location.origin); }, [siteUrl]);
 
   const kind = draft.kind;
+  // Display Options → "Promote options" decides which link types are offered.
+  const kinds = show("pm2-types") ? KINDS.filter((k) => show(`pm2-t-${k.value}`)) : [];
+  const kindsKey = kinds.map((k) => k.value).join(",");
+  useEffect(() => {
+    // The selected type was hidden: fall back to the first one still offered
+    // (or a plain custom link when none are), keeping whatever was typed.
+    if (kinds.length === 0) { if (draft.kind !== "custom") setDraft((d) => ({ ...d, kind: "custom", target: null })); return; }
+    if (!kinds.some((k) => k.value === draft.kind)) setDraft((d) => ({ ...d, kind: kinds[0].value, target: null }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kindsKey]);
   const [picker, setPicker] = useState<Kind | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [sending, setSending] = useState(false);
@@ -231,11 +241,13 @@ export function ComposeTab({ draft, setDraft, catalog, appName, siteUrl, configu
             <h2 className="text-base font-bold text-[#2563eb]">Compose Notification</h2>
           </header>
           <div className="space-y-6 p-5">
-            {show("pm2-c-target") && (
+            {show("pm2-c-target") && kinds.length > 0 && (
               <div>
                 <span className={SECTION_LABEL}>1. What are you promoting?</span>
-                <div role="radiogroup" aria-label="Link type" className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
-                  {KINDS.map((k) => (
+                <div role="radiogroup" aria-label="Link type"
+                  className={cn("grid gap-1.5", kinds.length >= 3 ? "grid-cols-3" : kinds.length === 2 ? "grid-cols-2" : "grid-cols-1",
+                    { 4: "sm:grid-cols-4", 5: "sm:grid-cols-5" }[kinds.length])}>
+                  {kinds.map((k) => (
                     <button key={k.value} type="button" role="radio" aria-checked={kind === k.value} onClick={() => switchKind(k.value)}
                       className={cn("flex flex-col items-center gap-1 rounded-[0.5rem] border px-2 py-2.5 text-xs font-medium transition-colors",
                         kind === k.value ? "border-[#2563eb] bg-blue-50 text-[#2563eb]" : "border-[#dee2e6] text-admin-gray-700 hover:bg-admin-gray-50")}>

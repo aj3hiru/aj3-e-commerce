@@ -144,7 +144,7 @@ export const PERMISSION_GROUPS: {
     fields: { create: "Create", edit_own: "Edit Own", edit_all: "Edit All", delete_own: "Delete Own", delete_all: "Delete All", publish: "Publish", unpublish: "Unpublish", schedule: "Schedule", feature: "Feature", manage_categories: "Categories", manage_tags: "Tags", manage_comments: "Comments", view_drafts: "View Drafts", manage_seo: "Manage SEO" },
   },
   { key: "media", label: "Media", icon: "Images", fields: { upload: "Upload", delete: "Delete", manage_all: "Manage All" } },
-  { key: "push_notifications", label: "Push Notifications", icon: "Bell", fields: { send: "Send", schedule: "Schedule", manage_templates: "Templates" } },
+  { key: "push_notifications", label: "Push Notifications", icon: "Bell", fields: { send: "Send", schedule: "Schedule", manage_templates: "Subscribers & Settings" } },
   {
     key: "ecommerce", label: "Ecommerce", icon: "Store",
     // Real bug fixed here: Homepage Settings was gated on manage_payment

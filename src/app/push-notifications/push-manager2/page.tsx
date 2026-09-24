@@ -3,7 +3,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
 import { PushManager2Body, PushManager2HeaderButtons, type PushTab } from "@/components/admin/push-manager2/PushManager2Body";
 import type { SubscribersData } from "@/components/admin/push-manager2/SubscribersTab";
-import { PUSH2_GROUPS, PUSH2_PREF_KEY, PUSH2_STANDALONE } from "@/components/admin/push-manager2/displayOptions";
+import { PUSH2_PREF_KEY, push2Groups, push2Standalone } from "@/components/admin/push-manager2/displayOptions";
 import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
@@ -77,7 +77,7 @@ export default async function PushManager2Page({ searchParams }: { searchParams:
   const appName = business?.businessName || process.env.NEXT_PUBLIC_APP_NAME || "EduMint24";
 
   return (
-    <DashboardWidgetPrefsProvider prefKey={PUSH2_PREF_KEY} groups={PUSH2_GROUPS} standalone={PUSH2_STANDALONE}>
+    <DashboardWidgetPrefsProvider prefKey={PUSH2_PREF_KEY} groups={push2Groups(canManage)} standalone={push2Standalone(canManage)}>
       <AdminShell
         siteName="EduMint24"
         pageTitle="Push Notification Manager"

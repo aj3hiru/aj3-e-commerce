@@ -45,7 +45,8 @@ export async function enrichProducts(rows: FeedRow[]): Promise<(FeedProduct & { 
     const rt = ratings.get(r.id);
     return {
       id: r.id, slug: r.slug, name: r.name, image: r.image, price, finalPrice,
-      discountPct: price > 0 && finalPrice < price ? Math.round(((price - finalPrice) / price) * 100) : 0,
+      // Never "100% off" for something that still costs money (rounding 99.99%).
+      discountPct: price > 0 && finalPrice < price ? Math.min(finalPrice > 0 ? 99 : 100, Math.round(((price - finalPrice) / price) * 100)) : 0,
       rating: rt?.avg ? Math.round(rt.avg * 10) / 10 : null, reviews: rt?.count ?? 0,
       stock: !tracked ? "untracked" : r.stockQty! <= 0 ? "out" : r.stockQty! <= LOW_STOCK_LIMIT ? "low" : "in",
       dealEndsAt: ends && ends.getTime() > now.getTime() && ends.getTime() - now.getTime() < 3 * 86_400_000 ? ends.toISOString() : null,

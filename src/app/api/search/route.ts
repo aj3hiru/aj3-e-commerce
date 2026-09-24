@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getAdminSession } from "@/lib/admin-auth";
+import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 
 interface SearchResult {
   type: "order" | "customer" | "receipt";
@@ -16,6 +16,12 @@ interface SearchResult {
 export async function GET(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json([]);
+  // Results expose customer phone numbers and order totals — only staff who
+  // work with orders/customers/billing/dues may search them.
+  const canSearch = ["manage_orders", "manage_customers", "manage_billing", "manage_credits"].some((k) =>
+    hasPermission(session.permissions, "ecommerce", k)
+  );
+  if (!canSearch) return NextResponse.json([]);
 
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();

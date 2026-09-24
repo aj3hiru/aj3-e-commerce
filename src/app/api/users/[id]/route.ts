@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getAdminSession, hasPermission } from "@/lib/admin-auth";
+import { getAdminSession, hasPermission, type AdminSession } from "@/lib/admin-auth";
 import { hashPassword } from "@/lib/password";
 import { logActivity } from "@/lib/activity-log";
 
@@ -21,6 +21,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!hasPermission(session.permissions, "users", "suspend")) {
       return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
     }
+    if (userId === session.userId) {
+      return NextResponse.json({ success: false, message: "You cannot change your own status." }, { status: 400 });
+    }
+    const guard = await guardTarget(userId, session);
+    if (guard) return guard;
     const status = ["active", "pending", "suspended"].includes(body.status) ? body.status : "active";
     await prisma.user.update({ where: { id: userId }, data: { status } });
     return NextResponse.json({ success: true });
@@ -34,6 +39,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!["admin", "editor", "author"].includes(body.role)) {
       return NextResponse.json({ success: false, message: "Invalid role." }, { status: 400 });
     }
+    if (userId === session.userId) {
+      return NextResponse.json({ success: false, message: "You cannot change your own role." }, { status: 400 });
+    }
+    if (body.role === "admin" && session.role !== "admin") {
+      return NextResponse.json({ success: false, message: "Only an admin can grant the admin role." }, { status: 403 });
+    }
+    const guard = await guardTarget(userId, session);
+    if (guard) return guard;
     await prisma.user.update({ where: { id: userId }, data: { role: body.role } });
     return NextResponse.json({ success: true });
   }
@@ -41,12 +54,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const username = (body.username ?? "").trim();
   const email = (body.email ?? "").trim();
   const password = body.password ?? "";
-  const role = ["admin", "editor", "author"].includes(body.role) ? body.role : "author";
-  const permissions = body.permissions;
-
   if (!username || !email) {
     return NextResponse.json({ success: false, message: "Username and email are required." }, { status: 400 });
   }
+
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (!target) return NextResponse.json({ success: false, message: "User not found." }, { status: 404 });
+  const guard = await guardTarget(userId, session);
+  if (guard) return guard;
+
+  // Role and permissions only change when the editor holds the matching
+  // permission and isn't editing themselves — users.edit alone must never be
+  // enough to escalate anyone (including their own account). A missing role
+  // keeps the current one instead of silently demoting to "author".
+  const isSelf = userId === session.userId;
+  const requestedRole = ["admin", "editor", "author"].includes(body.role) ? body.role : target.role;
+  const canChangeRole =
+    !isSelf &&
+    hasPermission(session.permissions, "users", "change_roles") &&
+    (requestedRole !== "admin" || session.role === "admin");
+  const role = canChangeRole ? requestedRole : target.role;
+  const permissions =
+    !isSelf && hasPermission(session.permissions, "users", "manage_permissions") ? body.permissions : undefined;
 
   const dup = await prisma.user.findFirst({ where: { OR: [{ username }, { email }], id: { not: userId } } });
   if (dup) {
@@ -87,6 +116,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (userId === session.userId) {
     return NextResponse.json({ success: false, message: "You cannot delete your own account." }, { status: 400 });
   }
+  const guard = await guardTarget(userId, session);
+  if (guard) return guard;
 
   try {
     await prisma.user.delete({ where: { id: userId } });
@@ -96,4 +127,16 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     const message = err instanceof Error ? err.message : "unexpected error";
     return NextResponse.json({ success: false, message: `Delete failed: ${message}` }, { status: 500 });
   }
+}
+
+/** Only an admin may modify (edit, suspend, re-role, delete) an admin account —
+ *  otherwise a staffer with users.edit could reset an admin's password and take
+ *  the account over. */
+async function guardTarget(userId: number, session: AdminSession) {
+  if (session.role === "admin") return null;
+  const target = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+  if (target?.role === "admin") {
+    return NextResponse.json({ success: false, message: "Only an admin can modify an admin account." }, { status: 403 });
+  }
+  return null;
 }

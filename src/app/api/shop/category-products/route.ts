@@ -10,9 +10,10 @@ const PAGE_SIZE = 20;
  *  HTML-string response. */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const categoryId = Number(searchParams.get("category_id") ?? 0);
-  const subcategoryId = Number(searchParams.get("subcategory_id") ?? 0);
-  const offset = Math.max(0, Number(searchParams.get("offset") ?? 0));
+  const int = (v: string | null) => Math.max(0, Math.floor(Number(v ?? 0)) || 0); // NaN/garbage -> 0
+  const categoryId = int(searchParams.get("category_id"));
+  const subcategoryId = int(searchParams.get("subcategory_id"));
+  const offset = int(searchParams.get("offset"));
 
   const where = subcategoryId > 0 ? { status: "active", subcategoryId } : { status: "active", categoryId };
 

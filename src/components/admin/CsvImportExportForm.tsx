@@ -34,6 +34,8 @@ export function CsvImportExportForm() {
       <div className="bg-white rounded-lg border border-admin-gray-200 p-5">
         <h5 className="font-bold mb-3">Export Products</h5>
         <p className="text-sm text-admin-gray-500 mb-3">Download every product as a CSV file.</p>
+        {/* A file download from an API route, not a page — <Link> would try to client-navigate to it. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
         <a
           href="/api/ecommerce/products/export"
           className="inline-flex items-center gap-1.5 bg-admin-primary hover:bg-admin-primary-dark text-white text-sm font-medium rounded px-4 py-2"

@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 
 const DEMO_PERMISSIONS = {
@@ -21,6 +22,8 @@ const DEMO_PERMISSIONS = {
 };
 
 export default function DemoAdminDashboard() {
+  // UI preview with fake data — local development only, never on the live site.
+  if (process.env.NODE_ENV === "production") notFound();
   return (
     <AdminShell
       siteName="EduMint24"

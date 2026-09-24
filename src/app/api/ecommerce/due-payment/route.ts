@@ -38,10 +38,14 @@ export async function POST(req: NextRequest) {
 
     for (let i = 0; i < creditIds.length; i++) {
       const cid = creditIds[i];
-      let amount = amounts[i];
+      const amount = amounts[i];
       if (!Number.isInteger(cid) || cid <= 0 || !(amount > 0)) continue;
 
       const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+        // No-op UPDATE first: it takes the row lock, so two payments recorded at
+        // the same moment can't both read the same balance and overpay.
+        const locked = await tx.ecomCredit.updateMany({ where: { id: cid }, data: { amountPaid: { increment: 0 } } });
+        if (locked.count === 0) return null;
         const credit = await tx.ecomCredit.findUnique({ where: { id: cid } });
         if (!credit) return null;
 
@@ -54,7 +58,18 @@ export async function POST(req: NextRequest) {
 
         await tx.ecomCredit.update({ where: { id: cid }, data: { amountPaid: newPaid, status: newStatus } });
 
-        const receiptNumber = sharedReceipt ?? (await generateReceiptNumber());
+        // Keep the order itself in step: money collected against its due counts
+        // as paid on the order, and a fully settled order stops showing "Unpaid".
+        const order = await tx.ecomOrder.findUnique({ where: { id: credit.orderId }, select: { totalAmount: true, paidAmount: true } });
+        if (order) {
+          const orderPaid = Math.min(Number(order.totalAmount), Number(order.paidAmount) + clampedAmount);
+          await tx.ecomOrder.update({
+            where: { id: credit.orderId },
+            data: { paidAmount: orderPaid, paymentStatus: orderPaid >= Number(order.totalAmount) - 0.004 ? "Paid" : "Unpaid" },
+          });
+        }
+
+        const receiptNumber = sharedReceipt ?? (await generateReceiptNumber(tx));
         await tx.ecomCreditPayment.create({
           data: { creditId: cid, receiptNumber, amount: clampedAmount, paymentMethod, createdBy: session.userId },
         });

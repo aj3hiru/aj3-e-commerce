@@ -1,6 +1,9 @@
 import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
 
+const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
+
 /**
  * Mirrors the image-upload pattern repeated across admin/ecommerce/*.php
  * (categories.php, add-product-form.php, etc.):
@@ -16,7 +19,15 @@ export async function saveUploadedImage(
   subfolder: string, // e.g. "ecommerce/categories"
   slugPrefix: string
 ): Promise<string> {
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const ext = (file.name.split(".").pop() || "").toLowerCase();
+  // Only real image types — these files are served straight from /public on
+  // our own origin, so an uploaded .html/.svg/.js would be stored XSS.
+  if (!IMAGE_EXTENSIONS.includes(ext) || !file.type.startsWith("image/") || file.type === "image/svg+xml") {
+    throw new Error("Only JPG, PNG, GIF or WEBP images can be uploaded.");
+  }
+  if (file.size > MAX_IMAGE_SIZE) {
+    throw new Error("Image is too large (max 10MB).");
+  }
   const filename = `${slugPrefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
   const uploadDir = path.join(process.cwd(), "public", "uploads", subfolder);

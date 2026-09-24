@@ -33,8 +33,8 @@ export async function POST(req: NextRequest) {
 
   if (action === "add_to_cart") {
     const pid = Number(body.product_id ?? 0);
-    const qty = Math.max(1, Number(body.qty ?? 1));
-    if (pid <= 0) return NextResponse.json({ success: false, message: "Invalid product." });
+    const qty = toQty(body.qty ?? 1) || 1;
+    if (!Number.isInteger(pid) || pid <= 0) return NextResponse.json({ success: false, message: "Invalid product." });
 
     const product = await prisma.ecomProduct.findFirst({ where: { id: pid, status: "active" }, select: { id: true, stockQty: true, productType: true } });
     if (!product) return NextResponse.json({ success: false, message: "Product not found." });
@@ -42,8 +42,8 @@ export async function POST(req: NextRequest) {
     const current = cart[pid] ?? 0;
     let newQty = current + qty;
     if (product.productType === "physical" && product.stockQty !== null) {
-      if (newQty > product.stockQty) newQty = Math.max(1, product.stockQty);
-      if (newQty <= 0) return NextResponse.json({ success: false, message: "Out of stock." });
+      if (product.stockQty <= 0) return NextResponse.json({ success: false, message: "Out of stock." });
+      if (newQty > product.stockQty) newQty = product.stockQty;
     }
 
     cart[pid] = newQty;
@@ -54,7 +54,12 @@ export async function POST(req: NextRequest) {
 
   if (action === "update_cart_qty") {
     const pid = Number(body.product_id ?? 0);
-    const qty = Math.max(0, Number(body.qty ?? 1));
+    let qty = toQty(body.qty ?? 1);
+    if (qty > 0) {
+      const product = await prisma.ecomProduct.findFirst({ where: { id: pid, status: "active" }, select: { stockQty: true, productType: true } });
+      if (!product) qty = 0;
+      else if (product.productType === "physical" && product.stockQty !== null) qty = Math.min(qty, Math.max(0, product.stockQty));
+    }
     if (qty === 0) delete cart[pid];
     else cart[pid] = qty;
     await setCart(cart);
@@ -71,4 +76,10 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ success: false, message: "Unknown action." }, { status: 400 });
+}
+
+/** Whole, non-negative quantity; anything unparseable (NaN, "abc", 1.5) is floored or treated as 0. */
+function toQty(raw: unknown): number {
+  const n = Math.floor(Number(raw));
+  return Number.isFinite(n) && n > 0 ? Math.min(n, 999) : 0;
 }

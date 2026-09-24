@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { ShopLayout } from "@/components/shop/ShopLayout";
 
 const DEMO_BUSINESS = {
@@ -21,6 +22,8 @@ const DEMO_CATEGORIES = [
 ];
 
 export default function DemoShopPage() {
+  // UI preview with fake data — local development only, never on the live site.
+  if (process.env.NODE_ENV === "production") notFound();
   return (
     <ShopLayout
       business={DEMO_BUSINESS}

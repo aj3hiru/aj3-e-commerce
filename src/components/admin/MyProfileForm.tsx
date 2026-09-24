@@ -15,6 +15,7 @@ function MyProfileForm({ username: initialUsername, email: initialEmail, role }:
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -26,13 +27,14 @@ function MyProfileForm({ username: initialUsername, email: initialEmail, role }:
       const res = await fetch("/api/users/me", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password, confirmPassword }),
+        body: JSON.stringify({ username, email, password, confirmPassword, currentPassword }),
       });
       const data = await res.json();
       setNotice({ type: data.success ? "success" : "error", message: data.message });
       if (data.success) {
         setPassword("");
         setConfirmPassword("");
+        setCurrentPassword("");
       }
     } finally {
       setSubmitting(false);
@@ -67,6 +69,10 @@ function MyProfileForm({ username: initialUsername, email: initialEmail, role }:
           </div>
           <hr className="border-admin-gray-100" />
           <p className="text-xs text-admin-gray-500">Leave the password fields blank to keep your current password.</p>
+          <div>
+            <label className="block text-xs font-medium mb-1">Current Password</label>
+            <input type="password" autoComplete="current-password" required={password !== ""} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="w-full border border-admin-gray-200 rounded px-3 py-2 text-sm" />
+          </div>
           <div>
             <label className="block text-xs font-medium mb-1">New Password</label>
             <input type="password" autoComplete="new-password" minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border border-admin-gray-200 rounded px-3 py-2 text-sm" />

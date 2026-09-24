@@ -5,15 +5,14 @@ import { setAdminSessionCookie, setCustomerSessionCookie } from "@/lib/session-c
 import { getAttemptState, isLocked, lockSecondsLeft, recordFailedAttempt, clearAttempts } from "@/lib/login-lockout";
 import { logActivity } from "@/lib/activity-log";
 import { loginSchema } from "@/lib/validators/auth";
-import type { NextRequest as NextRequestType } from "next/server";
 
 /**
  * Verified 1:1 against shop/login.php's POST handler. Preserves:
  * - Admin/editor/author tried first (matched by username), customer tried second (by email)
  * - dashboard_access permission gate for admin accounts
  * - suspended/pending account messages
- * - 5-attempt / 15-minute lockout (see lib/login-lockout.ts for the stateless-cookie
- *   reimplementation note — the thresholds and behavior are unchanged)
+ * - 5-attempt / 15-minute lockout (kept server-side per identity and per IP —
+ *   see lib/login-lockout.ts; the thresholds are unchanged)
  * - activity_logs entries for login_blocked / login_denied / login_success
  *
  * NOTE ON CSRF: the original used a server-rendered hidden csrf_token field
@@ -25,14 +24,6 @@ import type { NextRequest as NextRequestType } from "next/server";
  * component using lib/csrf.ts's getOrCreateCsrfToken().
  */
 export async function POST(req: NextRequest) {
-  const attemptState = await getAttemptState();
-  if (isLocked(attemptState)) {
-    return NextResponse.json(
-      { success: false, message: `Too many failed attempts. Please try again in ${Math.ceil(lockSecondsLeft(attemptState) / 60)} minute(s).` },
-      { status: 429 }
-    );
-  }
-
   const body = await req.json().catch(() => null);
   const parsed = loginSchema.safeParse(body);
   if (!parsed.success) {
@@ -40,8 +31,15 @@ export async function POST(req: NextRequest) {
   }
   const { identity, password, redirect } = parsed.data;
 
-  const ipAddress = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "UNKNOWN";
-  const userAgent = req.headers.get("user-agent") ?? "UNKNOWN";
+  const ipAddress = req.headers.get("x-real-ip") ?? req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "UNKNOWN";
+
+  const attemptState = await getAttemptState(identity, ipAddress);
+  if (isLocked(attemptState)) {
+    return NextResponse.json(
+      { success: false, message: `Too many failed attempts. Please try again in ${Math.ceil(lockSecondsLeft(attemptState) / 60)} minute(s).` },
+      { status: 429 }
+    );
+  }
 
   // ── 1) Try an admin/editor/author account first (matched by username) ──
   const adminUser = await prisma.user.findFirst({
@@ -65,8 +63,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "You do not have permission to access the admin panel." });
     }
 
-    await clearAttempts();
-    await setAdminSessionCookie(adminUser.id);
+    await clearAttempts(identity);
+    await setAdminSessionCookie(adminUser.id, adminUser.passwordHash);
     await logActivity(req, adminUser.id, "login_success", `Logged in as ${adminUser.role}: ${adminUser.username}`);
 
     return NextResponse.json({ success: true, redirect: "/admin/dashboard" });
@@ -81,16 +79,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Your account has been suspended. Please contact support." });
     }
 
-    await clearAttempts();
-    await setCustomerSessionCookie(customer.id);
+    await clearAttempts(identity);
+    await setCustomerSessionCookie(customer.id, customer.password);
 
-    return NextResponse.json({ success: true, redirect: redirect || "/shop/account" });
+    return NextResponse.json({ success: true, redirect: safeRedirect(redirect) ?? "/shop/account" });
   }
 
   // ── Neither matched ──
-  const updated = await recordFailedAttempt();
+  const updated = await recordFailedAttempt(identity, ipAddress);
   if (isLocked(updated)) {
     return NextResponse.json({ success: false, message: "Too many failed attempts. Please try again in 15 minutes." });
   }
   return NextResponse.json({ success: false, message: "Incorrect email/username or password." });
+}
+
+/** Only same-site paths are allowed as a post-login destination — a full URL
+ *  or a protocol-relative "//host" would turn the login page into an open
+ *  redirect (phishing: /shop/login?redirect=https://evil.example). */
+function safeRedirect(target: string | undefined): string | null {
+  if (!target || !target.startsWith("/") || target.startsWith("//") || target.startsWith("/\\")) return null;
+  return target;
 }

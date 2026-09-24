@@ -163,7 +163,7 @@ export function QuickAddProductModal({ onClose, onAdded }: QuickAddProductModalP
           )}
 
           <p className="text-xs text-admin-gray-400">
-            This saves it as a real product too, so it's ready to sell again next time.
+            This saves it as a real product too, so it&apos;s ready to sell again next time.
           </p>
 
           <div className="flex gap-2 pt-1">

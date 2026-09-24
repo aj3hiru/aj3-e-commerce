@@ -4,6 +4,7 @@ import { getCustomerSession } from "@/lib/customer-auth";
 import { getCart, setCart } from "@/lib/cart-session";
 import { generateOrderNumber } from "@/lib/order-number";
 import type { Prisma } from "@prisma/client";
+import { findRedeemableCoupon, consumeCouponUse } from "@/lib/coupon-redeem";
 import { campaignPriceFor, type CampaignPrice } from "@/lib/campaign-core";
 import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "@/lib/campaign-pricing";
 
@@ -68,8 +69,8 @@ export async function POST(req: NextRequest) {
       let discount = 0;
       let coupon = null as Awaited<ReturnType<typeof tx.ecomCoupon.findFirst>> | null;
       if (couponCode !== "") {
-        const found = await tx.ecomCoupon.findFirst({ where: { code: couponCode, status: "active" } });
-        if (found && found.usedCount < found.numberOfTimes) {
+        const found = await findRedeemableCoupon(tx, couponCode, now);
+        if (found) {
           let eligible = 0;
           for (const li of lineItems) {
             const matches =
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
 
       await tx.ecomCustomer.update({ where: { id: customer.customerId }, data: { address } });
 
-      const orderNumber = await generateOrderNumber();
+      const orderNumber = await generateOrderNumber(tx);
       const custRow = await tx.ecomCustomer.findUnique({ where: { id: customer.customerId } });
       const order = await tx.ecomOrder.create({
         data: {
@@ -136,12 +137,20 @@ export async function POST(req: NextRequest) {
           });
         }
         if (li.product.productType === "physical" && li.product.stockQty !== null) {
-          await tx.ecomProduct.update({ where: { id: li.product.id }, data: { stockQty: Math.max(0, li.product.stockQty - li.qty) } });
+          // Conditional atomic decrement: if another order took the stock since we
+          // read it, nothing is updated and the whole order rolls back instead of overselling.
+          const taken = await tx.ecomProduct.updateMany({
+            where: { id: li.product.id, stockQty: { gte: li.qty } },
+            data: { stockQty: { decrement: li.qty } },
+          });
+          if (taken.count === 0) {
+            throw new CheckoutError(`Sorry, "${li.product.name}" just went out of stock. Please update your cart.`);
+          }
         }
       }
 
-      if (coupon) {
-        await tx.ecomCoupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } });
+      if (coupon && !(await consumeCouponUse(tx, coupon.id))) {
+        throw new CheckoutError("This coupon has just reached its usage limit. Please remove it and try again.");
       }
 
       return { orderId: order.id, campaignSales };

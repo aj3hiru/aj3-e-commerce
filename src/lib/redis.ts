@@ -10,14 +10,22 @@ import Redis from "ioredis";
  */
 
 let client: Redis | null = null;
-let attempted = false;
-let broken = false;
+// After a failure Redis is skipped for a short cool-down and then retried,
+// so one network blip doesn't disable caching until the next restart.
+const RETRY_AFTER_MS = 60_000;
+let brokenUntil = 0;
+
+function markBroken(c: Redis | null) {
+  brokenUntil = Date.now() + RETRY_AFTER_MS;
+  if (c) {
+    try { c.disconnect(); } catch { /* already gone */ }
+  }
+  if (client === c) client = null;
+}
 
 function getClient(): Redis | null {
-  if (broken) return null;
+  if (Date.now() < brokenUntil) return null;
   if (client) return client;
-  if (attempted) return null; // already tried once this process and it failed to even construct
-  attempted = true;
 
   const url = process.env.REDIS_URL;
   if (!url) return null; // not configured — silently skip caching, not an error
@@ -32,12 +40,16 @@ function getClient(): Redis | null {
     c.on("error", (err) => {
       // ioredis requires an error listener or it crashes the process — this is that listener.
       console.error("[redis] connection error (falling back to database):", err.message);
-      broken = true;
+      markBroken(c);
+    });
+    c.on("end", () => {
+      if (client === c) client = null; // closed connection — build a fresh one next time
     });
     client = c;
     return c;
   } catch (err) {
     console.error("[redis] could not construct client:", err);
+    markBroken(null);
     return null;
   }
 }
@@ -64,6 +76,18 @@ export async function cacheSet(key: string, value: unknown, ttlSeconds: number):
     await c.set(key, JSON.stringify(value), "EX", ttlSeconds);
   } catch {
     /* ignore — the page still works, it just wasn't cached this time */
+  }
+}
+
+/** Delete one key. Failure is silently ignored. */
+export async function cacheDel(key: string): Promise<void> {
+  const c = getClient();
+  if (!c) return;
+  try {
+    if (c.status !== "ready" && c.status !== "connecting") await c.connect();
+    await c.del(key);
+  } catch {
+    /* ignore */
   }
 }
 

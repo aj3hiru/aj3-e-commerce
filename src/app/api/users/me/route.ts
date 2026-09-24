@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession } from "@/lib/admin-auth";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, verifyPassword } from "@/lib/password";
+import { setAdminSessionCookie } from "@/lib/session-cookies";
 import { logActivity } from "@/lib/activity-log";
 
 /** Verified against admin/my-profile.php's POST handler. */
@@ -26,16 +27,26 @@ export async function POST(req: NextRequest) {
   if (password !== "" && password.length < 6) {
     return NextResponse.json({ success: false, message: "New password must be at least 6 characters." }, { status: 400 });
   }
+  if (password !== "") {
+    // A hijacked or unattended session must not be able to lock the owner out.
+    const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { passwordHash: true } });
+    if (!(await verifyPassword(body.currentPassword ?? "", me?.passwordHash))) {
+      return NextResponse.json({ success: false, message: "Your current password is incorrect." }, { status: 400 });
+    }
+  }
 
   try {
+    const newHash = password !== "" ? await hashPassword(password) : null;
     await prisma.user.update({
       where: { id: session.userId },
       data: {
         username,
         email,
-        ...(password !== "" ? { passwordHash: await hashPassword(password) } : {}),
+        ...(newHash ? { passwordHash: newHash } : {}),
       },
     });
+    // The password change revokes every older session; keep this one signed in.
+    if (newHash) await setAdminSessionCookie(session.userId, newHash);
 
     await logActivity(req, session.userId, "profile_update", "Updated own profile");
 

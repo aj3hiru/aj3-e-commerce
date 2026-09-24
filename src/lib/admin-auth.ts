@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { prisma } from "./db";
+import { sessionVersion } from "./session-cookies";
 
 export interface AdminSession {
   userId: number;
@@ -26,9 +27,11 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   if (!token) return null;
 
   try {
-    const payload = jwt.verify(token, process.env.ADMIN_JWT_SECRET!) as { userId: number };
+    const payload = jwt.verify(token, process.env.ADMIN_JWT_SECRET!) as { userId: number; pv?: string };
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
     if (!user || user.status !== "active") return null;
+    // Password changed since this session was issued -> session is revoked.
+    if (payload.pv !== sessionVersion(user.passwordHash)) return null;
 
     return {
       userId: user.id,

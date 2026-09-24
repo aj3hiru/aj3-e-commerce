@@ -5,6 +5,7 @@ import { generateOrderNumber } from "@/lib/order-number";
 import { logActivity } from "@/lib/activity-log";
 import { checkoutSchema } from "@/lib/validators/checkout";
 import type { Prisma } from "@prisma/client";
+import { findRedeemableCoupon, consumeCouponUse } from "@/lib/coupon-redeem";
 import { campaignPriceFor, type CampaignPrice } from "@/lib/campaign-core";
 import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "@/lib/campaign-pricing";
 
@@ -90,8 +91,8 @@ export async function POST(req: NextRequest) {
       const couponCode = input.coupon_code.toUpperCase();
 
       if (couponCode !== "") {
-        const found = await tx.ecomCoupon.findFirst({ where: { code: couponCode, status: "active" } });
-        if (found && found.usedCount < found.numberOfTimes) {
+        const found = await findRedeemableCoupon(tx, couponCode, now);
+        if (found) {
           let eligibleTotal = 0;
           for (const li of lineItems) {
             let matches = false;
@@ -139,6 +140,10 @@ export async function POST(req: NextRequest) {
         if (existing) {
           customerName = existing.name;
           customerPhone = customerPhone || existing.phone || "";
+        } else {
+          // Stale id (customer deleted meanwhile) — bill as walk-in rather than fail on the foreign key.
+          customerId = null;
+          customerName = customerName || "Walk-in Customer";
         }
       } else if (customerName !== "") {
         const created = await tx.ecomCustomer.create({
@@ -161,11 +166,12 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const distinctMethods = Array.from(new Set(payments.map((p) => p.method)));
+      const kept = keptPayments(payments, paidAmount).filter((p) => p.amount > 0);
+      const distinctMethods = Array.from(new Set((kept.length ? kept : payments).map((p) => p.method)));
       const paymentMethod = distinctMethods.length === 1 ? distinctMethods[0] : "Split";
 
       // ── Create order ──
-      const orderNumber = await generateOrderNumber();
+      const orderNumber = await generateOrderNumber(tx);
       const order = await tx.ecomOrder.create({
         data: {
           orderNumber,
@@ -185,8 +191,7 @@ export async function POST(req: NextRequest) {
       });
 
       // Record each payment method/amount pair for an itemized receipt.
-      for (const p of payments) {
-        if (p.amount <= 0) continue;
+      for (const p of kept) {
         await tx.ecomOrderPayment.create({
           data: { orderId: order.id, paymentMethod: p.method, amount: p.amount },
         });
@@ -242,8 +247,8 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      if (coupon) {
-        await tx.ecomCoupon.update({ where: { id: coupon.id }, data: { usedCount: { increment: 1 } } });
+      if (coupon && !(await consumeCouponUse(tx, coupon.id))) {
+        throw new CheckoutError("This coupon has just reached its usage limit. Please remove it and try again.");
       }
 
       return { order, discount, totalGst, dueAmount, grandTotal, campaignSales };
@@ -284,3 +289,20 @@ export async function POST(req: NextRequest) {
 }
 
 class CheckoutError extends Error {}
+
+/** When the customer hands over more than the bill (₹1000 cash for an ₹800
+ *  bill), the change goes back to them — so the stored payment rows must add up
+ *  to what was actually kept, not what was handed over. Change is taken out of
+ *  Cash first (that's what a cashier returns), then from the last rows entered. */
+function keptPayments(payments: { method: string; amount: number }[], kept: number) {
+  let excess = Math.round((payments.reduce((s, p) => s + p.amount, 0) - kept) * 100) / 100;
+  const rows = payments.map((p) => ({ ...p }));
+  const order = [...rows.filter((r) => r.method === "Cash"), ...rows.filter((r) => r.method !== "Cash").reverse()];
+  for (const r of order) {
+    if (excess <= 0) break;
+    const cut = Math.min(r.amount, excess);
+    r.amount = Math.round((r.amount - cut) * 100) / 100;
+    excess = Math.round((excess - cut) * 100) / 100;
+  }
+  return rows;
+}

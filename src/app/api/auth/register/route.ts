@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     data: { name, email, phone: phone || null, password: hash, customerType: "online", status: "active" },
   });
 
-  await setCustomerSessionCookie(created.id);
+  await setCustomerSessionCookie(created.id, hash);
 
   return NextResponse.json({ success: true, redirect: "/shop/account?welcome=1" });
 }

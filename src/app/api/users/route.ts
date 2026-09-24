@@ -16,8 +16,21 @@ export async function POST(req: NextRequest) {
   const username = (body.username ?? "").trim();
   const email = (body.email ?? "").trim();
   const password = body.password ?? "";
-  const role = ["admin", "editor", "author"].includes(body.role) ? body.role : "author";
-  const permissions = body.permissions ?? getRolePermissionDefaults(role);
+  const requestedRole = ["admin", "editor", "author"].includes(body.role) ? body.role : "author";
+  // Picking a non-default role needs change_roles, and only an admin can create
+  // another admin — otherwise a users.create-only staffer could mint an admin.
+  if (requestedRole !== "author" && !hasPermission(session.permissions, "users", "change_roles")) {
+    return NextResponse.json({ success: false, message: "You do not have permission to assign roles." }, { status: 403 });
+  }
+  if (requestedRole === "admin" && session.role !== "admin") {
+    return NextResponse.json({ success: false, message: "Only an admin can create another admin." }, { status: 403 });
+  }
+  const role = requestedRole;
+  // Custom permission sets need manage_permissions; otherwise use the role preset.
+  const permissions =
+    body.permissions && hasPermission(session.permissions, "users", "manage_permissions")
+      ? body.permissions
+      : getRolePermissionDefaults(role);
 
   if (!username || !email || !password) {
     return NextResponse.json({ success: false, message: "Username, email, and password are required." }, { status: 400 });

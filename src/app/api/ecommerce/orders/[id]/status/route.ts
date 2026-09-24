@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
-import { isOrderLocked } from "@/lib/order-recalc";
+import { isOrderLocked, paymentChangeBlocked, syncCancelStock } from "@/lib/order-recalc";
+import type { Prisma } from "@prisma/client";
 import { ORDER_STATUSES, PAYMENT_STATUSES } from "@/lib/order-statuses";
 
 const VALID_ORDER_STATUSES: readonly string[] = ORDER_STATUSES;
@@ -27,11 +28,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json().catch(() => ({}));
 
   if (body.action === "update_status" && VALID_ORDER_STATUSES.includes(body.orderStatus)) {
-    await prisma.ecomOrder.update({ where: { id: orderId }, data: { orderStatus: body.orderStatus } });
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.ecomOrder.update({ where: { id: orderId }, data: { orderStatus: body.orderStatus } });
+      await syncCancelStock(tx, orderId, order.orderStatus, body.orderStatus);
+    });
     return NextResponse.json({ success: true, message: `Order status updated to ${body.orderStatus}.` });
   }
 
   if (body.action === "update_payment" && VALID_PAYMENT_STATUSES.includes(body.paymentStatus)) {
+    const blocked = await paymentChangeBlocked(prisma, orderId);
+    if (blocked) return NextResponse.json({ success: false, message: blocked }, { status: 409 });
     await prisma.ecomOrder.update({
       where: { id: orderId },
       data: {

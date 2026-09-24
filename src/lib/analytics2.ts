@@ -3,6 +3,7 @@ import { getEcommerceAnalytics, type EcommerceAnalyticsData } from "./ecommerce-
 import type { Analytics2Range } from "./analytics2-range";
 import { computeDelta, type Delta } from "./dashboard2-delta";
 import type { DashboardRange, RangeResult } from "./dashboard-range";
+import { cached } from "./redis";
 
 /** Adapts analytics2's own range shape to the RangeResult getEcommerceAnalytics expects —
  *  only rangeStart/rangeEnd are actually read by it, the rest is display metadata it ignores. */
@@ -80,6 +81,15 @@ export interface Analytics2Data {
 }
 
 export async function getAnalytics2Data(range: Analytics2Range, orderTypeFilter: "all" | "online" | "offline"): Promise<Analytics2Data> {
+  // Cached for 60s per exact range+filter — a stats dashboard doesn't need
+  // to be second-fresh, and this query does several DB aggregations per
+  // load. If Redis isn't configured or is unreachable, `cached()` just
+  // calls computeAnalytics2Data() directly — behaves exactly as before.
+  const key = `analytics2:${range.dateFrom}:${range.dateTo}:${orderTypeFilter}`;
+  return cached(key, 60, () => computeAnalytics2Data(range, orderTypeFilter));
+}
+
+async function computeAnalytics2Data(range: Analytics2Range, orderTypeFilter: "all" | "online" | "offline"): Promise<Analytics2Data> {
   const typeWhere = orderTypeFilter === "all" ? {} : { orderType: orderTypeFilter };
 
   const grossSelect = { subtotalAmount: true, gstAmount: true } as const;

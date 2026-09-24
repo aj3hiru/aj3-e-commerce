@@ -22,6 +22,7 @@
     "clsx": "^2.1.1",
     "darkreader": "4.9.112",
     "date-fns": "^4.1.0",
+    "ioredis": "^6.0.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.43.0",
     "next": "^15.5.25",

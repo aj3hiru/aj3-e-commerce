@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ShopHeader } from "./ShopHeader";
 import { ShopMobileDrawer } from "./ShopMobileDrawer";
 import { ShopFooter } from "./ShopFooter";
+import { PushOptIn } from "./PushOptIn";
 import { CartProvider } from "@/hooks/useCart";
 import { defaultShopHeaderSettings } from "@/lib/shop-header-defaults";
 import type { ShopBusinessSettings, ShopCategoryNavItem, ShopCustomer, ShopHeaderSettings } from "@/types/shop";
@@ -46,6 +47,7 @@ export function ShopLayout({ business, header, categories, customer, cartCount, 
           {children}
         </div>
         <ShopFooter business={business} />
+        <PushOptIn appName={business.businessName} />
       </div>
     </CartProvider>
   );

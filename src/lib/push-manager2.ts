@@ -32,11 +32,9 @@ export async function searchPublishedPosts(query: string, limit = 50) {
 }
 
 /** Queues a campaign for every current subscriber — mirrors send-push.php's
- *  transaction (INSERT campaign, then INSERT one push_queue row per
- *  subscription). Actual sending happens in processPushQueue(), called
- *  right after this returns (fire-and-forget) and optionally again by an
- *  external cron hitting /api/cron/push-queue2 for resilience on large
- *  subscriber lists — the same two-step design the PHP version used. */
+ *  transaction (INSERT campaign, then one push_queue row per subscription).
+ *  Nothing is sent here: the single queue worker (kickPushQueue) picks the
+ *  campaign up and sends it after every campaign queued before it. */
 export async function queueCampaign(input: ComposeInput): Promise<{ campaignId: number; totalSubscribers: number }> {
   if (!input.title.trim() || !input.url.trim()) throw new PushSendError("Title and Target URL are required.");
 
@@ -54,63 +52,84 @@ export async function queueCampaign(input: ComposeInput): Promise<{ campaignId: 
       },
     });
     const subs = await tx.pushSubscription.findMany({ select: { id: true } });
-    if (subs.length) {
-      await tx.pushQueue.createMany({ data: subs.map((s: { id: number }) => ({ campaignId: c.id, subscriptionId: s.id, status: "pending" })) });
+    // Chunked so a large subscriber list never becomes one enormous INSERT.
+    for (let i = 0; i < subs.length; i += 1000) {
+      await tx.pushQueue.createMany({
+        data: subs.slice(i, i + 1000).map((s: { id: number }) => ({ campaignId: c.id, subscriptionId: s.id, status: "pending" })),
+      });
     }
+    // The count can move between the COUNT and the SELECT; store what was actually queued.
+    if (subs.length !== totalSubscribers) await tx.pushCampaign.update({ where: { id: c.id }, data: { totalSubscribers: subs.length } });
     return c;
-  });
+  }, { timeout: 60_000 });
 
   return { campaignId: campaign.id, totalSubscribers };
 }
 
+const BATCH_SIZE = 300; // same as cron-process-push-queue.php
+const MAX_ATTEMPTS = 3;
+const SEND_CONCURRENCY = 10; // parallel requests to push services within one batch
+const SEND_TIMEOUT_MS = 15_000; // a hung push service must not stall the queue
+const LOCK_KEY = "push_queue_lock";
+const LOCK_TTL_MS = 2 * 60_000;
+
 /**
- * Sends one batch of pending queue items for the oldest pending/processing
- * campaign — mirrors cron-process-push-queue.php exactly: 410/404 means the
- * browser unsubscribed (delete the subscription + queue row), other errors
- * increment an attempt counter up to 3 tries before giving up, and the
- * campaign is marked "completed" once its queue is empty. Safe to call
- * repeatedly (e.g. every few seconds) — it's a no-op when nothing is pending.
+ * Sends one batch (up to 300) for the OLDEST pending/processing campaign —
+ * mirrors cron-process-push-queue.php: 410/404 means the browser unsubscribed
+ * (delete the subscription + queue row), other errors are retried up to 3
+ * times, and the campaign is marked "completed" once its queue is empty.
+ * Campaigns are therefore sent strictly one after another, oldest first.
+ *
+ * Only the queue worker below should call this — it guarantees a single
+ * caller at a time, so a batch is never sent twice.
  */
-export async function processPushQueue(batchSize = 300): Promise<{ processed: number; campaignId: number | null }> {
+export async function processPushQueue(batchSize = BATCH_SIZE): Promise<{ processed: number; campaignId: number | null }> {
   const settings = await getPushSettings();
   if (!settings.configured) return { processed: 0, campaignId: null };
   webpush.setVapidDetails(settings.subject, settings.publicKey, settings.privateKey);
 
   const campaign = await prisma.pushCampaign.findFirst({
     where: { status: { in: ["pending", "processing"] } },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
   if (!campaign) return { processed: 0, campaignId: null };
 
   if (campaign.status === "pending") {
-    await prisma.pushCampaign.update({ where: { id: campaign.id }, data: { status: "processing" } });
+    await prisma.pushCampaign.updateMany({ where: { id: campaign.id }, data: { status: "processing" } });
   }
 
-  const rows = await prisma.pushQueue.findMany({
+  const rows = (await prisma.pushQueue.findMany({
     where: { campaignId: campaign.id, status: "pending" },
+    orderBy: { id: "asc" },
     take: batchSize,
-  });
-  const subIds = rows.map((r: { subscriptionId: number }) => r.subscriptionId);
-  const subs = await prisma.pushSubscription.findMany({ where: { id: { in: subIds } } });
-  const subById = new Map((subs as { id: number; endpoint: string; p256dh: string; auth: string }[]).map((s) => [s.id, s]));
+  })) as { id: number; subscriptionId: number; attempts: number | null }[];
 
   if (rows.length === 0) {
-    const remaining = await prisma.pushQueue.count({ where: { campaignId: campaign.id } });
-    if (remaining === 0) await prisma.pushCampaign.update({ where: { id: campaign.id }, data: { status: "completed" } });
+    // updateMany, not update: the campaign may have been deleted mid-send.
+    await prisma.pushCampaign.updateMany({ where: { id: campaign.id }, data: { status: "completed" } });
     return { processed: 0, campaignId: campaign.id };
   }
+
+  const subs = (await prisma.pushSubscription.findMany({
+    where: { id: { in: rows.map((r) => r.subscriptionId) } },
+  })) as { id: number; endpoint: string; p256dh: string; auth: string }[];
+  const subById = new Map(subs.map((s) => [s.id, s]));
 
   const payload = JSON.stringify({ title: campaign.title, body: campaign.body, image: campaign.image, url: campaign.url });
   const toDeleteQueue: number[] = [];
   const toDeleteSubs: number[] = [];
+  const retries: { id: number; attempts: number; lastError: string }[] = [];
   let batchSent = 0, batchFailed = 0;
-  const maxAttempts = 3;
 
-  for (const row of rows as { id: number; subscriptionId: number; attempts: number | null }[]) {
+  async function sendOne(row: (typeof rows)[number]) {
     const sub = subById.get(row.subscriptionId);
-    if (!sub) { toDeleteQueue.push(row.id); batchFailed++; continue; }
+    if (!sub) { toDeleteQueue.push(row.id); batchFailed++; return; }
     try {
-      await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload);
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        payload,
+        { TTL: 24 * 60 * 60, timeout: SEND_TIMEOUT_MS }
+      );
       toDeleteQueue.push(row.id);
       batchSent++;
     } catch (err) {
@@ -119,41 +138,136 @@ export async function processPushQueue(batchSize = 300): Promise<{ processed: nu
         toDeleteSubs.push(row.subscriptionId);
         toDeleteQueue.push(row.id);
         batchFailed++;
+        return;
+      }
+      const attempts = (row.attempts ?? 0) + 1;
+      if (attempts >= MAX_ATTEMPTS) {
+        toDeleteQueue.push(row.id);
+        batchFailed++;
       } else {
-        const attempts = (row.attempts ?? 0) + 1;
-        const message = err instanceof Error ? err.message : "Unknown error";
-        if (attempts >= maxAttempts) {
-          toDeleteQueue.push(row.id);
-          batchFailed++;
-        } else {
-          await prisma.pushQueue.update({ where: { id: row.id }, data: { attempts, lastError: message } });
-        }
+        retries.push({ id: row.id, attempts, lastError: (err instanceof Error ? err.message : "Unknown error").slice(0, 1000) });
       }
     }
   }
 
+  // A small fixed pool: fast enough, but never thousands of open sockets at once.
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, rows.length) }, async () => {
+    while (next < rows.length) await sendOne(rows[next++]);
+  }));
+
+  for (const r of retries) {
+    await prisma.pushQueue.updateMany({ where: { id: r.id }, data: { attempts: r.attempts, lastError: r.lastError } });
+  }
   if (toDeleteQueue.length) await prisma.pushQueue.deleteMany({ where: { id: { in: toDeleteQueue } } });
   if (toDeleteSubs.length) await prisma.pushSubscription.deleteMany({ where: { id: { in: toDeleteSubs } } });
 
-  await prisma.pushCampaign.update({
+  await prisma.pushCampaign.updateMany({
     where: { id: campaign.id },
     data: { sent: { increment: batchSent }, failed: { increment: batchFailed } },
   });
 
   const remaining = await prisma.pushQueue.count({ where: { campaignId: campaign.id } });
-  if (remaining === 0) await prisma.pushCampaign.update({ where: { id: campaign.id }, data: { status: "completed" } });
+  if (remaining === 0) await prisma.pushCampaign.updateMany({ where: { id: campaign.id }, data: { status: "completed" } });
 
-  return { processed: batchSent + batchFailed, campaignId: campaign.id };
+  return { processed: rows.length, campaignId: campaign.id };
 }
 
-/** Keeps calling processPushQueue until nothing is left to send, with a cap
- *  so a single request can't run forever — the rest is picked up by the
- *  next /api/cron/push-queue2 tick or the next send. */
-export async function processPushQueueUntilDone(maxRounds = 20): Promise<void> {
-  for (let i = 0; i < maxRounds; i++) {
-    const { processed } = await processPushQueue();
-    if (processed === 0) break;
+/* ───────────────────────── the single queue worker ───────────────────────── */
+
+type WorkerState = { running: boolean; again: boolean; owner: string };
+const g = globalThis as unknown as { __pushWorker?: WorkerState };
+const worker: WorkerState = (g.__pushWorker ??= { running: false, again: false, owner: `${process.pid}-${Math.random().toString(36).slice(2, 10)}` });
+
+const lockValue = (expiresAt: number) => `${String(expiresAt).padStart(15, "0")}:${worker.owner}`;
+
+/** A lease row in app_config, so even two server processes can never run the
+ *  queue at the same time. The value starts with a zero-padded expiry time, so
+ *  "expired" is a plain string comparison done atomically by the UPDATE. */
+async function acquireLock(): Promise<boolean> {
+  const now = Date.now();
+  try {
+    await prisma.appConfig.upsert({ where: { key: LOCK_KEY }, create: { key: LOCK_KEY, value: "" }, update: {} });
+  } catch { /* two processes created it at once — it exists either way */ }
+  const res = await prisma.appConfig.updateMany({
+    where: { key: LOCK_KEY, OR: [{ value: "" }, { value: { lt: lockValue(now) } }, { value: { endsWith: `:${worker.owner}` } }] },
+    data: { value: lockValue(now + LOCK_TTL_MS) },
+  });
+  return res.count === 1;
+}
+
+async function renewLock(): Promise<boolean> {
+  const res = await prisma.appConfig.updateMany({
+    where: { key: LOCK_KEY, value: { endsWith: `:${worker.owner}` } },
+    data: { value: lockValue(Date.now() + LOCK_TTL_MS) },
+  });
+  return res.count === 1;
+}
+
+async function releaseLock(): Promise<void> {
+  await prisma.appConfig.updateMany({ where: { key: LOCK_KEY, value: { endsWith: `:${worker.owner}` } }, data: { value: "" } }).catch(() => {});
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function runWorker(): Promise<void> {
+  if (!(await acquireLock())) return; // another process is already sending
+  let errors = 0;
+  try {
+    for (;;) {
+      worker.again = false;
+      let processed = 0;
+      let campaignId: number | null = null;
+      try {
+        ({ processed, campaignId } = await processPushQueue());
+        errors = 0;
+      } catch (e) {
+        // A DB blip or bad row must never kill the process — back off and retry,
+        // and give up after a few in a row (the next kick resumes the queue).
+        console.error("[push-queue] batch failed:", e instanceof Error ? e.message : e);
+        if (++errors >= 5) break;
+        await sleep(5_000 * errors);
+        continue;
+      }
+      if (campaignId === null) break; // nothing to send, or VAPID keys missing
+      if (processed === 0 && !worker.again) {
+        // Nothing sent this round: either the queue is empty, or the oldest
+        // campaign just got marked completed and the next one is waiting.
+        const waiting = await prisma.pushCampaign.count({ where: { status: { in: ["pending", "processing"] } } });
+        if (waiting === 0) break;
+      }
+      if (!(await renewLock())) break; // lease lost — someone else owns the queue now
+    }
+  } finally {
+    await releaseLock();
   }
+}
+
+/**
+ * Makes sure the queue is being worked on. Safe to call as often as you like
+ * (every send, a timer, the cron route): at most ONE worker runs, campaigns go
+ * out strictly one after another, and a kick that arrives while the worker is
+ * busy just makes it take another look before stopping. Never throws.
+ */
+export function kickPushQueue(): void {
+  if (worker.running) { worker.again = true; return; }
+  worker.running = true;
+  void (async () => {
+    try {
+      do {
+        worker.again = false;
+        await runWorker();
+      } while (worker.again);
+    } catch (e) {
+      console.error("[push-queue] worker stopped:", e instanceof Error ? e.message : e);
+    } finally {
+      worker.running = false;
+    }
+  })();
+}
+
+export function isPushWorkerRunning(): boolean {
+  return worker.running;
 }
 
 export interface CampaignHistoryRow {
@@ -194,4 +308,16 @@ export async function getCampaignHistory(page: number, limit = 10): Promise<{ ro
 
 export async function deleteCampaign(id: number): Promise<void> {
   await prisma.pushCampaign.delete({ where: { id } }); // push_queue rows cascade via onDelete: Cascade
+}
+
+/** Timer-friendly kick: one cheap COUNT, and the worker only starts when a
+ *  campaign is actually waiting (e.g. left half-sent by a restart). */
+export async function kickPushQueueIfWaiting(): Promise<void> {
+  if (worker.running) return;
+  try {
+    const waiting = await prisma.pushCampaign.count({ where: { status: { in: ["pending", "processing"] } } });
+    if (waiting > 0) kickPushQueue();
+  } catch {
+    /* DB unavailable — try again on the next tick */
+  }
 }

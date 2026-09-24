@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
-import { PushSendError, processPushQueueUntilDone, queueCampaign } from "@/lib/push-manager2";
+import { PushSendError, kickPushQueue, queueCampaign } from "@/lib/push-manager2";
 
 export async function POST(req: NextRequest) {
   const session = await getAdminSession();
@@ -19,11 +19,10 @@ export async function POST(req: NextRequest) {
     const { campaignId, totalSubscribers } = await queueCampaign({ title, body: message, url, image, postId });
     await logActivity(req, session.userId, "push_send", `Sent Push Notification: ${title.slice(0, 50)} (Linked Post ID: ${postId ?? "N/A"}) — ${totalSubscribers} subscriber${totalSubscribers === 1 ? "" : "s"}`);
 
-    // Start sending immediately in the background — the response doesn't wait
-    // for this. If the server restarts mid-send, /api/cron/push-queue2 (wired
-    // to a system cron, same idea as the original PHP cron) picks up any
-    // "pending"/"processing" campaign left with rows still in push_queue.
-    processPushQueueUntilDone().catch((e) => console.error("push queue processing failed", e));
+    // Hand it to the single queue worker. If another campaign is still going
+    // out, this one waits its turn behind it — any number of sends in a row
+    // just line up; they never run in parallel. The response doesn't wait.
+    kickPushQueue();
 
     return NextResponse.json({ success: true, campaignId, totalSubscribers }, { status: 202 });
   } catch (e) {

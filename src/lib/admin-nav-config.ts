@@ -222,7 +222,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Marketing",
     permission: "push_notifications.send",
     links: [
-      { href: "/push-notifications/push-manager", label: "Push Notifications", icon: faBell, permission: "push_notifications.send" },
+      { href: "/push-notifications/push-manager2", label: "Push Notifications", icon: faBell, permission: "push_notifications.send" },
     ],
   },
 

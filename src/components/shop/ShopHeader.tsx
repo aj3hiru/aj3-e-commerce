@@ -6,15 +6,19 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { Menu, MapPin, Clock, Search, Heart, ShoppingCart, User } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
-import type { ShopBusinessSettings, ShopCategoryNavItem, ShopCustomer, ShopHeaderSettings } from "@/types/shop";
-import { cn } from "@/lib/utils";
+import type { ShopBusinessSettings, ShopCustomer, ShopHeaderSettings } from "@/types/shop";
+import type { MenuDesign } from "@/types/storefront";
 import { formatMoneyInt } from "@/lib/format";
+import { PushBell } from "./push/PushContext";
+import { DesktopMenu, type ResolvedItem } from "./menu/StoreMenus";
 
 interface ShopHeaderProps {
   business: ShopBusinessSettings;
   header: ShopHeaderSettings;
-  categories: ShopCategoryNavItem[];
   customer: ShopCustomer | null;
+  /** Business Settings → Header Menu, already filtered for this visitor. */
+  menu: ResolvedItem[];
+  design: MenuDesign;
   onOpenMobileMenu: () => void;
 }
 
@@ -54,11 +58,18 @@ function strimwidth(value: string, width: number, marker = ""): string {
   return s.slice(0, Math.max(0, width - marker.length)) + marker;
 }
 
-function ShopHeaderInner({ business, header, categories, customer, onOpenMobileMenu }: ShopHeaderProps) {
+function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobileMenu }: ShopHeaderProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { count, total } = useCart();
   const currentSlug = searchParams?.get("slug") ?? "";
+  // A menu link is "current" when its path matches, and for category links its ?slug too.
+  const isActive = (href: string) => {
+    const [path, query = ""] = href.split("#")[0].split("?");
+    if (path !== pathname) return false;
+    const slug = new URLSearchParams(query).get("slug");
+    return slug ? slug === currentSlug : path !== "/shop/category" && !href.includes("#");
+  };
   const currentQ = searchParams?.get("q") ?? "";
 
   // `$shop_show_location && $shop_biz_location` — the toggle alone isn't
@@ -138,6 +149,7 @@ function ShopHeaderInner({ business, header, categories, customer, onOpenMobileM
         </form>
 
         <div className="flex items-center gap-[26px] whitespace-nowrap shrink-0">
+          <PushBell className="text-storefront-green" iconClassName="w-[22px] h-[22px]" />
           <Link href={accountHref} className="flex items-center gap-[7px] text-sm font-semibold text-[#333]">
             <User className="w-[22px] h-[22px] text-storefront-green shrink-0" strokeWidth={1.8} />
             <span>{accountLabel}</span>
@@ -157,30 +169,8 @@ function ShopHeaderInner({ business, header, categories, customer, onOpenMobileM
         </div>
       </header>
 
-      {/* ============ CATEGORY NAV (.navbar) ============ */}
-      <nav className="hidden shop:flex flex-nowrap items-center justify-start gap-8 px-8 py-3.5 border-b border-storefront-border bg-white overflow-x-auto text-sm font-semibold">
-        <Link
-          href="/shop"
-          className={cn(
-            "shrink-0 pb-1 text-[#333] hover:text-storefront-green",
-            pathname === "/shop" && !currentSlug && "!text-[#111] underline underline-offset-[6px]"
-          )}
-        >
-          All Categories
-        </Link>
-        {categories.map((cat) => (
-          <Link
-            key={cat.slug}
-            href={`/shop/category?slug=${encodeURIComponent(cat.slug)}`}
-            className={cn(
-              "shrink-0 pb-1 text-[#333] hover:text-storefront-green",
-              currentSlug === cat.slug && "!text-[#111] underline underline-offset-[6px]"
-            )}
-          >
-            {cat.name}
-          </Link>
-        ))}
-      </nav>
+      {/* ============ MAIN MENU (Business Settings → Header Menu) ============ */}
+      <DesktopMenu items={menu} design={design} isActive={isActive} />
 
       {/* ============ MOBILE HEADER (.mobile-topbar) ============ */}
       <div className="flex shop:hidden items-center justify-between px-4 py-3.5 border-b border-storefront-border bg-white">
@@ -201,6 +191,7 @@ function ShopHeaderInner({ business, header, categories, customer, onOpenMobileM
           )}
         </Link>
         <div className="flex items-center gap-[18px]">
+          <PushBell className="text-storefront-green" iconClassName="w-6 h-6" />
           <Link href="/shop/wishlist" aria-label="Wishlist">
             <Heart className="w-6 h-6 text-storefront-green" strokeWidth={1.8} />
           </Link>

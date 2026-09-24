@@ -1,133 +1,140 @@
 "use client";
 
 import Link from "next/link";
-import { X, UserCircle, LayoutGrid, ClipboardList, Heart, ShoppingCart } from "lucide-react";
+import { useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { LogIn, MapPin, UserPlus, UserRound, X } from "lucide-react";
 import { SocialIcon } from "./SocialIcon";
-import type { ShopBusinessSettings, ShopCustomer } from "@/types/shop";
+import { PushBell } from "./push/PushContext";
+import { SidebarMenu, type ResolvedItem } from "./menu/StoreMenus";
+import type { ShopBusinessSettings, ShopCustomer, ShopHeaderSettings } from "@/types/shop";
+import type { MenuDesign } from "@/types/storefront";
 import { cn } from "@/lib/utils";
 
 interface ShopMobileDrawerProps {
   business: ShopBusinessSettings;
+  header: ShopHeaderSettings;
   customer: ShopCustomer | null;
+  menu: ResolvedItem[];
+  design: MenuDesign;
   isOpen: boolean;
   onClose: () => void;
 }
 
+const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s);
+
 /**
- * Verified against #sidebar CSS + markup in shop-header.php (lines 665-746)
- * and shop-footer.php (lines 18-80) — REBUILT after discovering the first
- * pass used the wrong accent color (green instead of the drawer's own
- * `--drawer-accent:#7c3aed`, a purple distinct from the storefront's main
- * green) and was missing the dedicated top action-bar row, the exact
- * avatar/signin-button styling, and the bordered social-link circles
- * (solid purple background, not an outline).
+ * Mobile sidebar, top to bottom:
+ *   location (same short place + address as the header) · bell until subscribed · close
+ *   profile — avatar + name + View Profile, or Login / Sign up
+ *   menu from Business Settings → Sidebar Menu (dropdowns like the reference drawer)
+ *   Follow Us — the store's social links
+ * Shown below the shop's 901px breakpoint, the same one the header switches at.
  */
-export function ShopMobileDrawer({ business, customer, isOpen, onClose }: ShopMobileDrawerProps) {
+export function ShopMobileDrawer({ business, header, customer, menu, design, isOpen, onClose }: ShopMobileDrawerProps) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const showLocation = header.showLocation && !!business.location;
+
+  // Close on navigation and on Escape; lock page scroll while open.
+  useEffect(() => { onClose(); }, [pathname, searchParams, onClose]);
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
+  }, [isOpen, onClose]);
+
+  const isActive = (href: string) => {
+    const [path, query = ""] = href.split("#")[0].split("?");
+    if (path !== pathname) return false;
+    const slug = new URLSearchParams(query).get("slug");
+    return slug ? searchParams?.get("slug") === slug : !searchParams?.get("slug") || path !== "/shop/category";
+  };
+
   return (
     <>
-      <div
-        className={cn(
-          "fixed inset-0 bg-black/50 z-[999] transition-opacity md:hidden",
-          isOpen ? "opacity-100 visible" : "opacity-0 invisible"
-        )}
-        onClick={onClose}
-      />
-      <aside
-        aria-label="Mobile Navigation"
-        aria-hidden={!isOpen}
-        className={cn(
-          "fixed top-0 left-0 bottom-0 w-[min(380px,88vw)] bg-white z-[1001] flex flex-col md:hidden",
-          "shadow-[0_16px_40px_rgba(124,58,237,0.18)] transition-transform duration-[250ms] ease-out",
-          isOpen ? "translate-x-0" : "-translate-x-[101%]"
-        )}
-      >
-        <div className="shrink-0 border-b border-[#ebe5ff]">
-          <div className="grid grid-cols-[auto_auto_1fr_auto] items-center gap-2 px-4 py-3">
-            <button
-              onClick={onClose}
-              aria-label="Close Menu"
-              className="w-[34px] h-[34px] grid place-items-center rounded-full border border-[#ebe5ff] text-[#1d1d1f] hover:text-[#7c3aed] hover:border-[#7c3aed] transition-colors"
-            >
-              <X className="w-5 h-5" strokeWidth={2} />
-            </button>
-          </div>
+      <div className={cn("fixed inset-0 z-[999] bg-black/45 transition-opacity shop:hidden", isOpen ? "visible opacity-100" : "invisible opacity-0")} onClick={onClose} />
+      <aside aria-label="Mobile Navigation" aria-hidden={!isOpen} inert={!isOpen}
+        className={cn("fixed bottom-0 left-0 top-0 z-[1001] flex w-[min(360px,86vw)] flex-col bg-white shop:hidden",
+          "shadow-[6px_0_24px_rgba(0,0,0,0.18)] transition-transform duration-[240ms] ease-[cubic-bezier(.23,1,.32,1)]",
+          isOpen ? "translate-x-0" : "-translate-x-[105%]")}
+        style={{ ["--menu-accent" as string]: design.accent }}>
 
-          <div className="px-5 pt-2 pb-4">
-            <div className="flex items-center gap-3 mb-4 text-[15px] font-bold text-[#1d1d1f]">
-              <span className="grid place-items-center shrink-0 w-11 h-11 rounded-full bg-[#f0f0f0] text-[#7c3aed]">
-                <UserCircle className="w-[22px] h-[22px]" strokeWidth={1.8} />
+        {/* Location · bell · close */}
+        <div className="flex shrink-0 items-center gap-2.5 border-b border-storefront-border px-4 py-3">
+          {showLocation ? (
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-storefront-green-light px-2.5 py-1.5">
+              <MapPin className="h-[18px] w-[18px] shrink-0 text-storefront-green" fill="currentColor" strokeWidth={0} />
+              <span className="min-w-0 leading-tight">
+                <span className="block truncate text-[13px] font-bold text-storefront-text">{clip(business.location ?? "", 22)}</span>
+                {business.address && <span className="block truncate text-[11px] text-storefront-muted">{business.address}</span>}
               </span>
-              <span>{customer ? `Welcome, ${customer.name.split(" ")[0]}!` : `Welcome to ${business.businessName}!`}</span>
             </div>
-            {customer ? (
-              /* POST form, not a <Link> — see AdminHeader/logout route notes.
-                 (The first pass linked to "/shop/logout", which was also a dead
-                 route that never existed — it 404'd rather than logging out.) */
-              <form action="/api/auth/customer-logout" method="POST">
-                <button
-                  type="submit"
-                  className="block w-full py-3 rounded-lg bg-[#7c3aed] text-white text-[15px] font-bold text-center hover:opacity-90 transition-opacity"
-                >
-                  Logout
-                </button>
-              </form>
-            ) : (
-              // shop-footer.php's `.sidebar-signin` still reads "Sign In /
-              // Register", but the store owner asked for the auth link to say
-              // just "Login". The desktop header in the latest PHP already
-              // says "Login", so matching it here keeps the two consistent
-              // rather than showing a different word on mobile.
-              <Link
-                href="/shop/login"
-                className="block w-full py-3 rounded-lg bg-[#7c3aed] text-white text-[15px] font-bold text-center hover:opacity-90 transition-opacity"
-              >
-                Login
-              </Link>
-            )}
-          </div>
+          ) : (
+            <span className="min-w-0 flex-1 truncate text-[15px] font-extrabold text-storefront-green-dark">{business.businessName}</span>
+          )}
+          <PushBell className="h-9 w-9 rounded-full border border-storefront-border text-storefront-green" iconClassName="h-[18px] w-[18px]" />
+          <button type="button" onClick={onClose} aria-label="Close menu"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-storefront-border text-[#333] hover:border-storefront-green hover:text-storefront-green">
+            <X className="h-5 w-5" strokeWidth={2} />
+          </button>
         </div>
 
-        <nav
-          className="flex-1 min-h-0 overflow-y-auto py-4 px-3"
-          onClick={(e) => {
-            if ((e.target as HTMLElement).closest("a")) onClose();
-          }}
-        >
-          <Link href="/shop" className="flex items-center gap-3 w-full p-3 text-[15px] text-[#1d1d1f] hover:text-[#7c3aed]">
-            <LayoutGrid className="w-[22px] h-[22px] shrink-0" strokeWidth={1.8} /> Home
-          </Link>
-          <Link href="/shop#categories" className="flex items-center gap-3 w-full p-3 text-[15px] text-[#1d1d1f] hover:text-[#7c3aed]">
-            <LayoutGrid className="w-[22px] h-[22px] shrink-0" strokeWidth={1.8} /> All Categories
-          </Link>
-          {customer && (
-            <>
-              <Link href="/shop/account#orders" className="flex items-center gap-3 w-full p-3 text-[15px] text-[#1d1d1f] hover:text-[#7c3aed]">
-                <ClipboardList className="w-[22px] h-[22px] shrink-0" strokeWidth={1.8} /> My Orders
+        {/* Profile */}
+        <div className="shrink-0 border-b border-storefront-border px-4 py-4">
+          <div className="flex items-center gap-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-lg font-bold text-white"
+              style={{ background: `linear-gradient(135deg, ${design.accent}, color-mix(in srgb, ${design.accent} 60%, black))` }}>
+              {customer ? customer.name.trim().charAt(0).toUpperCase() : <UserRound className="h-6 w-6" strokeWidth={2} />}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[15px] font-bold text-storefront-text">{customer ? customer.name : "Hello, Guest"}</p>
+              <p className="truncate text-xs text-storefront-muted">{customer ? "Welcome back!" : `Welcome to ${business.businessName}`}</p>
+            </div>
+          </div>
+          {customer ? (
+            <Link href="/shop/account" onClick={onClose}
+              className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-lg border-2 text-sm font-semibold transition-colors hover:text-white"
+              style={{ borderColor: design.accent, color: design.accent }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = design.accent; e.currentTarget.style.color = "#fff"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = ""; e.currentTarget.style.color = design.accent; }}>
+              <UserRound className="h-4 w-4" /> View Profile
+            </Link>
+          ) : (
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Link href="/shop/login" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-lg text-sm font-semibold text-white" style={{ background: design.accent }}>
+                <LogIn className="h-4 w-4" /> Login
               </Link>
-              <Link href="/shop/wishlist" className="flex items-center gap-3 w-full p-3 text-[15px] text-[#1d1d1f] hover:text-[#7c3aed]">
-                <Heart className="w-[22px] h-[22px] shrink-0" strokeWidth={1.8} /> Wishlist
+              <Link href="/shop/register" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-lg border-2 text-sm font-semibold" style={{ borderColor: design.accent, color: design.accent }}>
+                <UserPlus className="h-4 w-4" /> Sign up
               </Link>
-            </>
+            </div>
           )}
-          <Link href="/shop/cart" className="flex items-center gap-3 w-full p-3 text-[15px] text-[#1d1d1f] hover:text-[#7c3aed]">
-            <ShoppingCart className="w-[22px] h-[22px] shrink-0" strokeWidth={1.8} /> My Cart
-          </Link>
+        </div>
+
+        {/* Menu */}
+        <nav aria-label="Menu" className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <p className="px-4 pb-1 pt-3 text-[11px] font-bold uppercase tracking-wider text-storefront-muted">Menu</p>
+          <SidebarMenu items={menu} design={design} isActive={isActive} onNavigate={onClose} />
+          {customer && (
+            <form action="/api/auth/customer-logout" method="POST" className="px-4 py-4">
+              <button type="submit" className="text-sm font-semibold text-red-600 hover:underline">Logout</button>
+            </form>
+          )}
         </nav>
 
+        {/* Follow us */}
         {!!business.socialMedia?.length && (
-          <div className="shrink-0 px-5 pt-3 pb-4 border-t border-[#ebe5ff] bg-[#f7f7f7] text-center">
-            <p className="text-[13px] text-[#555] mb-2">Follow Us on Social Media</p>
-            <div className="flex flex-wrap justify-center gap-2">
+          <div className="shrink-0 border-t border-storefront-border bg-storefront-bg px-4 py-3.5">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-storefront-muted">Follow Us</p>
+            <div className="flex flex-wrap gap-2.5">
               {business.socialMedia.map((s) => (
-                <a
-                  key={s.platform}
-                  href={s.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={s.platform}
-                  className="grid place-items-center w-9 h-9 rounded-full bg-[#7c3aed] hover:opacity-85 hover:-translate-y-0.5 transition-all"
-                >
-                  <SocialIcon platform={s.platform} className="w-5 h-5 fill-white text-white" />
+                <a key={s.platform + s.url} href={s.url} target="_blank" rel="noopener noreferrer" aria-label={s.platform}
+                  className="grid h-9 w-9 place-items-center rounded-full text-white transition-transform hover:-translate-y-0.5" style={{ background: design.accent }}>
+                  <SocialIcon platform={s.platform} className="h-4 w-4 fill-white text-white" />
                 </a>
               ))}
             </div>

@@ -7,6 +7,9 @@ import {
   FileText, Keyboard, Barcode, Image as ImageIcon, Printer, LayoutPanelTop, Save,
 } from "lucide-react";
 import { SOCIAL_PLATFORMS } from "@/lib/social-platforms";
+import { StorefrontSettingsPanels, STOREFRONT_MENU, STOREFRONT_SECTIONS, storefrontProblem } from "./StorefrontSettingsPanels";
+import type { StorefrontConfig } from "@/types/storefront";
+import type { ShopCategoryNavItem, SocialPlatform } from "@/types/shop";
 import {
   SettingsMenuLayout, SettingsPanel, Field, CheckRow, CONTROL_CLASS,
   type SettingsMenuItem,
@@ -68,6 +71,7 @@ const MENU: SettingsMenuItem[] = [
   { key: "identity", label: "Business Identity", icon: Building2 },
   { key: "contact", label: "Contact Information", icon: Contact },
   { key: "header", label: "Storefront Header", icon: LayoutPanelTop },
+  ...STOREFRONT_MENU,
   { key: "branding", label: "Logo & Branding", icon: ImageIcon },
   { key: "tax", label: "Tax & Legal", icon: FileSpreadsheet },
   { key: "invoice", label: "Invoice Format", icon: FileText },
@@ -77,7 +81,10 @@ const MENU: SettingsMenuItem[] = [
   { key: "social", label: "Social Media", icon: Share2 },
 ];
 
-export function BusinessSettingsForm({ initial }: { initial: BusinessSettingsInitial }) {
+export function BusinessSettingsForm({ initial, storefrontInitial, categories }: {
+  initial: BusinessSettingsInitial; storefrontInitial: StorefrontConfig; categories: ShopCategoryNavItem[];
+}) {
+  const [storefront, setStorefront] = useState(storefrontInitial);
   const router = useRouter();
   const [active, setActive] = useState("identity");
   const [form, setForm] = useState(initial);
@@ -100,8 +107,24 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessSettingsIni
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitting(true);
     setError("");
+
+    // Menus & footer first: check them, then save them, so a bad link is
+    // reported (and its section opened) before anything is written.
+    const problem = storefrontProblem(storefront);
+    if (problem) { setError(problem.message); setActive(problem.section); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/ecommerce/storefront-config", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(storefront),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!data.success) { setError(data.message || "Menus & footer couldn't be saved."); setSubmitting(false); return; }
+    } catch {
+      setError("Something went wrong saving menus & footer. Please try again.");
+      setSubmitting(false);
+      return;
+    }
 
     const fd = new FormData();
     fd.set("business_name", form.businessName);
@@ -553,6 +576,15 @@ export function BusinessSettingsForm({ initial }: { initial: BusinessSettingsIni
               <Plus className="h-3.5 w-3.5" /> Add social link
             </button>
           </SettingsPanel>
+        )}
+        {(STOREFRONT_SECTIONS as readonly string[]).includes(active) && (
+          <StorefrontSettingsPanels active={active} value={storefront} onChange={setStorefront} categories={categories}
+            business={{
+              // Live values from this form, so the footer preview follows unsaved edits.
+              businessName: form.businessName || "Your Store", logo: initial.logo, tagline: form.tagline,
+              email: form.email, address: form.address, contactNumbers: contactNumbers.filter(Boolean),
+              socialMedia: socialMedia.filter((sm) => sm.url && sm.platform !== "other") as { platform: SocialPlatform; url: string }[],
+            }} />
         )}
       </SettingsMenuLayout>
 

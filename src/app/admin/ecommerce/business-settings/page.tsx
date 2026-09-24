@@ -4,6 +4,7 @@ import { BusinessSettingsForm } from "@/components/admin/BusinessSettingsForm";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { getShopHeaderSettings } from "@/lib/header-settings";
+import { getStorefrontConfig } from "@/lib/storefront-config";
 
 interface BusinessSettingsPageProps {
   searchParams: Promise<{ success?: string; header?: string }>;
@@ -21,6 +22,10 @@ export default async function BusinessSettingsPage({ searchParams }: BusinessSet
   // pre-filling it with business_hours would silently copy that value into
   // ecom_home_settings on the next save, breaking the fallback for good.
   const header = await getShopHeaderSettings(null);
+  const [storefront, categoryRows] = await Promise.all([
+    getStorefrontConfig(),
+    prisma.ecomCategory.findMany({ where: { status: "active" }, orderBy: { serial: "asc" }, select: { slug: true, name: true } }),
+  ]);
 
   // Legacy fallbacks, ported from business-settings.php:130-132. Without these
   // a row saved before contact_numbers/invoice_contact_numbers existed opens
@@ -62,6 +67,8 @@ export default async function BusinessSettingsPage({ searchParams }: BusinessSet
       )}
 
       <BusinessSettingsForm
+        storefrontInitial={storefront}
+        categories={categoryRows as { slug: string; name: string }[]}
         initial={{
           businessName: biz?.businessName ?? "",
           tagline: biz?.tagline ?? "",

@@ -4,6 +4,8 @@ import { getCart, cartCount } from "./cart-session";
 import { getShopHeaderSettings } from "./header-settings";
 import type { ShopBusinessSettings, ShopCategoryNavItem, ShopCustomer, ShopHeaderSettings } from "@/types/shop";
 import { campaignSalePrices } from "@/lib/campaign-pricing";
+import { getStorefrontConfig } from "@/lib/storefront-config";
+import type { StorefrontConfig } from "@/types/storefront";
 
 export interface ShopLayoutData {
   business: ShopBusinessSettings;
@@ -12,17 +14,19 @@ export interface ShopLayoutData {
   customer: ShopCustomer | null;
   cartCount: number;
   cartTotal: number;
+  storefront: StorefrontConfig;
 }
 
 /** Loads everything ShopLayout needs — used at the top of every storefront page
  *  so the header/footer/cart-badge are always consistent and correctly hydrated
  *  from the current session, without each page re-implementing the same fetches. */
 export async function getShopLayoutData(): Promise<ShopLayoutData> {
-  const [biz, categories, customerSession, cart] = await Promise.all([
+  const [biz, categories, customerSession, cart, storefront] = await Promise.all([
     prisma.ecomBusinessSettings.findFirst({ orderBy: { id: "asc" } }),
     prisma.ecomCategory.findMany({ where: { status: "active" }, orderBy: { serial: "asc" } }),
     getCustomerSession(),
     getCart(),
+    getStorefrontConfig(),
   ]);
 
   let customer: ShopCustomer | null = null;
@@ -55,6 +59,7 @@ export async function getShopLayoutData(): Promise<ShopLayoutData> {
     customer,
     cartCount: cartCount(cart),
     cartTotal,
+    storefront,
   };
 }
 

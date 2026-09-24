@@ -3,7 +3,7 @@ import { getAdminSession } from "@/lib/admin-auth";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { LoginForm } from "@/components/shop/LoginForm";
 import { ShopLayout } from "@/components/shop/ShopLayout";
-import { prisma } from "@/lib/db";
+import { getShopLayoutData } from "@/lib/shop-layout-data";
 
 interface LoginPageProps {
   searchParams: Promise<{ redirect?: string }>;
@@ -25,21 +25,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   if (adminSession) redirect("/admin/dashboard");
   if (customerSession) redirect("/shop/account");
 
-  const business = await prisma.ecomBusinessSettings.findFirst({ orderBy: { id: "asc" } });
-  const categories = await prisma.ecomCategory.findMany({ where: { status: "active" }, orderBy: { serial: "asc" } });
+  // Same header/footer/menus as every other storefront page (visitor is logged out here).
+  const layout = await getShopLayoutData();
 
   return (
-    <ShopLayout
-      business={{
-        businessName: business?.businessName ?? "EduMint24",
-        logo: business?.logo,
-        contactNumbers: (business?.contactNumbers as string[]) ?? [],
-      }}
-      categories={categories.map((c: (typeof categories)[number]) => ({ slug: c.slug, name: c.name }))}
-      customer={null}
-      cartCount={0}
-      cartTotal={0}
-    >
+    <ShopLayout {...layout}>
       <LoginForm redirectTo={resolvedParams.redirect} />
     </ShopLayout>
   );

@@ -905,3 +905,15 @@ model EcomCampaignSale {
   @@index([orderId])
   @@map("ecom_campaign_sales")
 }
+
+/// Storefront configuration from Business Settings (menus, menu design, push
+/// prompt/bell, footer) — one JSON document per key. See src/lib/storefront-config.ts
+/// and prisma/storefront-settings.sql.
+model StorefrontSetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique @db.VarChar(64)
+  value     Json
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("storefront_settings")
+}

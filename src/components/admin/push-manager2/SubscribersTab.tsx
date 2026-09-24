@@ -78,7 +78,7 @@ export function SubscribersTab({ data, onPage, onChanged, onError }: {
           {show("pm2-s-tools") && (
             <section className={cn(CARD, "flex flex-col gap-3 p-5")}>
               <h2 className="text-base font-bold text-admin-gray-900">Import / Export</h2>
-              <p className="text-xs text-admin-gray-500">Move subscribers between servers or back them up. Every imported row is verified first, and you see a full report before anything is saved. Imported subscribers only receive pushes if they were created with the <b>same VAPID keys</b> as this site.</p>
+              <p className="text-xs text-admin-gray-500">Back up or move subscribers. Every row is verified before saving — works only with this site&apos;s <b>VAPID keys</b>.</p>
               <button type="button" onClick={() => setImportOpen(true)} className={BTN_PRIMARY}><Upload className="h-4 w-4" /> Import Subscribers</button>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => exportSubscribers("csv")} disabled={data.total === 0} className={BTN_OUTLINE}><Download className="h-4 w-4" /> CSV</button>

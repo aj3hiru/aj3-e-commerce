@@ -55,7 +55,7 @@ export async function getSiteFiles(): Promise<FileAsset[]> {
     prisma.ecomHomeSectionItem.findMany({ where: { customImage: { not: null } }, select: { id: true, customLabel: true, customImage: true } }),
     prisma.ecomPaymentSettings.findMany({ where: { image: { not: null } }, select: { methodKey: true, name: true, image: true } }),
     prisma.ecomBusinessSettings.findFirst({ select: { logo: true, updatedAt: true } }),
-    prisma.author.findMany({ where: { profileImage: { not: null } }, select: { id: true, name: true, profileImage: true } }),
+    prisma.author.findMany({ where: { image: { not: null } }, select: { id: true, name: true, image: true } }),
   ]);
 
   const entries: { relPath: string; category: AssetCategory; usedBy: string; manageUrl: string; createdAt: string | null; idPart: string }[] = [];
@@ -78,8 +78,8 @@ export async function getSiteFiles(): Promise<FileAsset[]> {
     entries.push({ relPath: pm.image!, category: "payment", usedBy: pm.name, manageUrl: "/admin/ecommerce/payment-settings", createdAt: null, idPart: `payment:${pm.methodKey}` });
   if (business?.logo)
     entries.push({ relPath: business.logo, category: "logo", usedBy: "Site logo", manageUrl: "/admin/ecommerce/business-settings", createdAt: business.updatedAt?.toISOString() ?? null, idPart: "logo:site" });
-  for (const a of authors as { id: number; name: string; profileImage: string | null }[])
-    entries.push({ relPath: a.profileImage!, category: "author", usedBy: a.name, manageUrl: "/admin/pages", createdAt: null, idPart: `author:${a.id}` });
+  for (const a of authors as { id: number; name: string; image: string | null }[])
+    entries.push({ relPath: a.image!, category: "author", usedBy: a.name, manageUrl: "/admin/pages", createdAt: null, idPart: `author:${a.id}` });
 
   const assetResults = await Promise.all(entries.map(async (e) => {
     const ext = (e.relPath.split(".").pop() || "").toLowerCase();

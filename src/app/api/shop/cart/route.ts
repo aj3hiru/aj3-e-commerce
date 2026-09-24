@@ -1,84 +1,93 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getCart, setCart, cartCount } from "@/lib/cart-session";
-import { campaignSalePrices } from "@/lib/campaign-pricing";
+import { getCart, setCart, cartCount, cartKey, parseCartKey, type CartMap } from "@/lib/cart-session";
+import { cartTotal, loadCartLines, priceLine, type CartProduct, type CartSize } from "@/lib/cart-lines";
+import { loadLiveCampaigns } from "@/lib/campaign-pricing";
 
-async function computeCartTotal(cart: Record<number, number>): Promise<number> {
-  const ids = Object.keys(cart).map(Number);
-  if (ids.length === 0) return 0;
-  const products = await prisma.ecomProduct.findMany({ where: { id: { in: ids } }, select: { id: true, price: true, salePrice: true, categoryId: true, brandId: true } });
-  const campaign = await campaignSalePrices(products); // campaign prices, so the badge matches the cart
-  let total = 0;
-  for (const p of products) {
-    const sale = p.salePrice ? Number(p.salePrice) : 0;
-    const price = Number(p.price);
-    const unit = campaign.get(p.id) ?? (sale > 0 && sale < price ? sale : price);
-    total += unit * (cart[p.id] ?? 0);
-  }
-  return total;
-}
+const summary = async (cart: CartMap) => ({ cart_count: cartCount(cart), cart_total: cartTotal(await loadCartLines(cart)) });
 
 /** GET the current cart (for hydrating the header cart badge on load). */
 export async function GET() {
   const cart = await getCart();
-  const total = await computeCartTotal(cart);
-  return NextResponse.json({ success: true, cart_count: cartCount(cart), cart_total: total, items: cart });
+  return NextResponse.json({ success: true, ...(await summary(cart)), items: cart });
 }
 
-/** Verified against add_to_cart / update_cart_qty / remove_from_cart in shop/ajax.php. */
+/** Line key from the request: `key` ("12" / "12:5") or product_id (+ size_id). */
+function keyFrom(body: Record<string, unknown>): string | null {
+  if (typeof body.key === "string") return parseCartKey(body.key) ? body.key : null;
+  const pid = Number(body.product_id ?? 0);
+  const sid = body.size_id === undefined || body.size_id === null || body.size_id === "" ? null : Number(body.size_id);
+  if (!Number.isInteger(pid) || pid <= 0 || (sid !== null && (!Number.isInteger(sid) || sid <= 0))) return null;
+  return cartKey(pid, sid);
+}
+
+/** Loads a product (+ size) that can be sold, with its stock limit. */
+async function sellable(key: string) {
+  const k = parseCartKey(key)!;
+  const product = (await prisma.ecomProduct.findFirst({
+    where: { id: k.productId, status: "active" },
+    select: { id: true, slug: true, name: true, image: true, price: true, salePrice: true, stockQty: true, productType: true, categoryId: true, subcategoryId: true, brandId: true, gstRate: true, hsnCode: true, status: true },
+  })) as CartProduct | null;
+  if (!product) return { error: "Product not found." } as const;
+  const sizeSelect = { id: true, productId: true, label: true, mrp: true, price: true, stockQty: true } as const;
+  let size: CartSize | null = null;
+  if (k.sizeId) {
+    size = (await prisma.ecomProductSize.findFirst({ where: { id: k.sizeId, productId: product.id }, select: sizeSelect })) as CartSize | null;
+    if (!size) return { error: "That size is no longer available." } as const;
+  } else {
+    // A product sold in sizes, added from a list without choosing one: use its
+    // default size — the one whose price the lists show.
+    size = (await prisma.ecomProductSize.findFirst({ where: { productId: product.id }, orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }, { id: "asc" }], select: sizeSelect })) as CartSize | null;
+  }
+  const { maxQty } = priceLine(product, size, await loadLiveCampaigns().catch(() => []), new Date());
+  return { key: cartKey(product.id, size?.id), product, size, maxQty } as const;
+}
+
+/** Verified against add_to_cart / update_cart_qty / remove_from_cart in shop/ajax.php (plus sizes). */
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const action = body.action as string;
   const cart = await getCart();
+  const key = keyFrom(body);
 
   if (action === "add_to_cart") {
-    const pid = Number(body.product_id ?? 0);
     const qty = toQty(body.qty ?? 1) || 1;
-    if (!Number.isInteger(pid) || pid <= 0) return NextResponse.json({ success: false, message: "Invalid product." });
-
-    const product = await prisma.ecomProduct.findFirst({ where: { id: pid, status: "active" }, select: { id: true, stockQty: true, productType: true } });
-    if (!product) return NextResponse.json({ success: false, message: "Product not found." });
-
-    const current = cart[pid] ?? 0;
-    let newQty = current + qty;
-    if (product.productType === "physical" && product.stockQty !== null) {
-      if (product.stockQty <= 0) return NextResponse.json({ success: false, message: "Out of stock." });
-      if (newQty > product.stockQty) newQty = product.stockQty;
+    if (!key) return NextResponse.json({ success: false, message: "Invalid product." });
+    const s = await sellable(key);
+    if ("error" in s) return NextResponse.json({ success: false, message: s.error });
+    let newQty = (cart[s.key] ?? 0) + qty;
+    if (s.maxQty !== null) {
+      if (s.maxQty <= 0) return NextResponse.json({ success: false, message: "Out of stock." });
+      newQty = Math.min(newQty, s.maxQty);
     }
-
-    cart[pid] = newQty;
+    cart[s.key] = newQty;
     await setCart(cart);
-    const total = await computeCartTotal(cart);
-    return NextResponse.json({ success: true, cart_count: cartCount(cart), cart_total: total });
+    return NextResponse.json({ success: true, ...(await summary(cart)) });
   }
 
   if (action === "update_cart_qty") {
-    const pid = Number(body.product_id ?? 0);
+    if (!key) return NextResponse.json({ success: false, message: "Invalid product." });
     let qty = toQty(body.qty ?? 1);
     if (qty > 0) {
-      const product = await prisma.ecomProduct.findFirst({ where: { id: pid, status: "active" }, select: { stockQty: true, productType: true } });
-      if (!product) qty = 0;
-      else if (product.productType === "physical" && product.stockQty !== null) qty = Math.min(qty, Math.max(0, product.stockQty));
+      const s = await sellable(key);
+      if ("error" in s) qty = 0;
+      else if (s.maxQty !== null) qty = Math.min(qty, s.maxQty);
     }
-    if (qty === 0) delete cart[pid];
-    else cart[pid] = qty;
+    if (qty === 0) delete cart[key];
+    else cart[key] = qty;
     await setCart(cart);
-    const total = await computeCartTotal(cart);
-    return NextResponse.json({ success: true, cart_count: cartCount(cart), cart_total: total });
+    return NextResponse.json({ success: true, ...(await summary(cart)) });
   }
 
   if (action === "remove_from_cart") {
-    const pid = Number(body.product_id ?? 0);
-    delete cart[pid];
+    if (key) delete cart[key];
     await setCart(cart);
-    const total = await computeCartTotal(cart);
-    return NextResponse.json({ success: true, cart_count: cartCount(cart), cart_total: total });
+    return NextResponse.json({ success: true, ...(await summary(cart)) });
   }
 
   return NextResponse.json({ success: false, message: "Unknown action." }, { status: 400 });
 }
 
-/** Whole, non-negative quantity; anything unparseable (NaN, "abc", 1.5) is floored or treated as 0. */
 function toQty(raw: unknown): number {
   const n = Math.floor(Number(raw));
   return Number.isFinite(n) && n > 0 ? Math.min(n, 999) : 0;

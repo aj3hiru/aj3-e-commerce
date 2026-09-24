@@ -3,7 +3,16 @@ import { cookies } from "next/headers";
 const CART_COOKIE = "shop_cart";
 const CART_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
-export type CartMap = Record<number, number>; // productId -> qty
+/** "productId" or "productId:sizeId" -> qty (a product sold in sizes has one line per size). */
+export type CartMap = Record<string, number>;
+
+export const cartKey = (productId: number, sizeId?: number | null) => (sizeId ? `${productId}:${sizeId}` : String(productId));
+export function parseCartKey(key: string): { productId: number; sizeId: number | null } | null {
+  const m = /^(\d{1,9})(?::(\d{1,9}))?$/.exec(key);
+  if (!m) return null;
+  const productId = Number(m[1]), sizeId = m[2] ? Number(m[2]) : null;
+  return productId > 0 && (sizeId === null || sizeId > 0) ? { productId, sizeId } : null;
+}
 
 /**
  * Re-implements $_SESSION['shop_cart'] from shop/ajax.php as an (unsigned)
@@ -17,14 +26,13 @@ export async function getCart(): Promise<CartMap> {
   if (!raw) return {};
   try {
     // The cookie is client-editable, so keep only positive whole quantities
-    // for positive integer product ids — prices/stock are re-checked at checkout anyway.
+    // for well-formed product (and size) keys — prices/stock are re-checked at checkout anyway.
     const parsed = JSON.parse(raw);
     const cart: CartMap = {};
     if (parsed && typeof parsed === "object") {
       for (const [k, v] of Object.entries(parsed)) {
-        const id = Number(k);
         const qty = Math.floor(Number(v));
-        if (Number.isInteger(id) && id > 0 && Number.isFinite(qty) && qty > 0) cart[id] = Math.min(qty, 999);
+        if (parseCartKey(k) && Number.isFinite(qty) && qty > 0) cart[k] = Math.min(qty, 999);
       }
     }
     return cart;

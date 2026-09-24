@@ -4,7 +4,7 @@ import {
   faPercent, faFileCsv, faStarHalfAlt, faBarcode, faTags, faList, faListUl, faReceipt,
   faHourglassHalf, faTruckLoading, faTruck, faBan, faUserFriends, faPercentage,
   faCreditCard, faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
-  faSignOutAlt, faChartLine, faFileAlt,
+  faSignOutAlt, faChartLine, faFileAlt, faBars, faGripLines, faBox,
 } from "@fortawesome/free-solid-svg-icons";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -186,8 +186,19 @@ export const ADMIN_NAV: NavSection[] = [
     links: [
       { href: "/admin/ecommerce/payment-settings", label: "Payment", icon: faCreditCard, permission: "ecommerce.manage_payment" },
       { href: "/admin/ecommerce/business-settings", label: "Business Setting", icon: faBuilding, permission: "ecommerce.manage_payment" },
-      { href: "/admin/ecommerce/homepage-settings", label: "Homepage Customizer", icon: faHome, permission: "ecommerce.manage_homepage" },
       { href: "/admin/ecommerce/tax-settings", label: "GST / Tax Settings", icon: faReceipt, permission: "ecommerce.manage_products" },
+    ],
+  },
+
+  // 8a. STORE CUSTOMIZER — design the storefront beside a live preview.
+  {
+    title: "Store Customizer",
+    permission: "ecommerce.manage_homepage",
+    links: [
+      { href: "/admin/customizer?tab=home", label: "Homepage", icon: faHome, permission: "ecommerce.manage_homepage", matchQuery: { key: "tab", value: "home" } },
+      { href: "/admin/customizer?tab=product", label: "Product Page", icon: faBox, permission: "ecommerce.manage_homepage", matchQuery: { key: "tab", value: "product" } },
+      { href: "/admin/customizer?tab=header", label: "Header & Menus", icon: faBars, permission: "ecommerce.manage_payment", matchQuery: { key: "tab", value: "header" } },
+      { href: "/admin/customizer?tab=footer", label: "Footer", icon: faGripLines, permission: "ecommerce.manage_payment", matchQuery: { key: "tab", value: "footer" } },
     ],
   },
 

@@ -5,8 +5,8 @@ import { getCart, setCart } from "@/lib/cart-session";
 import { generateOrderNumber } from "@/lib/order-number";
 import type { Prisma } from "@prisma/client";
 import { findRedeemableCoupon, consumeCouponUse } from "@/lib/coupon-redeem";
-import { campaignPriceFor, type CampaignPrice } from "@/lib/campaign-core";
 import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "@/lib/campaign-pricing";
+import { loadCartLines, type CartLine } from "@/lib/cart-lines";
 
 /** Verified 1:1 against shop/checkout.php's POST handler: re-validates stock,
  *  re-fetches prices server-side, applies an optional coupon with proportional
@@ -39,26 +39,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const ids = Object.keys(cart).map(Number);
-      const products = await tx.ecomProduct.findMany({ where: { id: { in: ids }, status: "active" } });
-
-      const lineItems: { product: (typeof products)[number]; qty: number; unitPrice: number; lineTotal: number; gstAmount?: number; campaign: CampaignPrice | null }[] = [];
+      // Same pricing as the cart page (sizes, sale and campaign prices), read inside the transaction.
+      const lines = await loadCartLines(cart, { client: tx, campaigns: liveCampaigns });
+      const lineItems: (CartLine & { lineTotal: number; gstAmount?: number })[] = [];
       let subtotal = 0;
-
-      for (const p of products) {
-        let qty = cart[p.id] ?? 0;
+      for (const l of lines) {
+        const qty = l.maxQty === null ? l.qty : Math.min(l.qty, l.maxQty);
         if (qty <= 0) continue;
-        if (p.productType === "physical" && p.stockQty !== null && qty > p.stockQty) qty = p.stockQty;
-        if (qty <= 0) continue;
-
-        const price = Number(p.price);
-        const sale = p.salePrice ? Number(p.salePrice) : 0;
-        let unitPrice = sale > 0 && sale < price ? sale : price;
-        // A live campaign can only lower the price (never stacks with the sale price).
-        const campaign = campaignPriceFor({ id: p.id, categoryId: p.categoryId, brandId: p.brandId, price, salePrice: sale > 0 ? sale : null }, liveCampaigns, now);
-        if (campaign) unitPrice = campaign.unitPrice;
-        const lineTotal = unitPrice * qty;
-        lineItems.push({ product: p, qty, unitPrice, lineTotal, campaign });
+        const lineTotal = l.unitPrice * qty;
+        lineItems.push({ ...l, qty, lineTotal });
         subtotal += lineTotal;
       }
 
@@ -125,8 +114,8 @@ export async function POST(req: NextRequest) {
       for (const li of lineItems) {
         const item = await tx.ecomOrderItem.create({
           data: {
-            orderId: order.id, productId: li.product.id, productName: li.product.name, hsnCode: li.product.hsnCode,
-            qty: li.qty, price: li.unitPrice, gstRate: li.product.gstRate, gstAmount: li.gstAmount!,
+            orderId: order.id, productId: li.product.id, productName: li.name, hsnCode: li.product.hsnCode,
+            qty: li.qty, price: li.unitPrice, gstRate: Number(li.product.gstRate), gstAmount: li.gstAmount!,
           },
           select: { id: true },
         });
@@ -135,6 +124,10 @@ export async function POST(req: NextRequest) {
             campaignId: li.campaign.campaignId, orderId: order.id, orderItemId: item.id, productId: li.product.id,
             qty: li.qty, unitPrice: li.unitPrice, discountPerUnit: li.campaign.discountPerUnit,
           });
+        }
+        if (li.product.productType === "physical" && li.size && li.size.stockQty !== null) {
+          const took = await tx.ecomProductSize.updateMany({ where: { id: li.size.id, stockQty: { gte: li.qty } }, data: { stockQty: { decrement: li.qty } } });
+          if (took.count === 0) throw new CheckoutError(`Sorry, "${li.name}" just went out of stock. Please update your cart.`);
         }
         if (li.product.productType === "physical" && li.product.stockQty !== null) {
           // Conditional atomic decrement: if another order took the stock since we

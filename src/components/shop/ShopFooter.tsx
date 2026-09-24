@@ -48,7 +48,7 @@ export function ShopFooter({ business, footer }: ShopFooterProps) {
   const linkCls = "mb-2.5 inline-flex items-center gap-2 text-[15px] text-white transition-colors duration-300 hover:text-[var(--ftx-accent)]";
 
   return (
-    <footer role="contentinfo" className="relative mt-10 md:mt-20"
+    <footer role="contentinfo" data-hc="footer" className="relative mt-10 md:mt-20"
       style={{ background: footer.bgColor, ["--ftx-accent" as string]: footer.accentColor }}>
       <div className="mx-auto max-w-[1200px] px-4 pb-6 pt-6 md:px-5 md:pt-10 xl:px-2.5 xl:pb-5">
         <div className="grid grid-cols-1 gap-[30px] border-b border-white/[0.18] pb-5 md:grid-cols-2 md:gap-5 min-[1025px]:grid-cols-[1.5fr_2fr_1.5fr] min-[1025px]:gap-10">

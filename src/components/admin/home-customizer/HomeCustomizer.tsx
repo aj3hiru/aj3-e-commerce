@@ -2,22 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowDown, ArrowUp, Check, ChevronDown, CircleAlert, Clock, ExternalLink, Eye, EyeOff, Gift, GripVertical, ImageIcon, LayoutGrid,
+  ArrowDown, ArrowUp, Check, CircleAlert, Clock, ExternalLink, Eye, EyeOff, Gift, GripVertical, ImageIcon, LayoutGrid,
   Loader2, MapPin, Megaphone, Monitor, Palette, PanelBottom, Plus, RefreshCw, RotateCcw, Rows3, Search, ShoppingBag, Smartphone, Tag,
   Trash2, Truck, Upload, X, Zap, GalleryHorizontal, Info, LayoutList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BLOCK_LABEL, MEESHO, newBlock, type BannerSlide, type HomeBlock, type HomeBlockType, type HomeConfig, type StripIcon } from "@/types/home";
-import { LINK_PRESETS, isSafeHref } from "@/types/storefront";
+import { isSafeHref } from "@/types/storefront";
 
-export interface PickCategory { slug: string; name: string; image: string | null }
-export interface PickProduct { id: number; name: string; image: string | null }
+import {
+  Card, ColorInput, IconBtn, ImageField, INPUT, imgSrc, Label, LinkInput, Preview, Segmented, Text, Thumb, Toggle, rid, uploadImage,
+  type PickCategory, type PickProduct,
+} from "@/components/admin/customizer/ui";
+
+export type { PickCategory, PickProduct };
 
 type Block<T extends HomeBlockType> = Extract<HomeBlock, { type: T }>;
 
-const INPUT = "w-full rounded-md border border-admin-gray-200 bg-white px-3 py-2 text-sm text-admin-gray-800 placeholder:text-admin-gray-400 focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/15";
-const imgSrc = (p: string) => (/^https:/.test(p) ? p : `/${p}`);
-const rid = () => Math.random().toString(36).slice(2, 10);
 
 const BLOCK_ICON: Record<HomeBlockType, typeof Rows3> = { banner: GalleryHorizontal, categories: LayoutGrid, products: Rows3, image: ImageIcon, feed: LayoutList };
 const BLOCK_HINT: Record<HomeBlockType, string> = {
@@ -31,159 +32,6 @@ const STRIP_ICONS: { v: StripIcon; icon: typeof MapPin }[] = [
   { v: "pin", icon: MapPin }, { v: "truck", icon: Truck }, { v: "tag", icon: Tag }, { v: "gift", icon: Gift }, { v: "bolt", icon: Zap }, { v: "clock", icon: Clock },
 ];
 const ACCENTS = [MEESHO.jamun, "#7c3aed", "#e11d48", "#ea580c", "#16a34a", "#0284c7", "#353543"];
-
-/* ───────────────────────── small controls ───────────────────────── */
-
-function Switch({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
-  return (
-    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={(e) => { e.stopPropagation(); onChange(!on); }}
-      className={cn("relative h-5 w-9 shrink-0 rounded-full transition-colors", on ? "bg-admin-primary" : "bg-admin-gray-300")}>
-      <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all", on ? "left-[18px]" : "left-0.5")} />
-    </button>
-  );
-}
-
-function Label({ children, hint }: { children: React.ReactNode; hint?: string }) {
-  return (
-    <span className="mb-1 flex items-baseline justify-between gap-2 text-xs font-semibold text-admin-gray-700">
-      {children}{hint && <span className="font-normal text-admin-gray-400">{hint}</span>}
-    </span>
-  );
-}
-
-function Text({ label, value, onChange, max, placeholder, hint }: { label: string; value: string; onChange: (v: string) => void; max: number; placeholder?: string; hint?: string }) {
-  return (
-    <label className="block">
-      <Label hint={hint ?? `${value.length}/${max}`}>{label}</Label>
-      <input value={value} maxLength={max} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className={INPUT} />
-    </label>
-  );
-}
-
-function Toggle({ on, onChange, children }: { on: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
-  return (
-    <label className="flex cursor-pointer items-center justify-between gap-3 rounded-md px-1 py-1.5 text-sm text-admin-gray-700 hover:bg-admin-gray-50">
-      <span>{children}</span>
-      <Switch on={on} onChange={onChange} label={typeof children === "string" ? children : "Toggle"} />
-    </label>
-  );
-}
-
-function ColorInput({ label, value, onChange, swatches }: { label: string; value: string; onChange: (v: string) => void; swatches?: string[] }) {
-  const [text, setText] = useState(value);
-  useEffect(() => setText(value), [value]);
-  return (
-    <div>
-      <Label>{label}</Label>
-      <div className="flex items-center gap-2">
-        <input type="color" value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}
-          className="h-9 w-10 shrink-0 cursor-pointer rounded-md border border-admin-gray-200 bg-white p-0.5" />
-        <input value={text} maxLength={7} className={cn(INPUT, "font-mono uppercase")}
-          onChange={(e) => { setText(e.target.value); if (/^#[0-9a-f]{6}$/i.test(e.target.value)) onChange(e.target.value.toLowerCase()); }} />
-      </div>
-      {swatches && (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {swatches.map((c) => (
-            <button key={c} type="button" onClick={() => onChange(c)} aria-label={`Use ${c}`} title={c}
-              className={cn("grid h-7 w-7 place-items-center rounded-full ring-offset-2 transition", value === c ? "ring-2 ring-admin-gray-800" : "hover:scale-110")} style={{ background: c }}>
-              {value === c && <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function LinkInput({ label, value, onChange, categories, optional }: { label: string; value: string; onChange: (v: string) => void; categories: PickCategory[]; optional?: boolean }) {
-  const listId = useMemo(() => `links-${rid()}`, []);
-  const bad = value.trim() !== "" && !isSafeHref(value);
-  return (
-    <label className="block">
-      <Label hint={optional ? "Optional" : undefined}>{label}</Label>
-      <input value={value} list={listId} onChange={(e) => onChange(e.target.value)} placeholder="/shop, /shop/category?slug=…, https://…"
-        className={cn(INPUT, bad && "border-red-400 focus:border-red-500 focus:ring-red-100")} aria-invalid={bad} />
-      <datalist id={listId}>
-        {LINK_PRESETS.map((p) => <option key={p.href} value={p.href}>{p.label}</option>)}
-        <option value="/shop?sort=discount">Deals (biggest discount)</option>
-        <option value="/shop?sort=new">New arrivals</option>
-        {categories.map((c) => <option key={c.slug} value={`/shop/category?slug=${encodeURIComponent(c.slug)}`}>{`Category: ${c.name}`}</option>)}
-      </datalist>
-      {bad && <span className="mt-1 block text-[11px] text-red-600">Use a site path (/…) or a full https:// link.</span>}
-    </label>
-  );
-}
-
-async function uploadImage(file: File): Promise<string> {
-  const fd = new FormData();
-  fd.append("file", file);
-  const res = await fetch("/api/ecommerce/home-customizer/upload", { method: "POST", body: fd }).then((r) => r.json()).catch(() => null);
-  if (!res?.success) throw new Error(res?.message || "Upload failed.");
-  return res.path as string;
-}
-
-function ImageField({ label, value, onChange, hint, aspect = "aspect-[2/1]" }: { label: string; value: string; onChange: (v: string) => void; hint?: string; aspect?: string }) {
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const input = useRef<HTMLInputElement>(null);
-  async function pick(f: File | undefined) {
-    if (!f) return;
-    setBusy(true); setErr("");
-    try { onChange(await uploadImage(f)); } catch (e) { setErr(e instanceof Error ? e.message : "Upload failed."); }
-    setBusy(false);
-  }
-  return (
-    <div>
-      <Label hint={hint}>{label}</Label>
-      <div
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={(e) => { e.preventDefault(); pick(e.dataTransfer.files[0]); }}
-        className={cn("group relative overflow-hidden rounded-lg border-2 border-dashed border-admin-gray-200 bg-admin-gray-50", aspect)}>
-        {value ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imgSrc(value)} alt="" className="h-full w-full object-contain" />
-        ) : (
-          <button type="button" onClick={() => input.current?.click()} className="flex h-full w-full flex-col items-center justify-center gap-1 text-admin-gray-400 hover:text-admin-primary">
-            <Upload className="h-5 w-5" /><span className="text-xs font-medium">Click or drop an image</span>
-          </button>
-        )}
-        {value && (
-          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/45 opacity-0 transition group-hover:opacity-100">
-            <button type="button" onClick={() => input.current?.click()} className="rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-admin-gray-800">Replace</button>
-            <button type="button" onClick={() => onChange("")} className="rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600">Remove</button>
-          </div>
-        )}
-        {busy && <div className="absolute inset-0 grid place-items-center bg-white/70"><Loader2 className="h-5 w-5 animate-spin text-admin-primary" /></div>}
-      </div>
-      <input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden onChange={(e) => { pick(e.target.files?.[0]); e.target.value = ""; }} />
-      {err && <p className="mt-1 text-[11px] text-red-600">{err}</p>}
-    </div>
-  );
-}
-
-/** A collapsible card in the left panel. */
-function Card({ icon: Icon, title, subtitle, open, onToggle, enabled, onEnabled, children, tone = "default" }: {
-  icon: typeof Rows3; title: string; subtitle?: string; open: boolean; onToggle: () => void;
-  enabled?: boolean; onEnabled?: (v: boolean) => void; children: React.ReactNode; tone?: "default" | "muted";
-}) {
-  return (
-    <section className={cn("rounded-xl border bg-white shadow-sm transition", open ? "border-admin-primary/40 ring-2 ring-admin-primary/10" : "border-admin-gray-200")}>
-      <div role="button" tabIndex={0} onClick={onToggle} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); } }}
-        className="flex cursor-pointer select-none items-center gap-3 px-4 py-3">
-        <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg", tone === "muted" ? "bg-admin-gray-100 text-admin-gray-500" : "bg-admin-primary-lighter text-admin-primary")}>
-          <Icon className="h-[18px] w-[18px]" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-admin-gray-800">{title}</span>
-          {subtitle && <span className="block truncate text-xs text-admin-gray-500">{subtitle}</span>}
-        </span>
-        {onEnabled && <Switch on={!!enabled} onChange={onEnabled} label={`Show ${title}`} />}
-        <ChevronDown className={cn("h-4 w-4 shrink-0 text-admin-gray-400 transition-transform", open && "rotate-180")} />
-      </div>
-      {open && <div className="space-y-4 border-t border-admin-gray-100 px-4 pb-4 pt-4">{children}</div>}
-    </section>
-  );
-}
 
 /* ───────────────────────── block editors ───────────────────────── */
 
@@ -358,36 +206,6 @@ function ProductsEditor({ b, set, categories, products }: { b: Block<"products">
   );
 }
 
-function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { v: T; label: string }[] }) {
-  return (
-    <div className="grid rounded-lg bg-admin-gray-100 p-1" style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}>
-      {options.map((o) => (
-        <button key={o.v} type="button" onClick={() => onChange(o.v)}
-          className={cn("rounded-md px-2 py-1.5 text-xs font-semibold transition", value === o.v ? "bg-white text-admin-primary shadow-sm" : "text-admin-gray-500 hover:text-admin-gray-800")}>
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function IconBtn({ label, onClick, disabled, danger, children }: { label: string; onClick: () => void; disabled?: boolean; danger?: boolean; children: React.ReactElement<{ className?: string }> }) {
-  return (
-    <button type="button" aria-label={label} title={label} disabled={disabled} onClick={(e) => { e.stopPropagation(); onClick(); }}
-      className={cn("grid h-7 w-7 shrink-0 place-items-center rounded-md text-admin-gray-500 transition hover:bg-admin-gray-100 disabled:opacity-30 disabled:hover:bg-transparent [&>svg]:h-3.5 [&>svg]:w-3.5",
-        danger ? "hover:bg-red-50 hover:text-red-600" : "hover:text-admin-gray-800")}>
-      {children}
-    </button>
-  );
-}
-
-function Thumb({ src, round }: { src: string | null; round?: boolean }) {
-  return src
-    // eslint-disable-next-line @next/next/no-img-element
-    ? <img src={imgSrc(src)} alt="" className={cn("h-8 w-8 shrink-0 object-cover", round ? "rounded-full" : "rounded")} />
-    : <span className={cn("grid h-8 w-8 shrink-0 place-items-center bg-admin-gray-100 text-admin-gray-400", round ? "rounded-full" : "rounded")}><ShoppingBag className="h-3.5 w-3.5" /></span>;
-}
-
 function blockSummary(b: HomeBlock, categories: PickCategory[]): string {
   switch (b.type) {
     case "banner": return b.slides.length ? `${b.slides.length} slide${b.slides.length > 1 ? "s" : ""}${b.autoplay ? ` · auto every ${b.autoplay}s` : ""}` : "No slides yet";
@@ -399,82 +217,6 @@ function blockSummary(b: HomeBlock, categories: PickCategory[]): string {
     case "image": return b.image ? (b.href || "No link") : "No image yet";
     case "feed": return [b.showSort && "Sort", b.showCategory && "Category", b.showBrand && "Brand", b.showFilters && "Filters"].filter(Boolean).join(" · ") || "No filter bar";
   }
-}
-
-/* ───────────────────────── preview ───────────────────────── */
-
-/**
- * Two stacked iframes: the next render loads in the hidden one and is swapped
- * in (at the same scroll position) once it's ready, so the preview never flashes.
- */
-function Preview({ version, device, focus }: { version: number; device: "mobile" | "desktop"; focus: { id: string; n: number } | null }) {
-  const frames = [useRef<HTMLIFrameElement>(null), useRef<HTMLIFrameElement>(null)];
-  const [front, setFront] = useState(0);
-  const [srcs, setSrcs] = useState<[string, string]>([`/shop?hc=draft&v=${version}`, "about:blank"]);
-  const [loading, setLoading] = useState(true);
-  const box = useRef<HTMLDivElement>(null);
-  const [boxW, setBoxW] = useState(900);
-  const pending = useRef<number | null>(null);
-  const first = useRef(true);
-
-  useEffect(() => {
-    const el = box.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setBoxW(el.clientWidth));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (first.current) { first.current = false; return; }
-    const back = 1 - front;
-    const y = frames[front].current?.contentWindow?.scrollY ?? 0;
-    pending.current = y;
-    setLoading(true);
-    setSrcs((s) => { const n: [string, string] = [...s]; n[back] = `/shop?hc=draft&v=${version}`; return n; });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version]);
-
-  function onLoad(i: number) {
-    if (srcs[i] === "about:blank") return;
-    const w = frames[i].current?.contentWindow;
-    if (i !== front) {
-      if (w && pending.current) w.scrollTo(0, pending.current);
-      setFront(i);
-    }
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    if (!focus) return;
-    const doc = frames[front].current?.contentDocument;
-    const el = doc?.querySelector<HTMLElement>(`[data-hc="${focus.id}"]`);
-    if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "start" });
-    el.animate([{ outline: "3px solid #7c3aed", outlineOffset: "-3px" }, { outline: "3px solid rgba(124,58,237,0)", outlineOffset: "-3px" }], { duration: 1400, easing: "ease-out" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focus]);
-
-  const W = device === "mobile" ? 390 : 1280;
-  const scale = device === "mobile" ? 1 : Math.min(1, (boxW - 32) / W);
-  return (
-    <div ref={box} className="relative flex h-full items-start justify-center overflow-hidden rounded-xl bg-[radial-gradient(circle_at_1px_1px,#d4d4dc_1px,transparent_0)] [background-size:18px_18px] bg-admin-gray-100 p-4">
-      <div className={cn("relative shrink-0 overflow-hidden bg-white shadow-2xl", device === "mobile" ? "h-full max-h-[844px] rounded-[36px] border-[10px] border-[#1f1f28]" : "rounded-lg border border-admin-gray-300")}
-        style={device === "mobile" ? { width: W + 20 } : { width: W * scale, height: `calc(100%)` }}>
-        <div style={device === "desktop" ? { width: W, height: `${100 / scale}%`, transform: `scale(${scale})`, transformOrigin: "0 0" } : { width: "100%", height: "100%" }} className="relative">
-          {[0, 1].map((i) => (
-            <iframe key={i} ref={frames[i]} src={srcs[i]} title={i === front ? "Homepage preview" : "Preview buffer"} onLoad={() => onLoad(i)}
-              className={cn("absolute inset-0 h-full w-full border-0 bg-white", i === front ? "z-10" : "z-0 opacity-0")} />
-          ))}
-        </div>
-      </div>
-      {loading && (
-        <span className="absolute right-6 top-6 z-20 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-admin-gray-600 shadow">
-          <Loader2 className="h-3.5 w-3.5 animate-spin text-admin-primary" /> Updating preview
-        </span>
-      )}
-    </div>
-  );
 }
 
 /* ───────────────────────── main ───────────────────────── */
@@ -792,7 +534,7 @@ export function HomeCustomizer({ initialDraft, initialLive, categories, products
             {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}Publish
           </button>
         </div>
-          <div className="min-h-0 flex-1"><Preview version={version} device={device} focus={focus} /></div>
+          <div className="min-h-0 flex-1"><Preview url="/shop?hc=draft" version={version} device={device} focus={focus} /></div>
         </div>
       </div>
 

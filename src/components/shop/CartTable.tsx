@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ImageIcon, Trash2, ShoppingCart } from "lucide-react";
 
 export interface CartItemRow {
+  key: string;
   productId: number;
   slug: string;
   name: string;
@@ -18,13 +19,13 @@ export function CartTable({ items, subtotal }: { items: CartItemRow[]; subtotal:
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
-  async function updateQty(productId: number, qty: number) {
+  async function updateQty(key: string, qty: number) {
     setBusy(true);
     try {
       await fetch("/api/shop/cart", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "update_cart_qty", product_id: productId, qty }),
+        body: JSON.stringify({ action: "update_cart_qty", key, qty }),
       });
       router.refresh();
     } finally {
@@ -32,13 +33,13 @@ export function CartTable({ items, subtotal }: { items: CartItemRow[]; subtotal:
     }
   }
 
-  async function removeItem(productId: number) {
+  async function removeItem(key: string) {
     setBusy(true);
     try {
       await fetch("/api/shop/cart", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "remove_from_cart", product_id: productId }),
+        body: JSON.stringify({ action: "remove_from_cart", key }),
       });
       router.refresh();
     } finally {
@@ -73,7 +74,7 @@ export function CartTable({ items, subtotal }: { items: CartItemRow[]; subtotal:
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.productId} className="border-b border-storefront-border">
+              <tr key={item.key} className="border-b border-storefront-border">
                 <td className="py-3">
                   <div className="flex items-center gap-2.5">
                     <div className="w-[52px] h-[52px] bg-storefront-bg rounded flex items-center justify-center overflow-hidden shrink-0">
@@ -94,13 +95,13 @@ export function CartTable({ items, subtotal }: { items: CartItemRow[]; subtotal:
                     min={1}
                     defaultValue={item.qty}
                     disabled={busy}
-                    onBlur={(e) => updateQty(item.productId, Math.max(1, Number(e.target.value) || 1))}
+                    onBlur={(e) => updateQty(item.key, Math.max(1, Number(e.target.value) || 1))}
                     className="w-16 border border-storefront-border rounded px-2 py-1 text-sm"
                   />
                 </td>
                 <td className="py-3">₹{(item.unitPrice * item.qty).toFixed(2)}</td>
                 <td className="py-3">
-                  <button onClick={() => removeItem(item.productId)} className="text-red-500 hover:bg-red-50 p-1.5 rounded">
+                  <button onClick={() => removeItem(item.key)} className="text-red-500 hover:bg-red-50 p-1.5 rounded">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </td>

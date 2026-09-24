@@ -648,6 +648,7 @@ model Post {
   meta          PostMeta[]
   comments      Comment[]
   views         PostView[]
+  pushCampaigns PushCampaign[] // push-manager2
 
   @@map("posts")
 }
@@ -806,15 +807,22 @@ model PushSubscription {
 }
 
 model PushCampaign {
-  id        Int      @id @default(autoincrement())
-  title     String
-  body      String
-  url       String?
-  icon      String?
-  status    String   @default("draft") // "draft" | "sending" | "sent" | "failed"
+  id               Int      @id @default(autoincrement())
+  postId           Int?     @map("post_id") // push-manager2 — see prisma/push-manager2.sql
+  title            String
+  body             String
+  url              String?
+  icon             String?
+  image            String?  // push-manager2 — banner shown in the notification, distinct from icon
+  status           String   @default("draft") // "draft" | "pending" | "processing" | "completed" | "failed"
+  totalSubscribers Int?     @default(0) @map("total_subscribers") // push-manager2
+  sent             Int?     @default(0) // push-manager2
+  failed           Int?     @default(0) // push-manager2
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime? @updatedAt @map("updated_at") // push-manager2
 
   queueItems PushQueue[]
+  post       Post?    @relation(fields: [postId], references: [id]) // push-manager2
 
   @@map("push_campaigns")
 }
@@ -825,6 +833,8 @@ model PushQueue {
   subscriptionId Int      @map("subscription_id")
   status         String   @default("pending") // "pending" | "sent" | "failed"
   attemptedAt    DateTime? @map("attempted_at")
+  attempts       Int?     @default(0) // push-manager2
+  lastError      String?  @map("last_error") @db.Text // push-manager2
 
   campaign PushCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 

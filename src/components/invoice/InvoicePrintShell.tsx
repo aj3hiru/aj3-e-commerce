@@ -43,7 +43,7 @@ export function InvoiceFormatChooser({ number, thermalWidth }: { number: string;
     q.set("format", format);
     window.location.search = q.toString();
   };
-  const card = "group flex flex-1 flex-col items-center gap-3 rounded-[8px] border-2 border-[#eaeaf2] bg-white px-6 py-8 text-center transition hover:border-[#9f2089] hover:shadow-md";
+  const card = "group flex flex-1 flex-col items-center gap-3 rounded-[8px] border-2 border-[#eaeaf2] bg-white px-6 py-8 text-center transition outline-none hover:border-[#9f2089] hover:shadow-md focus-visible:border-[#9f2089] focus-visible:ring-4 focus-visible:ring-[#9f2089]/15";
   return (
     <main className="flex min-h-screen items-center justify-center bg-[#f3f3f7] px-4 font-storefront text-[#353543]">
       <div className="w-full max-w-[520px] rounded-[8px] bg-white p-6 shadow-[0_12px_32px_-12px_rgba(53,53,67,0.18)] ring-1 ring-[#eaeaf2]">

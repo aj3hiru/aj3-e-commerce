@@ -46,7 +46,7 @@ function Tile({ href, image, name, round, onPick, sub }: { href: string; image: 
  * right either Popular (featured + every category) or the chosen category's
  * products. Full screen on phones, a large panel on computers.
  */
-export function CategorySheet({ all, featured, onClose }: { all: CircleCategory[]; featured: CircleCategory[]; onClose: () => void }) {
+export function CategorySheet({ all, featured, accent, onClose }: { all: CircleCategory[]; featured: CircleCategory[]; accent?: string; onClose: () => void }) {
   const [active, setActive] = useState<string>("popular");
   const [items, setItems] = useState<FeedProduct[] | null>(null);
   const pane = useRef<HTMLDivElement>(null);
@@ -84,7 +84,8 @@ export function CategorySheet({ all, featured, onClose }: { all: CircleCategory[
   );
 
   return createPortal(
-    <div className="fixed inset-0 z-[1200] flex justify-center bg-black/40 font-storefront sm:items-center sm:p-6" onClick={onClose}>
+    <div className="fixed inset-0 z-[1200] flex justify-center bg-black/40 font-storefront sm:items-center sm:p-6" onClick={onClose}
+      style={accent ? ({ "--hp-accent": accent } as React.CSSProperties) : undefined}>
       <div role="dialog" aria-modal="true" aria-label="Categories" onClick={(e) => e.stopPropagation()}
         className="flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-[min(82vh,720px)] sm:max-w-[780px] sm:rounded-[14px]">
         <div className="flex items-center gap-4 border-b border-[#ececf2] px-4 py-3.5">

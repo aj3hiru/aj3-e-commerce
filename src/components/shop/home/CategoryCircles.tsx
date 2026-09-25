@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CategorySheet } from "./CategorySheet";
 
 export interface CircleCategory { slug: string; name: string; image: string | null }
@@ -35,6 +35,10 @@ function GridIcon() {
 export function CategoryCircles({ strip, all, showAllButton = true }: { strip: CircleCategory[]; all: CircleCategory[]; showAllButton?: boolean }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
+  // The sheet opens outside the themed page, so it takes the store's accent colour with it.
+  const nav = useRef<HTMLElement>(null);
+  const [accent, setAccent] = useState<string>();
+  useEffect(() => { if (open && nav.current) setAccent(getComputedStyle(nav.current).getPropertyValue("--hp-accent").trim() || undefined); }, [open]);
   useEffect(() => {
     const onOpen = () => setOpen(true);
     window.addEventListener(OPEN_CATEGORIES_EVENT, onOpen);
@@ -44,7 +48,7 @@ export function CategoryCircles({ strip, all, showAllButton = true }: { strip: C
   const shown = strip.length ? strip : all.slice(0, 10);
   return (
     <>
-      <nav aria-label="Shop by category" id="categories"
+      <nav ref={nav} aria-label="Shop by category" id="categories"
         className="flex gap-1 overflow-x-auto px-2 pb-3 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-3">
         {showAllButton && (
           <button type="button" onClick={() => setOpen(true)} className="w-[73px] shrink-0 text-center">
@@ -59,7 +63,7 @@ export function CategoryCircles({ strip, all, showAllButton = true }: { strip: C
           </Link>
         ))}
       </nav>
-      {open && <CategorySheet all={all} featured={(strip.length ? strip : all).slice(0, 4)} onClose={close} />}
+      {open && <CategorySheet accent={accent} all={all} featured={(strip.length ? strip : all).slice(0, 4)} onClose={close} />}
     </>
   );
 }

@@ -156,13 +156,13 @@ export function SearchBox({ variant, placeholder, initial }: { variant: "desktop
                     // eslint-disable-next-line @next/next/no-img-element
                     ? <img src={img(c.image)!} alt="" className="h-9 w-9 shrink-0 rounded-full bg-[#f3f3f7] object-cover" />
                     : <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#feeff6] text-[var(--hp-accent)]"><LayoutGrid className="h-4 w-4" /></span>}
-                  <span className="min-w-0 flex-1"><span className="block truncate"><Highlight text={c.name} q={term} /></span><span className="text-[12px] text-[#8b8ba3]">in Categories · {c.count} products</span></span>
+                  <span className="min-w-0 flex-1"><span className="block truncate"><Highlight text={c.name} q={term} /></span><span className="text-[12px] text-[#8b8ba3]">in Categories · {c.count} product{c.count === 1 ? "" : "s"}</span></span>
                 </button>
               ))}
               {data.brands.map((b) => (
                 <button key={b.id} type="button" role="option" aria-selected={idx(`b:${b.id}`) === hi} onClick={() => go(`/?brand=${b.id}`, term)} className={row(`b:${b.id}`)}>
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#eef2ff] text-[#5d7eea]"><Tag className="h-4 w-4" /></span>
-                  <span className="min-w-0 flex-1"><span className="block truncate"><Highlight text={b.name} q={term} /></span><span className="text-[12px] text-[#8b8ba3]">Brand · {b.count} products</span></span>
+                  <span className="min-w-0 flex-1"><span className="block truncate"><Highlight text={b.name} q={term} /></span><span className="text-[12px] text-[#8b8ba3]">Brand · {b.count} product{b.count === 1 ? "" : "s"}</span></span>
                 </button>
               ))}
               {(data.categories.length > 0 || data.brands.length > 0) && data.products.length > 0 && <div className="mx-4 my-1 border-t border-[#f0f0f5]" />}

@@ -18,6 +18,7 @@ const TYPES: Record<string, string> = {
   doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   xls: "application/vnd.ms-excel", xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   ppt: "application/vnd.ms-powerpoint", pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  apk: "application/vnd.android.package-archive", exe: "application/octet-stream",
   zip: "application/zip", rar: "application/vnd.rar", "7z": "application/x-7z-compressed", gz: "application/gzip", tar: "application/x-tar",
 };
 const INLINE = /^(image|video|audio)\/|^application\/pdf$|^text\/plain/;

@@ -31,7 +31,17 @@ const REPO = process.env.STAFF_APP_REPO ?? "aj3hiru/aj3-e-commerce";
  * workflow (checked at most every 10 minutes).
  */
 export async function latestRelease(): Promise<AppRelease | null> {
-  try { return JSON.parse(await readFile(path.join(process.cwd(), "public", "app", "latest.json"), "utf8")); } catch { /* no override */ }
+  // Fields in public/app/latest.json (server only) fill in or replace what GitHub has — e.g. an APK hosted on this site.
+  let override: Partial<AppRelease> = {};
+  try { override = JSON.parse(await readFile(path.join(process.cwd(), "public", "app", "latest.json"), "utf8")); } catch { /* none */ }
+  const gh = await githubRelease();
+  if (!gh && !override.version) return null;
+  const merged = { version: "", android: null, windows: null, page: "", publishedAt: null, ...(gh ?? {}) } as AppRelease;
+  for (const [k, v] of Object.entries(override)) if (v !== null && v !== undefined && v !== "") (merged as unknown as Record<string, unknown>)[k] = v;
+  return merged;
+}
+
+function githubRelease(): Promise<AppRelease | null> {
   return cached("staff-app-release", [], 10 * 60_000, async () => {
     try {
       const r = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=20`, { headers: { Accept: "application/vnd.github+json", "User-Agent": "sriandal-staff-site" }, signal: AbortSignal.timeout(8000) });

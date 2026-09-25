@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { StatusPill } from "@/components/admin/ui/buttons";
+import { orderStatusVariant } from "@/components/admin/StatusDropdown";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Phone, Mail, MapPin, CreditCard, RefreshCw, Trash2, FileText, Lock, Check, X, Truck, Bike, Banknote, PackageCheck, History, ChevronDown, CircleAlert, Send } from "lucide-react";
@@ -62,8 +64,6 @@ function eventText(e: OrderEventRow): string {
 export function OrderDetailView({ order, items, availableProducts, perms = ALL, agents = [], events = [] }: OrderDetailViewProps) {
   const router = useRouter();
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
-  const [orderStatus, setOrderStatus] = useState(order.orderStatus);
-  const [paymentStatus, setPaymentStatus] = useState(order.paymentStatus);
   const [addProductId, setAddProductId] = useState("");
   const [addQty, setAddQty] = useState("1");
   const [busy, setBusy] = useState(false);
@@ -343,20 +343,19 @@ export function OrderDetailView({ order, items, availableProducts, perms = ALL, 
                 {more && (
                   <div className="mt-2 space-y-2">
                     {perms.status && (
-                      <div className="flex gap-2">
-                        <select value={orderStatus} onChange={(e) => setOrderStatus(e.target.value)} className="flex-1 border border-admin-gray-200 rounded px-3 py-2 text-sm">
-                          {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                        <button type="button" disabled={busy} onClick={() => callStatusApi({ action: "update_status", orderStatus })} className="bg-admin-primary hover:bg-admin-primary-dark text-white text-sm rounded px-3 py-2" aria-label="Save status"><RefreshCw className="w-3.5 h-3.5" /></button>
+                      <div className="flex items-center justify-between gap-2 text-sm text-admin-gray-600">
+                        Order status
+                        <StatusPill label={`Change order status for ${order.orderNumber}`} value={st} disabled={busy}
+                          options={ORDER_STATUSES.map((v) => ({ value: v, label: v, variant: orderStatusVariant(v) }))}
+                          onChange={(next) => (next === "Canceled" ? (setReasonFor("cancel"), setReason("")) : callStatusApi({ action: "update_status", orderStatus: next }))} />
                       </div>
                     )}
                     {perms.pay && (
-                      <div className="flex gap-2">
-                        <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} className="flex-1 border border-admin-gray-200 rounded px-3 py-2 text-sm">
-                          <option value="Paid">Paid</option>
-                          <option value="Unpaid">Unpaid</option>
-                        </select>
-                        <button type="button" disabled={busy} onClick={() => callStatusApi({ action: "update_payment", paymentStatus })} className="bg-admin-primary hover:bg-admin-primary-dark text-white text-sm rounded px-3 py-2" aria-label="Save payment"><RefreshCw className="w-3.5 h-3.5" /></button>
+                      <div className="flex items-center justify-between gap-2 text-sm text-admin-gray-600">
+                        Payment
+                        <StatusPill label={`Change payment status for ${order.orderNumber}`} value={paid ? "Paid" : "Unpaid"} disabled={busy}
+                          options={[{ value: "Paid", label: "Paid", variant: "success" }, { value: "Unpaid", label: "Unpaid", variant: "secondary" }]}
+                          onChange={(next) => callStatusApi({ action: "update_payment", paymentStatus: next })} />
                       </div>
                     )}
                   </div>

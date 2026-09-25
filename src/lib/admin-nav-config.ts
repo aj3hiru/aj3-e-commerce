@@ -1,7 +1,7 @@
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faHome, faCashRegister, faHistory, faBoxes, faPlusSquare, faCopyright, faBoxOpen,
-  faFileCsv, faStarHalfAlt, faBarcode, faTags, faList, faListUl, faReceipt,
+  faFileCsv, faStarHalfAlt, faBarcode, faTags, faList, faReceipt,
   faTruck, faUserFriends, faPercentage,
   faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
   faSignOutAlt, faChartLine, faFileAlt, faBars, faGripLines, faBox,
@@ -115,16 +115,7 @@ export const ADMIN_NAV: NavSection[] = [
           { href: "/admin/ecommerce/barcode-print", label: "Print Barcodes", icon: faBarcode, permission: "ecommerce.manage_products" },
         ],
       },
-      {
-        href: "/admin/ecommerce/categories",
-        label: "Categories",
-        icon: faList,
-        permission: "ecommerce.manage_categories",
-        submenuId: "submenu-categories",
-        submenu: [
-          { href: "/admin/ecommerce/subcategories", label: "Sub Categories", icon: faListUl, permission: "ecommerce.manage_categories" },
-        ],
-      },
+      { href: "/admin/ecommerce/categories", label: "Categories", icon: faList, permission: "ecommerce.manage_categories" },
     ],
   },
 

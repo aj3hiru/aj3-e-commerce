@@ -100,7 +100,7 @@ export function CouponFormModal({ initial, onClose, products, categories, subcat
               <option value="all">All Products</option>
               <option value="product">Specific Product</option>
               <option value="category">Specific Category</option>
-              <option value="subcategory">Specific Sub Category</option>
+              {initial?.appliesTo === "subcategory" && <option value="subcategory">Specific Sub Category (old)</option>}
             </select>
           </div>
 

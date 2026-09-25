@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Search, Loader2, Package, FolderTree, Tag, FileText, SlidersHorizontal, RotateCcw, Check, ChevronDown, Megaphone,
 } from "lucide-react";
@@ -75,7 +75,6 @@ export function ProductPicker({ catalog, origin, selectedId, onPick, onClose }: 
   const searchRef = useRef<HTMLInputElement>(null);
 
   const set = (patch: Partial<ProductFilterState>) => { setF((x) => ({ ...x, ...patch })); setPage(1); };
-  const subcats = useMemo(() => catalog.categories.find((c) => String(c.id) === f.categoryId)?.subcategories ?? [], [catalog, f.categoryId]);
   const activeCount = [f.categoryId, f.brandId, f.stock !== "all", f.onSale, f.minPrice, f.maxPrice].filter(Boolean).length;
 
   useEffect(() => { searchRef.current?.focus(); }, []);
@@ -109,14 +108,6 @@ export function ProductPicker({ catalog, origin, selectedId, onPick, onClose }: 
         <select id="pp-cat" value={f.categoryId} onChange={(e) => set({ categoryId: e.target.value, subcategoryId: "" })} className={INPUT}>
           <option value="">All categories</option>
           {catalog.categories.map((c) => <option key={c.id} value={c.id}>{c.name} ({formatInt(c.productCount)})</option>)}
-        </select>
-      </div>
-      <div>
-        <label htmlFor="pp-sub" className={LABEL}>Subcategory</label>
-        <select id="pp-sub" value={f.subcategoryId} onChange={(e) => set({ subcategoryId: e.target.value })} disabled={subcats.length === 0}
-          className={cn(INPUT, "disabled:bg-admin-gray-50 disabled:text-admin-gray-400")}>
-          <option value="">{f.categoryId ? (subcats.length ? "All subcategories" : "No subcategories") : "Pick a category first"}</option>
-          {subcats.map((s) => <option key={s.id} value={s.id}>{s.name} ({formatInt(s.productCount)})</option>)}
         </select>
       </div>
       <div>
@@ -215,7 +206,7 @@ export function ProductPicker({ catalog, origin, selectedId, onPick, onClose }: 
   );
 }
 
-/* ───────────────────────── Category / subcategory picker ───────────────────────── */
+/* ───────────────────────── Category picker ───────────────────────── */
 
 export type CategoryPick = { kind: "category" | "subcategory"; id: number; name: string; slug: string; parentName?: string; parentSlug?: string; image: string | null; productCount: number };
 
@@ -224,7 +215,7 @@ export function CategoryPicker({ catalog, origin, onPick, onClose }: {
 }) {
   const [q, setQ] = useState("");
   const term = q.trim().toLowerCase();
-  const list = catalog.categories.filter((c) => !term || c.name.toLowerCase().includes(term) || c.subcategories.some((s) => s.name.toLowerCase().includes(term)));
+  const list = catalog.categories.filter((c) => !term || c.name.toLowerCase().includes(term));
   return (
     <Modal title="Select a category to promote" onClose={onClose} size="lg">
       <div className="p-4">
@@ -244,17 +235,6 @@ export function CategoryPicker({ catalog, origin, onPick, onClose }: {
                     <span className="block text-xs text-admin-gray-500">{formatInt(c.productCount)} products</span>
                   </span>
                 </button>
-                {c.subcategories.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1.5 border-t border-admin-gray-100 pt-2">
-                    {c.subcategories.map((s) => (
-                      <button key={s.id} type="button"
-                        onClick={() => onPick({ kind: "subcategory", id: s.id, name: s.name, slug: s.slug, parentName: c.name, parentSlug: c.slug, image: c.image, productCount: s.productCount })}
-                        className="rounded-full border border-[#dee2e6] px-2.5 py-1 text-xs text-admin-gray-700 transition-colors hover:border-[#2563eb] hover:text-[#2563eb]">
-                        {s.name} <span className="text-admin-gray-400">{s.productCount}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             ))}
           </div>

@@ -33,7 +33,6 @@ export const ADD2_GROUPS: readonly WidgetGroup[] = [
     groupLabel: "Categorization",
     items: [
       { key: "ap2-category", label: "Category" },
-      { key: "ap2-subcategory", label: "Sub Category" },
       { key: "ap2-brand", label: "Brand" },
       { key: "ap2-unit", label: "Unit" },
     ],
@@ -77,7 +76,6 @@ export const ADD2_GROUPS: readonly WidgetGroup[] = [
     groupLabel: "“+ Add new” options",
     items: [
       { key: "ap2-q-category", label: "Add new Category" },
-      { key: "ap2-q-subcategory", label: "Add new Sub Category" },
       { key: "ap2-q-brand", label: "Add new Brand" },
       { key: "ap2-q-itemtype", label: "Add new Item Type" },
     ],

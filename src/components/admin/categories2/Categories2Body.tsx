@@ -765,7 +765,7 @@ function ConfirmDelete({ list, onCancel, onConfirm }: { list: Category2Row[]; on
           <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-[0.5rem] border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             <input type="checkbox" checked={detach} onChange={(e) => setDetach(e.target.checked)} className="mt-0.5 h-4 w-4 accent-amber-600" />
             <span>
-              <b>{used.toLocaleString("en-IN")} product{used === 1 ? " uses" : "s use"}</b> {list.length === 1 ? "this category" : "these categories"} (or its subcategories).
+              <b>{used.toLocaleString("en-IN")} product{used === 1 ? " uses" : "s use"}</b> {list.length === 1 ? "this category" : "these categories"} .
               Tick to detach and delete — the products themselves stay.
             </span>
           </label>

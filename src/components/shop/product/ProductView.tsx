@@ -352,7 +352,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
   const highlights = useMemo(() => {
     const h = cfg.highlights, rows: { name: string; value: string }[] = [];
     if (h.showBrand && d.product.brand) rows.push({ name: "Brand", value: d.product.brand });
-    if (h.showCategory && d.product.category) rows.push({ name: "Category", value: d.product.subcategory ? `${d.product.category.name} · ${d.product.subcategory.name}` : d.product.category.name });
+    if (h.showCategory && d.product.category) rows.push({ name: "Category", value: d.product.category.name });
     if (h.showUnit && d.product.unit) rows.push({ name: "Sold by", value: d.product.unit });
     if (h.showSku && d.product.sku) rows.push({ name: "SKU", value: d.product.sku });
     return [...d.specs, ...rows];
@@ -390,9 +390,8 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
       case "breadcrumb": {
         // Meesho: accent links separated by " / ", wrapping onto a second line, the product name shortened with "…".
         const crumbs: { label: string; href: string }[] = [{ label: "Home", href: "/" }];
-        const cat = d.product.category, sub = d.product.subcategory;
+        const cat = d.product.category;
         if (cat) crumbs.push({ label: cat.name, href: `/category?slug=${encodeURIComponent(cat.slug)}` });
-        if (cat && sub) crumbs.push({ label: sub.name, href: `/category?slug=${encodeURIComponent(cat.slug)}&sub=${encodeURIComponent(sub.slug)}` });
         const name = d.product.name.length > 18 ? `${d.product.name.slice(0, 16).trimEnd()}…` : d.product.name;
         return (
           <nav aria-label="Breadcrumb" className="px-4 pb-2 pt-2.5">

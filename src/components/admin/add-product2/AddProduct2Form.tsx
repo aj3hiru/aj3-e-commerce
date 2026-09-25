@@ -2,7 +2,7 @@
 
 import { useStoreOrigin } from "@/hooks/useStoreOrigin";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
@@ -155,7 +155,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
   const [s, setS] = useState<State>(() => initialState(product, defaultGst));
   const [brands, setBrands] = useState(initialBrands);
   const [categories, setCategories] = useState(initialCategories);
-  const [subcategories, setSubcategories] = useState(initialSubcategories);
+  const [, setSubcategories] = useState(initialSubcategories);
   // Sizes / Units and Specifications (always at least one blank row to type in).
   const [sizes, setSizes] = useState<SizeRowS[]>(() =>
     product?.sizes.length
@@ -201,10 +201,6 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
     if (error?.field === "name") setError(null);
   }
 
-  const subsForCategory = useMemo(
-    () => subcategories.filter((x) => String(x.categoryId) === s.categoryId),
-    [subcategories, s.categoryId]
-  );
 
   // Live barcode check (debounced). Blank = will be auto-created on save.
   useEffect(() => {
@@ -398,7 +394,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
     fd.set("barcode", s.barcode);
     fd.set("description", s.description);
     fd.set("category_id", s.categoryId);
-    fd.set("subcategory_id", s.subcategoryId);
+    fd.set("subcategory_id", ""); // sub-categories are no longer used
     fd.set("brand_id", s.brandId);
     fd.set("unit", s.unitChoice === "custom" ? s.unitCustom.trim() : s.unitChoice);
     fd.set("product_type", productType);
@@ -614,7 +610,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
           </Card>
           {isVisible("ap2-cat") && (show("ap2-cat", "ap2-category") || show("ap2-cat", "ap2-brand") || show("ap2-cat", "ap2-unit")) && (
             <Card icon={FolderTree} title="Categorization">
-              {/* Category · Sub Category · Brand · Unit in one row (2 × 2 on narrower screens). */}
+              {/* Category · Brand · Unit in one row. */}
               <div className={ROW4}>
                 {show("ap2-cat", "ap2-category") && (
                   <Field label="Category" field="category_id" error={fieldErr("category_id")}>
@@ -626,15 +622,6 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
                       <option value="">Select category…</option>
                       {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                       {show("ap2-quick", "ap2-q-category") && <option value="__add__">+ Add new category…</option>}
-                    </SelectBox>
-                  </Field>
-                )}
-                {show("ap2-cat", "ap2-category") && show("ap2-cat", "ap2-subcategory") && (
-                  <Field label="Sub Category" field="subcategory_id">
-                    <SelectBox value={s.subcategoryId} onChange={(v) => (v === "__add__" ? setQuickAdd("subcategory") : set("subcategoryId", v))} disabled={!s.categoryId}>
-                      <option value="">{!s.categoryId ? "Select category first…" : subsForCategory.length === 0 ? "No sub categories yet" : "Select sub category…"}</option>
-                      {subsForCategory.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      {s.categoryId && show("ap2-quick", "ap2-q-subcategory") && <option value="__add__">+ Add new sub category…</option>}
                     </SelectBox>
                   </Field>
                 )}

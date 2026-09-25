@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { StatusPill } from "@/components/admin/ui/buttons";
 import { Monitor, Smartphone } from "lucide-react";
 import { CampaignOffers } from "@/components/shop/home/CampaignBanner";
 import { LaptopFrame, PhoneFrame } from "@/components/admin/PhoneFrame";
@@ -382,7 +383,20 @@ export function Campaigns2Body({ data, serverNow, filters, isDefaultRange, notic
                             <Countdown c={c} state={st} now={now} />
                           </td>
                         )}
-                        {show("co2-c-status") && <td className={td}><StatePill state={st} /></td>}
+                        {show("co2-c-status") && (
+                          <td className={td}>
+                            {st === "ended" ? <StatePill state={st} /> : (
+                              // Same pill + list as Orders: running ↔ Paused, or End it now.
+                              <StatusPill label={`Change status of ${c.name}`} value={c.isPaused ? "paused" : "run"} disabled={busy.has(c.id)}
+                                options={[
+                                  { value: "run", label: st === "scheduled" || (c.isPaused && c.startsAt && new Date(c.startsAt) > now) ? "Scheduled" : "Live", variant: st === "scheduled" ? "info" : "success" },
+                                  { value: "paused", label: "Paused", variant: "warning" },
+                                  { value: "end", label: "End now", variant: "secondary" },
+                                ]}
+                                onChange={(v) => { if (v === "end") quick(c, "end"); else if ((v === "paused") !== c.isPaused) quick(c, v === "paused" ? "pause" : "resume"); }} />
+                            )}
+                          </td>
+                        )}
                         {show("co2-c-sales") && (
                           <td className={td}>
                             <div className="font-semibold text-admin-gray-900">{money(c.stats.revenue)}</div>

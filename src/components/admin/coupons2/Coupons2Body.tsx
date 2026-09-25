@@ -1,6 +1,7 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { StatusPill } from "@/components/admin/ui/buttons";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -38,6 +39,10 @@ function computeStatus(c: Coupon2Row, now: number): ComputedStatus {
   if (c.startsAt && new Date(c.startsAt).getTime() > now) return "scheduled";
   return "active";
 }
+/** Pill colours, as on every other admin list. */
+const STATUS_VARIANT: Record<ComputedStatus, "success" | "warning" | "secondary" | "info" | "danger"> = {
+  active: "success", scheduled: "warning", expired: "secondary", paused: "info", inactive: "danger",
+};
 const STATUS_META: Record<ComputedStatus, { label: string; cls: string }> = {
   active: { label: "Active", cls: "bg-emerald-50 text-emerald-700" },
   scheduled: { label: "Scheduled", cls: "bg-amber-50 text-amber-700" },
@@ -281,7 +286,8 @@ function CouponCard({ coupon: c, status, busy, onEdit, onPause, onDuplicate, onD
   coupon: Coupon2Row; status: ComputedStatus; busy: boolean;
   onEdit: () => void; onPause: () => void; onDuplicate: () => void; onDelete: () => void;
 }) {
-  const meta = STATUS_META[status];
+  // What it would be if it weren't paused (Active / Scheduled / Expired / Disabled).
+  const running: ComputedStatus = status === "paused" ? computeStatus({ ...c, isPaused: false }, Date.now()) : status;
   const discountText = c.discountType === "percentage" ? `${c.discountValue}%` : formatMoney(c.discountValue);
   const discountSub = c.discountType === "percentage" ? "Percentage" : "Fixed Amount";
   return (
@@ -290,7 +296,12 @@ function CouponCard({ coupon: c, status, busy, onEdit, onPause, onDuplicate, onD
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.5rem] bg-violet-50 text-violet-600"><Ticket className="h-5 w-5" /></span>
           <div>
-            <div className="flex items-center gap-2"><h4 className="font-bold text-admin-gray-900">{c.title}</h4><span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", meta.cls)}>{meta.label}</span></div>
+            <div className="flex flex-wrap items-center gap-2"><h4 className="font-bold text-admin-gray-900">{c.title}</h4>
+              {/* Same pill + list as Orders: switch between running and Paused. */}
+              <StatusPill label={`Change status of ${c.title}`} value={c.isPaused ? "paused" : "run"} disabled={busy}
+                options={[{ value: "run", label: STATUS_META[running].label, variant: STATUS_VARIANT[running] }, { value: "paused", label: "Paused", variant: "info" }]}
+                onChange={(v) => { if ((v === "paused") !== c.isPaused) onPause(); }} />
+            </div>
             <CopyCode code={c.code} />
           </div>
         </div>
@@ -457,7 +468,7 @@ function CouponModal({ coupon, options, onClose, onSaved, onDelete }: {
             <label className="mb-1.5 block text-[15px] font-medium text-admin-gray-900">Applies To</label>
             <select value={appliesTo} onChange={(e) => setAppliesTo(e.target.value)} className={cn(inputCls(false), "mb-2")}>
               <option value="all">All Products</option><option value="product">Specific Product</option>
-              <option value="category">Specific Category</option><option value="subcategory">Specific Subcategory</option>
+              <option value="category">Specific Category</option>{appliesTo === "subcategory" && <option value="subcategory">Specific Subcategory (old)</option>}
             </select>
             {appliesTo === "product" && <select value={productId} onChange={(e) => setProductId(e.target.value)} className={inputCls(err?.field === "productId")}><option value="">Select a product…</option>{options.products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>}
             {appliesTo === "category" && <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputCls(err?.field === "categoryId")}><option value="">Select a category…</option>{options.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>}

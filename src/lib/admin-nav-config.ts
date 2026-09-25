@@ -1,7 +1,7 @@
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faHome, faCashRegister, faHistory, faBoxes, faPlusSquare, faCopyright, faBoxOpen,
-  faPercent, faFileCsv, faStarHalfAlt, faBarcode, faTags, faList, faListUl, faReceipt,
+  faFileCsv, faStarHalfAlt, faBarcode, faTags, faList, faListUl, faReceipt,
   faTruck, faUserFriends, faPercentage,
   faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
   faSignOutAlt, faChartLine, faFileAlt, faBars, faGripLines, faBox,
@@ -28,6 +28,7 @@ export type NavPermissionPath =
   | "files.access_file_manager"
   | "pages.create"
   | "push_notifications.send"
+  | "offers.any" // special: campaigns (manage_products) or coupons (manage_coupons)
   | "blogs.any" // special: true if ANY key under `blogs` is true, OR analytics.view_basic is true
   | "blogs.manage_categories"
   | "blogs.manage_tags"
@@ -132,8 +133,9 @@ export const ADMIN_NAV: NavSection[] = [
     permission: null,
     links: [
       { href: "/admin/ecommerce/customers", label: "Customers", icon: faUserFriends, permission: "ecommerce.manage_customers" },
-      { href: "/admin/ecommerce/coupons", label: "Coupons", icon: faPercentage, permission: "ecommerce.manage_coupons" },
-      { href: "/admin/ecommerce/campaign-offer", label: "Campaign Offers", icon: faPercent, permission: "ecommerce.manage_products" },
+      // Campaign Offers (automatic price drops) and Coupons (codes) — one entry, two tabs.
+      { href: "/admin/ecommerce/offers", label: "Offers & Coupons", icon: faPercentage, permission: "offers.any",
+        alsoActive: ["/admin/ecommerce/campaign-offer", "/admin/ecommerce/coupons"] },
       { href: "/push-notifications/push-manager2", label: "Push Notifications", icon: faBell, permission: "push_notifications.send" },
     ],
   },
@@ -210,6 +212,8 @@ export function hasPermission(
 ): boolean {
   if (path === null) return true;
   if (!permissions) return false;
+
+  if (path === "offers.any") return !!permissions.ecommerce?.manage_products || !!permissions.ecommerce?.manage_coupons;
 
   if (path === "blogs.any") {
     const blogsAny = Object.values(permissions.blogs ?? {}).some(Boolean);

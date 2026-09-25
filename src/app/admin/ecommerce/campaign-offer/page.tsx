@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { OffersTabs } from "@/components/admin/OffersTabs";
 import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
 import { Campaigns2Body, Campaigns2HeaderButtons } from "@/components/admin/campaigns2/Campaigns2Body";
 import { CAMPAIGNS2_GROUPS, CAMPAIGNS2_PREF_KEY, CAMPAIGNS2_STANDALONE } from "@/components/admin/campaigns2/displayOptions";
@@ -48,8 +49,8 @@ export default async function CampaignOffer2Page({ searchParams }: PageProps) {
     <DashboardWidgetPrefsProvider prefKey={CAMPAIGNS2_PREF_KEY} groups={CAMPAIGNS2_GROUPS} standalone={CAMPAIGNS2_STANDALONE}>
       <AdminShell
         siteName="EduMint24"
-        pageTitle="Campaign Offer"
-        pageSubtitle="Run timed offers on all products, categories, brands or chosen products"
+        pageTitle="Offers & Coupons"
+        pageSubtitle="Campaign offers — timed price drops on products, categories or brands"
         username={session.username}
         role={session.role}
         permissions={session.permissions}
@@ -60,6 +61,7 @@ export default async function CampaignOffer2Page({ searchParams }: PageProps) {
           </div>
         }
       >
+        <OffersTabs active="campaigns" canCampaigns canCoupons={hasPermission(session.permissions, "ecommerce", "manage_coupons")} />
         {/* Below 1280px the header has no room, so the same controls move here. */}
         <div className="mb-5 flex flex-wrap items-center justify-end gap-3 xl:hidden">
           <DisplayOptionsPanel variant="toolbar" />

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { OffersTabs } from "@/components/admin/OffersTabs";
 import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
 import { Coupons2Body, Coupons2HeaderButtons, type Coupon2Row } from "@/components/admin/coupons2/Coupons2Body";
 import { COUPONS2_GROUPS, COUPONS2_PREF_KEY, COUPONS2_STANDALONE } from "@/components/admin/coupons2/displayOptions";
@@ -64,13 +65,14 @@ export default async function Coupons2Page() {
     <DashboardWidgetPrefsProvider prefKey={COUPONS2_PREF_KEY} groups={COUPONS2_GROUPS} standalone={COUPONS2_STANDALONE}>
       <AdminShell
         siteName="EduMint24"
-        pageTitle="Coupon Library"
-        pageSubtitle="Manage offers, discount codes and redemption rules"
+        pageTitle="Offers & Coupons"
+        pageSubtitle="Coupons — discount codes customers enter at checkout"
         username={session.username}
         role={session.role}
         permissions={session.permissions}
         headerActions={<div className="hidden items-center gap-3 xl:flex"><DisplayOptionsPanel variant="header" /><Coupons2HeaderButtons /></div>}
       >
+        <OffersTabs active="coupons" canCampaigns={hasPermission(session.permissions, "ecommerce", "manage_products")} canCoupons />
         <div className="mb-5 flex flex-wrap items-center justify-end gap-3 xl:hidden">
           <DisplayOptionsPanel variant="toolbar" /><Coupons2HeaderButtons />
         </div>

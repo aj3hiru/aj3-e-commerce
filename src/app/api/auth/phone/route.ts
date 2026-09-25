@@ -5,6 +5,7 @@ import { otpReady } from "@/types/auth-settings";
 import { verifyFirebasePhoneToken } from "@/lib/firebase-token";
 import { findCustomerByPhone } from "@/lib/customer-phone";
 import { setCustomerSessionCookie } from "@/lib/session-cookies";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * Mobile OTP login / sign-up. The browser verifies the OTP with Firebase and
@@ -12,7 +13,7 @@ import { setCustomerSessionCookie } from "@/lib/session-cookies";
  * for a verified phone, then log that customer in — or create the account
  * (just the phone) and send them to complete their profile.
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const auth = await getAuthSettings();
   if (!otpReady(auth)) return NextResponse.json({ success: false, message: "OTP login is not enabled." }, { status: 400 });
   const body = await req.json().catch(() => ({}));
@@ -46,3 +47,5 @@ function safeRedirect(target: unknown): string | null {
   if (typeof target !== "string" || !target.startsWith("/") || target.startsWith("//") || target.startsWith("/\\")) return null;
   return target;
 }
+
+export const POST = withApiErrors(handlePOST);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
+import { withApiErrors } from "@/lib/api-errors";
 
 interface SearchResult {
   type: "order" | "customer" | "receipt";
@@ -13,7 +14,7 @@ interface SearchResult {
 /** Verified against admin/ecommerce/global-search.php — searches orders (by order
  *  number), customers (by name/phone/id), and payment receipts (by receipt number),
  *  5 results each, no results if not logged in or query is under 2 chars. */
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json([]);
   // Results expose customer phone numbers and order totals — only staff who
@@ -94,3 +95,5 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(results);
 }
+
+export const GET = withApiErrors(handleGET);

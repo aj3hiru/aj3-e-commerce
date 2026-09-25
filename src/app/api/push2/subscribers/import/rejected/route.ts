@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { ImportError, rejectedCsv } from "@/lib/push-import";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Downloads every row an import rejected, with the reason, as CSV. */
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "push_notifications", "manage_templates")) {
     return NextResponse.json({ success: false, error: "Access Denied" }, { status: 403 });
@@ -18,3 +19,5 @@ export async function GET(req: NextRequest) {
     throw e;
   }
 }
+
+export const GET = withApiErrors(handleGET);

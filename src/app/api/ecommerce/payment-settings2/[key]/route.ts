@@ -4,10 +4,11 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { PaymentSaveError, savePaymentMethod2 } from "@/lib/payment2-save";
 import { PAYMENT_METHODS } from "@/lib/payment-methods";
+import { withApiErrors } from "@/lib/api-errors";
 
 type Ctx = { params: Promise<{ key: string }> };
 
-export async function PUT(req: NextRequest, ctx: Ctx) {
+async function handlePUT(req: NextRequest, ctx: Ctx) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -28,7 +29,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 }
 
 /** Quick enable/disable toggle from the list, no field changes. */
-export async function PATCH(req: NextRequest, ctx: Ctx) {
+async function handlePATCH(req: NextRequest, ctx: Ctx) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -53,3 +54,6 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   await logActivity(req, session.userId, "ecom_payment_update", `${body.isEnabled ? "Enabled" : "Disabled"} payment method: ${methodDef.label}`);
   return NextResponse.json({ success: true });
 }
+
+export const PUT = withApiErrors(handlePUT);
+export const PATCH = withApiErrors(handlePATCH);

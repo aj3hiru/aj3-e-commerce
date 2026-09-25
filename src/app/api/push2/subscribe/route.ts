@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getPushSettings } from "@/lib/push-settings";
 import { cleanSubscription, parseEndpoint } from "@/lib/push-subscriptions";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * Public storefront endpoint — the Next.js replacement for
@@ -12,13 +13,13 @@ import { cleanSubscription, parseEndpoint } from "@/lib/push-subscriptions";
  * Only endpoints on real browser push services are accepted (see lib/push-subscriptions.ts).
  */
 
-export async function GET() {
+async function handleGET() {
   const settings = await getPushSettings();
   if (!settings.configured) return NextResponse.json({ success: false, error: "Push notifications are not enabled." }, { status: 404 });
   return NextResponse.json({ success: true, publicKey: settings.publicKey }, { headers: { "Cache-Control": "no-store" } });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const sub = cleanSubscription(await req.json().catch(() => null));
   if (!sub) return NextResponse.json({ success: false, error: "Invalid subscription" }, { status: 400 });
 
@@ -30,10 +31,14 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ success: true });
 }
 
-export async function DELETE(req: NextRequest) {
+async function handleDELETE(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const endpoint = parseEndpoint(body?.endpoint);
   if (!endpoint) return NextResponse.json({ success: false, error: "Invalid subscription" }, { status: 400 });
   await prisma.pushSubscription.deleteMany({ where: { endpoint } });
   return NextResponse.json({ success: true });
 }
+
+export const GET = withApiErrors(handleGET);
+export const POST = withApiErrors(handlePOST);
+export const DELETE = withApiErrors(handleDELETE);

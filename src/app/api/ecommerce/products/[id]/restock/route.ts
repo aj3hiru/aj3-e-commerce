@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
+import { withApiErrors } from "@/lib/api-errors";
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -14,3 +15,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   await prisma.ecomProduct.update({ where: { id: Number(id) }, data: { stockQty: qty } });
   return NextResponse.json({ success: true });
 }
+
+export const POST = withApiErrors(handlePOST);

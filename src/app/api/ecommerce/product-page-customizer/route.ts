@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { saveProductPage } from "@/lib/product-page-config";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Customizer → Product Page: save the draft (autosave / preview) or publish it. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_homepage")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -21,3 +22,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Couldn't save — please try again." }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

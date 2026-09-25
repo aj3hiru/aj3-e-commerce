@@ -11,9 +11,8 @@ interface EditPagePageProps {
 
 export default async function EditPagePage({ params }: EditPagePageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "pages", "edit")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "pages", "edit")) redirect("/admin/dashboard?denied=1");
 
   const { id } = await params;
   const pageId = Number(id);

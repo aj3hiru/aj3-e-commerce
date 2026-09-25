@@ -3,8 +3,9 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { getPushSettings, savePushSettings, validateVapidPair } from "@/lib/push-settings";
 import { prisma } from "@/lib/db";
+import { withApiErrors } from "@/lib/api-errors";
 
-export async function GET() {
+async function handleGET() {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "push_notifications", "manage_templates")) {
     return NextResponse.json({ success: false, error: "Access Denied" }, { status: 403 });
@@ -23,7 +24,7 @@ export async function GET() {
   });
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "push_notifications", "manage_templates")) {
     return NextResponse.json({ success: false, error: "Access Denied" }, { status: 403 });
@@ -53,3 +54,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true });
 }
+
+export const GET = withApiErrors(handleGET);
+export const POST = withApiErrors(handlePOST);

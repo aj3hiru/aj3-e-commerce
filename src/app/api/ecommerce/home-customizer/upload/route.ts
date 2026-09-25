@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { saveUploadedImage } from "@/lib/upload";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Image upload for the Homepage Customizer (banners, promo bar image). */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_homepage")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -18,3 +19,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: e instanceof Error ? e.message : "Upload failed." }, { status: 400 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

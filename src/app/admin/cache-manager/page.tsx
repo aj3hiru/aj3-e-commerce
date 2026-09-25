@@ -34,9 +34,8 @@ import { getCacheStats } from "@/lib/cache-manager2";
  */
 export default async function CacheManager2Page() {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "settings", "maintenance_mode")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "settings", "maintenance_mode")) redirect("/admin/dashboard?denied=1");
 
   const stats = await getCacheStats();
 

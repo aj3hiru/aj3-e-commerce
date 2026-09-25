@@ -4,6 +4,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { generateReceiptNumber } from "@/lib/order-number";
 import { logActivity } from "@/lib/activity-log";
 import type { Prisma } from "@prisma/client";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * Verified 1:1 against record-due-payment.php: accepts parallel arrays of
@@ -11,7 +12,7 @@ import type { Prisma } from "@prisma/client";
  * overpay), marks a credit 'paid' once its balance reaches ~0, and issues
  * either one shared receipt number for the whole batch or one per credit.
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (
     !session ||
@@ -105,3 +106,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: `Could not save payment: ${message}` }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

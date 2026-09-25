@@ -3,6 +3,7 @@ import { getAdminSession } from "@/lib/admin-auth";
 import { clearAdminSessionCookie } from "@/lib/session-cookies";
 import { logActivity } from "@/lib/activity-log";
 import { publicOrigin, staffHosts } from "@/lib/hosts";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * Verified against admin/api/logout.php — logs the logout event
@@ -36,7 +37,7 @@ import { publicOrigin, staffHosts } from "@/lib/hosts";
  * from "/login" to "/admin/admin-login-portal" — was itself wrong,
  * and has been reverted below. See the comment at the return statement.
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (session) {
     try {
@@ -64,3 +65,5 @@ export async function POST(req: NextRequest) {
   const login = staffHosts().login;
   return NextResponse.redirect(login ? `https://${login}/` : `${publicOrigin(req)}/staff/login`, 303);
 }
+
+export const POST = withApiErrors(handlePOST);

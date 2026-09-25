@@ -4,11 +4,12 @@ import { logActivity } from "@/lib/activity-log";
 import { prisma } from "@/lib/db";
 import { getPushSettings } from "@/lib/push-settings";
 import { BROWSER_LABEL, browserOf } from "@/lib/push-subscriptions";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Downloads every subscriber as CSV (default) or JSON. The keys in these rows
  *  let the holder of the matching VAPID private key message these browsers, so
  *  this is limited to admins who can manage push settings, and it is logged. */
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "push_notifications", "manage_templates")) {
     return NextResponse.json({ success: false, error: "Access Denied" }, { status: 403 });
@@ -41,3 +42,5 @@ export async function GET(req: NextRequest) {
     headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="push-subscribers-${stamp}.csv"`, "Cache-Control": "no-store" },
   });
 }
+
+export const GET = withApiErrors(handleGET);

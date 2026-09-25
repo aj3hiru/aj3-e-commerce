@@ -16,9 +16,8 @@ interface CustomerProfilePageProps {
 /** Verified against admin/ecommerce/customer-profile.php. */
 export default async function CustomerProfilePage({ params, searchParams }: CustomerProfilePageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_customers")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_customers")) redirect("/admin/dashboard?denied=1");
 
   const { id } = await params;
   const customerId = Number(id);

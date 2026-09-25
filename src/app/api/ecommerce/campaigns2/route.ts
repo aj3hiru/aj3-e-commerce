@@ -6,9 +6,10 @@ import { parseCampaignInput, checkCampaignRefs } from "@/lib/campaign-validate";
 import { sanitizeCampaignHome } from "@/types/campaign-home";
 import { lookupRefs } from "@/lib/campaign-refs";
 import { clearCampaignCache } from "@/lib/campaign-pricing";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** POST /api/ecommerce/campaigns2 — create a campaign (Campaign Offer 2). */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -48,3 +49,5 @@ function setupHint(e: unknown): string {
     ? "The campaign tables are not in the database yet. Run the database update (npx prisma db push) on the server, then try again."
     : "Could not save the campaign. Please try again.";
 }
+
+export const POST = withApiErrors(handlePOST);

@@ -31,9 +31,8 @@ interface Products2PageProps {
 
 export default async function Products2Page({ searchParams }: Products2PageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_products")) redirect("/admin/dashboard?denied=1");
 
   const sp = await searchParams;
   const initialFilters = parseProducts2Filters(sp);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
+import { withApiErrors } from "@/lib/api-errors";
 
 const MAX_QTY = 2_147_483_647; // the stock columns are 32-bit integers
 
@@ -20,7 +21,7 @@ const MAX_QTY = 2_147_483_647; // the stock columns are 32-bit integers
  * price, MRP and order (unlike saving the whole product form, which
  * recreates them).
  */
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -103,3 +104,5 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ success: false, message: "Could not update the stock. Please try again." }, { status: 500 });
   }
 }
+
+export const PUT = withApiErrors(handlePUT);

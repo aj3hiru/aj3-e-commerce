@@ -5,9 +5,10 @@ import { setCustomerSessionCookie } from "@/lib/session-cookies";
 import { registerSchema } from "@/lib/validators/auth";
 import { getAuthSettings } from "@/lib/auth-settings";
 import { otpReady } from "@/types/auth-settings";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Verified against shop/register.php. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   // With mobile OTP on, new accounts are created only by verifying a mobile number.
   if (otpReady(await getAuthSettings())) {
     return NextResponse.json({ success: false, message: "Please sign up with your mobile number and OTP." }, { status: 400 });
@@ -34,3 +35,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, redirect: "/account?welcome=1" });
 }
+
+export const POST = withApiErrors(handlePOST);

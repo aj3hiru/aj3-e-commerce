@@ -17,9 +17,8 @@ const SUCCESS_MESSAGES: Record<string, string> = {
 
 export default async function PagesListPage({ searchParams }: PagesListProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "pages", "create")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "pages", "create")) redirect("/admin/dashboard?denied=1");
   const params = await searchParams;
   const pages = await prisma.page.findMany({ orderBy: { updatedAt: "desc" } });
 

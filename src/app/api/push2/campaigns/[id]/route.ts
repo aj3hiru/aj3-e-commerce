@@ -3,10 +3,11 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { deleteCampaign } from "@/lib/push-manager2";
 import { prisma } from "@/lib/db";
+import { withApiErrors } from "@/lib/api-errors";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function DELETE(req: NextRequest, ctx: Ctx) {
+async function handleDELETE(req: NextRequest, ctx: Ctx) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "push_notifications", "send")) {
     return NextResponse.json({ success: false, error: "Access Denied" }, { status: 403 });
@@ -21,3 +22,5 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   await logActivity(req, session.userId, "push_campaign_delete", `Deleted push campaign: ${campaign.title} (ID: ${id})`);
   return NextResponse.json({ success: true });
 }
+
+export const DELETE = withApiErrors(handleDELETE);

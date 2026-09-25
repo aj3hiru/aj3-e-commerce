@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession } from "@/lib/admin-auth";
 import { changeOrderStatus, changePaymentStatus, logOrderEvent, WorkflowError } from "@/lib/order-workflow";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * Delivery agent actions on an order assigned to them:
@@ -11,7 +12,7 @@ import { changeOrderStatus, changePaymentStatus, logOrderEvent, WorkflowError } 
  *   fail    — couldn't deliver now: back to In Progress with the reason (retry later)
  *   cancel  — cancel the order with a reason (refused, not answering, damaged…)
  */
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !session.permissions.delivery?.deliver) return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
   const orderId = Number((await params).id);
@@ -55,3 +56,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ success: false, message: "Couldn't update. Please try again." }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

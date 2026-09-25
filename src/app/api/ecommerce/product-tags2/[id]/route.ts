@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { parseTagInput } from "@/lib/tag2-save";
+import { withApiErrors } from "@/lib/api-errors";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -26,7 +27,7 @@ async function usageCount(tagGroup: string, slug: string) {
     : prisma.ecomProduct.count({ where: { badgeTag: slug } });
 }
 
-export async function PUT(req: NextRequest, ctx: Ctx) {
+async function handlePUT(req: NextRequest, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
 
@@ -60,7 +61,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 }
 
 /** PATCH { status } — the quick Active / Inactive switch. */
-export async function PATCH(req: NextRequest, ctx: Ctx) {
+async function handlePATCH(req: NextRequest, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
 
@@ -82,7 +83,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
  * DELETE — remove a tag. Products keep working: any product carrying it falls
  * back to "no tag", which is what the shop shows for an unknown value anyway.
  */
-export async function DELETE(req: NextRequest, ctx: Ctx) {
+async function handleDELETE(req: NextRequest, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
 
@@ -107,3 +108,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ success: false, message: "Could not delete the tag. Please try again." }, { status: 500 });
   }
 }
+
+export const PUT = withApiErrors(handlePUT);
+export const PATCH = withApiErrors(handlePATCH);
+export const DELETE = withApiErrors(handleDELETE);

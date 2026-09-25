@@ -29,7 +29,8 @@ export default async function Due2Page({ searchParams }: PageProps) {
     !!session &&
     (hasPermission(session.permissions, "ecommerce", "manage_credits") ||
       hasPermission(session.permissions, "ecommerce", "manage_billing"));
-  if (!session || !canView) redirect("/staff/login");
+  if (!session) redirect("/staff/login");
+  if (!canView) redirect("/admin/dashboard?denied=1");
 
   // Recording a payment needs the same permission the payment API itself checks.
   const canEdit =

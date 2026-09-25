@@ -32,9 +32,8 @@ import { getSiteFiles } from "@/lib/file-manager2";
  */
 export default async function FileManager2Page() {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "files", "access_file_manager")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "files", "access_file_manager")) redirect("/admin/dashboard?denied=1");
 
   const files = await getSiteFiles();
 

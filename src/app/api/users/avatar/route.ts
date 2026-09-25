@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/admin-auth";
 import { saveUploadedImage } from "@/lib/upload";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Profile photo upload for staff (own photo, or anyone's for user managers). Returns the saved path. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
   const form = await req.formData().catch(() => null);
@@ -16,3 +17,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: e instanceof Error ? e.message : "Upload failed." }, { status: 400 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

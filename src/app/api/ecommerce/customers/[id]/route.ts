@@ -3,8 +3,9 @@ import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { hashPassword } from "@/lib/password";
+import { withApiErrors } from "@/lib/api-errors";
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_customers")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -59,7 +60,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_customers")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -78,3 +79,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   return NextResponse.json({ success: true });
 }
+
+export const PATCH = withApiErrors(handlePATCH);
+export const DELETE = withApiErrors(handleDELETE);

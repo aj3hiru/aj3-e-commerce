@@ -4,11 +4,12 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { saveUploadedImage } from "@/lib/upload";
 import { generateSlug } from "@/lib/slug";
+import { withApiErrors } from "@/lib/api-errors";
 
 const text = (form: FormData, key: string) => String(form.get(key) ?? "").trim();
 const numberOrNull = (value: string) => value === "" ? null : Number(value);
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -69,3 +70,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

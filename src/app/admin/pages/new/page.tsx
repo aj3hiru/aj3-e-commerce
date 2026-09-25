@@ -6,9 +6,8 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 
 export default async function NewPagePage() {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "pages", "create")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "pages", "create")) redirect("/admin/dashboard?denied=1");
 
   return (
     <DisplayOptionsShell prefKey={PAGE_EDITOR_PREF_KEY} groups={PAGE_EDITOR_GROUPS}

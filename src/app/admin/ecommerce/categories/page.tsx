@@ -25,9 +25,8 @@ import { prisma } from "@/lib/db";
  */
 export default async function Categories2Page() {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_categories")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_categories")) redirect("/admin/dashboard?denied=1");
 
   const rows = await prisma.ecomCategory.findMany({
     orderBy: { id: "desc" },

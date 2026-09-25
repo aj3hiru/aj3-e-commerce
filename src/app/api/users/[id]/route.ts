@@ -6,10 +6,11 @@ import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission, type AdminSession } from "@/lib/admin-auth";
 import { hashPassword } from "@/lib/password";
 import { logActivity } from "@/lib/activity-log";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Verified against the edit_user branch in user-manager.php — password only
  *  updated if a new one was actually submitted. */
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "users", "edit")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -112,7 +113,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 /** Verified against the delete_user GET action — critically, prevents an
  *  admin from deleting their own account. */
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "users", "delete")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -148,3 +149,6 @@ async function guardTarget(userId: number, session: AdminSession) {
   }
   return null;
 }
+
+export const PATCH = withApiErrors(handlePATCH);
+export const DELETE = withApiErrors(handleDELETE);

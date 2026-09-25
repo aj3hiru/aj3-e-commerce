@@ -5,9 +5,10 @@ import { hashPassword, verifyPassword } from "@/lib/password";
 import { setAdminSessionCookie } from "@/lib/session-cookies";
 import { logActivity } from "@/lib/activity-log";
 import { parseStaffProfile } from "@/lib/staff";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Verified against admin/my-profile.php's POST handler. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -64,3 +65,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Save failed: that username or email may already be in use." }, { status: 409 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

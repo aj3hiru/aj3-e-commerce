@@ -3,9 +3,10 @@ import { prisma } from "@/lib/db";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { getAuthSettings } from "@/lib/auth-settings";
 import { otpReady } from "@/types/auth-settings";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Update the logged-in customer's profile: name (required), email (optional, unique), phone, address. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const customer = await getCustomerSession();
   if (!customer) return NextResponse.json({ success: false, message: "Please login first." }, { status: 401 });
 
@@ -37,3 +38,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, message: "Profile saved!" });
 }
+
+export const POST = withApiErrors(handlePOST);

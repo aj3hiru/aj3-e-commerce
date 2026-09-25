@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminHeader } from "./AdminHeader";
 import { SelectEnhancer } from "./SelectEnhancer";
+import { DeniedNotice } from "./DeniedNotice";
 
 interface AdminShellProps {
   siteName: string;
@@ -52,6 +53,7 @@ export function AdminShell({ siteName, pageTitle, pageSubtitle, username, role, 
           onMenuToggle={() => setSidebarOpen((o) => !o)}
         />
         <div className="mx-auto max-w-[1600px] p-4 min-[641px]:p-6">
+          <DeniedNotice />
           {children}
         </div>
       </main>

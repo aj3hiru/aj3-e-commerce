@@ -4,8 +4,9 @@ import path from "path";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
+import { withApiErrors } from "@/lib/api-errors";
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "files", "access_file_manager")) {
     return NextResponse.json({ error: "Access Denied" }, { status: 403 });
@@ -29,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 /** Verified against delete_media — also removes the on-disk file (and any
  *  responsive-set variants) via a best-effort cleanup, matching fm_delete_media_row(). */
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "files", "access_file_manager")) {
     return NextResponse.json({ error: "Access Denied" }, { status: 403 });
@@ -61,3 +62,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: "Failed to delete file." }, { status: 500 });
   }
 }
+
+export const PATCH = withApiErrors(handlePATCH);
+export const DELETE = withApiErrors(handleDELETE);

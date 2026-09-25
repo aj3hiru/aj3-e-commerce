@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { generateSlug, makeUniqueSlug } from "@/lib/slug";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * Creates a real `EcomProduct` row for an item a cashier is selling that isn't
@@ -29,7 +30,7 @@ const quickProductSchema = z.object({
   unit: z.string().trim().max(40).default(""),
 });
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_billing")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -94,3 +95,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

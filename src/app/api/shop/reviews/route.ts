@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCustomerSession } from "@/lib/customer-auth";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Verified against product.php's POST handler: logged-in customers only. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const customer = await getCustomerSession();
   if (!customer) {
     return NextResponse.json({ success: false, message: "Please login to write a review." }, { status: 401 });
@@ -40,3 +41,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, message: "Thanks! Your review has been submitted and will appear once approved." });
 }
+
+export const POST = withApiErrors(handlePOST);

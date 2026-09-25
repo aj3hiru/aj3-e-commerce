@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { CategorySaveError, createCategory2 } from "@/lib/category2-save";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Create a category from /admin/ecommerce/categories2 (multipart form). */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_categories")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -19,3 +20,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Could not save the category. Please try again." }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

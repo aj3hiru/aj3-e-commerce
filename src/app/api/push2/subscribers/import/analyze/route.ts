@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { analyzeImport, ImportError } from "@/lib/push-import";
+import { withApiErrors } from "@/lib/api-errors";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_ROWS = 100_000;
@@ -8,7 +9,7 @@ const MAX_ROWS = 100_000;
 /** Step 1 of an import: upload a CSV/JSON file; every row is verified and
  *  compared with the database. Nothing is written — the response is a report
  *  plus a one-time token for /commit. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "push_notifications", "manage_templates")) {
     return NextResponse.json({ success: false, error: "Access Denied" }, { status: 403 });
@@ -26,3 +27,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "Couldn't check this file. Please try again." }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

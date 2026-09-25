@@ -9,12 +9,13 @@ import { STAFF_ROLE_IDS } from "@/lib/roles";
 import { staffHome, staffPhone } from "@/lib/staff";
 import { appOfPath } from "@/lib/hosts";
 import { handoffUrl, internalNext } from "@/lib/staff-handoff";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * Staff login (/staff/login): username, email or mobile number + password —
  * no OTP. Same lockout (5 tries / 15 min per identity and IP) as the store login.
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const identity = String(body.identity ?? "").trim().slice(0, 150);
   const password = String(body.password ?? "");
@@ -63,3 +64,5 @@ export async function POST(req: NextRequest) {
   await setAdminSessionCookie(user.id, user.passwordHash, remember);
   return NextResponse.json({ success: true, redirect: target });
 }
+
+export const POST = withApiErrors(handlePOST);

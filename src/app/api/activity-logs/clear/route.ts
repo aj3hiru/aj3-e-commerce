@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Verified against activity-logs.php's clear_filtered action: deletes exactly
  *  the set of logs matching the currently-applied action/search filter, then
  *  logs the clear itself as a new 'logs_clear' entry. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "security", "view_logs")) {
+  // Logs are the audit trail: anyone with log access may read them, only an admin may delete them.
+  if (!session || session.role !== "admin" || !hasPermission(session.permissions, "security", "view_logs")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
   }
 
@@ -42,3 +44,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: `Clear failed: ${message}` }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

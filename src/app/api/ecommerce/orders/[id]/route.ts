@@ -8,9 +8,10 @@ import { applyOrderAction, WorkflowError } from "@/lib/order-workflow";
 // Single source of truth shared with both status dropdowns, so the UI can never
 // offer a value this endpoint would silently drop.
 import { isOrderStatus, isPaymentStatus } from "@/lib/order-statuses";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Quick status / payment dropdowns on the orders list — same rules as the order page (lib/order-workflow.ts). */
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !session.permissions.orders?.view) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -34,7 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 /** Verified against the POST action==='delete' handler in orders.php. */
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_orders")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -75,3 +76,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
   return NextResponse.json({ success: true });
 }
+
+export const PATCH = withApiErrors(handlePATCH);
+export const DELETE = withApiErrors(handleDELETE);

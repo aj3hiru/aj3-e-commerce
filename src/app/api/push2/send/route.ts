@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { PushSendError, kickPushQueue, queueCampaign } from "@/lib/push-manager2";
+import { withApiErrors } from "@/lib/api-errors";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "push_notifications", "send")) {
     return NextResponse.json({ success: false, error: "Access Denied" }, { status: 403 });
@@ -31,3 +32,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "Could not queue the campaign. Please try again." }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

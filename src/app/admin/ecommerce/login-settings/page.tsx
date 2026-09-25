@@ -13,7 +13,8 @@ import { getAuthSettings } from "@/lib/auth-settings";
 /** Settings → Login & OTP: mobile OTP (Firebase) and customer password login. */
 export default async function LoginSettingsPage() {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) redirect("/staff/login");
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_payment")) redirect("/admin/dashboard?denied=1");
   const [settings, h] = await Promise.all([getAuthSettings(), headers()]);
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
   const origin = host ? `${h.get("x-forwarded-proto") ?? "https"}://${storeHostOf(host)}` : "";

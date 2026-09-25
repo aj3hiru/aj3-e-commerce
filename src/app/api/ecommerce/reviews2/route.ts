@@ -3,9 +3,10 @@ import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { parseReviewInput } from "@/lib/review2-save";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** POST /api/ecommerce/reviews2 — add a review by hand (Product Reviews 2). */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -52,3 +53,5 @@ function setupHint(e: unknown): string {
     ? "The review table is missing its new columns. On the server run: npx prisma db execute --file prisma/reviews2.sql --schema prisma/schema.prisma"
     : "Could not save the review. Please try again.";
 }
+
+export const POST = withApiErrors(handlePOST);

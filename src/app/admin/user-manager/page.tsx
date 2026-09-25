@@ -25,9 +25,8 @@ import { DEFAULT_PERMISSIONS, normalizePermissions, type PermissionsShape } from
  */
 export default async function UserManager2Page() {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "users", "create")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "users", "create")) redirect("/admin/dashboard?denied=1");
 
   const rows = await prisma.user.findMany({ orderBy: { id: "desc" } });
   const users: User2Row[] = (rows as { id: number; username: string; email: string; role: string; status: string; permissions: unknown; firstName: string | null; lastName: string | null; phone: string | null; avatar: string | null }[]).map((u) => ({

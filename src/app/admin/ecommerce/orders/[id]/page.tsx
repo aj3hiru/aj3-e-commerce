@@ -16,9 +16,8 @@ interface OrderDetailPageProps {
 /** Verified against admin/ecommerce/order-view.php. */
 export default async function OrderDetailPage({ params }: OrderDetailPageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "orders", "view")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "orders", "view")) redirect("/admin/dashboard?denied=1");
 
   const { id } = await params;
   const orderId = Number(id);

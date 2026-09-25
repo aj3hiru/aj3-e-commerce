@@ -25,9 +25,8 @@ interface PageProps {
 
 export default async function ProductReviews2Page({ searchParams }: PageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_products")) redirect("/admin/dashboard?denied=1");
 
   const sp = await searchParams;
   const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);

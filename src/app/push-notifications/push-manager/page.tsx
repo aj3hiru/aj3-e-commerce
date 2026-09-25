@@ -5,7 +5,8 @@ import { prisma } from "@/lib/db";
 
 export default async function PushManagerPage() {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "push_notifications", "send")) redirect("/staff/login");
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "push_notifications", "send")) redirect("/admin/dashboard?denied=1");
   const [subscriptions, campaigns] = await Promise.all([
     prisma.pushSubscription.count(),
     prisma.pushCampaign.findMany({ orderBy: { createdAt: "desc" }, take: 20 }),

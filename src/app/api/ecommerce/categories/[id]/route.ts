@@ -4,10 +4,11 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { generateSlug, makeUniqueSlug } from "@/lib/slug";
 import { saveUploadedImage, deleteUploadedImage } from "@/lib/upload";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Verified against the action==='update' branch of categories.php. Replaces the
  *  image only if a new file was uploaded (old image deleted), otherwise keeps it. */
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_categories")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -78,7 +79,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 }
 
 /** Verified against the POST action==='delete' handler in categories.php. */
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_categories")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -107,3 +108,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     );
   }
 }
+
+export const PATCH = withApiErrors(handlePATCH);
+export const DELETE = withApiErrors(handleDELETE);

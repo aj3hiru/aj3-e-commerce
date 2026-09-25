@@ -38,9 +38,8 @@ interface Analytics2PageProps {
 
 export default async function Analytics2Page({ searchParams }: Analytics2PageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_orders")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_orders")) redirect("/admin/dashboard?denied=1");
 
   const sp = await searchParams;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);

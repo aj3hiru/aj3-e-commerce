@@ -44,9 +44,8 @@ interface PageProps {
 
 export default async function ActivityLogs2Page({ searchParams }: PageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "security", "view_logs")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "security", "view_logs")) redirect("/admin/dashboard?denied=1");
 
   const sp = await searchParams;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";

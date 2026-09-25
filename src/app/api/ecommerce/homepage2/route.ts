@@ -4,6 +4,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { saveUploadedImage, deleteUploadedImage } from "@/lib/upload";
 import { reorderByIds } from "@/lib/reorder";
+import { withApiErrors } from "@/lib/api-errors";
 
 const VALID_SECTION_TYPES = ["category_row", "product_grid", "festive_banner", "manual_products"];
 const VALID_SOURCE_TYPES = ["manual", "category", "latest"];
@@ -17,7 +18,7 @@ const VALID_CARD_DESIGNS = ["design1", "design2", "design3", "design4"];
  * upload a file (add_slide, add_section with a festive banner image, edit_slide),
  * which stay multipart/form-data.
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_homepage")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -203,3 +204,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Could not save that change. Please try again." }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

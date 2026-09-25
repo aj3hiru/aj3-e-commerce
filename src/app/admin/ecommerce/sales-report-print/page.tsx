@@ -13,9 +13,8 @@ const SALE_TYPE_LABELS: Record<string, string> = { all: "All Sales", offline: "S
 
 export default async function SalesReportPrintPage({ searchParams }: SalesReportPrintPageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_billing")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_billing")) redirect("/admin/dashboard?denied=1");
 
   const params = await searchParams;
   const range = resolveDashboardRange(params.range, params.from, params.to);

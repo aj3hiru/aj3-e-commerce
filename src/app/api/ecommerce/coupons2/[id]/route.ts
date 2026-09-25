@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { CouponSaveError, parseCoupon2Input, updateCoupon2 } from "@/lib/coupon2-save";
+import { withApiErrors } from "@/lib/api-errors";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -17,7 +18,7 @@ async function guard(ctx: Ctx) {
 }
 
 /** Full edit — JSON body, same shape parseCoupon2Input expects. */
-export async function PUT(req: NextRequest, ctx: Ctx) {
+async function handlePUT(req: NextRequest, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
   try {
@@ -33,7 +34,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 }
 
 /** Quick toggle from the card grid: status and/or isPaused. */
-export async function PATCH(req: NextRequest, ctx: Ctx) {
+async function handlePATCH(req: NextRequest, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
   const body = await req.json().catch(() => ({}));
@@ -53,7 +54,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ success: true });
 }
 
-export async function DELETE(req: NextRequest, ctx: Ctx) {
+async function handleDELETE(req: NextRequest, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
   const coupon = await prisma.ecomCoupon.findUnique({ where: { id: g.id }, select: { title: true, code: true } });
@@ -62,3 +63,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   await logActivity(req, g.session.userId, "ecom_coupon_delete", `Deleted Coupon: ${coupon.title} (${coupon.code}) (ID: ${g.id})`);
   return NextResponse.json({ success: true });
 }
+
+export const PUT = withApiErrors(handlePUT);
+export const PATCH = withApiErrors(handlePATCH);
+export const DELETE = withApiErrors(handleDELETE);

@@ -31,9 +31,8 @@ interface Dashboard2PageProps {
 export default async function Dashboard2Page({ searchParams }: Dashboard2PageProps) {
   const session = await getAdminSession();
   // Same gate as the original dashboard: top-level `dashboard_access`.
-  if (!session || !(session.permissions as unknown as Record<string, boolean>).dashboard_access) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!(session.permissions as unknown as Record<string, boolean>).dashboard_access) redirect("/admin/my-profile?denied=1");
 
   // Each role gets its own dashboard; admins and store managers keep the full store dashboard.
   const roleView = await roleDashboard(session);

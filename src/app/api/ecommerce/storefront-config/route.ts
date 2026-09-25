@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { saveStorefrontConfig } from "@/lib/storefront-config";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Saves Business Settings → Header Menu / Sidebar Menu / Menu Design /
  *  Push Notifications / Footer. Same permission as the rest of Business Settings. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -22,3 +23,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Menus & footer couldn't be saved — the storefront_settings table may be missing." }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

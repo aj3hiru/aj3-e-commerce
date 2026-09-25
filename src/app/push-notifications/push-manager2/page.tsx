@@ -28,7 +28,8 @@ const SUBSCRIBER_PAGE_SIZE = 20;
  */
 export default async function PushManager2Page({ searchParams }: { searchParams: Promise<{ tab?: string; page?: string }> }) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "push_notifications", "send")) redirect("/staff/login");
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "push_notifications", "send")) redirect("/admin/dashboard?denied=1");
 
   const canManage = hasPermission(session.permissions, "push_notifications", "manage_templates");
   const sp = await searchParams;

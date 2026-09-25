@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCustomerSession } from "@/lib/customer-auth";
+import { withApiErrors } from "@/lib/api-errors";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const customer = await getCustomerSession();
   if (!customer) {
     return NextResponse.json({ success: false, message: "Please login first.", need_login: true });
@@ -26,3 +27,5 @@ export async function POST(req: NextRequest) {
   await prisma.ecomWishlist.create({ data: { customerId: customer.customerId, productId } });
   return NextResponse.json({ success: true, wishlisted: true });
 }
+
+export const POST = withApiErrors(handlePOST);

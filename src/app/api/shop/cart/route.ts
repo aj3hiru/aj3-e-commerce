@@ -3,11 +3,12 @@ import { prisma } from "@/lib/db";
 import { getCart, setCart, cartCount, cartKey, parseCartKey, type CartMap } from "@/lib/cart-session";
 import { cartTotal, loadCartLines, priceLine, type CartProduct, type CartSize } from "@/lib/cart-lines";
 import { loadLiveCampaigns } from "@/lib/campaign-pricing";
+import { withApiErrors } from "@/lib/api-errors";
 
 const summary = async (cart: CartMap) => ({ cart_count: cartCount(cart), cart_total: cartTotal(await loadCartLines(cart)), items: cart });
 
 /** GET the current cart (for hydrating the header cart badge on load). */
-export async function GET() {
+async function handleGET() {
   const cart = await getCart();
   return NextResponse.json({ success: true, ...(await summary(cart)) });
 }
@@ -44,7 +45,7 @@ async function sellable(key: string) {
 }
 
 /** Verified against add_to_cart / update_cart_qty / remove_from_cart in shop/ajax.php (plus sizes). */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const action = body.action as string;
   const cart = await getCart();
@@ -92,3 +93,6 @@ function toQty(raw: unknown): number {
   const n = Math.floor(Number(raw));
   return Number.isFinite(n) && n > 0 ? Math.min(n, 999) : 0;
 }
+
+export const GET = withApiErrors(handleGET);
+export const POST = withApiErrors(handlePOST);

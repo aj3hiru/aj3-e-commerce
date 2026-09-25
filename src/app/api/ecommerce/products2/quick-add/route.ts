@@ -4,6 +4,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { generateSlug, makeUniqueSlug } from "@/lib/slug";
 import { saveUploadedImage } from "@/lib/upload";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * "+ Add new…" from inside the product form on /admin/ecommerce/products/add:
@@ -23,7 +24,7 @@ function checkImage(v: FormDataEntryValue | null, what: string): string | null {
   return null;
 }
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -92,3 +93,5 @@ export async function POST(req: NextRequest) {
   await logActivity(req, session.userId, "ecom_tag_create", `Created Item Type: ${name}`);
   return NextResponse.json({ success: true, slug: created.slug, name: created.label });
 }
+
+export const POST = withApiErrors(handlePOST);

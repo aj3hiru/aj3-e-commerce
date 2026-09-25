@@ -7,6 +7,7 @@ import { loginSchema } from "@/lib/validators/auth";
 import { getAuthSettings } from "@/lib/auth-settings";
 import { findCustomerByPhone } from "@/lib/customer-phone";
 import { STAFF_ROLE_IDS } from "@/lib/roles";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * Verified 1:1 against shop/login.php's POST handler. Preserves:
@@ -25,7 +26,7 @@ import { STAFF_ROLE_IDS } from "@/lib/roles";
  * exact double-submit pattern preserved — wire this in your login form
  * component using lib/csrf.ts's getOrCreateCsrfToken().
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const parsed = loginSchema.safeParse(body);
   if (!parsed.success) {
@@ -91,3 +92,5 @@ function safeRedirect(target: string | undefined): string | null {
   if (!target || !target.startsWith("/") || target.startsWith("//") || target.startsWith("/\\")) return null;
   return target;
 }
+
+export const POST = withApiErrors(handlePOST);

@@ -3,9 +3,10 @@ import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { parseCustomerInput } from "@/lib/customer2-save";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** POST /api/ecommerce/customers2 — create a customer (Customer List 2). */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_customers")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -27,3 +28,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withApiErrors(handlePOST);

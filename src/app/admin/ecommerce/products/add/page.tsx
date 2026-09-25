@@ -38,9 +38,8 @@ interface AddProduct2PageProps {
  */
 export default async function AddProduct2Page({ searchParams }: AddProduct2PageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_products")) redirect("/admin/dashboard?denied=1");
 
   const sp = await searchParams;
   const editRaw = Array.isArray(sp.edit) ? sp.edit[0] : sp.edit;

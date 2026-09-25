@@ -3,9 +3,10 @@ import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { HEADER_SETTING_DEFAULTS, type HeaderSettingKey } from "@/lib/header-settings";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Store Customizer → Header & Menus → Header strip (address block, opening time, search box). */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -33,3 +34,5 @@ export async function POST(req: NextRequest) {
     header: { showLocation: values.show_location === "1", showDeliveryInfo: values.show_delivery_info === "1", deliveryLabel: values.delivery_label, deliveryTimeText: values.delivery_time_text, searchPlaceholder: values.search_placeholder },
   });
 }
+
+export const POST = withApiErrors(handlePOST);

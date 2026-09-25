@@ -4,11 +4,12 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { recalcOrderTotals, isOrderLocked } from "@/lib/order-recalc";
 import { adjustProductStock } from "@/lib/order-stock";
 import type { Prisma } from "@prisma/client";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Verified against order-view.php's update_qty / remove_item / add_item POST
  *  actions. Every mutation here re-runs recalcOrderTotals() afterward, exactly
  *  matching the PHP. */
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "orders", "edit_items")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -91,3 +92,5 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({ success: false, message: "Unknown action." }, { status: 400 });
 }
+
+export const POST = withApiErrors(handlePOST);

@@ -6,9 +6,10 @@ import { logActivity } from "@/lib/activity-log";
 import { getRolePermissionDefaults } from "@/lib/permissions";
 import { isStaffRole, roleLabel } from "@/lib/roles";
 import { parseStaffProfile } from "@/lib/staff";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Verified against the create_user action in user-manager.php. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "users", "create")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -57,3 +58,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, redirect: "/admin/user-manager?success=created", userId: created.id });
 }
+
+export const POST = withApiErrors(handlePOST);

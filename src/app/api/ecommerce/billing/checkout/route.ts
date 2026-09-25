@@ -8,6 +8,7 @@ import type { Prisma } from "@prisma/client";
 import { findRedeemableCoupon, consumeCouponUse } from "@/lib/coupon-redeem";
 import { campaignPriceFor, type CampaignPrice } from "@/lib/campaign-core";
 import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "@/lib/campaign-pricing";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * Verified 1:1 against the `?action=checkout` branch of admin/ecommerce/billing.php.
@@ -15,7 +16,7 @@ import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "
  * discount, guest-must-pay-in-full, auto due/credit creation, stock deduction only for
  * physical products) is preserved exactly as in the original PHP.
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_billing")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -344,3 +345,5 @@ function keptPayments(payments: { method: string; amount: number }[], kept: numb
   }
   return rows;
 }
+
+export const POST = withApiErrors(handlePOST);

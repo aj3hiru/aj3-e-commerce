@@ -4,8 +4,9 @@ import path from "path";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
+import { withApiErrors } from "@/lib/api-errors";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "files", "access_file_manager")) {
     return NextResponse.json({ error: "Access Denied" }, { status: 403 });
@@ -28,3 +29,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, deleted: rows.length });
 }
+
+export const POST = withApiErrors(handlePOST);

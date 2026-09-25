@@ -30,9 +30,8 @@ import { prisma } from "@/lib/db";
  */
 export default async function TaxSettings2Page() {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_products")) redirect("/admin/dashboard?denied=1");
 
   const [ratesRaw, productRates] = await Promise.all([
     prisma.ecomGstRate.findMany({ orderBy: { rate: "asc" } }),

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { getLedgerRows, parseSalesFilters, type RawSearchParams } from "@/lib/sales-history2";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * CSV export for /admin/ecommerce/sales-history — the same rows the Sales
@@ -8,7 +9,7 @@ import { getLedgerRows, parseSalesFilters, type RawSearchParams } from "@/lib/sa
  * Dates/times are India time. A UTF-8 BOM makes Excel read ₹ and names
  * correctly.
  */
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_billing")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -57,3 +58,5 @@ export async function GET(req: NextRequest) {
     },
   });
 }
+
+export const GET = withApiErrors(handleGET);

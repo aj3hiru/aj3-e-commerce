@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { clearCacheSection, type CacheSection } from "@/lib/cache-manager2";
+import { withApiErrors } from "@/lib/api-errors";
 
 const VALID: CacheSection[] = ["home", "shop", "blog", "dashboard", "all", "redis"];
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "settings", "maintenance_mode")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -21,3 +22,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Could not clear the cache. Please try again." }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

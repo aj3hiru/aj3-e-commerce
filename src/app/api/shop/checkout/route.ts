@@ -8,12 +8,13 @@ import { findRedeemableCoupon, consumeCouponUse } from "@/lib/coupon-redeem";
 import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "@/lib/campaign-pricing";
 import { loadCartLines, type CartLine } from "@/lib/cart-lines";
 import { formatAddress, toAddress } from "@/lib/customer-addresses";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Verified 1:1 against shop/checkout.php's POST handler: re-validates stock,
  *  re-fetches prices server-side, applies an optional coupon with proportional
  *  GST-on-discount (same rules as the Phase 3 POS checkout), deducts stock,
  *  clears the cart, and creates an 'online'/'Pending'/'Unpaid' order. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const customer = await getCustomerSession();
   if (!customer) {
     return NextResponse.json({ success: false, message: "Please login first.", need_login: true }, { status: 401 });
@@ -183,3 +184,5 @@ export async function POST(req: NextRequest) {
 }
 
 class CheckoutError extends Error {}
+
+export const POST = withApiErrors(handlePOST);

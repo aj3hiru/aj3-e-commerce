@@ -3,8 +3,9 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { PaymentSaveError, setDefaultPaymentMethod2 } from "@/lib/payment2-save";
 import { PAYMENT_METHODS } from "@/lib/payment-methods";
+import { withApiErrors } from "@/lib/api-errors";
 
-export async function POST(req: NextRequest, ctx: { params: Promise<{ key: string }> }) {
+async function handlePOST(req: NextRequest, ctx: { params: Promise<{ key: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -23,3 +24,5 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ key: strin
     return NextResponse.json({ success: false, message: "Could not set the default method. Please try again." }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { BARCODE_SELECT, toBarcodeProduct, type BarcodeProduct } from "@/lib/barcodes2";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * GET /api/ecommerce/barcodes2/search?q=...&category=...&limit=...
@@ -12,7 +13,7 @@ import { BARCODE_SELECT, toBarcodeProduct, type BarcodeProduct } from "@/lib/bar
  */
 const MAX = 50;
 
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const session = await getAdminSession();
   if (
     !session ||
@@ -47,3 +48,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Could not search products. Please try again." }, { status: 500 });
   }
 }
+
+export const GET = withApiErrors(handleGET);

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { SaveError, updateProduct2 } from "@/lib/product2-save";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Update a product from /admin/ecommerce/products/add?edit=ID (multipart form). */
-export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -23,3 +24,5 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ success: false, message: "Could not save the product. Please try again." }, { status: 500 });
   }
 }
+
+export const PUT = withApiErrors(handlePUT);

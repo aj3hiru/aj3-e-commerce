@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearCustomerSessionCookie } from "@/lib/session-cookies";
 import { publicOrigin } from "@/lib/hosts";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * Verified against shop/logout.php — no activity logging for customer
@@ -11,7 +12,9 @@ import { publicOrigin } from "@/lib/hosts";
  * prefetch-triggering this silently), and a real 303 redirect used
  * instead of a JSON body nothing ever read.
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   await clearCustomerSessionCookie();
   return NextResponse.redirect(`${publicOrigin(req)}/`, 303);
 }
+
+export const POST = withApiErrors(handlePOST);

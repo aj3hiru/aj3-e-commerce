@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
+import { withApiErrors } from "@/lib/api-errors";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (
     !session ||
@@ -23,3 +24,5 @@ export async function POST(req: NextRequest) {
   await prisma.ecomCredit.update({ where: { id: creditId }, data: { promisedDate } });
   return NextResponse.json({ success: true });
 }
+
+export const POST = withApiErrors(handlePOST);

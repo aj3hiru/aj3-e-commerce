@@ -4,6 +4,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { saveUploadedImage } from "@/lib/upload";
 import { HEADER_SETTING_DEFAULTS, type HeaderSettingKey } from "@/lib/header-settings";
+import { withApiErrors } from "@/lib/api-errors";
 
 const VALID_FKEYS = Array.from({ length: 11 }, (_, i) => `F${i + 2}`); // F2..F12
 
@@ -12,7 +13,7 @@ const VALID_FKEYS = Array.from({ length: 11 }, (_, i) => `F${i + 2}`); // F2..F1
  *  to a safe default exactly like the PHP in_array() checks), handles the
  *  multi-value contact_numbers/invoice_numbers arrays and the dynamic social_media
  *  list, and optionally replaces the logo. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -147,3 +148,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, redirect: "/admin/ecommerce/business-settings?success=1" });
 }
+
+export const POST = withApiErrors(handlePOST);

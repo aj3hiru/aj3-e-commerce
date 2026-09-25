@@ -85,7 +85,9 @@ export async function middleware(req: NextRequest) {
     // Customizer previews (?hc=…) render the store on the admin host so the editor can reach into the frame.
     const preview = app === "admin" && url.searchParams.has("hc") && (pathname === "/" || STORE_PATHS.test(pathname));
     if (preview) return NextResponse.next();
-    if (STORE_PATHS.test(pathname)) return at(store, pathname + search, 308);
+    // Customer pages belong on the main domain — except the delivery app's own /order/<id> page.
+    const agentOrder = app === "delivery" && /^\/order\/\d+/.test(pathname);
+    if (STORE_PATHS.test(pathname) && !agentOrder) return at(store, pathname + search, 308);
     // Old /admin/… (or /agent/…) links → the clean URL.
     const own = app === "admin" ? /^\/admin(\/|$)/ : /^\/agent(\/|$)/;
     if (own.test(pathname)) return at(hostname, toPublicPath(pathname, app) + search);

@@ -4,8 +4,9 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { generateSlug, makeUniqueSlug } from "@/lib/slug";
 import { saveUploadedImage } from "@/lib/upload";
+import { withApiErrors } from "@/lib/api-errors";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -32,3 +33,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, redirect: "/admin/ecommerce/brands?success=created" });
 }
+
+export const POST = withApiErrors(handlePOST);

@@ -16,9 +16,8 @@ interface BusinessSettingsPageProps {
 
 export default async function BusinessSettingsPage({ searchParams }: BusinessSettingsPageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_payment")) redirect("/admin/dashboard?denied=1");
   const params = await searchParams;
   const biz = await prisma.ecomBusinessSettings.findFirst({ orderBy: { id: "asc" } });
   // Pass business_hours as `undefined` here, NOT as the fallback: this form

@@ -48,9 +48,8 @@ const DESCRIPTIONS: Record<string, string> = {
  */
 export default async function PaymentSettings2Page() {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_payment")) redirect("/admin/dashboard?denied=1");
 
   const rows = await prisma.ecomPaymentSettings.findMany();
   const byKey = new Map((rows as { methodKey: string; name: string; text: string | null; config: unknown; isEnabled: boolean; isDefault: boolean }[]).map((r) => [r.methodKey, r]));

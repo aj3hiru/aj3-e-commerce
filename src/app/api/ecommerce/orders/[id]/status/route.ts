@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/admin-auth";
 import { applyOrderAction, WorkflowError } from "@/lib/order-workflow";
+import { withApiErrors } from "@/lib/api-errors";
 
 /**
  * Order page actions: { action: "update_status", orderStatus, note? } ·
  * { action: "update_payment", paymentStatus, method? } · { action: "assign", agentId } ·
  * { action: "note", note }. Rules and permissions live in lib/order-workflow.ts.
  */
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !session.permissions.orders?.view) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -24,3 +25,5 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ success: false, message: "Couldn't update the order. Please try again." }, { status: 500 });
   }
 }
+
+export const PATCH = withApiErrors(handlePATCH);

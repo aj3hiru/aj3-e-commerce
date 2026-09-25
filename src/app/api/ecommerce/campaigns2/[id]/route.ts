@@ -7,6 +7,7 @@ import { parseCampaignInput, checkCampaignRefs } from "@/lib/campaign-validate";
 import { sanitizeCampaignHome } from "@/types/campaign-home";
 import { lookupRefs } from "@/lib/campaign-refs";
 import { clearCampaignCache } from "@/lib/campaign-pricing";
+import { withApiErrors } from "@/lib/api-errors";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -27,7 +28,7 @@ async function guard(req: NextRequest, ctx: Ctx) {
 }
 
 /** PUT — save the edit form (everything about the campaign, including its products/groups). */
-export async function PUT(req: NextRequest, ctx: Ctx) {
+async function handlePUT(req: NextRequest, ctx: Ctx) {
   const g = await guard(req, ctx);
   if ("error" in g) return g.error;
 
@@ -61,7 +62,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 }
 
 /** PATCH { action: "pause" | "resume" | "end" } — the quick buttons in the table. */
-export async function PATCH(req: NextRequest, ctx: Ctx) {
+async function handlePATCH(req: NextRequest, ctx: Ctx) {
   const g = await guard(req, ctx);
   if ("error" in g) return g.error;
 
@@ -100,7 +101,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
 }
 
 /** DELETE — only a campaign that made no sales; otherwise it stays as history. */
-export async function DELETE(req: NextRequest, ctx: Ctx) {
+async function handleDELETE(req: NextRequest, ctx: Ctx) {
   const g = await guard(req, ctx);
   if ("error" in g) return g.error;
 
@@ -118,3 +119,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ success: false, message: "Could not delete the campaign. Please try again." }, { status: 500 });
   }
 }
+
+export const PUT = withApiErrors(handlePUT);
+export const PATCH = withApiErrors(handlePATCH);
+export const DELETE = withApiErrors(handleDELETE);

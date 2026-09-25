@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { getPushSettings, keyFingerprint } from "@/lib/push-settings";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Downloads the VAPID key pair as a JSON backup — needed to move to a new
  *  server without losing subscribers. Contains the private key, so it is
  *  admin-only and every download is logged. */
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "push_notifications", "manage_templates")) {
     return NextResponse.json({ success: false, error: "Access Denied" }, { status: 403 });
@@ -22,3 +23,5 @@ export async function GET(req: NextRequest) {
     headers: { "Content-Type": "application/json", "Content-Disposition": `attachment; filename="push-vapid-keys-${new Date().toISOString().slice(0, 10)}.json"`, "Cache-Control": "no-store" },
   });
 }
+
+export const GET = withApiErrors(handleGET);

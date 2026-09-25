@@ -4,6 +4,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { deleteUploadedImage } from "@/lib/upload";
 import { BrandSaveError, updateBrand2 } from "@/lib/brand2-save";
+import { withApiErrors } from "@/lib/api-errors";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -18,7 +19,7 @@ async function guard(ctx: Ctx) {
 }
 
 /** Full edit (name, slug, logo, popular, status) — multipart form. */
-export async function PUT(req: NextRequest, ctx: Ctx) {
+async function handlePUT(req: NextRequest, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
   try {
@@ -33,7 +34,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 }
 
 /** Quick toggle from the list: { status: "active"|"inactive" } and/or { isPopular: boolean }. */
-export async function PATCH(req: NextRequest, ctx: Ctx) {
+async function handlePATCH(req: NextRequest, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
   const body = await req.json().catch(() => ({}));
@@ -52,7 +53,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
  * ?detach=1, which first clears the brand from those products (they keep
  * everything else) — instead of failing on the database's foreign key.
  */
-export async function DELETE(req: NextRequest, ctx: Ctx) {
+async function handleDELETE(req: NextRequest, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
   const brand = await prisma.ecomBrand.findUnique({ where: { id: g.id }, select: { name: true, logo: true } });
@@ -73,3 +74,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   await logActivity(req, g.session.userId, "ecom_brand_delete", `Deleted Brand: ${brand.name} (ID: ${g.id})${used ? ` — removed from ${used} products` : ""}`);
   return NextResponse.json({ success: true, detached: used });
 }
+
+export const PUT = withApiErrors(handlePUT);
+export const PATCH = withApiErrors(handlePATCH);
+export const DELETE = withApiErrors(handleDELETE);

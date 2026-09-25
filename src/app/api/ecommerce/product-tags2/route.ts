@@ -3,9 +3,10 @@ import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { parseTagInput } from "@/lib/tag2-save";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** POST /api/ecommerce/product-tags2 — create a badge tag or item type. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -26,3 +27,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Could not save the tag. Please try again." }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

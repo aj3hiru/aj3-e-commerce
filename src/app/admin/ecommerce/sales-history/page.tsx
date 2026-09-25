@@ -31,9 +31,8 @@ interface SalesHistory2PageProps {
  */
 export default async function SalesHistory2Page({ searchParams }: SalesHistory2PageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_billing")) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_billing")) redirect("/admin/dashboard?denied=1");
 
   const sp = await searchParams;
   const filters = parseSalesFilters(sp);

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { saveInvoiceSettings } from "@/lib/invoice-settings";
 import { logActivity } from "@/lib/activity-log";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Business Settings → Invoice Settings. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -19,3 +20,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Invoice settings couldn't be saved." }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

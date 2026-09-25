@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { TaxRateSaveError, parseTaxRate2Input, updateTaxRate2 } from "@/lib/tax2-save";
+import { withApiErrors } from "@/lib/api-errors";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -16,7 +17,7 @@ async function guard(ctx: Ctx) {
   return { session, id };
 }
 
-export async function PUT(req: NextRequest, ctx: Ctx) {
+async function handlePUT(req: NextRequest, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
   try {
@@ -32,7 +33,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 }
 
 /** Set this slab as the default (unsets every other row first, matching the v1 route). */
-export async function PATCH(req: NextRequest, ctx: Ctx) {
+async function handlePATCH(req: NextRequest, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
   const found = await prisma.ecomGstRate.findUnique({ where: { id: g.id }, select: { label: true } });
@@ -43,7 +44,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   return NextResponse.json({ success: true });
 }
 
-export async function DELETE(req: NextRequest, ctx: Ctx) {
+async function handleDELETE(req: NextRequest, ctx: Ctx) {
   const g = await guard(ctx);
   if ("error" in g) return g.error;
   const rate = await prisma.ecomGstRate.findUnique({ where: { id: g.id } });
@@ -55,3 +56,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
   await logActivity(req, g.session.userId, "ecom_gst_delete", `Deleted GST slab: ${rate.label} (${Number(rate.rate)}%) (ID: ${g.id})`);
   return NextResponse.json({ success: true });
 }
+
+export const PUT = withApiErrors(handlePUT);
+export const PATCH = withApiErrors(handlePATCH);
+export const DELETE = withApiErrors(handleDELETE);

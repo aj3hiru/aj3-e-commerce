@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { saveAuthSettings } from "@/lib/auth-settings";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Settings → Login & OTP. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -20,3 +21,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Couldn't save — please try again." }, { status: 500 });
   }
 }
+
+export const POST = withApiErrors(handlePOST);

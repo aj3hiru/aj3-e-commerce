@@ -7,11 +7,12 @@ import { logActivity } from "@/lib/activity-log";
 import { generateSlug } from "@/lib/slug";
 import { detectFileType, ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE } from "@/lib/media-types";
 import { toWebp } from "@/lib/image-webp";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Verified against file-manager.php's upload_file action. PDFs are stored under
  *  /files/, every other allowed type under /uploads/ — matching the original's
  *  two-directory split. */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "files", "access_file_manager")) {
     return NextResponse.json({ error: "Access Denied" }, { status: 403 });
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
 
 /** List media with optional type filter + search + pagination — supports the
  *  file-manager grid view. */
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "files", "access_file_manager")) {
     return NextResponse.json({ error: "Access Denied" }, { status: 403 });
@@ -85,3 +86,6 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({ items, total, page, totalPages: Math.max(1, Math.ceil(total / perPage)) });
 }
+
+export const POST = withApiErrors(handlePOST);
+export const GET = withApiErrors(handleGET);

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
+import { withApiErrors } from "@/lib/api-errors";
 
 /** Removes one subscriber (and its pending queue rows). */
-export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "push_notifications", "manage_templates")) {
     return NextResponse.json({ success: false, error: "Access Denied" }, { status: 403 });
@@ -16,3 +17,5 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
   ]);
   return NextResponse.json({ success: true });
 }
+
+export const DELETE = withApiErrors(handleDELETE);

@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
+import { withApiErrors } from "@/lib/api-errors";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 /** Duplicate: same terms, a fresh "-COPY" (then "-COPY-2", ...) code, usage
  *  reset to 0, and paused by default so a copy never silently starts live. */
-export async function POST(req: NextRequest, ctx: Ctx) {
+async function handlePOST(req: NextRequest, ctx: Ctx) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_coupons")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -37,3 +38,5 @@ export async function POST(req: NextRequest, ctx: Ctx) {
 
   return NextResponse.json({ success: true, id: created.id, title: created.title, code: created.code });
 }
+
+export const POST = withApiErrors(handlePOST);

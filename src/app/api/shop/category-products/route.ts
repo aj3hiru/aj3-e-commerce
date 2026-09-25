@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { campaignSalePrices } from "@/lib/campaign-pricing";
+import { withApiErrors } from "@/lib/api-errors";
 
 const PAGE_SIZE = 20;
 
@@ -8,7 +9,7 @@ const PAGE_SIZE = 20;
  *  Returns plain JSON product data (rendered client-side by ProductCard) rather
  *  than server-rendered HTML — the React equivalent of the PHP's ob_start()
  *  HTML-string response. */
-export async function GET(req: NextRequest) {
+async function handleGET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const int = (v: string | null) => Math.max(0, Math.floor(Number(v ?? 0)) || 0); // NaN/garbage -> 0
   const categoryId = int(searchParams.get("category_id"));
@@ -34,3 +35,5 @@ export async function GET(req: NextRequest) {
     has_more: offset + products.length < total,
   });
 }
+
+export const GET = withApiErrors(handleGET);

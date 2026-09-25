@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { listAddresses, parseAddress } from "@/lib/customer-addresses";
+import { withApiErrors } from "@/lib/api-errors";
 
 const MAX = 20;
 const unauth = () => NextResponse.json({ success: false, message: "Please login first." }, { status: 401 });
 
 /** GET: the customer's saved addresses (default first). */
-export async function GET() {
+async function handleGET() {
   const c = await getCustomerSession();
   if (!c) return unauth();
   return NextResponse.json({ success: true, addresses: await listAddresses(c.customerId) });
@@ -17,7 +18,7 @@ export async function GET() {
  * POST { action: "save", id?, ...fields } — add or edit (the first address becomes the default);
  *      { action: "delete", id } · { action: "default", id }.
  */
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const c = await getCustomerSession();
   if (!c) return unauth();
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
@@ -55,3 +56,6 @@ export async function POST(req: NextRequest) {
   }
   return NextResponse.json({ success: true, addresses: await listAddresses(c.customerId) });
 }
+
+export const GET = withApiErrors(handleGET);
+export const POST = withApiErrors(handlePOST);

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
+import { withApiErrors } from "@/lib/api-errors";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_coupons")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
@@ -36,3 +37,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true, redirect: "/admin/ecommerce/coupons?success=created" });
 }
+
+export const POST = withApiErrors(handlePOST);

@@ -434,7 +434,7 @@ export function OrderDetailView({ order, items, availableProducts, perms = ALL, 
               </div>
               {show("ov-side", "ov-s-map") && order.lat != null && order.lng != null && (
                 <iframe title="Delivery location" loading="lazy" className="h-44 w-full border-0 border-t border-admin-gray-100"
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${order.lng - 0.004},${order.lat - 0.0025},${order.lng + 0.004},${order.lat + 0.0025}&layer=mapnik&marker=${order.lat},${order.lng}`} />
+                  src={`https://maps.google.com/maps?q=${order.lat},${order.lng}&z=16&output=embed`} />
               )}
             </section>
           )}

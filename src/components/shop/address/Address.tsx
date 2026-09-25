@@ -118,7 +118,7 @@ export function AddressForm({ initial, defaults, onSaved, onClose }: {
   }
 
   const mapSrc = a.lat !== null && a.lng !== null
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${a.lng - 0.003},${a.lat - 0.002},${a.lng + 0.003},${a.lat + 0.002}&layer=mapnik&marker=${a.lat},${a.lng}`
+    ? `https://maps.google.com/maps?q=${a.lat},${a.lng}&z=17&output=embed`
     : null;
 
   // Rendered at the end of <body>: on checkout this sheet sits inside the checkout <form>, and a form

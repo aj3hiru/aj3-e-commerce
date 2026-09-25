@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { cachedPage, isCacheable } from "@/lib/page-cache";
+import { cachedPage, debugInfo, isCacheable } from "@/lib/page-cache";
 import { STORE_PATHS, appOfPath, staffHosts, storeHostOf, toInternalPath, toPublicPath, type StaffApp } from "@/lib/hosts";
 
 /**
@@ -106,6 +106,9 @@ export async function middleware(req: NextRequest) {
   if (!STAFF_PATHS.test(pathname) && isCacheable(req)) {
     const page = await cachedPage(req, hostname + port, proto).catch(() => null);
     if (page) return page;
+    const r = NextResponse.next();
+    r.headers.set("x-page-cache-debug", debugInfo(req).slice(0, 300));
+    return r;
   }
   return NextResponse.next();
 }

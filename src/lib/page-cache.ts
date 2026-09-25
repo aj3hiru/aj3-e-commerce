@@ -20,6 +20,8 @@ type Page = { at: number; status: number; headers: [string, string][]; body: Uin
 const g = globalThis as unknown as { __pageCache?: Map<string, Page>; __pageLoads?: Map<string, Promise<Page | null>> };
 const pages = (g.__pageCache ??= new Map());
 const loading = (g.__pageLoads ??= new Map());
+export let lastError = "";
+export const debugInfo = (req: NextRequest) => `port=${process.env.PORT} url=${req.url} err=${lastError}`;
 
 /** Plain page views by guests on the customers' site only. */
 export function isCacheable(req: NextRequest): boolean {
@@ -68,7 +70,7 @@ export async function cachedPage(req: NextRequest, host: string, proto: string):
   // Many guests at once → one build, the rest wait for it.
   let p = loading.get(key);
   if (!p) {
-    p = load(req, host, proto).catch(() => null).finally(() => loading.delete(key));
+    p = load(req, host, proto).catch((e) => { lastError = `${e instanceof Error ? e.message + " " + String((e as { cause?: unknown }).cause ?? "") : e}`; return null; }).finally(() => loading.delete(key));
     loading.set(key, p);
   }
   const page = await p;

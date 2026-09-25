@@ -35,6 +35,7 @@ jobs:
   android:
     needs: check
     runs-on: ubuntu-latest
+    continue-on-error: true   # until the signing secrets are added, Windows still gets published
     defaults: { run: { working-directory: staff_app } }
     steps:
       - uses: actions/checkout@v4
@@ -78,6 +79,7 @@ jobs:
 
   release:
     needs: [check, android, windows]
+    if: ${{ always() && needs.check.result == 'success' && needs.windows.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4

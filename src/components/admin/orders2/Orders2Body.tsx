@@ -379,7 +379,7 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
             <table className="w-full min-w-[1300px] table-fixed border-collapse text-[15px]">
               <colgroup>{cols.map((x) => <col key={x.key} className={x.w} />)}</colgroup>
               <thead>
-                <tr className="bg-[#f8f9fb] text-left text-[13px] font-semibold uppercase tracking-wide text-admin-gray-500" style={{ height: HEAD_H }}>
+                <tr className="bg-[#f8f9fb] text-left font-bold text-admin-gray-900" style={{ height: HEAD_H }}>
                   {show("or2-c-select") && canEdit && (
                     <th className={td}>
                       <input type="checkbox" aria-label="Select all on this page" className="h-4 w-4 accent-[#2563eb]"

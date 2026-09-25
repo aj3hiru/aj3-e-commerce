@@ -81,7 +81,7 @@ body {
 .admin-ui [class*="rounded-3xl"],
 .admin-ui [class*="rounded-2xl"],
 .admin-ui [class*="rounded-xl"] { border-radius: var(--ui-radius); }
-.admin-ui button[class*="rounded-full"]:not([role="switch"]),
+.admin-ui button[class*="rounded-full"]:not([role="switch"]):not(.keep-round),
 .admin-ui a[class*="rounded-full"],
 .admin-ui button[class*="rounded-[2"],
 .admin-ui button[class*="rounded-[1."] { border-radius: var(--ui-radius-sm); }

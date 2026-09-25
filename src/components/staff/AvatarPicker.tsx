@@ -22,7 +22,7 @@ export function AvatarPicker({ value, onChange, size = 88, name, uploadUrl = "/a
     <div className="flex flex-col items-center gap-1.5">
       <div className="relative" style={{ width: size, height: size }}>
         <button type="button" onClick={() => input.current?.click()} aria-label="Change profile photo"
-          className="grid h-full w-full place-items-center overflow-hidden rounded-full border-2 border-white bg-[color-mix(in_srgb,var(--hp-accent,#9f2089)_12%,white)] text-[var(--hp-accent,#9f2089)] shadow-md">
+          className="keep-round grid h-full w-full place-items-center overflow-hidden rounded-full border-2 border-white bg-[color-mix(in_srgb,var(--hp-accent,#9f2089)_12%,white)] text-[var(--hp-accent,#9f2089)] shadow-md">
           {value
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={`/${value}`} alt="" className="h-full w-full object-cover" />

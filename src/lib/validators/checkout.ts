@@ -26,6 +26,12 @@ export const checkoutSchema = z.object({
   payments: z.array(checkoutPaymentSchema).default([]),
   promised_date: z.string().nullable().optional(),
   coupon_code: z.string().trim().default(""),
+  // Offline billing: the till's own id for this bill (same id on every retry),
+  // when it was really sold, and the discount the customer actually got.
+  client_ref: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/).optional(),
+  offline: z.boolean().default(false),
+  sold_at: z.string().max(40).optional(),
+  offline_discount: z.coerce.number().min(0).optional(),
 });
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

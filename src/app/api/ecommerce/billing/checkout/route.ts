@@ -28,6 +28,15 @@ export async function POST(req: NextRequest) {
   }
   const input = parsed.data;
 
+  // Already saved (the till is re-sending a bill whose reply never arrived)? Same answer, no second bill.
+  const already = input.client_ref ? await findByClientRef(input.client_ref) : null;
+  if (already) return already;
+
+  // A bill made while the internet was down keeps the time it was really sold (within the last 30 days).
+  const soldAtRaw = input.offline && input.sold_at ? new Date(input.sold_at) : null;
+  const soldAt = soldAtRaw && !Number.isNaN(soldAtRaw.getTime()) && soldAtRaw.getTime() <= Date.now() + 5 * 60_000 && soldAtRaw.getTime() >= Date.now() - 30 * 86_400_000
+    ? soldAtRaw : undefined;
+
   // Sanitize payment rows (supports split payment across methods) — same as PHP.
   let payments = input.payments.filter((p) => p.amount > 0);
   if (payments.length === 0) payments = [{ method: "Cash", amount: 0 }];
@@ -113,6 +122,9 @@ export async function POST(req: NextRequest) {
         // invalid/exhausted coupon => silently ignored, sale still completes (matches PHP)
       }
 
+      // Offline bill: the customer already paid the discount shown at the counter, whatever the coupon says now.
+      if (input.offline && input.offline_discount !== undefined) discount = Math.min(input.offline_discount, subtotal);
+
       let grandTotal = Math.max(0, subtotal - discount);
 
       // ── GST calculation (proportional to any discount applied) ──
@@ -187,6 +199,8 @@ export async function POST(req: NextRequest) {
           paymentMethod,
           orderStatus: "Delivered",
           orderType: "offline",
+          clientRef: input.client_ref ?? null,
+          ...(soldAt ? { createdAt: soldAt } : {}),
         },
       });
 
@@ -198,7 +212,9 @@ export async function POST(req: NextRequest) {
       }
 
       // Who made the sale — shown in the order history and the staff reports.
-      await tx.ecomOrderEvent.create({ data: { orderId: order.id, type: "placed", toValue: "Delivered", userId: session.userId, actorName: session.username } });
+      await tx.ecomOrderEvent.create({
+        data: { orderId: order.id, type: "placed", toValue: "Delivered", userId: session.userId, actorName: session.username, note: input.offline ? "Billed offline, uploaded later" : null, ...(soldAt ? { createdAt: soldAt } : {}) },
+      });
 
       const campaignSales: CampaignSaleInput[] = [];
       for (const li of lineItems) {
@@ -246,11 +262,12 @@ export async function POST(req: NextRequest) {
             amount: dueAmount,
             promisedDate: input.promised_date ? new Date(input.promised_date) : null,
             status: "pending",
+            ...(soldAt ? { createdAt: soldAt } : {}),
           },
         });
       }
 
-      if (coupon && !(await consumeCouponUse(tx, coupon.id))) {
+      if (coupon && !(await consumeCouponUse(tx, coupon.id)) && !input.offline) {
         throw new CheckoutError("This coupon has just reached its usage limit. Please remove it and try again.");
       }
 
@@ -279,6 +296,11 @@ export async function POST(req: NextRequest) {
       grand_total: result.grandTotal,
     });
   } catch (err) {
+    // Two uploads of the same offline bill at once: the second one lost the race — answer with the first.
+    if (input.client_ref && (err as { code?: string })?.code === "P2002") {
+      const saved = await findByClientRef(input.client_ref);
+      if (saved) return saved;
+    }
     if (err instanceof CheckoutError) {
       return NextResponse.json({ success: false, message: err.message });
     }
@@ -292,6 +314,19 @@ export async function POST(req: NextRequest) {
 }
 
 class CheckoutError extends Error {}
+
+async function findByClientRef(ref: string) {
+  const o = await prisma.ecomOrder.findUnique({
+    where: { clientRef: ref },
+    select: { id: true, orderNumber: true, totalAmount: true, discountAmount: true, gstAmount: true, credits: { select: { amount: true } } },
+  });
+  if (!o) return null;
+  return NextResponse.json({
+    success: true, duplicate: true, order_id: o.id, order_number: o.orderNumber,
+    discount: Number(o.discountAmount), gst: Number(o.gstAmount),
+    due: o.credits.reduce((s, c) => s + Number(c.amount), 0), grand_total: Number(o.totalAmount),
+  });
+}
 
 /** When the customer hands over more than the bill (₹1000 cash for an ₹800
  *  bill), the change goes back to them — so the stored payment rows must add up

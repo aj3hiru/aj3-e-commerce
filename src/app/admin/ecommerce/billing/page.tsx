@@ -36,7 +36,7 @@ interface Billing2PageProps {
 export default async function Billing2Page({ searchParams }: Billing2PageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_billing")) {
-    redirect("/admin/admin-login-portal");
+    redirect("/staff/login");
   }
 
   const resolvedSearchParams = await searchParams;
@@ -117,6 +117,12 @@ export default async function Billing2Page({ searchParams }: Billing2PageProps) 
           shortcutCompleteSale: business?.shortcutCompleteSale ?? "F2",
           shortcutPrint: business?.shortcutPrint ?? "F3",
           shortcutNewSale: business?.shortcutNewSale ?? "F4",
+          business: {
+            name: business?.businessName ?? "My Store",
+            address: business?.address ?? null,
+            phones: Array.isArray(business?.contactNumbers) ? (business!.contactNumbers as unknown[]).filter((x): x is string => typeof x === "string" && !!x.trim()) : business?.phone ? [business.phone] : [],
+            gstin: business?.showGstinOnInvoice ? business?.gstin ?? null : null,
+          },
         }}
         preselectedCustomer={preselectedCustomer}
       />

@@ -322,6 +322,7 @@ model EcomOrder {
   paymentMethod   String   @map("payment_method")  // "Cash" | "Card" | "UPI" | "Other" | "Split"
   orderStatus     String   @default("Pending") @map("order_status") // "Pending" | "In Progress" | "Delivered" | "Canceled"
   orderType       String   @map("order_type") // "online" (storefront) | "offline" (POS)
+  clientRef       String?  @unique @map("client_ref") @db.VarChar(64) // POS bill id from the till (offline billing, no duplicates)
   createdAt       DateTime @default(now()) @map("created_at")
 
   customer      EcomCustomer?      @relation(fields: [customerId], references: [id])

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Search, ShoppingCart, Trash2, Tag, CreditCard, PackagePlus, Phone, User, CheckCircle2,
   Info, Lock, ArrowRight, ScanBarcode, Banknote, Smartphone, Wallet, ChevronDown, Plus, Minus, X,
@@ -9,6 +9,9 @@ import { usePosCart } from "@/hooks/usePosCart";
 import { useCustomerSearch } from "@/hooks/useCustomerSearch";
 import { useProductScan } from "@/hooks/useProductScan";
 import { QuickAddProductModal } from "./QuickAddProductModal";
+import { PosOfflineBar } from "./PosOfflineBar";
+import { printOfflineReceipt } from "./offlineReceipt";
+import { enqueueBill, newBillRef, postJson } from "@/lib/pos-offline";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { PosProduct, PosCoupon, PosCustomer, BusinessPosSettings, PaymentRow } from "@/types/pos";
 import { cn } from "@/lib/utils";
@@ -72,6 +75,8 @@ export function Billing2Screen({
   const [submitting, setSubmitting] = useState(false);
   const [lastOrderId, setLastOrderId] = useState<number | null>(null);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [offlineNotice, setOfflineNotice] = useState<string | null>(null);
+  const dismissNotice = useCallback(() => setOfflineNotice(null), []);
 
   const scanInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,42 +118,75 @@ export function Billing2Screen({
     }
 
     setSubmitting(true);
-    try {
-      const res = await fetch("/api/ecommerce/billing/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: cart.map((c) => ({
-            product_id: c.productId,
-            qty: c.qty,
-            price_override: c.priceOverridden ? c.unitPrice : null,
-            unit: c.unit ?? "",
-          })),
-          customer_id: isGuest ? 0 : customer.customerId ?? 0,
-          customer_name: isGuest ? "" : customer.name.trim(),
-          customer_phone: isGuest ? "" : customer.phone.trim(),
-          is_guest: isGuest,
-          payments: payments.map((p) => ({ method: p.method, amount: parseFloat(p.amount) || 0 })),
-          promised_date: promisedDate || null,
-          coupon_code: appliedCoupon?.code ?? "",
-        }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        alert(data.message || "Checkout failed.");
-        return;
-      }
+    const ref = newBillRef();
+    const soldAt = new Date().toISOString();
+    const customerName = isGuest ? "" : customer.name.trim();
+    const paid = payments.map((p) => ({ method: p.method, amount: parseFloat(p.amount) || 0 }));
+    const body = {
+      items: cart.map((c) => ({ product_id: c.productId, qty: c.qty, price_override: c.priceOverridden ? c.unitPrice : null, unit: c.unit ?? "" })),
+      customer_id: isGuest ? 0 : customer.customerId ?? 0,
+      customer_name: customerName,
+      customer_phone: isGuest ? "" : customer.phone.trim(),
+      is_guest: isGuest,
+      payments: paid,
+      promised_date: promisedDate || null,
+      coupon_code: appliedCoupon?.code ?? "",
+      client_ref: ref,
+    };
 
-      printOrder(data.order_id);
+    const clearForNext = () => {
       resetForNextSale();
       setPromisedDate("");
       setCouponCode("");
       customer.reset();
       setIsGuest(false);
-      setLastOrderId(data.order_id);
       scanInputRef.current?.focus();
-    } catch {
-      alert("Checkout failed — please try again.");
+    };
+
+    /** No internet (or no reply): keep the bill on this computer with the prices charged, print, carry on. */
+    const saveOffline = () => {
+      enqueueBill({
+        ref, soldAt,
+        body: {
+          ...body,
+          items: cart.map((c) => ({ product_id: c.productId, qty: c.qty, price_override: c.unitPrice, unit: c.unit ?? "" })),
+          offline: true, sold_at: soldAt, offline_discount: totals.discount,
+        },
+        summary: { customer: isGuest ? "Guest" : customerName || customer.phone.trim() || "Walk-in Customer", total: totals.grandTotal, items: cart.length },
+      });
+      if (posSettings.business) {
+        printOfflineReceipt({
+          business: posSettings.business, ref, soldAt,
+          customer: isGuest ? "Guest" : customerName || "Walk-in Customer",
+          lines: cart.map((c) => ({ name: c.name, qty: c.qty, unitPrice: c.unitPrice, unit: c.unit })),
+          subtotal: totals.subtotal, discount: totals.discount, gst: totals.gst, total: totals.grandTotal,
+          payments: paid, due, width: posSettings.printerFormat,
+        });
+      }
+      setOfflineNotice("No internet — this bill is saved on this computer and will upload automatically. Keep billing.");
+      setLastOrderId(null);
+      clearForNext();
+    };
+
+    try {
+      if (typeof navigator !== "undefined" && !navigator.onLine) { saveOffline(); return; }
+      let result: Awaited<ReturnType<typeof postJson>>;
+      try {
+        result = await postJson("/api/ecommerce/billing/checkout", body, 15_000);
+      } catch {
+        saveOffline(); // no connection or no reply in time — the same bill id means it can never be saved twice
+        return;
+      }
+      if (result.status >= 502 && result.status <= 504) { saveOffline(); return; } // server unreachable behind the proxy
+      const data = result.data;
+      if (!data?.success) {
+        alert(String(data?.message ?? "Checkout failed."));
+        return;
+      }
+      const orderId = Number(data.order_id);
+      printOrder(orderId);
+      setLastOrderId(orderId);
+      clearForNext();
     } finally {
       setSubmitting(false);
     }
@@ -217,6 +255,8 @@ export function Billing2Screen({
   const itemCountLabel = `${cart.length} item${cart.length === 1 ? "" : "s"}`;
 
   return (
+    <>
+    <PosOfflineBar notice={offlineNotice} onNoticeDone={dismissNotice} />
     <div className={cn("grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_350px]", !loaded && "invisible")}>
       {/* ─────────────── LEFT: search, cart ─────────────── */}
       <div className="min-w-0 space-y-4">
@@ -692,6 +732,7 @@ export function Billing2Screen({
         <QuickAddProductModal onClose={() => setShowQuickAdd(false)} onAdded={handleProductAdded} />
       )}
     </div>
+    </>
   );
 }
 

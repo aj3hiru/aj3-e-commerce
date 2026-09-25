@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { roleLabel as roleLabelOf } from "@/lib/roles";
 import { useState, useRef, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faBars, faMoon, faSun, faUserEdit, faSignOutAlt } from "@fortawesome/free-solid-svg-icons";
@@ -97,7 +98,7 @@ export function AdminHeader({
     }
   }
 
-  const roleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : "";
+  const roleText = role ? roleLabelOf(role) : "";
 
   return (
     <header className="sticky top-0 z-[100] flex items-center justify-between gap-4 border-b border-[#e5e7eb] bg-white p-[0.45rem]">
@@ -156,7 +157,7 @@ export function AdminHeader({
             {/* .info — hidden on phones */}
             <span className="text-left leading-[1.25] max-[480px]:hidden">
               <span className="block whitespace-nowrap text-[0.875rem] font-bold text-[#111827]">{username}</span>
-              <span className="block text-[0.75rem] text-[#6b7280]">{roleLabel}</span>
+              <span className="block text-[0.75rem] text-[#6b7280]">{roleText}</span>
             </span>
           </button>
 

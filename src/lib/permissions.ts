@@ -78,12 +78,13 @@ function cloneDefaults(): PermissionsShape {
  *  `true` in a given permissions object — used by user-manager2 to show a
  *  quick "42 / 85 granted" summary per user without listing every checkbox. */
 export function countGrantedPermissions(permissions: PermissionsShape): number {
+  // Only keys that exist in the permission map count (older accounts can carry retired keys).
   let count = 0;
-  const walk = (obj: unknown) => {
-    if (typeof obj === "boolean") { if (obj) count++; return; }
-    if (obj && typeof obj === "object") Object.values(obj).forEach(walk);
+  const walk = (shape: unknown, value: unknown) => {
+    if (typeof shape === "boolean") { if (value === true) count++; return; }
+    if (shape && typeof shape === "object") for (const k of Object.keys(shape)) walk((shape as Record<string, unknown>)[k], (value as Record<string, unknown> | undefined)?.[k]);
   };
-  walk(permissions);
+  walk(DEFAULT_PERMISSIONS, permissions);
   return count;
 }
 

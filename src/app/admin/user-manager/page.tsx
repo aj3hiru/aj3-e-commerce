@@ -41,7 +41,7 @@ export default async function UserManager2Page() {
       <AdminShell
         siteName="EduMint24"
         pageTitle="Users Manager"
-        pageSubtitle="Manage admin, editor, and author accounts"
+        pageSubtitle="Staff accounts, roles and what each person can do"
         username={session.username}
         role={session.role}
         permissions={session.permissions}

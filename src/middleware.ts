@@ -22,6 +22,8 @@ export function middleware(req: NextRequest) {
   const port = host.includes(":") ? `:${host.split(":")[1]}` : "";
   const proto = (req.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "")).split(",")[0].trim();
   const at = (h: string, path: string) => NextResponse.redirect(`${proto}://${h}${h.includes(":") ? "" : port}${path}`, 308);
+  // www.* → the bare domain.
+  if (hostname.startsWith("www.")) return at(hostname.slice(4), pathname + search);
   const hosts = staffHosts();
   const app: StaffApp | "login" | null =
     hostname === hosts.admin ? "admin" : hostname === hosts.delivery ? "delivery" : hostname === hosts.login || hostname.startsWith("login.") ? "login" : null;

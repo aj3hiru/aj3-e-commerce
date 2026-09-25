@@ -1,10 +1,11 @@
 "use client";
 
+import { SearchBox } from "./SearchBox";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { Menu, MapPin, Clock, Search, Heart, ShoppingCart, User } from "lucide-react";
+import { Menu, MapPin, Clock, Heart, ShoppingCart, User } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import type { ShopBusinessSettings, ShopCustomer, ShopHeaderSettings } from "@/types/shop";
 import type { MenuDesign } from "@/types/storefront";
@@ -120,21 +121,7 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
           </div>
         )}
 
-        <form action="/" method="GET" className="flex-1 min-w-[200px] flex h-11">
-          <input
-            type="text"
-            name="q"
-            placeholder={header.searchPlaceholder}
-            defaultValue={currentQ}
-            className="flex-1 w-full border border-[#cfcedc] border-r-0 rounded-l-[8px] px-4 text-sm outline-none text-[#353543] placeholder:text-[#8b8ba3] focus:border-[var(--hp-accent)]"
-          />
-          <button
-            type="submit"
-            className="bg-[var(--hp-accent)] hover:brightness-95 text-white px-[26px] rounded-r-[8px] font-bold text-[13px] tracking-[0.4px]"
-          >
-            SEARCH
-          </button>
-        </form>
+        <SearchBox variant="desktop" placeholder={header.searchPlaceholder} initial={currentQ} />
 
         <div className="flex items-center gap-[26px] whitespace-nowrap shrink-0">
           <PushBell className="text-[#353543]" iconClassName="w-[22px] h-[22px]" />
@@ -186,18 +173,9 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
       </div>
 
       {/* ============ MOBILE SEARCH (.mobile-search) ============ */}
-      <form action="/" method="GET" className="shop:hidden px-4 pt-1 pb-3 bg-white border-b border-[#eaeaf2]">
-        <div className="flex items-center gap-2.5 bg-white border border-[#cfcedc] rounded-[8px] px-3.5 py-3 focus-within:border-[var(--hp-accent)]">
-          <Search className="w-[20px] h-[20px] text-[#5d7eea] shrink-0" strokeWidth={2} />
-          <input
-            type="text"
-            name="q"
-            placeholder={header.searchPlaceholder}
-            defaultValue={currentQ}
-            className="flex-1 bg-transparent border-none outline-none text-[14px] text-[#353543] placeholder:text-[#8b8ba3]"
-          />
-        </div>
-      </form>
+      <div className="shop:hidden px-4 pt-1 pb-3 bg-white border-b border-[#eaeaf2]">
+        <SearchBox variant="mobile" placeholder={header.searchPlaceholder} initial={currentQ} />
+      </div>
     </>
   );
 }

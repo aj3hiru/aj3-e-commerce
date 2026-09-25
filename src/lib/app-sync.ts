@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getBusinessRow } from "@/lib/business-row";
 import { campaignSalePrices } from "@/lib/campaign-pricing";
 import { roleLabel } from "@/lib/roles";
+import { cached } from "@/lib/cache";
 import type { AdminSession } from "@/lib/admin-auth";
 
 /**
@@ -126,7 +127,28 @@ async function buildDues() {
   }));
 }
 
-async function build(name: SetName, session: AdminSession): Promise<unknown> {
+/** Tables each set is built from — any write to them rebuilds the set (lib/cache.ts). */
+const DEPS: Record<SetName, string[]> = {
+  settings: ["EcomBusinessSettings"],
+  products: ["EcomProduct", "EcomCampaign", "EcomCampaignTarget"],
+  categories: ["EcomCategory"],
+  brands: ["EcomBrand"],
+  customers: ["EcomCustomer", "EcomCredit", "EcomCreditPayment"],
+  coupons: ["EcomCoupon"],
+  orders: ["EcomOrder", "EcomOrderItem", "EcomOrderEvent", "EcomCredit", "EcomCreditPayment", "EcomCustomer"],
+  dues: ["EcomCredit", "EcomCreditPayment"],
+  deliveries: ["EcomOrder", "EcomOrderItem", "EcomOrderEvent", "EcomCustomer"],
+  agents: ["User"],
+  staff: ["User"],
+};
+
+/** A set built once and shared by every device until its data changes (60 s at most). */
+function build(name: SetName, session: AdminSession): Promise<unknown> {
+  const key = name === "deliveries" ? `app-set:deliveries:${session.userId}` : `app-set:${name}`;
+  return cached(key, DEPS[name], 60_000, () => buildFresh(name, session));
+}
+
+async function buildFresh(name: SetName, session: AdminSession): Promise<unknown> {
   switch (name) {
     case "settings": return buildSettings();
     case "products": return buildProducts();

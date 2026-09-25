@@ -285,6 +285,7 @@ model EcomCustomer {
   password     String?  // only set for customer_type = "online"
   customerType String   @map("customer_type") // "online" | "offline"
   address      String?  @db.Text
+  avatar       String?  @db.VarChar(255) // uploads/customers/… profile photo
   status       String   @default("active")
   createdAt    DateTime @default(now()) @map("created_at")
 

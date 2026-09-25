@@ -322,6 +322,8 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
                   {show("cus2-c-orders") && <SortTh label="Orders" active={sort.key === "orders" ? sort.dir : null} onClick={() => toggleSort("orders")} />}
                   {show("cus2-c-spent") && <SortTh label="Total Spent" active={sort.key === "spent" ? sort.dir : null} onClick={() => toggleSort("spent")} />}
                   {show("cus2-c-due") && <SortTh label="Due" active={sort.key === "due" ? sort.dir : null} onClick={() => toggleSort("due")} />}
+                  {show("cus2-c-login") && <th className={td}>Login</th>}
+                  {show("cus2-c-addresses") && <th className={td}>Addresses</th>}
                   {show("cus2-c-status") && <th className={td}>Status</th>}
                   {show("cus2-c-actions") && <th className={td}>Actions</th>}
                 </tr>
@@ -345,9 +347,23 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
                       <tr key={r.id} style={{ height: ROW_H }} className={cn("odd:bg-[#f2f2f2] even:bg-white", isBusy && "opacity-60")}>
                         {show("cus2-c-customer") && (
                           <td className={td}>
-                            <Link href={`/admin/ecommerce/customers/${r.id}`} title={`Open ${r.name}'s profile`} className="block max-w-full truncate font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.name || <span className="font-normal italic text-admin-gray-400">No name yet</span>}</Link>
-                            <div className="truncate text-xs text-admin-gray-500">
-                              Joined {fmtDate(r.createdAt)}{r.lastOrderAt ? ` · last order ${fmtDate(r.lastOrderAt)}` : " · never ordered"}
+                            <div className="flex min-w-0 items-center gap-2.5">
+                              {show("cus2-c-photo") && (
+                                <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-violet-100 text-sm font-bold text-violet-700">
+                                  {r.avatar
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    ? <img src={`/${r.avatar}`} alt="" loading="lazy" className="h-full w-full object-cover" />
+                                    : (r.name.trim().charAt(0) || "?").toUpperCase()}
+                                </span>
+                              )}
+                              <div className="min-w-0">
+                                <Link href={`/admin/ecommerce/customers/${r.id}`} title={`Open ${r.name}'s profile`} className="block max-w-full truncate font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.name || <span className="font-normal italic text-admin-gray-400">No name yet</span>}</Link>
+                                {show("cus2-c-joined") && (
+                                  <div className="truncate text-xs text-admin-gray-500">
+                                    Joined {fmtDate(r.createdAt)}{r.lastOrderAt ? ` · last order ${fmtDate(r.lastOrderAt)}` : " · never ordered"}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                         )}
@@ -373,6 +389,18 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
                               : <span className="text-admin-gray-400">—</span>}
                           </td>
                         )}
+                        {show("cus2-c-login") && (
+                          <td className={cn(td, "whitespace-nowrap text-xs")}>
+                            {r.customerType === "offline" ? <span className="text-admin-gray-400">—</span> : (
+                              <span className="flex flex-wrap gap-1">
+                                {r.phone && <span className="rounded-[6px] bg-emerald-50 px-1.5 py-0.5 font-semibold text-emerald-700">OTP</span>}
+                                {r.hasPassword && <span className="rounded-[6px] bg-sky-50 px-1.5 py-0.5 font-semibold text-sky-700">Password</span>}
+                                {!r.phone && !r.hasPassword && <span className="text-admin-gray-400">None</span>}
+                              </span>
+                            )}
+                          </td>
+                        )}
+                        {show("cus2-c-addresses") && <td className={cn(td, "text-admin-gray-700")}>{r.addresses || <span className="text-admin-gray-400">0</span>}</td>}
                         {show("cus2-c-status") && (
                           <td className={td}>
                             <StatusPill
@@ -388,7 +416,7 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
                           <td className={td}>
                             <div className="flex gap-[0.4rem]">
                               <IconAction tone="view" href={`/admin/ecommerce/customers/${r.id}`} title={`Open ${r.name}'s profile`}><Eye /></IconAction>
-                              <IconAction tone="edit" onClick={() => setEditor({ customer: r })} title={`Edit ${r.name}`}><SquarePen /></IconAction>
+                              <IconAction tone="edit" href={`/admin/ecommerce/customers/${r.id}?edit=1`} title={`Edit ${r.name}`}><SquarePen /></IconAction>
                             </div>
                           </td>
                         )}

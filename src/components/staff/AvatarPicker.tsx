@@ -5,7 +5,7 @@ import { Camera, Loader2, UserRound, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Round profile photo with upload / remove. `value` is an uploads/… path or "". */
-export function AvatarPicker({ value, onChange, size = 88, name }: { value: string; onChange: (path: string) => void; size?: number; name?: string }) {
+export function AvatarPicker({ value, onChange, size = 88, name, uploadUrl = "/api/users/avatar" }: { value: string; onChange: (path: string) => void; size?: number; name?: string; uploadUrl?: string }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -13,7 +13,7 @@ export function AvatarPicker({ value, onChange, size = 88, name }: { value: stri
     if (!f) return;
     setBusy(true); setErr("");
     const fd = new FormData(); fd.append("file", f);
-    const res = await fetch("/api/users/avatar", { method: "POST", body: fd }).then((r) => r.json()).catch(() => null);
+    const res = await fetch(uploadUrl, { method: "POST", body: fd }).then((r) => r.json()).catch(() => null);
     setBusy(false);
     if (res?.success) onChange(res.path); else setErr(res?.message || "Upload failed.");
   }

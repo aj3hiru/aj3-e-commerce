@@ -47,6 +47,7 @@ export interface Order2Row {
   mapUrl: string | null;
   /** Delivery agent assigned to the order. */
   agent: string | null;
+  agentId: number | null;
   total: number;
   paid: number;
   dueBalance: number;
@@ -113,7 +114,7 @@ export async function getOrders2Data(type: string, range: { from: string; to: st
       select: {
         id: true, orderNumber: true, customerId: true, customerName: true, customerEmail: true, isGuest: true,
         shippingAddress: true, shippingLat: true, shippingLng: true, totalAmount: true, paidAmount: true, paymentStatus: true, paymentMethod: true,
-        orderStatus: true, createdAt: true,
+        orderStatus: true, createdAt: true, deliveryAgentId: true,
         customer: { select: { phone: true } },
         deliveryAgent: { select: { username: true } },
         items: { select: { productId: true, productName: true, qty: true, price: true } },
@@ -158,6 +159,7 @@ export async function getOrders2Data(type: string, range: { from: string; to: st
       isGuest: o.isGuest,
       shippingAddress: o.shippingAddress,
       agent: (o as { deliveryAgent?: { username: string } | null }).deliveryAgent?.username ?? null,
+      agentId: (o as { deliveryAgentId?: number | null }).deliveryAgentId ?? null,
       mapUrl: o.shippingLat !== null && o.shippingLng !== null ? `https://www.google.com/maps?q=${Number(o.shippingLat)},${Number(o.shippingLng)}` : null,
       total,
       paid,

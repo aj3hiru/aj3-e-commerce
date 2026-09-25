@@ -7,10 +7,11 @@ import { formatAddress, toAddress } from "@/lib/customer-addresses";
 
 interface CustomerProfilePageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ edit?: string }>;
 }
 
 /** Verified against admin/ecommerce/customer-profile.php. */
-export default async function CustomerProfilePage({ params }: CustomerProfilePageProps) {
+export default async function CustomerProfilePage({ params, searchParams }: CustomerProfilePageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_customers")) {
     redirect("/staff/login");
@@ -43,7 +44,7 @@ export default async function CustomerProfilePage({ params }: CustomerProfilePag
     <AdminShell
       siteName="EduMint24"
       pageTitle={customer.name || "New customer (no name yet)"}
-      pageSubtitle="Customer profile, order history, and due"
+      pageSubtitle="Customer profile, orders, addresses and due"
       username={session.username}
       role={session.role}
       permissions={session.permissions}
@@ -52,7 +53,9 @@ export default async function CustomerProfilePage({ params }: CustomerProfilePag
         customer={{
           id: customer.id, name: customer.name, email: customer.email, phone: customer.phone,
           address: customer.address, customerType: customer.customerType, status: customer.status,
+          avatar: customer.avatar, createdAt: customer.createdAt.toISOString(),
         }}
+        startEditing={(await searchParams).edit === "1"}
         orders={orders.map((o: (typeof orders)[number]) => ({
           id: o.id, orderNumber: o.orderNumber, totalAmount: Number(o.totalAmount),
           paymentStatus: o.paymentStatus, orderStatus: o.orderStatus, createdAt: o.createdAt.toISOString(),

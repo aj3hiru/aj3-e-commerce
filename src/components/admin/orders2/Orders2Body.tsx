@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle, ArrowDown, ArrowUp, Ban, CalendarDays, CheckCircle2, ChevronDown, ChevronsUpDown, Clock, Download,
-  Eye, IndianRupee, Loader2, Package, Printer, Search, ShoppingBag, Truck, Wallet, X,
+  Eye, IndianRupee, Loader2, MapPin, MessageCircle, Package, Phone, Printer, Search, ShoppingBag, Truck, Wallet, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
@@ -61,15 +61,18 @@ interface Filters {
   method: string;
   product: string;
   dues: "all" | "with" | "without";
+  agent: string; // "all" | "none" | agent id
 }
-const NO_FILTERS: Filters = { payment: "all", method: "all", product: "all", dues: "all" };
+const NO_FILTERS: Filters = { payment: "all", method: "all", product: "all", dues: "all", agent: "all" };
 
 const ROW_H = 84;
 const HEAD_H = 50;
 const MIN_ROWS = 5;
-const td = "border border-[#dee2e6] px-3 align-middle";
+const td = "border-b border-[#eef0f4] px-3 align-middle";
 
-export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; canEdit: boolean; canBill: boolean }) {
+export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agents = [] }: {
+  data: Orders2Data; canEdit: boolean; canBill: boolean; canDecide?: boolean; agents?: { id: number; name: string }[];
+}) {
   const router = useRouter();
   const { isVisible: show, loaded } = useDashboardWidgetPrefs();
   const [navigating, startNavigate] = useTransition();
@@ -85,6 +88,11 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState<Set<number>>(new Set());
   const [details, setDetails] = useState<Order2Row | null>(null);
+  // Bulk actions: tick orders, then accept them or hand them to a delivery agent in one go.
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const [bulkAgent, setBulkAgent] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const canAssign = agents.length > 0;
   const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
   useEffect(() => {
     if (!toast) return;
@@ -110,6 +118,8 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
       if (f.product !== "all" && !r.items.some((i) => String(i.productId) === f.product)) return false;
       if (f.dues === "with" && !(r.dueBalance > PAISA)) return false;
       if (f.dues === "without" && r.dueBalance > PAISA) return false;
+      if (f.agent === "none" && r.agentId !== null) return false;
+      if (f.agent !== "all" && f.agent !== "none" && String(r.agentId) !== f.agent) return false;
       if (term) {
         const hay = `${r.orderNumber} ${r.customerName} ${r.customerEmail ?? ""} ${r.customerPhone ?? ""} ${r.shippingAddress ?? ""} ${r.items.map((i) => i.productName).join(" ")}`.toLowerCase();
         if (!hay.includes(term)) return false;
@@ -134,6 +144,43 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
   const pageRows = pageSize === 0 ? filtered : filtered.slice(start, start + pageSize);
   const filtersActive = JSON.stringify(f) !== JSON.stringify(NO_FILTERS) || search.trim() !== "";
   const shownValue = useMemo(() => r2(filtered.reduce((s, r) => s + r.total, 0)), [filtered]);
+
+  /** Hand an order to a delivery agent (it then shows Out for Delivery). */
+  async function assign(r: Order2Row, agentId: number | null, quiet = false) {
+    setBusy((s) => new Set(s).add(r.id));
+    const res = await fetch(`/api/ecommerce/orders/${r.id}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "assign", agentId }) })
+      .then((x) => x.json()).catch(() => null) as { success?: boolean; message?: string } | null;
+    setBusy((s) => { const n = new Set(s); n.delete(r.id); return n; });
+    if (!res?.success) { if (!quiet) setToast({ ok: false, text: res?.message || "Couldn't assign the order." }); return false; }
+    const name = agents.find((a) => a.id === agentId)?.name ?? null;
+    setRows((list) => list.map((x) => (x.id !== r.id ? x : {
+      ...x, agentId, agent: name,
+      orderStatus: agentId && (x.orderStatus === "Pending" || x.orderStatus === "In Progress") ? "Out for Delivery" : !agentId && x.orderStatus === "Out for Delivery" ? "In Progress" : x.orderStatus,
+    })));
+    if (!quiet) setToast({ ok: true, text: name ? `${r.orderNumber} → ${name} · Out for Delivery.` : `${r.orderNumber}: agent removed.` });
+    return true;
+  }
+
+  async function bulk(kind: "accept" | "assign") {
+    const list = rows.filter((r) => picked.has(r.id));
+    if (!list.length) return;
+    setBulkBusy(true);
+    let ok = 0;
+    for (const r of list) {
+      if (kind === "accept") {
+        if (r.orderStatus !== "Pending") continue;
+        const res = await fetch(`/api/ecommerce/orders/${r.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orderStatus: "In Progress" }) })
+          .then((x) => x.json()).catch(() => null) as { success?: boolean } | null;
+        if (res?.success) { ok++; setRows((l) => l.map((x) => (x.id === r.id ? { ...x, orderStatus: "In Progress" } : x))); }
+      } else if (bulkAgent && !["Delivered", "Canceled"].includes(r.orderStatus)) {
+        if (await assign(r, Number(bulkAgent), true)) ok++;
+      }
+    }
+    setBulkBusy(false);
+    setPicked(new Set());
+    setToast({ ok: ok > 0, text: kind === "accept" ? `${ok} order${ok === 1 ? "" : "s"} accepted.` : `${ok} order${ok === 1 ? "" : "s"} sent out with ${agents.find((a) => String(a.id) === bulkAgent)?.name ?? "the agent"}.` });
+    router.refresh();
+  }
 
   function toggleSort(key: SortKey) {
     setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: key === "customer" ? "asc" : "desc" }));
@@ -194,14 +241,16 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
   const goType = (t: string) => navigate(`${PAGE_PATH}?${new URLSearchParams({ ...(t ? { type: t } : {}), from: range.from, to: range.to }).toString()}`);
 
   const cols = [
+    { key: "or2-c-select", w: "w-[46px]" },
     { key: "or2-c-order", w: "w-[200px]" },
     { key: "or2-c-customer", w: "" },
     { key: "or2-c-items", w: "w-[110px]" },
     { key: "or2-c-total", w: "w-[150px]" },
     { key: "or2-c-payment", w: "w-[150px]" },
-    { key: "or2-c-status", w: "w-[180px]" },
+    { key: "or2-c-status", w: "w-[190px]" },
+    { key: "or2-c-agent", w: "w-[170px]" },
     { key: "or2-c-actions", w: "w-[140px]" },
-  ].filter((x) => show("or2-table") && show(x.key));
+  ].filter((x) => show("or2-table") && show(x.key) && (x.key !== "or2-c-agent" || canAssign) && (x.key !== "or2-c-select" || canEdit));
 
   return (
     <div className={cn("space-y-5", !loaded && "invisible")} aria-busy={navigating}>
@@ -255,6 +304,13 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
                 {data.products.map((p) => <option key={p.id} value={String(p.id)}>{p.name} ({p.count})</option>)}
               </Select>
             )}
+            {show("or2-f-agent") && canAssign && (
+              <Select icon={Truck} label="Delivery agent" value={f.agent} onChange={(v) => set("agent", v)} on={f.agent !== "all"}>
+                <option value="all">All agents</option>
+                <option value="none">Not assigned</option>
+                {agents.map((a) => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
+              </Select>
+            )}
             {show("or2-f-dues") && (
               <Select icon={Wallet} label="Balance" value={f.dues} onChange={(v) => set("dues", v as Filters["dues"])} on={f.dues !== "all"}>
                 <option value="all">All orders</option>
@@ -298,17 +354,46 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
             )}
           </div>
 
-          <div className="overflow-x-auto" style={{ minHeight: pageSize === 0 ? undefined : HEAD_H + Math.min(pageSize, MIN_ROWS) * ROW_H }}>
-            <table className="w-full min-w-[1100px] table-fixed border-collapse text-[15px]">
+          {picked.size > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm">
+              <b className="text-blue-800">{picked.size} selected</b>
+              {canDecide && (
+                <button type="button" disabled={bulkBusy} onClick={() => bulk("accept")} className="flex h-9 items-center gap-1.5 rounded-[8px] bg-emerald-600 px-3 font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+                  {bulkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}Accept new ones
+                </button>
+              )}
+              {canAssign && (
+                <span className="flex items-center gap-1.5">
+                  <select value={bulkAgent} onChange={(e) => setBulkAgent(e.target.value)} aria-label="Agent for selected orders" className="h-9 rounded-[8px] border border-blue-200 bg-white pl-2.5 text-sm">
+                    <option value="">Choose agent…</option>
+                    {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </select>
+                  <button type="button" disabled={bulkBusy || !bulkAgent} onClick={() => bulk("assign")} className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#2563eb] px-3 font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-50"><Truck className="h-4 w-4" />Assign &amp; send out</button>
+                </span>
+              )}
+              <button type="button" onClick={() => setPicked(new Set())} className="ml-auto text-[13px] font-medium text-blue-700 hover:underline">Clear</button>
+            </div>
+          )}
+
+          <div className="overflow-x-auto rounded-[10px] border border-[#eef0f4]" style={{ minHeight: pageSize === 0 ? undefined : HEAD_H + Math.min(pageSize, MIN_ROWS) * ROW_H }}>
+            <table className="w-full min-w-[1300px] table-fixed border-collapse text-[15px]">
               <colgroup>{cols.map((x) => <col key={x.key} className={x.w} />)}</colgroup>
               <thead>
-                <tr className="bg-[#f8f9fa] text-left font-bold text-admin-gray-900" style={{ height: HEAD_H }}>
+                <tr className="bg-[#f8f9fb] text-left text-[13px] font-semibold uppercase tracking-wide text-admin-gray-500" style={{ height: HEAD_H }}>
+                  {show("or2-c-select") && canEdit && (
+                    <th className={td}>
+                      <input type="checkbox" aria-label="Select all on this page" className="h-4 w-4 accent-[#2563eb]"
+                        checked={pageRows.length > 0 && pageRows.every((r) => picked.has(r.id))}
+                        onChange={(e) => setPicked((p) => { const n = new Set(p); pageRows.forEach((r) => (e.target.checked ? n.add(r.id) : n.delete(r.id))); return n; })} />
+                    </th>
+                  )}
                   {show("or2-c-order") && <SortTh label="Order" active={sort.key === "created" ? sort.dir : null} onClick={() => toggleSort("created")} />}
                   {show("or2-c-customer") && <SortTh label="Customer" active={sort.key === "customer" ? sort.dir : null} onClick={() => toggleSort("customer")} />}
                   {show("or2-c-items") && <th className={td}>Items</th>}
                   {show("or2-c-total") && <SortTh label="Total" active={sort.key === "total" ? sort.dir : null} onClick={() => toggleSort("total")} />}
                   {show("or2-c-payment") && <th className={td}>Payment</th>}
                   {show("or2-c-status") && <SortTh label="Status" active={sort.key === "status" ? sort.dir : null} onClick={() => toggleSort("status")} />}
+                  {show("or2-c-agent") && canAssign && <th className={td}>Delivery agent</th>}
                   {show("or2-c-actions") && <th className={td}>Actions</th>}
                 </tr>
               </thead>
@@ -323,7 +408,13 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
                   pageRows.map((r) => {
                     const isBusy = busy.has(r.id);
                     return (
-                      <tr key={r.id} style={{ height: ROW_H }} className={cn("odd:bg-[#f2f2f2] even:bg-white", isBusy && "opacity-60")}>
+                      <tr key={r.id} style={{ height: ROW_H }} className={cn("bg-white transition-colors hover:bg-[#f8f9fe]", picked.has(r.id) && "bg-blue-50/60", r.orderStatus === "Pending" && "shadow-[inset_3px_0_0_#f6c23e]", isBusy && "opacity-60")}>
+                        {show("or2-c-select") && canEdit && (
+                          <td className={td}>
+                            <input type="checkbox" aria-label={`Select ${r.orderNumber}`} className="h-4 w-4 accent-[#2563eb]" checked={picked.has(r.id)}
+                              onChange={(e) => setPicked((p) => { const n = new Set(p); if (e.target.checked) n.add(r.id); else n.delete(r.id); return n; })} />
+                          </td>
+                        )}
                         {show("or2-c-order") && (
                           <td className={td}>
                             <Link href={`/admin/ecommerce/orders/${r.id}`} className="block truncate font-medium text-[#2563eb] hover:underline">{r.orderNumber}</Link>
@@ -338,6 +429,13 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
                             <div className="truncate text-xs text-admin-gray-500">
                               {r.customerPhone ?? r.customerEmail ?? "No contact"}
                             </div>
+                            {show("or2-c-contact") && (r.customerPhone || r.mapUrl) && (
+                              <div className="mt-1 flex gap-1">
+                                {r.customerPhone && <a href={`tel:${r.customerPhone}`} title="Call" className="grid h-6 w-6 place-items-center rounded-[6px] bg-admin-gray-100 text-admin-gray-600 hover:bg-admin-gray-200"><Phone className="h-3 w-3" /></a>}
+                                {r.customerPhone && <a href={`https://wa.me/${r.customerPhone.replace(/\D/g, "").replace(/^(\d{10})$/, "91$1")}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="grid h-6 w-6 place-items-center rounded-[6px] bg-emerald-50 text-emerald-600 hover:bg-emerald-100"><MessageCircle className="h-3 w-3" /></a>}
+                                {r.mapUrl && <a href={r.mapUrl} target="_blank" rel="noopener noreferrer" title="Delivery location" className="grid h-6 w-6 place-items-center rounded-[6px] bg-sky-50 text-sky-600 hover:bg-sky-100"><MapPin className="h-3 w-3" /></a>}
+                              </div>
+                            )}
                           </td>
                         )}
                         {show("or2-c-items") && (
@@ -394,6 +492,20 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
                                 }} />
                               </div>
                             )}
+                          </td>
+                        )}
+                        {show("or2-c-agent") && canAssign && (
+                          <td className={td}>
+                            {["Delivered", "Canceled"].includes(r.orderStatus)
+                              ? <span className="truncate text-sm text-admin-gray-600">{r.agent ?? "—"}</span>
+                              : (
+                                <select value={r.agentId ?? ""} disabled={isBusy} aria-label={`Delivery agent for ${r.orderNumber}`}
+                                  onChange={(e) => assign(r, e.target.value ? Number(e.target.value) : null)}
+                                  className={cn("h-9 w-full rounded-[8px] border bg-white pl-2.5 text-sm", r.agentId ? "border-sky-200 text-sky-800" : "border-dashed border-admin-gray-300 text-admin-gray-500")}>
+                                  <option value="">{r.agentId ? "Remove agent" : "Assign agent…"}</option>
+                                  {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                </select>
+                              )}
                           </td>
                         )}
                         {show("or2-c-actions") && (

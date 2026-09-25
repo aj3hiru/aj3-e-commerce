@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
+import { hashPassword } from "@/lib/password";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
@@ -30,6 +31,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const customerType = body.customerType === "offline" ? "offline" : "online";
   const address = (body.address ?? "").trim();
   const status = body.status === "inactive" ? "inactive" : "active";
+  // Photo: an uploads/… path, "" to remove, or leave it out to keep the current one.
+  const avatar = body.avatar === "" || body.avatar === null ? null
+    : typeof body.avatar === "string" && /^uploads\/[\w./-]+\.(jpe?g|png|gif|webp)$/i.test(body.avatar) && !body.avatar.includes("..") ? body.avatar : undefined;
+  const newPassword = typeof body.newPassword === "string" ? body.newPassword : "";
+  if (newPassword && newPassword.length < 6) return NextResponse.json({ success: false, message: "The new password needs at least 6 characters." }, { status: 400 });
 
   if (!name) return NextResponse.json({ success: false, message: "Name is required." }, { status: 400 });
   // Mobile-OTP customers sign in with their phone, so an email is optional — but one of the two is needed.
@@ -38,10 +44,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     await prisma.ecomCustomer.update({
       where: { id: customerId },
-      data: { name, email: email || null, phone: phone || null, customerType, address: address || null, status },
+      data: {
+        name, email: email || null, phone: phone || null, customerType, address: address || null, status,
+        ...(avatar !== undefined ? { avatar } : {}),
+        ...(newPassword ? { password: await hashPassword(newPassword) } : {}),
+      },
     });
 
-    await logActivity(req, session.userId, "ecom_customer_update", `Updated Customer: ${name} (ID: ${customerId})`);
+    await logActivity(req, session.userId, "ecom_customer_update", `Updated Customer: ${name} (ID: ${customerId})${newPassword ? " — password reset" : ""}`);
 
     return NextResponse.json({ success: true, redirect: "/admin/ecommerce/customers?success=updated" });
   } catch {

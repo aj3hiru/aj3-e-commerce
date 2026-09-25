@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { listDeliveryAgents } from "@/lib/order-workflow";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
 import { Orders2Body, Orders2HeaderButtons } from "@/components/admin/orders2/Orders2Body";
@@ -37,7 +38,8 @@ export default async function Orders2Page({ searchParams }: PageProps) {
   const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const type = parseOrderType(first(sp.type));
   const range = parseOrderRange({ from: first(sp.from), to: first(sp.to) });
-  const data = await getOrders2Data(type, range);
+  const canAssign = hasPermission(session.permissions, "orders", "assign_delivery");
+  const [data, agents] = await Promise.all([getOrders2Data(type, range), canAssign ? listDeliveryAgents() : Promise.resolve([])]);
 
   return (
     <DashboardWidgetPrefsProvider prefKey={ORDERS2_PREF_KEY} groups={ORDERS2_GROUPS} standalone={ORDERS2_STANDALONE}>
@@ -64,6 +66,8 @@ export default async function Orders2Page({ searchParams }: PageProps) {
           data={data}
           canEdit={hasPermission(session.permissions, "orders", "update_status") || hasPermission(session.permissions, "orders", "mark_paid")}
           canBill={hasPermission(session.permissions, "ecommerce", "manage_billing")}
+          canDecide={hasPermission(session.permissions, "orders", "accept_reject")}
+          agents={agents}
         />
       </AdminShell>
     </DashboardWidgetPrefsProvider>

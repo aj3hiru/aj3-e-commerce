@@ -38,6 +38,10 @@ export interface Customer2Row {
   lastOrderAt: string | null;
   /** True when this customer bought something inside the chosen date range. */
   activeInRange: boolean;
+  avatar: string | null;
+  hasPassword: boolean;
+  /** Saved delivery addresses. */
+  addresses: number;
 }
 
 export interface Customer2Cards {
@@ -76,7 +80,7 @@ export async function getCustomers2Data(range: { from: string; to: string }): Pr
   const [customers, orders, credits] = await Promise.all([
     prisma.ecomCustomer.findMany({
       orderBy: { createdAt: "desc" },
-      select: { id: true, name: true, email: true, phone: true, customerType: true, address: true, status: true, createdAt: true },
+      select: { id: true, name: true, email: true, phone: true, customerType: true, address: true, status: true, createdAt: true, avatar: true, password: true, _count: { select: { addresses: true } } },
     }),
     // Completed sales only, so "spent" matches Sales History.
     prisma.ecomOrder.findMany({
@@ -114,6 +118,7 @@ export async function getCustomers2Data(range: { from: string; to: string }): Pr
 
   const rows: Customer2Row[] = (customers as {
     id: number; name: string; email: string | null; phone: string | null; customerType: string; address: string | null; status: string; createdAt: Date;
+    avatar: string | null; password: string | null; _count: { addresses: number };
   }[]).map((c) => {
     const a = agg.get(c.id);
     return {
@@ -130,6 +135,9 @@ export async function getCustomers2Data(range: { from: string; to: string }): Pr
       dueBalance: r2(dueByCustomer.get(c.id) ?? 0),
       lastOrderAt: a?.last ? a.last.toISOString() : null,
       activeInRange: a?.inRange ?? false,
+      avatar: c.avatar ?? null,
+      hasPassword: !!c.password,
+      addresses: c._count.addresses,
     };
   });
 

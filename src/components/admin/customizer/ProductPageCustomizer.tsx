@@ -296,7 +296,7 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
         <p className="px-1 pb-2 pt-1 text-xs text-admin-gray-400">Edits save as a draft automatically. Shoppers see them only after you Publish.</p>
       </div>
 
-      <div className="order-first flex h-[80vh] flex-col gap-3 lg:order-none lg:sticky lg:top-[100px] lg:h-[calc(100vh-116px)]">
+      <div className="order-first flex h-[80vh] flex-col gap-3 lg:order-none lg:sticky lg:top-[100px] lg:h-[calc(100vh-206px)] lg:min-h-[520px]">
         <EditorToolbar ed={ed} device={device} setDevice={setDevice} openUrl={url} />
         <div className="min-h-0 flex-1"><Preview url={url} version={ed.version} device={device} focus={focus} /></div>
       </div>

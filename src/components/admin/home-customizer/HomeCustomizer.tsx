@@ -508,7 +508,7 @@ export function HomeCustomizer({ initialDraft, initialLive, categories, products
         </div>
 
         {/* Preview */}
-        <div className="order-first flex h-[80vh] flex-col gap-3 lg:order-none lg:sticky lg:top-[100px] lg:h-[calc(100vh-116px)]">
+        <div className="order-first flex h-[80vh] flex-col gap-3 lg:order-none lg:sticky lg:top-[100px] lg:h-[calc(100vh-206px)] lg:min-h-[520px]">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-admin-gray-200 bg-white px-3 py-2.5 shadow-sm">
           <div className="min-w-0 flex-1 basis-40 text-sm font-medium">{status}</div>

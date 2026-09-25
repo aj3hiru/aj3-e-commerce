@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminBrandMark } from "./AdminBrand";
 import Link from "next/link";
 import { roleLabel as roleLabelOf } from "@/lib/roles";
 import { useState, useRef, useEffect } from "react";
@@ -112,7 +113,7 @@ export function AdminHeader({
         >
           <FontAwesomeIcon icon={faBars} />
         </button>
-        <span className="block text-[1.15rem] font-extrabold text-[#7c3aed] md:hidden">{siteName}</span>
+        <span className="block min-w-0 md:hidden"><AdminBrandMark fallbackName={siteName} /></span>
         {/* .page-heading-mini — note the Bootstrap h1/p margins, see above */}
         <div className="hidden md:block">
           <h1 className="mb-2 text-[1.5rem] font-bold leading-[1.2] text-[#111827]">{pageTitle}</h1>

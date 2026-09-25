@@ -6,9 +6,11 @@ import { useStaffPathname } from "@/hooks/useStaffPathname";
 import { useEffect, useRef, useState, Suspense } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
-import { faCube, faTimes, faChevronDown } from "@fortawesome/free-solid-svg-icons";
+import { faTimes, faChevronDown } from "@fortawesome/free-solid-svg-icons";
 import { ADMIN_NAV, hasPermission, type NavLink, type NavParent } from "@/lib/admin-nav-config";
 import { cn } from "@/lib/utils";
+import { AdminBrandMark } from "./AdminBrand";
+import { SidebarMenuOptions, linkKey, sectionKey, subKey, useSidebarHidden, type MenuSection } from "./SidebarMenuOptions";
 
 interface AdminSidebarProps {
   siteName: string;
@@ -77,6 +79,18 @@ function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSide
   const pathname = useStaffPathname("admin");
   const searchParams = useSearchParams();
   const navRef = useRef<HTMLElement>(null);
+  const [hidden, setHidden] = useSidebarHidden();
+
+  // What this person may see (permissions) — the Display Options list offers only these.
+  const allowed: MenuSection[] = ADMIN_NAV.filter((sec) => hasPermission(permissions, sec.permission))
+    .map((sec) => ({
+      title: sec.title,
+      links: sec.links
+        .filter((l) => hasPermission(permissions, l.permission))
+        .map((l) => ({ ...l, submenu: (l.submenu ?? []).filter((sub) => hasPermission(permissions, sub.permission)) }))
+        .filter((l) => !l.toggleOnly || (l.submenu ?? []).length > 0),
+    }))
+    .filter((sec) => sec.links.length > 0);
 
   // A group starts open when you're on one of its pages; otherwise closed.
   const hereIn = (link: NavParent) => pathOf(link.href) === pathname || (link.submenu ?? []).some((s) => pathOf(s.href) === pathname);
@@ -185,15 +199,12 @@ function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSide
         )}
       >
         {/* .sidebar-header { padding:1.5rem; border-bottom:1px solid gray-100 } */}
-        <div className="flex items-center justify-between border-b border-[#f3f4f6] p-6">
+        <div className="flex min-h-[89px] items-center gap-2 border-b border-[#f3f4f6] px-6 py-5">
           {/* .brand { gap:.65rem; 1.15rem / 800 / primary } */}
-          <Link href="/admin/dashboard" className="flex items-center gap-[0.65rem] text-[1.15rem] font-extrabold text-[#7c3aed]">
-            {/* .brand-icon { 40×40; gradient; radius .75rem; 1.25rem } */}
-            <span className="flex h-10 w-10 items-center justify-center rounded-[0.75rem] bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-[1.25rem] text-white">
-              <FontAwesomeIcon icon={faCube} />
-            </span>
-            <span>{siteName}</span>
+          <Link href="/admin/dashboard" className="flex min-w-0 flex-1 items-center" title="Dashboard">
+            <AdminBrandMark fallbackName={siteName} />
           </Link>
+          <SidebarMenuOptions sections={allowed} hidden={hidden} onChange={setHidden} />
           {/* .close-sidebar { 36×36; gray-100; radius .5rem; gray-600 } */}
           <button
             type="button"
@@ -207,11 +218,9 @@ function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSide
 
         {/* .sidebar-nav { flex:1; padding:1rem 0; overflow-y:auto } */}
         <nav ref={navRef} className="admin-sidebar-nav flex-1 overflow-y-auto py-4">
-          {ADMIN_NAV.map((section) => {
-            if (!hasPermission(permissions, section.permission)) return null;
-
-            const visibleLinks = section.links.filter((l) => hasPermission(permissions, l.permission)
-              && (!l.toggleOnly || (l.submenu ?? []).some((sub) => hasPermission(permissions, sub.permission))));
+          {allowed.map((section) => {
+            if (hidden.has(sectionKey(section.title))) return null;
+            const visibleLinks = section.links.filter((l) => !hidden.has(linkKey(section.title, l.label)));
             if (visibleLinks.length === 0) return null;
 
             return (
@@ -221,7 +230,7 @@ function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSide
                 </div>
 
                 {visibleLinks.map((link: NavParent) => {
-                  const submenu = (link.submenu ?? []).filter((s) => hasPermission(permissions, s.permission));
+                  const submenu = (link.submenu ?? []).filter((s) => !hidden.has(subKey(section.title, link.label, s.label)));
                   if (link.toggleOnly && submenu.length === 0) return null;
                   if (!link.submenuId || submenu.length === 0) return renderLink(link);
 

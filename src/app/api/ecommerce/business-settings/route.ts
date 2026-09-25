@@ -108,6 +108,11 @@ export async function POST(req: NextRequest) {
   // after the business row so a failure here cannot leave the main profile
   // half-saved, and upserted one key at a time because the table is a plain
   // key/value store with a unique index on setting_key.
+  // The header strip is edited in Store Customizer → Header & Menus now; only
+  // write it when this form actually sent it (older clients).
+  if (!form.has("header_show_location")) {
+    return NextResponse.json({ success: true, redirect: "/admin/ecommerce/business-settings?success=1" });
+  }
   const headerValues: Record<HeaderSettingKey, string> = {
     show_location: form.get("header_show_location") === "1" ? "1" : "0",
     show_delivery_info: form.get("header_show_delivery_info") === "1" ? "1" : "0",

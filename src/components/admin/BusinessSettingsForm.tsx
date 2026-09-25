@@ -4,17 +4,17 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus, Trash2, ImagePlus, Building2, Contact, Share2, FileSpreadsheet,
-  FileText, Keyboard, Barcode, Image as ImageIcon, LayoutPanelTop, Save,
+  FileText, Keyboard, Barcode, Image as ImageIcon, Save,
 } from "lucide-react";
 import { SOCIAL_PLATFORMS } from "@/lib/social-platforms";
-import { StorefrontSettingsPanels, STOREFRONT_MENU, STOREFRONT_SECTIONS, storefrontProblem } from "./StorefrontSettingsPanels";
+import Link from "next/link";
 import type { StorefrontConfig } from "@/types/storefront";
 import type { InvoiceSettings } from "@/types/invoice-settings";
 import { InvoiceSettingsPanel } from "./invoice-settings/InvoiceSettingsPanel";
 import { StorePreview } from "./store-preview/StorePreview";
 import type { ShopCategoryNavItem, SocialPlatform } from "@/types/shop";
 import {
-  SettingsMenuLayout, SettingsPanel, Field, CheckRow, CONTROL_CLASS,
+  SettingsMenuLayout, SettingsPanel, Field, CONTROL_CLASS,
   type SettingsMenuItem,
 } from "./SettingsMenuLayout";
 
@@ -65,9 +65,9 @@ export interface BusinessSettingsInitial {
 }
 
 /** Sections that change what shoppers see — they get the live store preview on the right. */
-const PREVIEW_SECTIONS = ["identity", "contact", "social", "header", "headerMenu", "sidebarMenu", "menuDesign", "push", "footer", "branding"];
+const PREVIEW_SECTIONS = ["identity", "contact", "social", "branding"];
 /** Details shown in the store footer — the preview scrolls there. */
-const FOOTER_SECTIONS = ["contact", "social", "footer"];
+const FOOTER_SECTIONS = ["contact", "social"];
 
 const FKEYS = Array.from({ length: 11 }, (_, i) => `F${i + 2}`);
 
@@ -78,8 +78,6 @@ const FKEYS = Array.from({ length: 11 }, (_, i) => `F${i + 2}`);
 const MENU: SettingsMenuItem[] = [
   { key: "identity", label: "Business Identity", icon: Building2 },
   { key: "contact", label: "Contact Information", icon: Contact },
-  { key: "header", label: "Storefront Header", icon: LayoutPanelTop },
-  ...STOREFRONT_MENU,
   { key: "branding", label: "Logo & Branding", icon: ImageIcon },
   { key: "tax", label: "Tax & Legal", icon: FileSpreadsheet },
   { key: "invoice", label: "Invoice Settings", icon: FileText },
@@ -88,11 +86,11 @@ const MENU: SettingsMenuItem[] = [
   { key: "social", label: "Social Media", icon: Share2 },
 ];
 
-export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitial, categories }: {
+/** `storefrontInitial` feeds the live preview only — menus and footer are edited in Store Customizer. */
+export function BusinessSettingsForm({ initial, storefrontInitial: storefront, invoiceInitial }: {
   initial: BusinessSettingsInitial; storefrontInitial: StorefrontConfig; invoiceInitial: InvoiceSettings; categories: ShopCategoryNavItem[];
 }) {
   const [invoice, setInvoice] = useState(invoiceInitial);
-  const [storefront, setStorefront] = useState(storefrontInitial);
   const router = useRouter();
   const [active, setActive] = useState("identity");
   const [form, setForm] = useState(initial);
@@ -129,32 +127,15 @@ export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitia
       deliveryTimeText: form.headerDeliveryTimeText || form.businessHours, searchPlaceholder: form.headerSearchPlaceholder,
     },
     storefront,
-    drawer: active === "sidebarMenu" || active === "menuDesign",
+    drawer: false,
     focus: (FOOTER_SECTIONS.includes(active) ? "footer" : "top") as "top" | "footer",
   }), [form, logoPreview, contactNumbers, socialMedia, storefront, active]);
-  const previewDevice = active === "headerMenu" ? "desktop" as const : active === "sidebarMenu" ? "mobile" as const : undefined;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    // Menus & footer first: check them, then save them, so a bad link is
-    // reported (and its section opened) before anything is written.
-    const problem = storefrontProblem(storefront);
-    if (problem) { setError(problem.message); setActive(problem.section); return; }
     setSubmitting(true);
-    try {
-      const res = await fetch("/api/ecommerce/storefront-config", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(storefront),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!data.success) { setError(data.message || "Menus & footer couldn't be saved."); setSubmitting(false); return; }
-    } catch {
-      setError("Something went wrong saving menus & footer. Please try again.");
-      setSubmitting(false);
-      return;
-    }
-
     try {
       const res = await fetch("/api/ecommerce/invoice-settings", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(invoice),
@@ -199,15 +180,6 @@ export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitia
     fd.set("shortcut_new_sale", form.shortcutNewSale);
     fd.set("logo_display_width", String(form.logoDisplayWidth));
 
-    // Storefront header strip — booleans go as '1'/'0' rather than being
-    // omitted when false, because these two default to ON: an omitted key is
-    // indistinguishable from "never set" and would silently re-enable them.
-    fd.set("header_show_location", form.headerShowLocation ? "1" : "0");
-    fd.set("header_show_delivery_info", form.headerShowDeliveryInfo ? "1" : "0");
-    fd.set("header_delivery_label", form.headerDeliveryLabel);
-    fd.set("header_delivery_time_text", form.headerDeliveryTimeText);
-    fd.set("header_search_placeholder", form.headerSearchPlaceholder);
-
     contactNumbers.filter(Boolean).forEach((n) => fd.append("contact_numbers[]", n));
     invoiceNumbers.forEach((n) => fd.append("invoice_numbers[]", n));
     socialMedia.forEach((s) => {
@@ -244,6 +216,11 @@ export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitia
       )}
 
       <SettingsMenuLayout items={MENU} active={active} onSelect={setActive}>
+        {active === "identity" && (
+          <p className="mb-3 rounded-[8px] bg-[#f8eef6] px-3 py-2 text-[13px] text-[#616173]">
+            Header strip, menus, mobile sidebar, push bell and footer are designed in <Link href="/admin/customizer?tab=header" className="font-semibold text-[#9f2089] underline">Store Customizer</Link>.
+          </p>
+        )}
         <div className={withPreview ? "grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]" : undefined}>
         <div className="min-w-0">
         {/* ══════════ BUSINESS IDENTITY ══════════ */}
@@ -348,71 +325,6 @@ export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitia
                 <Plus className="h-3.5 w-3.5" /> Add number
               </button>
             </div>
-          </SettingsPanel>
-        )}
-
-        {/* ══════════ STOREFRONT HEADER ══════════ */}
-        {active === "header" && (
-          <SettingsPanel
-            icon={LayoutPanelTop}
-            title="Storefront Header"
-            hint="Controls the strip at the very top of your shop — the address block, the opening-hours line and the search box."
-          >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <CheckRow checked={form.headerShowLocation} onChange={(v) => update("headerShowLocation", v)}>
-                Show address block
-              </CheckRow>
-              <CheckRow checked={form.headerShowDeliveryInfo} onChange={(v) => update("headerShowDeliveryInfo", v)}>
-                Show delivery / opening time
-              </CheckRow>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field
-                label="Status Label"
-                htmlFor="headerDeliveryLabel"
-                hint="The green line above the clock, e.g. “We're open”."
-              >
-                <input
-                  id="headerDeliveryLabel"
-                  value={form.headerDeliveryLabel}
-                  onChange={(e) => update("headerDeliveryLabel", e.target.value)}
-                  placeholder="We're open"
-                  className={CONTROL_CLASS}
-                />
-              </Field>
-              <Field
-                label="Delivery Time Text"
-                htmlFor="headerDeliveryTimeText"
-                hint="Leave blank to use Business Hours from Business Identity."
-              >
-                <input
-                  id="headerDeliveryTimeText"
-                  value={form.headerDeliveryTimeText}
-                  onChange={(e) => update("headerDeliveryTimeText", e.target.value)}
-                  placeholder={form.businessHours || "e.g. Delivery in 30 min"}
-                  className={CONTROL_CLASS}
-                />
-              </Field>
-            </div>
-
-            <div className="mt-3">
-              <Field label="Search Box Placeholder" htmlFor="headerSearchPlaceholder">
-                <input
-                  id="headerSearchPlaceholder"
-                  value={form.headerSearchPlaceholder}
-                  onChange={(e) => update("headerSearchPlaceholder", e.target.value)}
-                  placeholder="Search for products"
-                  className={CONTROL_CLASS}
-                />
-              </Field>
-            </div>
-
-            <p className="mt-4 rounded-md border border-admin-gray-200 bg-admin-gray-50 px-3 py-2 text-[0.8rem] text-admin-gray-500">
-              The address block also needs a <strong>Location</strong> filled in under Business Identity, and the
-              delivery line needs either a time text here or Business Hours — the header hides each block when its
-              text is empty, exactly as the storefront always has.
-            </p>
           </SettingsPanel>
         )}
 
@@ -580,17 +492,8 @@ export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitia
             </button>
           </SettingsPanel>
         )}
-        {(STOREFRONT_SECTIONS as readonly string[]).includes(active) && (
-          <StorefrontSettingsPanels active={active} value={storefront} onChange={setStorefront} categories={categories}
-            business={{
-              // Live values from this form, so the footer preview follows unsaved edits.
-              businessName: form.businessName || "Your Store", logo: initial.logo, tagline: form.tagline,
-              email: form.email, address: form.address, contactNumbers: contactNumbers.filter(Boolean),
-              socialMedia: socialMedia.filter((sm) => sm.url && sm.platform !== "other") as { platform: SocialPlatform; url: string }[],
-            }} />
-        )}
         </div>
-        {withPreview && <StorePreview state={previewState} device={previewDevice} />}
+        {withPreview && <StorePreview state={previewState} />}
         </div>
       </SettingsMenuLayout>
 

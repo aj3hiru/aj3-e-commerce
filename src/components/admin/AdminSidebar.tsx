@@ -71,24 +71,24 @@ function SidebarPlaceholder() {
   );
 }
 
+const pathOf = (href: string) => href.split("?")[0];
+
 function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSidebarProps) {
   const pathname = useStaffPathname("admin");
   const searchParams = useSearchParams();
   const navRef = useRef<HTMLElement>(null);
 
-  // Submenu defaults mirror sidebar-nav.php: Products open always; Categories
-  // and Orders open only when you are on one of their pages.
-  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({
-    "submenu-products": true,
-    "submenu-categories": pathname === "/admin/ecommerce/categories" || pathname === "/admin/ecommerce/subcategories",
-    "submenu-orders": pathname?.startsWith("/admin/ecommerce/orders") ?? false,
-  });
+  // A group starts open when you're on one of its pages; otherwise closed.
+  const hereIn = (link: NavParent) => pathOf(link.href) === pathname || (link.submenu ?? []).some((s) => pathOf(s.href) === pathname);
+  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(ADMIN_NAV.flatMap((sec) => sec.links).filter((l) => l.submenuId).map((l) => [l.submenuId!, hereIn(l)])));
 
   useEffect(() => {
     // Saved choice wins over the default — the PHP's localStorage 'nav_<id>'.
     setOpenSubmenus((prev) => {
       const next = { ...prev };
       for (const id of Object.keys(prev)) {
+        if (prev[id]) continue; // the group you're in stays open
         try {
           const saved = window.localStorage.getItem(`nav_${id}`);
           if (saved !== null) next[id] = saved === "1";
@@ -118,15 +118,17 @@ function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSide
   }
 
   function isActive(link: NavLink, isSubItem = false): boolean {
+    const path = pathOf(link.href);
     if (link.matchQuery) {
-      const [path] = link.href.split("?");
-      return pathname === path && searchParams?.get(link.matchQuery.key) === link.matchQuery.value;
+      const v = searchParams?.get(link.matchQuery.key);
+      // Customizer: no ?tab means its first tab (Homepage).
+      return pathname === path && (v === link.matchQuery.value || (!v && link.matchQuery.key === "tab" && link.matchQuery.value === "home"));
     }
-    // "All Orders" is active only on the unfiltered list, as in the PHP.
-    if (link.href === "/admin/ecommerce/orders" && !isSubItem) {
-      return pathname === "/admin/ecommerce/orders" && !searchParams?.get("type");
-    }
-    return pathname === link.href;
+    const parent = !isSubItem && ADMIN_NAV.flatMap((sec) => sec.links).find((l) => l.href === link.href);
+    const childActive = !!parent && (parent.submenu ?? []).some((sub) => isActive(sub, true));
+    if (childActive) return false; // highlight the sub-page, not both
+    // Detail pages (an order, a product being edited) light up their list.
+    return pathname === path || (!isSubItem && !!pathname?.startsWith(`${path}/`) && path !== "/admin");
   }
 
   function renderLink(link: NavLink, opts: { sub?: boolean; flex?: boolean } = {}) {
@@ -207,7 +209,8 @@ function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSide
           {ADMIN_NAV.map((section) => {
             if (!hasPermission(permissions, section.permission)) return null;
 
-            const visibleLinks = section.links.filter((l) => hasPermission(permissions, l.permission));
+            const visibleLinks = section.links.filter((l) => hasPermission(permissions, l.permission)
+              && (!l.toggleOnly || (l.submenu ?? []).some((sub) => hasPermission(permissions, sub.permission))));
             if (visibleLinks.length === 0) return null;
 
             return (
@@ -218,6 +221,7 @@ function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSide
 
                 {visibleLinks.map((link: NavParent) => {
                   const submenu = (link.submenu ?? []).filter((s) => hasPermission(permissions, s.permission));
+                  if (link.toggleOnly && submenu.length === 0) return null;
                   if (!link.submenuId || submenu.length === 0) return renderLink(link);
 
                   const open = openSubmenus[link.submenuId] ?? !!link.defaultOpen;
@@ -225,7 +229,13 @@ function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSide
                     <div key={link.href}>
                       {/* .nav-parent-row */}
                       <div className="mb-1 flex items-center">
-                        {renderLink(link, { flex: true })}
+                        {link.toggleOnly ? (
+                          <button type="button" onClick={() => toggleSubmenu(link.submenuId!)} aria-expanded={open}
+                            className={cn(LINK_BASE, "mb-0 flex-1 pl-4 text-left text-[0.9375rem]", LINK_IDLE)}>
+                            <NavIcon icon={link.icon} />
+                            {link.label}
+                          </button>
+                        ) : renderLink(link, { flex: true })}
                         <button
                           type="button"
                           aria-label={`${open ? "Collapse" : "Expand"} ${link.label}`}

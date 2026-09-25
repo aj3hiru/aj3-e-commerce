@@ -10,6 +10,7 @@ import { getDraftHome, getLiveHome } from "@/lib/home-config";
 import { getDraftProductPage, getLiveProductPage } from "@/lib/product-page-config";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
+import { getShopHeaderSettings } from "@/lib/header-settings";
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +18,7 @@ type Tab = "home" | "product" | "header" | "footer";
 const TABS: { key: Tab; label: string; hint: string; icon: typeof Home; perm: "manage_homepage" | "manage_payment" }[] = [
   { key: "home", label: "Homepage", hint: "Offer bar, banners, sections", icon: Home, perm: "manage_homepage" },
   { key: "product", label: "Product Page", hint: "Every section, order & labels", icon: Package, perm: "manage_homepage" },
-  { key: "header", label: "Header & Menus", hint: "Menus, sidebar, push bell", icon: PanelTop, perm: "manage_payment" },
+  { key: "header", label: "Header & Menus", hint: "Header strip, menus, sidebar, push bell", icon: PanelTop, perm: "manage_payment" },
   { key: "footer", label: "Footer", hint: "Columns, links, design", icon: PanelBottom, perm: "manage_payment" },
 ];
 
@@ -51,8 +52,9 @@ export default async function CustomizerPage({ searchParams }: { searchParams: P
     ]);
     body = <ProductPageCustomizer initialDraft={draft} initialLive={live} products={products as (PickProduct & { slug: string })[]} categories={categories} />;
   } else {
-    const [storefront, layout] = await Promise.all([getStorefrontConfig(), getShopLayoutData()]);
-    body = <HeaderFooterCustomizer key={tab} part={tab} initial={storefront} categories={layout.categories} business={layout.business} />;
+    // Raw header values (no business-hours fallback baked in), so a blank time stays blank when saved.
+    const [storefront, layout, header] = await Promise.all([getStorefrontConfig(), getShopLayoutData(), getShopHeaderSettings(null)]);
+    body = <HeaderFooterCustomizer key={tab} part={tab} initial={storefront} initialHeader={header} categories={layout.categories} business={layout.business} />;
   }
 
   return (

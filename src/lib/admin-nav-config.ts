@@ -2,16 +2,15 @@ import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faHome, faCashRegister, faHistory, faBoxes, faPlusSquare, faCopyright, faBoxOpen,
   faPercent, faFileCsv, faStarHalfAlt, faBarcode, faTags, faList, faListUl, faReceipt,
-  faHourglassHalf, faTruckLoading, faTruck, faBan, faUserFriends, faPercentage,
+  faTruck, faUserFriends, faPercentage,
   faCreditCard, faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
   faSignOutAlt, faChartLine, faFileAlt, faBars, faGripLines, faBox, faMobileAlt,
+  faBrush, faCog, faUsersCog,
 } from "@fortawesome/free-solid-svg-icons";
 
-// ════════════════════════════════════════════════════════════════════════
-// Verified 1:1 against admin/components/sidebar-nav.php — every section,
-// submenu, icon, and permission gate below matches the original PHP file.
-// Do not reorder, merge, or drop any entry without checking the source again.
-// ════════════════════════════════════════════════════════════════════════
+// Grouped by what a shop owner does: sell, catalogue, customers & marketing,
+// reports, the online store, settings. Rarely used pages sit in a parent's
+// submenu so the sidebar stays short. Every entry keeps its own permission.
 
 export type NavPermissionPath =
   | "ecommerce.manage_billing"
@@ -54,6 +53,8 @@ export interface NavLink {
 }
 
 export interface NavParent extends NavLink {
+  /** A parent that only opens its submenu (no page of its own). */
+  toggleOnly?: boolean;
   submenu?: NavLink[];
   /** Whether this submenu group is open by default (Products defaults open; others default closed) */
   defaultOpen?: boolean;
@@ -71,7 +72,6 @@ export interface NavSection {
 }
 
 export const ADMIN_NAV: NavSection[] = [
-  // 1. DASHBOARD
   {
     title: "Main",
     permission: null,
@@ -80,47 +80,38 @@ export const ADMIN_NAV: NavSection[] = [
     ],
   },
 
-  // 2. BILLING
   {
-    title: "Billing",
-    permission: "ecommerce.manage_billing",
+    title: "Sales",
+    permission: null,
     links: [
       { href: "/admin/ecommerce/billing", label: "Billing / POS", icon: faCashRegister, permission: "ecommerce.manage_billing" },
-      { href: "/admin/ecommerce/sales-history", label: "Sales History", icon: faHistory, permission: "ecommerce.manage_billing" },
+      // Status filters (Pending, In Progress…) are tabs on the Orders page itself.
+      { href: "/admin/ecommerce/orders", label: "Orders", icon: faReceipt, permission: "orders.view" },
+      { href: "/admin/deliveries?view=all", label: "Deliveries", icon: faTruck, permission: "delivery.view_all", matchQuery: { key: "view", value: "all" } },
+      { href: "/admin/ecommerce/due", label: "Due Payments", icon: faHandHoldingUsd, permission: "ecommerce.manage_credits" },
     ],
   },
 
-  // 3. ALL PRODUCTS (default OPEN submenu)
   {
-    title: "Manage Products",
-    permission: "ecommerce.manage_products",
+    title: "Catalog",
+    permission: null,
     links: [
       {
         href: "/admin/ecommerce/products",
-        label: "All Products",
+        label: "Products",
         icon: faBoxes,
         permission: "ecommerce.manage_products",
-        defaultOpen: true,
         submenuId: "submenu-products",
         submenu: [
           { href: "/admin/ecommerce/products/add", label: "Add Product", icon: faPlusSquare, permission: "ecommerce.manage_products" },
+          { href: "/admin/ecommerce/stock-out-products", label: "Stock Out", icon: faBoxOpen, permission: "ecommerce.manage_products" },
+          { href: "/admin/ecommerce/product-reviews", label: "Reviews", icon: faStarHalfAlt, permission: "ecommerce.manage_products" },
           { href: "/admin/ecommerce/brands", label: "Brands", icon: faCopyright, permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/stock-out-products", label: "Stock Out Products", icon: faBoxOpen, permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/campaign-offer", label: "Campaign Offer", icon: faPercent, permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/csv-import-export", label: "CSV Import & Export", icon: faFileCsv, permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/product-reviews", label: "Product Reviews", icon: faStarHalfAlt, permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/barcode-print", label: "Print Barcodes", icon: faBarcode, permission: "ecommerce.manage_products" },
           { href: "/admin/ecommerce/product-tags", label: "Badge Tags & Item Types", icon: faTags, permission: "ecommerce.manage_products" },
+          { href: "/admin/ecommerce/csv-import-export", label: "CSV Import & Export", icon: faFileCsv, permission: "ecommerce.manage_products" },
+          { href: "/admin/ecommerce/barcode-print", label: "Print Barcodes", icon: faBarcode, permission: "ecommerce.manage_products" },
         ],
       },
-    ],
-  },
-
-  // 4. MANAGE CATEGORY
-  {
-    title: "Manage Category",
-    permission: "ecommerce.manage_categories",
-    links: [
       {
         href: "/admin/ecommerce/categories",
         label: "Categories",
@@ -134,136 +125,77 @@ export const ADMIN_NAV: NavSection[] = [
     ],
   },
 
-  // 5. MANAGE ORDERS
   {
-    title: "Manage Orders",
-    permission: "orders.view",
+    title: "Customers & Marketing",
+    permission: null,
     links: [
-      {
-        href: "/admin/ecommerce/orders",
-        label: "All Orders",
-        icon: faReceipt,
-        permission: "orders.view",
-        submenuId: "submenu-orders",
-        submenu: [
-          { href: "/admin/ecommerce/orders?type=Pending", label: "Pending Orders", icon: faHourglassHalf, permission: "orders.view", matchQuery: { key: "type", value: "Pending" } },
-          { href: "/admin/ecommerce/orders?type=In+Progress", label: "Progress Orders", icon: faTruckLoading, permission: "orders.view", matchQuery: { key: "type", value: "In Progress" } },
-          { href: "/admin/ecommerce/orders?type=Delivered", label: "Delivered Orders", icon: faTruck, permission: "orders.view", matchQuery: { key: "type", value: "Delivered" } },
-          { href: "/admin/ecommerce/orders?type=Canceled", label: "Canceled Orders", icon: faBan, permission: "orders.view", matchQuery: { key: "type", value: "Canceled" } },
-        ],
-      },
-      { href: "/admin/deliveries?view=all", label: "Deliveries Board", icon: faTruck, permission: "delivery.view_all", matchQuery: { key: "view", value: "all" } },
-    ],
-  },
-
-  // 5a. DELIVERY AGENT — only their own deliveries
-  {
-    title: "Delivery",
-    permission: "delivery.deliver",
-    links: [
-      { href: "/agent", label: "My Deliveries (app)", icon: faTruck, permission: "delivery.deliver" },
-    ],
-  },
-
-  // 5b. ANALYTICS (new ecommerce feature — product/sales analytics, not a blog port)
-  {
-    title: "Analytics",
-    permission: "ecommerce.manage_orders",
-    links: [
-      { href: "/admin/ecommerce/analytics", label: "Sales Analytics", icon: faChartLine, permission: "ecommerce.manage_orders" },
-    ],
-  },
-
-  // 6. CUSTOMERS
-  {
-    title: "Customers",
-    permission: "ecommerce.manage_customers",
-    links: [
-      { href: "/admin/ecommerce/customers", label: "Customer List", icon: faUserFriends, permission: "ecommerce.manage_customers" },
-    ],
-  },
-
-  // 7. DISCOUNTS
-  {
-    title: "Discounts",
-    permission: "ecommerce.manage_coupons",
-    links: [
-      { href: "/admin/ecommerce/coupons", label: "Set Coupons", icon: faPercentage, permission: "ecommerce.manage_coupons" },
-    ],
-  },
-
-  // 8. SETTINGS
-  {
-    title: "Settings",
-    permission: "ecommerce.manage_payment",
-    links: [
-      { href: "/admin/ecommerce/payment-settings", label: "Payment", icon: faCreditCard, permission: "ecommerce.manage_payment" },
-      { href: "/admin/ecommerce/business-settings", label: "Business Setting", icon: faBuilding, permission: "ecommerce.manage_payment" },
-      { href: "/admin/ecommerce/login-settings", label: "Login & OTP", icon: faMobileAlt, permission: "ecommerce.manage_payment" },
-      { href: "/admin/ecommerce/tax-settings", label: "GST / Tax Settings", icon: faReceipt, permission: "ecommerce.manage_products" },
-    ],
-  },
-
-  // 8a. STORE CUSTOMIZER — design the storefront beside a live preview.
-  {
-    title: "Store Customizer",
-    permission: "ecommerce.manage_homepage",
-    links: [
-      { href: "/admin/customizer?tab=home", label: "Homepage", icon: faHome, permission: "ecommerce.manage_homepage", matchQuery: { key: "tab", value: "home" } },
-      { href: "/admin/customizer?tab=product", label: "Product Page", icon: faBox, permission: "ecommerce.manage_homepage", matchQuery: { key: "tab", value: "product" } },
-      { href: "/admin/customizer?tab=header", label: "Header & Menus", icon: faBars, permission: "ecommerce.manage_payment", matchQuery: { key: "tab", value: "header" } },
-      { href: "/admin/customizer?tab=footer", label: "Footer", icon: faGripLines, permission: "ecommerce.manage_payment", matchQuery: { key: "tab", value: "footer" } },
-    ],
-  },
-
-  // 8b. DUE
-  {
-    title: "Due",
-    permission: "ecommerce.manage_credits",
-    links: [
-      { href: "/admin/ecommerce/due", label: "Due", icon: faHandHoldingUsd, permission: "ecommerce.manage_credits" },
-    ],
-  },
-
-  // 9. MEDIA
-  {
-    title: "Media",
-    permission: "files.access_file_manager",
-    links: [
-      { href: "/admin/file-manager", label: "File Manager", icon: faImages, permission: "files.access_file_manager" },
-    ],
-  },
-
-  // 9b. PAGES
-  {
-    title: "Pages",
-    permission: "pages.create",
-    links: [
-      { href: "/admin/pages", label: "Static Pages", icon: faFileAlt, permission: "pages.create" },
-    ],
-  },
-
-  // 10. MARKETING
-  {
-    title: "Marketing",
-    permission: "push_notifications.send",
-    links: [
+      { href: "/admin/ecommerce/customers", label: "Customers", icon: faUserFriends, permission: "ecommerce.manage_customers" },
+      { href: "/admin/ecommerce/coupons", label: "Coupons", icon: faPercentage, permission: "ecommerce.manage_coupons" },
+      { href: "/admin/ecommerce/campaign-offer", label: "Campaign Offers", icon: faPercent, permission: "ecommerce.manage_products" },
       { href: "/push-notifications/push-manager2", label: "Push Notifications", icon: faBell, permission: "push_notifications.send" },
     ],
   },
 
-  // 11. BLOG — intentionally absent. The blog/job-portal module was excluded
-  // from this port by the store owner, so /admin/blog/* does not exist here;
-  // listing it would give anyone with a blog permission seven links that 404.
-
-  // 12. SYSTEM (always last)
   {
-    title: "System",
+    title: "Reports",
     permission: null,
     links: [
-      { href: "/admin/cache-manager", label: "Cache Manager", icon: faBolt, permission: "settings.maintenance_mode" },
-      { href: "/admin/activity-logs", label: "Activity Logs", icon: faHistory, permission: "security.view_logs" },
-      { href: "/admin/user-manager", label: "Users Manager", icon: faUser, permission: "users.create" },
+      { href: "/admin/ecommerce/analytics", label: "Sales Analytics", icon: faChartLine, permission: "ecommerce.manage_orders" },
+      { href: "/admin/ecommerce/sales-history", label: "Sales History", icon: faHistory, permission: "ecommerce.manage_billing" },
+    ],
+  },
+
+  {
+    title: "Online Store",
+    permission: null,
+    links: [
+      {
+        href: "/admin/customizer",
+        label: "Store Customizer",
+        icon: faBrush,
+        permission: "ecommerce.manage_homepage",
+        submenuId: "submenu-customizer",
+        submenu: [
+          { href: "/admin/customizer?tab=home", label: "Homepage", icon: faHome, permission: "ecommerce.manage_homepage", matchQuery: { key: "tab", value: "home" } },
+          { href: "/admin/customizer?tab=product", label: "Product Page", icon: faBox, permission: "ecommerce.manage_homepage", matchQuery: { key: "tab", value: "product" } },
+          { href: "/admin/customizer?tab=header", label: "Header & Menus", icon: faBars, permission: "ecommerce.manage_payment", matchQuery: { key: "tab", value: "header" } },
+          { href: "/admin/customizer?tab=footer", label: "Footer", icon: faGripLines, permission: "ecommerce.manage_payment", matchQuery: { key: "tab", value: "footer" } },
+        ],
+      },
+      { href: "/admin/pages", label: "Static Pages", icon: faFileAlt, permission: "pages.create" },
+      { href: "/admin/file-manager", label: "File Manager", icon: faImages, permission: "files.access_file_manager" },
+    ],
+  },
+
+  {
+    title: "Settings",
+    permission: null,
+    links: [
+      { href: "/admin/ecommerce/business-settings", label: "Business Settings", icon: faBuilding, permission: "ecommerce.manage_payment" },
+      { href: "/admin/ecommerce/payment-settings", label: "Payment Methods", icon: faCreditCard, permission: "ecommerce.manage_payment" },
+      { href: "/admin/ecommerce/tax-settings", label: "GST / Tax Rates", icon: faPercent, permission: "ecommerce.manage_products" },
+      { href: "/admin/ecommerce/login-settings", label: "Login & OTP", icon: faMobileAlt, permission: "ecommerce.manage_payment" },
+      { href: "/admin/user-manager", label: "Staff & Roles", icon: faUsersCog, permission: "users.create" },
+      {
+        href: "#system",
+        label: "System",
+        icon: faCog,
+        permission: null,
+        toggleOnly: true,
+        submenuId: "submenu-system",
+        submenu: [
+          { href: "/admin/activity-logs", label: "Activity Logs", icon: faHistory, permission: "security.view_logs" },
+          { href: "/admin/cache-manager", label: "Cache Manager", icon: faBolt, permission: "settings.maintenance_mode" },
+        ],
+      },
+    ],
+  },
+
+  {
+    title: "Account",
+    permission: null,
+    links: [
+      { href: "/admin/my-profile", label: "My Profile", icon: faUser, permission: null },
       { href: "/api/auth/logout", label: "Logout", icon: faSignOutAlt, permission: null, isLogout: true },
     ],
   },

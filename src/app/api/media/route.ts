@@ -6,6 +6,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { generateSlug } from "@/lib/slug";
 import { detectFileType, ALLOWED_EXTENSIONS, MAX_UPLOAD_SIZE } from "@/lib/media-types";
+import { toWebp } from "@/lib/image-webp";
 
 /** Verified against file-manager.php's upload_file action. PDFs are stored under
  *  /files/, every other allowed type under /uploads/ — matching the original's
@@ -31,16 +32,21 @@ export async function POST(req: NextRequest) {
   const fileType = detectFileType(ext);
   const subdir = fileType === "pdf" ? "files" : "uploads";
   const slugBase = generateSlug(file.name.replace(/\.[^.]+$/, ""));
-  const filename = `${slugBase}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  // Photos (jpg / png / gif / webp) are stored as compressed WebP, like every other upload.
+  const photo = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext) && fileType === "image";
+  let buffer: Buffer = Buffer.from(await file.arrayBuffer());
+  if (photo) {
+    try { buffer = await toWebp(buffer, ext); } catch { return NextResponse.json({ error: "This image couldn't be read." }, { status: 400 }); }
+  }
+  const filename = `${slugBase}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.${photo ? "webp" : ext}`;
   const dbPath = `${subdir}/${filename}`;
 
   const dirAbs = path.join(process.cwd(), "public", subdir);
   await mkdir(dirAbs, { recursive: true });
-  const buffer = Buffer.from(await file.arrayBuffer());
   await writeFile(path.join(dirAbs, filename), buffer);
 
   try {
-    const created = await prisma.media.create({ data: { filePath: dbPath, fileType, altText: "" } });
+    const created = await prisma.media.create({ data: { filePath: dbPath, fileType, altText: "", title: file.name.replace(/\.[^.]+$/, "").slice(0, 190) } });
     await logActivity(req, session.userId, "media_upload", `Uploaded ${fileType}: ${file.name} (ID: ${created.id})`);
     return NextResponse.json({ success: true, id: created.id, path: dbPath, file_type: fileType, name: file.name });
   } catch {

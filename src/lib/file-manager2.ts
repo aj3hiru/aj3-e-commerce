@@ -99,5 +99,21 @@ export async function getSiteFiles(): Promise<FileAsset[]> {
     usedBy: null, manageUrl: null, editable: true, createdAt: m.uploadedAt.toISOString(),
   })));
 
-  return [...mediaAssets, ...assetResults].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+  // One card per file. An upload is recorded in Media *and* referenced by the
+  // product / category that uses it (and a product's main photo can also be in
+  // its gallery) — that used to list the same file two or three times.
+  const byPath = new Map<string, FileAsset>();
+  for (const a of assetResults) {
+    const prev = byPath.get(a.relPath);
+    if (!prev) { byPath.set(a.relPath, a); continue; }
+    if (a.usedBy && prev.usedBy && !prev.usedBy.split(" · ").includes(a.usedBy)) prev.usedBy = `${prev.usedBy} · ${a.usedBy}`;
+    if (!prev.createdAt && a.createdAt) prev.createdAt = a.createdAt;
+  }
+  for (const m of mediaAssets) {
+    const owner = byPath.get(m.relPath);
+    // In use somewhere: keep the "used by" card (not deletable here), but the upload's date.
+    if (owner) { owner.createdAt = owner.createdAt ?? m.createdAt; continue; }
+    byPath.set(m.relPath, m);
+  }
+  return [...byPath.values()].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 }

@@ -1,6 +1,7 @@
 import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
 import { prisma } from "@/lib/db";
+import { toWebp } from "@/lib/image-webp";
 
 const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
@@ -29,13 +30,19 @@ export async function saveUploadedImage(
   if (file.size > MAX_IMAGE_SIZE) {
     throw new Error("Image is too large (max 10MB).");
   }
-  const filename = `${slugPrefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  // Stored as a compressed WebP (see image-webp.ts); a broken image is refused.
+  let data: Buffer;
+  try {
+    data = await toWebp(Buffer.from(await file.arrayBuffer()), ext);
+  } catch {
+    throw new Error("This image couldn't be read. Please try another photo.");
+  }
+  const filename = `${slugPrefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}.webp`;
 
   const uploadDir = path.join(process.cwd(), "public", "uploads", subfolder);
   await mkdir(uploadDir, { recursive: true });
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(uploadDir, filename), buffer);
+  await writeFile(path.join(uploadDir, filename), data);
 
   const rel = `uploads/${subfolder}/${filename}`;
   // Also list it in the File Manager (best-effort — the upload itself already worked).

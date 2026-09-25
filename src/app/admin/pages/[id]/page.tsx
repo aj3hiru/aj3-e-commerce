@@ -11,7 +11,7 @@ interface EditPagePageProps {
 export default async function EditPagePage({ params }: EditPagePageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "pages", "edit")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const { id } = await params;

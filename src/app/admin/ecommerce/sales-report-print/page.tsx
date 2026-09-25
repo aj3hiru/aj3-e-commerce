@@ -14,7 +14,7 @@ const SALE_TYPE_LABELS: Record<string, string> = { all: "All Sales", offline: "S
 export default async function SalesReportPrintPage({ searchParams }: SalesReportPrintPageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_billing")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const params = await searchParams;

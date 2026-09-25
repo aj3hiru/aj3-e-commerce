@@ -4,6 +4,7 @@ import { getAdminSession } from "@/lib/admin-auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { setAdminSessionCookie } from "@/lib/session-cookies";
 import { logActivity } from "@/lib/activity-log";
+import { parseStaffProfile } from "@/lib/staff";
 
 /** Verified against admin/my-profile.php's POST handler. */
 export async function POST(req: NextRequest) {
@@ -35,6 +36,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const prof = parseStaffProfile(body);
+  if ("error" in prof) return NextResponse.json({ success: false, message: prof.error }, { status: 400 });
+  if (prof.data.phone) {
+    const taken = await prisma.user.findFirst({ where: { phone: prof.data.phone, id: { not: session.userId } }, select: { id: true } });
+    if (taken) return NextResponse.json({ success: false, message: "This mobile number is already used by another staff member." }, { status: 409 });
+  }
+
   try {
     const newHash = password !== "" ? await hashPassword(password) : null;
     await prisma.user.update({
@@ -42,6 +50,7 @@ export async function POST(req: NextRequest) {
       data: {
         username,
         email,
+        ...prof.data,
         ...(newHash ? { passwordHash: newHash } : {}),
       },
     });

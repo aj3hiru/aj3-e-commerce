@@ -19,7 +19,7 @@ export default async function InvoicePage({ params, searchParams }: InvoicePageP
       !hasPermission(session.permissions, "ecommerce", "manage_customers") &&
       !hasPermission(session.permissions, "ecommerce", "manage_billing"))
   ) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const { id } = await params;

@@ -73,7 +73,7 @@ export function LoginForm({ redirectTo, storeName = "our store", bare = false }:
       {form}
       <div className="my-5 flex items-center gap-3 text-[12px] text-[#8b8ba3]"><span className="h-px flex-1 bg-[#eaeaf2]" />New to {storeName}?<span className="h-px flex-1 bg-[#eaeaf2]" /></div>
       <Link href={`/shop/register${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className={cn(btnOutline, "h-12 w-full")}>Create an account</Link>
-      <p className="mt-5 text-center text-[11.5px] leading-4 text-[#a7a9b6]">Customers and store staff both sign in here.</p>
+      <p className="mt-5 text-center text-[12.5px] text-[#8b8ba3]">Store staff? <a href="/staff/login" className="font-semibold text-[var(--hp-accent)]">Staff login →</a></p>
     </AuthCard>
   );
 }

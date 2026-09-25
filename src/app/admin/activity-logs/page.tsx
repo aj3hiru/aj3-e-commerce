@@ -45,7 +45,7 @@ interface PageProps {
 export default async function ActivityLogs2Page({ searchParams }: PageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "security", "view_logs")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const sp = await searchParams;

@@ -14,7 +14,7 @@ interface OrderDetailPageProps {
 export default async function OrderDetailPage({ params }: OrderDetailPageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "orders", "view")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const { id } = await params;

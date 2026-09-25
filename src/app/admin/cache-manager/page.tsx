@@ -35,7 +35,7 @@ import { getCacheStats } from "@/lib/cache-manager2";
 export default async function CacheManager2Page() {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "settings", "maintenance_mode")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const stats = await getCacheStats();

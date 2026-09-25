@@ -30,7 +30,7 @@ import { prisma } from "@/lib/db";
 export default async function Coupons2Page() {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_coupons")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const [rows, products, categories, subcategories, activity] = await Promise.all([

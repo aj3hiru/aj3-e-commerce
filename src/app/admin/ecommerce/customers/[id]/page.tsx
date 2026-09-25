@@ -13,7 +13,7 @@ interface CustomerProfilePageProps {
 export default async function CustomerProfilePage({ params }: CustomerProfilePageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_customers")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const { id } = await params;

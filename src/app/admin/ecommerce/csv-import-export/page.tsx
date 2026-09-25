@@ -6,7 +6,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 export default async function CsvImportExportPage() {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   return (

@@ -30,6 +30,10 @@ model User {
                          // NOTE: dashboard_access is checked at LOGIN time (see login.php) — a user can
                          // exist without it and simply be denied entry to the admin panel entirely.
   status        String   @default("active") // "active" | "inactive" — checked on every protected page
+  firstName     String?  @map("first_name") @db.VarChar(60)
+  lastName      String?  @map("last_name") @db.VarChar(60)
+  phone         String?  @unique @db.VarChar(20) // staff can log in with it (digits, e.g. 9876543210)
+  avatar        String?  @db.VarChar(255)        // uploads/… profile photo
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 

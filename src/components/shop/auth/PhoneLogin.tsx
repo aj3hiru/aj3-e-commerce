@@ -175,7 +175,7 @@ export function PhoneLogin({ firebase, countryCode, passwordLogin, redirectTo, s
 
   if (mode === "staff") {
     return (
-      <AuthCard heading="Email / username login" sub="For store staff, or customers who signed up with an email.">
+      <AuthCard heading="Email login" sub="For customers who signed up with an email and password.">
         <LoginForm bare redirectTo={redirectTo} storeName={storeName} />
         <button type="button" onClick={() => { setMode("phone"); setError(""); }} className={cn(btnOutline, "mt-3 h-12 w-full")}><Smartphone className="h-5 w-5" />Login with mobile number</button>
       </AuthCard>
@@ -254,8 +254,9 @@ export function PhoneLogin({ firebase, countryCode, passwordLogin, redirectTo, s
           <button type="button" onClick={() => { abort.current?.abort(); setMode("password"); setError(""); }} className={cn(btnOutline, "h-11 w-full")}><KeyRound className="h-5 w-5" />Login with password instead</button>
         )}
         <button type="button" onClick={() => { abort.current?.abort(); setMode("staff"); setError(""); }} className="w-full py-1 text-center text-[13px] font-medium text-[#616173] underline-offset-2 hover:underline">
-          Login with email / username (store staff)
+          Login with email &amp; password
         </button>
+        <a href="/staff/login" className="block py-1 text-center text-[12.5px] text-[#8b8ba3]">Store staff? <span className="font-semibold text-[var(--hp-accent)]">Staff login →</span></a>
       </div>
       <p className="mt-5 text-center text-[11px] leading-4 text-[#a7a9b6]">This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.</p>
     </AuthCard>

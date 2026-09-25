@@ -5,6 +5,7 @@ import { hashPassword } from "@/lib/password";
 import { logActivity } from "@/lib/activity-log";
 import { getRolePermissionDefaults } from "@/lib/permissions";
 import { isStaffRole, roleLabel } from "@/lib/roles";
+import { parseStaffProfile } from "@/lib/staff";
 
 /** Verified against the create_user action in user-manager.php. */
 export async function POST(req: NextRequest) {
@@ -40,14 +41,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Password must be at least 6 characters." }, { status: 400 });
   }
 
-  const dup = await prisma.user.findFirst({ where: { OR: [{ username }, { email }] } });
+  const prof = parseStaffProfile(body);
+  if ("error" in prof) return NextResponse.json({ success: false, message: prof.error }, { status: 400 });
+  const dup = await prisma.user.findFirst({ where: { OR: [{ username }, { email }, ...(prof.data.phone ? [{ phone: prof.data.phone }] : [])] } });
   if (dup) {
-    return NextResponse.json({ success: false, message: "This username or email is already in use." }, { status: 409 });
+    return NextResponse.json({ success: false, message: dup.phone && dup.phone === prof.data.phone ? "This mobile number is already used by another staff member." : "This username or email is already in use." }, { status: 409 });
   }
 
   const passwordHash = await hashPassword(password);
   const created = await prisma.user.create({
-    data: { username, email, passwordHash, role, permissions, status: "active" },
+    data: { username, email, passwordHash, role, permissions, status: "active", ...prof.data },
   });
 
   await logActivity(req, session.userId, "user_create", `Created user: ${username} (${roleLabel(role)})`);

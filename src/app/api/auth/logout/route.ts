@@ -59,5 +59,5 @@ export async function POST(req: NextRequest) {
   // the rest of the project, not the other way around. Going straight to
   // "/shop/login" avoids an unnecessary extra redirect hop through the
   // now-vestigial /admin/admin-login-portal route.
-  return NextResponse.redirect(new URL("/shop/login", req.url), 303);
+  return NextResponse.redirect(new URL("/staff/login", req.url), 303);
 }

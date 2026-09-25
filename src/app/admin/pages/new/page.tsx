@@ -6,7 +6,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 export default async function NewPagePage() {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "pages", "create")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   return (

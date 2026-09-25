@@ -27,7 +27,7 @@ const TABS: { key: Tab; label: string; hint: string; icon: typeof Home; perm: "m
  */
 export default async function CustomizerPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const session = await getAdminSession();
-  if (!session) redirect("/shop/login");
+  if (!session) redirect("/staff/login");
   const allowed = TABS.filter((t) => hasPermission(session.permissions, "ecommerce", t.perm));
   if (allowed.length === 0) redirect("/admin");
   const { tab: raw } = await searchParams;

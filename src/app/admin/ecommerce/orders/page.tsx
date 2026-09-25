@@ -30,7 +30,7 @@ interface PageProps {
 export default async function Orders2Page({ searchParams }: PageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "orders", "view")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const sp = await searchParams;

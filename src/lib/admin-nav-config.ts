@@ -161,7 +161,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Delivery",
     permission: "delivery.deliver",
     links: [
-      { href: "/admin/deliveries", label: "My Deliveries", icon: faTruck, permission: "delivery.deliver" },
+      { href: "/agent", label: "My Deliveries (app)", icon: faTruck, permission: "delivery.deliver" },
     ],
   },
 

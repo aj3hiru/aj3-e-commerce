@@ -8,13 +8,14 @@ import { changeOrderStatus, changePaymentStatus, logOrderEvent, WorkflowError } 
  *   start   — picked up: In Progress → Out for Delivery
  *   collect — payment received (Cash / UPI…) → Paid
  *   deliver — Delivered (only after the payment is Paid)
- *   fail    — couldn't deliver: back to In Progress with the reason
+ *   fail    — couldn't deliver now: back to In Progress with the reason (retry later)
+ *   cancel  — cancel the order with a reason (refused, not answering, damaged…)
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
   if (!session || !session.permissions.delivery?.deliver) return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
   const orderId = Number((await params).id);
-  const order = Number.isInteger(orderId) ? await prisma.ecomOrder.findUnique({ where: { id: orderId }, select: { deliveryAgentId: true, orderStatus: true } }) : null;
+  const order = Number.isInteger(orderId) ? await prisma.ecomOrder.findUnique({ where: { id: orderId }, select: { deliveryAgentId: true, orderStatus: true, paymentStatus: true } }) : null;
   if (!order || order.deliveryAgentId !== session.userId) return NextResponse.json({ success: false, message: "This order isn't assigned to you." }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
@@ -39,6 +40,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         if (order.orderStatus === "Out for Delivery") await changeOrderStatus(orderId, "In Progress", actor, { note: `Delivery attempt failed: ${note}` });
         else await logOrderEvent(prisma, orderId, actor, "note", null, null, `Delivery attempt failed: ${note}`);
         return NextResponse.json({ success: true, message: "Noted — the order desk will follow up." });
+      case "cancel":
+        if (note.length < 3) throw new WorkflowError("Choose or write the reason for cancelling.");
+        if (!["In Progress", "Out for Delivery"].includes(order.orderStatus)) throw new WorkflowError(`This order is ${order.orderStatus}.`);
+        if (order.paymentStatus === "Paid") throw new WorkflowError("The payment is already collected — ask the order desk to cancel and refund it.");
+        await changeOrderStatus(orderId, "Canceled", actor, { note: `Cancelled by delivery agent: ${note}` });
+        return NextResponse.json({ success: true, message: "Order cancelled." });
       default:
         throw new WorkflowError("Unknown action.");
     }

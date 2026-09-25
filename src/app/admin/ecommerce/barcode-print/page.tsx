@@ -31,7 +31,7 @@ export default async function BarcodePrint2Page({ searchParams }: PageProps) {
     (!hasPermission(session.permissions, "ecommerce", "manage_products") &&
       !hasPermission(session.permissions, "ecommerce", "manage_billing"))
   ) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const sp = await searchParams;

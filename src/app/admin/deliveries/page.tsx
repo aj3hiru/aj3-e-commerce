@@ -1,14 +1,13 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
-import { AgentDeliveries } from "@/components/admin/deliveries/AgentDeliveries";
 import { DeliveryBoard } from "@/components/admin/deliveries/DeliveryBoard";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
-import { loadAgentDeliveries, loadDeliveryBoard } from "@/lib/deliveries";
+import { loadDeliveryBoard } from "@/lib/deliveries";
 
 /** /admin/deliveries — a delivery agent's own deliveries; ?view=all is the deliveries board for managers. */
 export default async function DeliveriesPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const session = await getAdminSession();
-  if (!session) redirect("/shop/login");
+  if (!session) redirect("/staff/login");
   const { view } = await searchParams;
   const isAgent = hasPermission(session.permissions, "delivery", "deliver");
   const canBoard = hasPermission(session.permissions, "delivery", "view_all");
@@ -24,10 +23,5 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
       </AdminShell>
     );
   }
-  const data = await loadAgentDeliveries(session.userId);
-  return (
-    <AdminShell {...shell} pageTitle="My Deliveries" pageSubtitle="Navigate, collect the payment, then mark delivered">
-      <AgentDeliveries active={data.active} done={data.done} stats={data.stats} />
-    </AdminShell>
-  );
+  redirect("/agent"); // delivery agents use their own app
 }

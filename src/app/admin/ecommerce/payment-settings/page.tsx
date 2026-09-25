@@ -48,7 +48,7 @@ const DESCRIPTIONS: Record<string, string> = {
 export default async function PaymentSettings2Page() {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const rows = await prisma.ecomPaymentSettings.findMany();

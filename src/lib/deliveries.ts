@@ -46,24 +46,6 @@ function toCard(o: Row, names: Map<string, string>): DeliveryCard {
   };
 }
 
-/** A delivery agent's screen: what to deliver now, and today's numbers. */
-export async function loadAgentDeliveries(agentId: number) {
-  const today = istTodayStart();
-  const [active, done, collected, names] = await Promise.all([
-    prisma.ecomOrder.findMany({ where: { deliveryAgentId: agentId, orderStatus: { in: ["In Progress", "Out for Delivery"] } }, orderBy: [{ orderStatus: "desc" }, { assignedAt: "asc" }], select: SELECT }),
-    prisma.ecomOrder.findMany({ where: { deliveryAgentId: agentId, orderStatus: "Delivered", deliveredAt: { gte: today } }, orderBy: { deliveredAt: "desc" }, select: SELECT }),
-    prisma.ecomOrderPayment.findMany({ where: { createdAt: { gte: today }, order: { deliveryAgentId: agentId } }, select: { paymentMethod: true, amount: true } }),
-    methodNames(),
-  ]);
-  const cash = collected.filter((p) => p.paymentMethod === "Cash").reduce((n, p) => n + Number(p.amount), 0);
-  const other = collected.filter((p) => p.paymentMethod !== "Cash").reduce((n, p) => n + Number(p.amount), 0);
-  const toCollect = active.filter((o) => o.paymentStatus !== "Paid").reduce((n, o) => n + Number(o.totalAmount), 0);
-  return {
-    active: (active as Row[]).map((o) => toCard(o, names)), done: (done as Row[]).map((o) => toCard(o, names)),
-    stats: { toDeliver: active.length, deliveredToday: done.length, toCollect, cashToday: cash, otherToday: other },
-  };
-}
-
 /** The deliveries board: each agent's load and today's work, plus orders waiting for an agent. */
 export async function loadDeliveryBoard() {
   const today = istTodayStart();

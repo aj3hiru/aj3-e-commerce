@@ -26,7 +26,7 @@ import { prisma } from "@/lib/db";
 export default async function Categories2Page() {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_categories")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const rows = await prisma.ecomCategory.findMany({

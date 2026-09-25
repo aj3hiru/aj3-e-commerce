@@ -32,7 +32,7 @@ interface Products2PageProps {
 export default async function Products2Page({ searchParams }: Products2PageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const sp = await searchParams;

@@ -26,11 +26,12 @@ import { DEFAULT_PERMISSIONS, normalizePermissions, type PermissionsShape } from
 export default async function UserManager2Page() {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "users", "create")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const rows = await prisma.user.findMany({ orderBy: { id: "desc" } });
-  const users: User2Row[] = (rows as { id: number; username: string; email: string; role: string; status: string; permissions: unknown }[]).map((u) => ({
+  const users: User2Row[] = (rows as { id: number; username: string; email: string; role: string; status: string; permissions: unknown; firstName: string | null; lastName: string | null; phone: string | null; avatar: string | null }[]).map((u) => ({
+    firstName: u.firstName ?? "", lastName: u.lastName ?? "", phone: u.phone ?? "", avatar: u.avatar ?? "",
     id: u.id, username: u.username, email: u.email,
     role: u.role,
     status: u.status, permissions: { ...(JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS)) as PermissionsShape), ...(normalizePermissions(u.permissions, u.role) as unknown as PermissionsShape) },

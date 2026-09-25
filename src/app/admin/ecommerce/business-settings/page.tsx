@@ -13,7 +13,7 @@ interface BusinessSettingsPageProps {
 export default async function BusinessSettingsPage({ searchParams }: BusinessSettingsPageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
   const params = await searchParams;
   const biz = await prisma.ecomBusinessSettings.findFirst({ orderBy: { id: "asc" } });

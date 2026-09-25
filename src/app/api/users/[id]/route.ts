@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isStaffRole } from "@/lib/roles";
+import { parseStaffProfile } from "@/lib/staff";
+import { getRolePermissionDefaults } from "@/lib/permissions";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission, type AdminSession } from "@/lib/admin-auth";
 import { hashPassword } from "@/lib/password";
@@ -76,11 +78,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     (requestedRole !== "admin" || session.role === "admin");
   const role = canChangeRole ? requestedRole : target.role;
   const permissions =
-    !isSelf && hasPermission(session.permissions, "users", "manage_permissions") ? body.permissions : undefined;
+    !isSelf && hasPermission(session.permissions, "users", "manage_permissions") && body.permissions
+      ? body.permissions
+      : role !== target.role ? getRolePermissionDefaults(role) : undefined; // a new role starts from its preset
 
-  const dup = await prisma.user.findFirst({ where: { OR: [{ username }, { email }], id: { not: userId } } });
+  const prof = parseStaffProfile(body);
+  if ("error" in prof) return NextResponse.json({ success: false, message: prof.error }, { status: 400 });
+  const dup = await prisma.user.findFirst({ where: { OR: [{ username }, { email }, ...(prof.data.phone ? [{ phone: prof.data.phone }] : [])], id: { not: userId } } });
   if (dup) {
-    return NextResponse.json({ success: false, message: "Username or email already exists." }, { status: 409 });
+    return NextResponse.json({ success: false, message: dup.phone && dup.phone === prof.data.phone ? "This mobile number is already used by another staff member." : "Username or email already exists." }, { status: 409 });
   }
 
   try {
@@ -90,6 +96,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         username,
         email,
         role,
+        ...prof.data,
         ...(permissions ? { permissions } : {}),
         ...(password.length >= 6 ? { passwordHash: await hashPassword(password) } : {}),
       },

@@ -9,5 +9,5 @@ import { redirect } from "next/navigation";
  * Kept as a route purely so old bookmarks/links to this URL keep working.
  */
 export default function AdminLoginPortalRedirect() {
-  redirect("/shop/login");
+  redirect("/staff/login");
 }

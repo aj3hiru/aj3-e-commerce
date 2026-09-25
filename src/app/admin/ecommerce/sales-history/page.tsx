@@ -32,7 +32,7 @@ interface SalesHistory2PageProps {
 export default async function SalesHistory2Page({ searchParams }: SalesHistory2PageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_billing")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const sp = await searchParams;

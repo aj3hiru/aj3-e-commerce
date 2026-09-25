@@ -39,7 +39,7 @@ interface AddProduct2PageProps {
 export default async function AddProduct2Page({ searchParams }: AddProduct2PageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const sp = await searchParams;

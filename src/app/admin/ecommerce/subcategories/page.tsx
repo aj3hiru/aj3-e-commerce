@@ -16,7 +16,7 @@ const SUCCESS_MESSAGES: Record<string, string> = {
 export default async function SubcategoriesPage({ searchParams }: SubcategoriesPageProps) {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_categories")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
   const params = await searchParams;
 

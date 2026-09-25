@@ -33,7 +33,7 @@ import { getSiteFiles } from "@/lib/file-manager2";
 export default async function FileManager2Page() {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "files", "access_file_manager")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const files = await getSiteFiles();

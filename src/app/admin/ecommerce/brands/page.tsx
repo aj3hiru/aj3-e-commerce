@@ -21,7 +21,7 @@ import { prisma } from "@/lib/db";
 export default async function Brands2Page() {
   const session = await getAdminSession();
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_products")) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   const rows = await prisma.ecomBrand.findMany({

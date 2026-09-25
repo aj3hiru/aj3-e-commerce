@@ -32,7 +32,7 @@ export default async function Dashboard2Page({ searchParams }: Dashboard2PagePro
   const session = await getAdminSession();
   // Same gate as the original dashboard: top-level `dashboard_access`.
   if (!session || !(session.permissions as unknown as Record<string, boolean>).dashboard_access) {
-    redirect("/shop/login");
+    redirect("/staff/login");
   }
 
   // Each role gets its own dashboard; admins and store managers keep the full store dashboard.
@@ -107,7 +107,7 @@ async function roleDashboard(session: NonNullable<Awaited<ReturnType<typeof getA
   const shell = { siteName: "EduMint24", username: session.username, role: session.role, permissions: p };
   const name = session.username;
 
-  if (role === "delivery_agent" || (p.delivery?.deliver && !p.orders?.view && !p.ecommerce?.manage_billing)) redirect("/admin/deliveries");
+  if (role === "delivery_agent" || (p.delivery?.deliver && !p.orders?.view && !p.ecommerce?.manage_billing)) redirect("/agent");
 
   if (role === "order_manager" || (p.orders?.view && !p.ecommerce?.manage_billing && !p.ecommerce?.manage_products)) {
     const d = await orderDeskData();

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { parseCampaignInput, checkCampaignRefs } from "@/lib/campaign-validate";
+import { sanitizeCampaignHome } from "@/types/campaign-home";
 import { lookupRefs } from "@/lib/campaign-refs";
 import { clearCampaignCache } from "@/lib/campaign-pricing";
 
@@ -13,7 +14,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
   }
 
-  const parsed = parseCampaignInput(await req.json().catch(() => null), new Date(), true);
+  const body = await req.json().catch(() => null);
+  const parsed = parseCampaignInput(body, new Date(), true);
+  const home = sanitizeCampaignHome(body?.home);
   if (!parsed.ok) return NextResponse.json({ success: false, message: parsed.message, field: parsed.field }, { status: 400 });
   const c = parsed.value;
 
@@ -24,7 +27,7 @@ export async function POST(req: NextRequest) {
     const created = await prisma.ecomCampaign.create({
       data: {
         name: c.name, scope: c.scope, discountType: c.discountType, discountValue: c.discountValue,
-        startsAt: c.startsAt, endsAt: c.endsAt, isPaused: c.isPaused,
+        startsAt: c.startsAt, endsAt: c.endsAt, isPaused: c.isPaused, homeDisplay: home as unknown as object,
         targets: { create: c.targets.map((t) => ({ targetType: t.targetType, targetId: t.targetId, fixedPrice: t.fixedPrice })) },
       },
       select: { id: true },

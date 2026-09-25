@@ -3,8 +3,8 @@ import {
   faHome, faCashRegister, faHistory, faBoxes, faPlusSquare, faCopyright, faBoxOpen,
   faPercent, faFileCsv, faStarHalfAlt, faBarcode, faTags, faList, faListUl, faReceipt,
   faTruck, faUserFriends, faPercentage,
-  faCreditCard, faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
-  faSignOutAlt, faChartLine, faFileAlt, faBars, faGripLines, faBox, faMobileAlt,
+  faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
+  faSignOutAlt, faChartLine, faFileAlt, faBars, faGripLines, faBox,
   faBrush, faCog, faUsersCog,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -48,6 +48,8 @@ export interface NavLink {
   /** Rendered as a POST form instead of a link — see AdminSidebar. */
   isLogout?: boolean;
   permission: NavPermissionPath;
+  /** Other pages that belong to this entry (they highlight it too). */
+  alsoActive?: string[];
   /** Used to compute the "active" state beyond a simple pathname match (e.g. orders.php?type=Pending) */
   matchQuery?: { key: string; value: string };
 }
@@ -171,10 +173,9 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Settings",
     permission: null,
     links: [
-      { href: "/admin/ecommerce/business-settings", label: "Business Settings", icon: faBuilding, permission: "ecommerce.manage_payment" },
-      { href: "/admin/ecommerce/payment-settings", label: "Payment Methods", icon: faCreditCard, permission: "ecommerce.manage_payment" },
-      { href: "/admin/ecommerce/tax-settings", label: "GST / Tax Rates", icon: faPercent, permission: "ecommerce.manage_products" },
-      { href: "/admin/ecommerce/login-settings", label: "Login & OTP", icon: faMobileAlt, permission: "ecommerce.manage_payment" },
+      // Payment Methods, GST / Tax Rates and Login & OTP live inside Business Settings' own menu.
+      { href: "/admin/ecommerce/business-settings", label: "Business Settings", icon: faBuilding, permission: "ecommerce.manage_payment",
+        alsoActive: ["/admin/ecommerce/payment-settings", "/admin/ecommerce/tax-settings", "/admin/ecommerce/login-settings"] },
       { href: "/admin/user-manager", label: "Staff & Roles", icon: faUsersCog, permission: "users.create" },
       {
         href: "#system",

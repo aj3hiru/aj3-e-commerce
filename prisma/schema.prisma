@@ -875,6 +875,7 @@ model EcomCampaign {
   startsAt      DateTime? @map("starts_at")                      // empty = starts immediately
   endsAt        DateTime? @map("ends_at")                        // empty = no end date
   isPaused      Boolean   @default(false) @map("is_paused")
+  homeDisplay   Json?     @map("home_display")                   // homepage banner: { show, template, title, subtitle, color }
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 

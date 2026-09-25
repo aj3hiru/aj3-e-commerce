@@ -61,7 +61,7 @@ export function Pager({ page, pageCount, onPage, label }: { page: number; pageCo
 }
 
 /** A centred dialog over a dimmed page. Click outside or press Escape to close. */
-export function Modal({ title, onClose, children, wide, footer }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean; footer?: React.ReactNode }) {
+export function Modal({ title, onClose, children, wide, xwide, footer }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean; xwide?: boolean; footer?: React.ReactNode }) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => {
@@ -76,7 +76,7 @@ export function Modal({ title, onClose, children, wide, footer }: { title: strin
   }, []);
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:items-center" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label={title} className={cn("my-4 flex max-h-[calc(100vh-32px)] w-full flex-col rounded-xl bg-white shadow-2xl", wide ? "max-w-[820px]" : "max-w-[440px]")}>
+      <div role="dialog" aria-modal="true" aria-label={title} className={cn("my-4 flex max-h-[calc(100vh-32px)] w-full flex-col rounded-xl bg-white shadow-2xl", xwide ? "max-w-[1180px]" : wide ? "max-w-[820px]" : "max-w-[440px]")}>
         <div className="flex items-center justify-between border-b border-admin-gray-100 px-5 py-4">
           <h2 className="text-lg font-semibold text-admin-gray-900">{title}</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-md p-1 text-admin-gray-500 hover:bg-admin-gray-100"><X className="h-5 w-5" /></button>

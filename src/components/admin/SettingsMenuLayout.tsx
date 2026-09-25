@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,12 +11,14 @@ export interface SettingsMenuItem {
   icon: LucideIcon;
   /** Optional one-line hint shown under the panel heading. */
   hint?: string;
+  /** A section that is its own page (Payment Methods, GST…): the item navigates. */
+  href?: string;
 }
 
 interface SettingsMenuLayoutProps {
   items: SettingsMenuItem[];
   active: string;
-  onSelect: (key: string) => void;
+  onSelect?: (key: string) => void;
   children: React.ReactNode;
 }
 
@@ -42,25 +45,23 @@ export function SettingsMenuLayout({ items, active, onSelect, children }: Settin
           {items.map((item) => {
             const isActive = item.key === active;
             const Icon = item.icon;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => onSelect(item.key)}
-                aria-current={isActive ? "true" : undefined}
-                className={cn(
+            const cls = cn(
                   "relative flex shrink-0 items-center gap-3 whitespace-nowrap rounded-full border px-3.5 py-2 text-left text-[14px] transition-colors lg:mb-0.5 lg:w-full lg:rounded-[8px] lg:border-0 lg:py-2.5",
                   isActive
                     ? "border-[#9f2089] bg-[#fdf0f9] font-semibold text-[#9f2089]"
                     : "border-[#dcdce6] bg-white font-medium text-[#616173] hover:bg-[#f8f9fe] hover:text-[#353543]"
-                )}
-              >
+                );
+            const inner = (
+              <>
                 {isActive && <span aria-hidden className="absolute inset-y-2 left-0 hidden w-[3px] rounded-r bg-[#9f2089] lg:block" />}
                 <Icon className={cn("h-[18px] w-[18px] shrink-0", isActive ? "text-[#9f2089]" : "text-[#8b8ba3]")} strokeWidth={1.8} />
                 <span className="flex-1">{item.label}</span>
                 {isActive && <ChevronRight className="hidden h-4 w-4 shrink-0 lg:block" />}
-              </button>
+              </>
             );
+            return item.href && !isActive
+              ? <Link key={item.key} href={item.href} className={cls}>{inner}</Link>
+              : <button key={item.key} type="button" onClick={() => onSelect?.(item.key)} aria-current={isActive ? "true" : undefined} className={cls}>{inner}</button>;
           })}
         </div>
       </nav>

@@ -13,6 +13,7 @@ import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { BarcodeProduct, Barcodes2Data } from "@/lib/barcodes2";
 import { money } from "@/components/admin/campaigns2/format";
 import { IconAction, PillButton } from "@/components/admin/ui/buttons";
+import { PRESETS, DEFAULT_PRESET, cleanLayout, pageWidth, presetLayout, rowsPerPage, type LabelLayout } from "./labelLayouts";
 
 const PAGE_PATH = "/admin/ecommerce/barcode-print";
 const EVT_PRINT = "barcodes2:print";
@@ -44,19 +45,16 @@ export interface LabelOptions {
   showUnit: boolean;
   showFooter: boolean;
   usePriceWithOffer: boolean;
-  size: "small" | "medium" | "large";
-  perRow: number;
+  /** Label stock: a preset id, or "custom". */
+  preset: string;
+  layout: LabelLayout;
 }
 const DEFAULT_OPTIONS: LabelOptions = {
   showName: true, showBarcode: true, showCode: true, showPrice: true, showUnit: true, showFooter: true,
-  usePriceWithOffer: true, size: "medium", perRow: 4,
+  usePriceWithOffer: true, preset: DEFAULT_PRESET.id, layout: presetLayout(DEFAULT_PRESET.id),
 };
-
-const SIZES = {
-  small: { w: 150, barH: 26, name: 9, code: 8, price: 12, pad: 5 },
-  medium: { w: 200, barH: 34, name: 11, code: 9, price: 15, pad: 8 },
-  large: { w: 260, barH: 46, name: 13, code: 11, price: 19, pad: 10 },
-} as const;
+/** Label setup is per computer (each has its own printer), so it's remembered in this browser. */
+const OPTIONS_KEY = "bc2-label-options-v2";
 
 interface Line {
   key: string;
@@ -72,6 +70,20 @@ export function Barcodes2Body({ data }: { data: Barcodes2Data }) {
 
   const [options, setOptions] = useState<LabelOptions>(DEFAULT_OPTIONS);
   const setOpt = <K extends keyof LabelOptions>(k: K, v: LabelOptions[K]) => setOptions((o) => ({ ...o, [k]: v }));
+  const setLayout = (patch: Partial<LabelLayout>) => setOptions((o) => ({ ...o, preset: "custom", layout: cleanLayout({ ...o.layout, ...patch }) }));
+  const setNudge = (patch: Partial<LabelLayout>) => setOptions((o) => ({ ...o, layout: cleanLayout({ ...o.layout, ...patch }) }));
+  const optionsLoaded = useRef(false);
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(OPTIONS_KEY) ?? "null");
+      if (saved && saved.layout) setOptions({ ...DEFAULT_OPTIONS, ...saved, layout: cleanLayout({ ...DEFAULT_OPTIONS.layout, ...saved.layout }) });
+    } catch { /* storage blocked */ }
+    optionsLoaded.current = true;
+  }, []);
+  useEffect(() => {
+    if (!optionsLoaded.current) return;
+    try { window.localStorage.setItem(OPTIONS_KEY, JSON.stringify(options)); } catch { /* ignore */ }
+  }, [options]);
 
   // The print list. Starts with whatever another page asked for (?ids=), else
   // everything added or changed in the range — usually "today".
@@ -97,6 +109,7 @@ export function Barcodes2Body({ data }: { data: Barcodes2Data }) {
   }, [rangeKey, data.products]);
 
   const totalLabels = lines.reduce((s, l) => s + l.qty, 0);
+  const printLabels = useMemo(() => lines.flatMap((l) => (l.product.barcode ? Array.from({ length: l.qty }, (_, i) => ({ key: `${l.key}-${i}`, product: l.product })) : [])), [lines]);
   const noBarcode = lines.filter((l) => !l.product.barcode).length;
 
   const visibleLines = useMemo(() => {
@@ -142,12 +155,15 @@ export function Barcodes2Body({ data }: { data: Barcodes2Data }) {
       {/* JsBarcode draws the bars; until it loads the labels show a plain placeholder. */}
       <Script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js" strategy="afterInteractive" onReady={() => setJsBarcodeReady(true)} onLoad={() => setJsBarcodeReady(true)} />
       <style>{`
+        @page { size: ${options.layout.stock === "a4" ? "A4" : `${pageWidth(options.layout)}mm ${options.layout.h + options.layout.gapY}mm`}; margin: 0; }
+        #bc2-print-root { display: none; }
         @media print {
-          body * { visibility: hidden !important; }
-          #bc2-sheet, #bc2-sheet * { visibility: visible !important; }
-          #bc2-sheet { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; border: 0 !important; }
-          .bc2-noprint { display: none !important; }
-          .bc2-label { border: none !important; page-break-inside: avoid; }
+          html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+          body > *:not(#bc2-print-root) { display: none !important; }
+          #bc2-print-root { display: block !important; }
+          .bc2-page { break-after: page; page-break-after: always; }
+          .bc2-page:last-child { break-after: auto; page-break-after: auto; }
+          .bc2-label { outline: none !important; }
         }
       `}</style>
 
@@ -179,33 +195,22 @@ export function Barcodes2Body({ data }: { data: Barcodes2Data }) {
                     )}
                   </div>
                   <div className="flex flex-wrap items-center gap-3 border-t border-admin-gray-100 pt-3">
-                    <label className="flex items-center gap-2 text-sm text-admin-gray-700">
-                      Size
-                      <span className="relative">
-                        <select value={options.size} onChange={(e) => setOpt("size", e.target.value as LabelOptions["size"])} aria-label="Label size"
-                          className="h-9 appearance-none rounded-[0.375rem] border border-[#dee2e6] bg-white pl-3 pr-8 text-sm focus:border-[#86b7fe] focus:outline-none">
-                          <option value="small">Small</option>
-                          <option value="medium">Medium</option>
-                          <option value="large">Large</option>
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-600" />
-                      </span>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-admin-gray-700">
-                      Per row
-                      <span className="relative">
-                        <select value={options.perRow} onChange={(e) => setOpt("perRow", Number(e.target.value))} aria-label="Labels per row"
-                          className="h-9 appearance-none rounded-[0.375rem] border border-[#dee2e6] bg-white pl-3 pr-8 text-sm focus:border-[#86b7fe] focus:outline-none">
-                          {[2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-600" />
-                      </span>
+                    <label className="flex min-w-[260px] flex-1 flex-col gap-1 text-sm text-admin-gray-700">
+                      Label stock / printer
+                      <select value={options.preset} aria-label="Label stock"
+                        onChange={(e) => e.target.value === "custom" ? setOpt("preset", "custom") : setOptions((o) => ({ ...o, preset: e.target.value, layout: presetLayout(e.target.value) }))}
+                        className="h-10 rounded-[8px] border border-[#dee2e6] bg-white pl-3 text-sm focus:border-[#86b7fe] focus:outline-none">
+                        <optgroup label="Label printer (roll)">{PRESETS.filter((p) => p.layout.stock === "roll").map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>
+                        <optgroup label="A4 label sheet">{PRESETS.filter((p) => p.layout.stock === "a4").map((p) => <option key={p.id} value={p.id}>{p.name} — {p.hint}</option>)}</optgroup>
+                        <option value="custom">Custom size…</option>
+                      </select>
                     </label>
                     <PillButton variant="secondary" onClick={() => setOptions(DEFAULT_OPTIONS)}>
                       <RefreshCw className="h-3.5 w-3.5" /> Reset
                     </PillButton>
                   </div>
-                  <p className="text-xs text-admin-gray-500">The preview uses the first product in your list, so what you see is what prints.</p>
+                  <LayoutFields layout={options.layout} custom={options.preset === "custom"} onChange={setLayout} onNudge={setNudge} />
+                  <p className="text-xs text-admin-gray-500">The preview uses the first product in your list, at its real printed size.</p>
                 </div>
               </div>
             </section>
@@ -302,21 +307,23 @@ export function Barcodes2Body({ data }: { data: Barcodes2Data }) {
         )}
       </div>
 
-      {/* The sheet that actually prints. */}
+      {/* The sheet: pages exactly as they will print (dashed = label edges, not printed). */}
       <section id="bc2-sheet" className="rounded-xl border border-admin-gray-200 bg-white p-5 shadow-sm sm:p-7">
-        <h2 className="bc2-noprint mb-4 text-xl font-semibold text-admin-gray-900">Sheet</h2>
+        <h2 className="bc2-noprint mb-1 text-xl font-semibold text-admin-gray-900">Sheet</h2>
+        <p className="bc2-noprint mb-4 text-xs text-admin-gray-500">
+          {options.layout.stock === "roll" ? `Each row prints as one ${pageWidth(options.layout).toFixed(1)} × ${(options.layout.h + options.layout.gapY).toFixed(1)} mm page.` : `A4 pages, ${options.layout.cols * rowsPerPage(options.layout)} labels each.`}
+          {" "}In the print dialog choose your label printer, paper size = this size, Margins = None, Scale = 100% (no “Fit to page”).
+        </p>
         {lines.length === 0 ? (
           <p className="bc2-noprint py-6 text-center text-sm text-admin-gray-500">Labels appear here once you add products.</p>
         ) : (
-          <div className="flex flex-wrap gap-3" style={{ maxWidth: options.perRow * (SIZES[options.size].w + 12) }}>
-            {lines.flatMap((l) =>
-              l.product.barcode
-                ? Array.from({ length: l.qty }, (_, i) => <Label key={`${l.key}-${i}`} product={l.product} options={options} footer={data.footerText} ready={jsBarcodeReady} />)
-                : []
-            )}
-          </div>
+          <div className="overflow-x-auto"><Sheet labels={printLabels} options={options} footer={data.footerText} ready={jsBarcodeReady} screen /></div>
         )}
       </section>
+      {typeof document !== "undefined" && lines.length > 0 && createPortal(
+        <div id="bc2-print-root"><Sheet labels={printLabels} options={options} footer={data.footerText} ready={jsBarcodeReady} /></div>,
+        document.body
+      )}
 
       {toast && createPortal(
         <div role="status" className={cn("bc2-noprint fixed bottom-5 right-5 z-[2100] flex max-w-md items-start gap-3 rounded-[0.5rem] border px-4 py-3 text-sm shadow-lg", toast.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800")}>
@@ -339,48 +346,117 @@ function priceOf(p: BarcodeProduct, useOffer: boolean) {
 
 function Label({ product, options, footer, ready, preview }: { product: BarcodeProduct; options: LabelOptions; footer: string; ready: boolean; preview?: boolean }) {
   const svg = useRef<SVGSVGElement>(null);
-  const s = SIZES[options.size];
+  const { w, h } = options.layout;
+  // Everything scales with the label: a 15 mm label gets one line of small text, a 50 mm one gets room to breathe.
+  const small = h < 20;
+  const lines = [options.showName, options.showCode && !!product.barcode, options.showPrice, options.showFooter && footer.trim() !== ""].filter(Boolean).length;
+  const barH = Math.max(4, h * (small ? 0.42 : 0.4) - (lines > 3 ? h * 0.06 : 0));
+  const fs = { name: Math.min(3.4, h * (small ? 0.16 : 0.12), w * 0.075), code: Math.min(2.8, h * 0.1), price: Math.min(4.6, h * (small ? 0.19 : 0.15), w * 0.1), foot: Math.min(2.4, h * 0.085) };
 
   useEffect(() => {
-    const w = window as unknown as { JsBarcode?: (el: SVGSVGElement, text: string, opts: Record<string, unknown>) => void };
-    if (!options.showBarcode || !svg.current || !product.barcode) return;
-    if (!w.JsBarcode) return;
+    const win = window as unknown as { JsBarcode?: (el: SVGSVGElement, text: string, opts: Record<string, unknown>) => void };
+    if (!options.showBarcode || !svg.current || !product.barcode || !win.JsBarcode) return;
     try {
-      w.JsBarcode(svg.current, product.barcode, {
-        format: "CODE128",
-        width: options.size === "small" ? 1 : options.size === "large" ? 1.8 : 1.3,
-        height: s.barH,
-        displayValue: false, // the number is drawn separately so it can be switched off
-        margin: 0,
-      });
+      win.JsBarcode(svg.current, product.barcode, { format: "CODE128", width: 2, height: 60, displayValue: false, margin: 0 });
+      // Stretch the drawn bars to the label (ratios between bars are kept, so it still scans).
+      svg.current.setAttribute("preserveAspectRatio", "none");
     } catch {
       // An odd barcode value can't be drawn; the number below still prints.
     }
-  }, [product.barcode, options.showBarcode, options.size, s.barH, ready]);
+  }, [product.barcode, options.showBarcode, ready]);
 
   return (
-    <div className="bc2-label" style={{ width: s.w, border: "1px dashed #ccc", padding: s.pad, textAlign: "center", fontFamily: "Arial, Helvetica, sans-serif", background: "#fff" }}>
+    <div className="bc2-label" style={{ width: `${w}mm`, height: `${h}mm`, padding: `${Math.min(1.5, h * 0.06)}mm ${Math.min(2, w * 0.05)}mm`, boxSizing: "border-box", overflow: "hidden", outline: preview !== undefined ? "1px dashed #c8c8d4" : undefined, outlineOffset: "-0.5px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: `${Math.min(0.6, h * 0.02)}mm`, textAlign: "center", fontFamily: "Arial, Helvetica, sans-serif", background: "#fff", color: "#000", lineHeight: 1.1 }}>
       {options.showName && (
-        <div style={{ fontSize: s.name, fontWeight: 700, lineHeight: 1.2, marginBottom: 3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-          {product.name}
-        </div>
+        <div style={{ fontSize: `${fs.name}mm`, fontWeight: 700, width: "100%", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: small ? 1 : 2, WebkitBoxOrient: "vertical" }}>{product.name}</div>
       )}
       {options.showBarcode && (
         product.barcode
-          ? <svg ref={svg} style={{ display: "block", margin: "0 auto", maxWidth: "100%" }} />
-          : <div style={{ fontSize: s.code, color: "#b91c1c", padding: "6px 0" }}>{preview ? "No barcode on this product" : "No barcode"}</div>
+          ? <svg ref={svg} style={{ display: "block", width: "92%", height: `${barH}mm`, flexShrink: 0 }} />
+          : <div style={{ fontSize: `${fs.code}mm`, color: "#b91c1c" }}>{preview ? "No barcode on this product" : "No barcode"}</div>
       )}
       {options.showCode && product.barcode && (
-        <div style={{ fontSize: s.code, letterSpacing: 1, marginTop: 2, fontFamily: "monospace" }}>{product.barcode}</div>
+        <div style={{ fontSize: `${fs.code}mm`, letterSpacing: "0.2mm", fontFamily: "monospace" }}>{product.barcode}</div>
       )}
       {options.showPrice && (
-        <div style={{ fontSize: s.price, fontWeight: 700, marginTop: 3 }}>
+        <div style={{ fontSize: `${fs.price}mm`, fontWeight: 700 }}>
           {money(priceOf(product, options.usePriceWithOffer))}
-          {options.showUnit && product.unit ? <span style={{ fontSize: s.code, fontWeight: 400 }}> / {product.unit}</span> : null}
+          {options.showUnit && product.unit ? <span style={{ fontSize: `${fs.code}mm`, fontWeight: 400 }}> / {product.unit}</span> : null}
         </div>
       )}
-      {options.showFooter && footer.trim() !== "" && (
-        <div style={{ fontSize: s.code - 1, color: "#555", marginTop: 2 }}>{footer}</div>
+      {options.showFooter && footer.trim() !== "" && !small && (
+        <div style={{ fontSize: `${fs.foot}mm`, color: "#333", width: "100%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{footer}</div>
+      )}
+    </div>
+  );
+}
+
+/* ───────────────────────── the printed pages ───────────────────────── */
+
+function Sheet({ labels, options, footer, ready, screen }: { labels: { key: string; product: BarcodeProduct }[]; options: LabelOptions; footer: string; ready: boolean; screen?: boolean }) {
+  const l = options.layout;
+  const perPage = l.cols * rowsPerPage(l);
+  const pages: (typeof labels)[] = [];
+  for (let i = 0; i < labels.length; i += perPage) pages.push(labels.slice(i, i + perPage));
+  const pageH = l.stock === "a4" ? 297 : l.h + l.gapY;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: screen ? 12 : 0 }}>
+      {pages.map((page, pi) => (
+        <div key={pi} className="bc2-page" style={{ width: `${pageWidth(l)}mm`, height: `${pageH}mm`, boxSizing: "border-box", overflow: "hidden", background: "#fff", position: "relative", boxShadow: screen ? "0 0 0 1px #e4e4ee, 0 4px 12px rgba(0,0,0,0.06)" : undefined }}>
+          <div style={{
+            position: "absolute", left: `${l.marginX + l.offsetX}mm`, top: `${(l.stock === "a4" ? l.marginY : l.gapY / 2) + l.offsetY}mm`,
+            display: "grid", gridTemplateColumns: `repeat(${l.cols}, ${l.w}mm)`, columnGap: `${l.gapX}mm`, rowGap: `${l.gapY}mm`,
+          }}>
+            {page.map((x) => <Label key={x.key} product={x.product} options={options} footer={footer} ready={ready} preview={screen ? false : undefined} />)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Custom sizes, and a fine-tune for printers that print slightly off. */
+function LayoutFields({ layout, custom, onChange, onNudge }: { layout: LabelLayout; custom: boolean; onChange: (p: Partial<LabelLayout>) => void; onNudge: (p: Partial<LabelLayout>) => void }) {
+  const [open, setOpen] = useState(custom);
+  useEffect(() => { if (custom) setOpen(true); }, [custom]);
+  const num = (label: string, k: keyof LabelLayout, step = 0.5, nudge = false) => (
+    <label className="flex flex-col gap-1 text-xs font-medium text-admin-gray-600">
+      {label}
+      <input type="number" step={step} value={layout[k] as number} onChange={(e) => (nudge ? onNudge : onChange)({ [k]: Number(e.target.value) } as Partial<LabelLayout>)}
+        className="h-9 w-full rounded-[8px] border border-[#dee2e6] bg-white px-2.5 text-sm text-admin-gray-800 focus:border-[#86b7fe] focus:outline-none" />
+    </label>
+  );
+  return (
+    <div className="rounded-[8px] border border-admin-gray-200 bg-admin-gray-50 p-3">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-sm font-semibold text-admin-gray-800">
+        Sizes &amp; alignment (mm)
+        <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3">
+          <div className="flex gap-2">
+            {(["roll", "a4"] as const).map((st) => (
+              <button key={st} type="button" onClick={() => onChange({ stock: st })} aria-pressed={layout.stock === st}
+                className={cn("h-9 flex-1 rounded-[8px] border text-sm font-medium", layout.stock === st ? "border-blue-600 bg-blue-50 text-blue-700" : "border-[#dee2e6] bg-white text-admin-gray-600")}>
+                {st === "roll" ? "Label printer (roll)" : "A4 sheet"}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {num("Labels across", "cols", 1)}
+            {num("Label width", "w")}
+            {num("Label height", "h")}
+            {num("Gap across", "gapX")}
+            {num("Gap between rows", "gapY")}
+            {num(layout.stock === "roll" ? "Side margin" : "Left margin", "marginX")}
+            {layout.stock === "a4" && num("Top margin", "marginY")}
+          </div>
+          <div className="grid grid-cols-2 gap-2 border-t border-admin-gray-200 pt-3">
+            {num("Shift right (−left)", "offsetX", 0.5, true)}
+            {num("Shift down (−up)", "offsetY", 0.5, true)}
+          </div>
+          <p className="text-xs text-admin-gray-500">Printed a little off? Print one row, then shift here by the difference.</p>
+        </div>
       )}
     </div>
   );

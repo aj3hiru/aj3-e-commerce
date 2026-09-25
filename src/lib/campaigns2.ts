@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { sanitizeCampaignHome, type CampaignHome } from "@/types/campaign-home";
 import { campaignState, type CampaignDef } from "@/lib/campaign-core";
 import { priceRows, toCampaignDef } from "@/lib/campaign-pricing";
 
@@ -65,6 +66,8 @@ export interface CampaignRowData {
   endsAt: string | null;
   isPaused: boolean;
   createdAt: string;
+  /** "Show on homepage" banner settings. */
+  home: CampaignHome;
   targets: CampaignTargetData[];
   /** All-time totals of completed sales made under this campaign. */
   stats: CampaignStats;
@@ -147,7 +150,7 @@ export async function getCampaigns2Data(filters: RangeFilters): Promise<Campaign
   // 1) The campaigns. If this fails the tables don't exist yet (setup step not run).
   let campaignRows: {
     id: number; name: string; scope: string; discountType: string; discountValue: unknown; startsAt: Date | null; endsAt: Date | null;
-    isPaused: boolean; createdAt: Date; targets: { targetType: string; targetId: number; fixedPrice: unknown }[];
+    isPaused: boolean; createdAt: Date; homeDisplay?: unknown; targets: { targetType: string; targetId: number; fixedPrice: unknown }[];
   }[];
   try {
     campaignRows = await prisma.ecomCampaign.findMany({ orderBy: { id: "desc" }, include: { targets: { orderBy: { id: "asc" } } } });
@@ -241,6 +244,7 @@ export async function getCampaigns2Data(filters: RangeFilters): Promise<Campaign
       endsAt: c.endsAt ? c.endsAt.toISOString() : null,
       isPaused: c.isPaused,
       createdAt: c.createdAt.toISOString(),
+      home: sanitizeCampaignHome(c.homeDisplay),
       targets: c.targets.map((t) => ({
         type: t.targetType as CampaignTargetData["type"],
         id: t.targetId,

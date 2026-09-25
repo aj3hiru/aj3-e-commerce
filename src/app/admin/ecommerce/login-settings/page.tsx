@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { storeHostOf } from "@/lib/hosts";
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { SettingsHub } from "@/components/admin/SettingsHub";
 import { LoginSettingsForm } from "@/components/admin/login-settings/LoginSettingsForm";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { getAuthSettings } from "@/lib/auth-settings";
@@ -15,9 +16,11 @@ export default async function LoginSettingsPage() {
   const origin = host ? `${h.get("x-forwarded-proto") ?? "https"}://${storeHostOf(host)}` : "";
 
   return (
-    <AdminShell siteName="EduMint24" pageTitle="Login & OTP" pageSubtitle="Let customers log in and sign up with their mobile number and an OTP"
+    <AdminShell siteName="EduMint24" pageTitle="Business Settings" pageSubtitle="Login & OTP — how customers log in and sign up"
       username={session.username} role={session.role} permissions={session.permissions}>
-      <LoginSettingsForm initial={settings} origin={origin} />
+      <SettingsHub active="login" permissions={session.permissions}>
+        <LoginSettingsForm initial={settings} origin={origin} />
+      </SettingsHub>
     </AdminShell>
   );
 }

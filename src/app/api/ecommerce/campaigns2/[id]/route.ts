@@ -4,6 +4,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { campaignState } from "@/lib/campaign-core";
 import { parseCampaignInput, checkCampaignRefs } from "@/lib/campaign-validate";
+import { sanitizeCampaignHome } from "@/types/campaign-home";
 import { lookupRefs } from "@/lib/campaign-refs";
 import { clearCampaignCache } from "@/lib/campaign-pricing";
 
@@ -30,7 +31,9 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   const g = await guard(req, ctx);
   if ("error" in g) return g.error;
 
-  const parsed = parseCampaignInput(await req.json().catch(() => null), new Date(), false);
+  const body = await req.json().catch(() => null);
+  const parsed = parseCampaignInput(body, new Date(), false);
+  const home = sanitizeCampaignHome(body?.home);
   if (!parsed.ok) return NextResponse.json({ success: false, message: parsed.message, field: parsed.field }, { status: 400 });
   const c = parsed.value;
 
@@ -41,7 +44,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     await prisma.$transaction([
       prisma.ecomCampaign.update({
         where: { id: g.id },
-        data: { name: c.name, scope: c.scope, discountType: c.discountType, discountValue: c.discountValue, startsAt: c.startsAt, endsAt: c.endsAt, isPaused: c.isPaused },
+        data: { name: c.name, scope: c.scope, discountType: c.discountType, discountValue: c.discountValue, startsAt: c.startsAt, endsAt: c.endsAt, isPaused: c.isPaused, homeDisplay: home as unknown as object },
       }),
       prisma.ecomCampaignTarget.deleteMany({ where: { campaignId: g.id } }),
       prisma.ecomCampaignTarget.createMany({

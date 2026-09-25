@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { SettingsHub } from "@/components/admin/SettingsHub";
 import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
 import { TaxSettings2Body, Tax2AddButton, type TaxRate2Row } from "@/components/admin/tax-settings2/TaxSettings2Body";
 import { TAX2_GROUPS, TAX2_PREF_KEY, TAX2_STANDALONE } from "@/components/admin/tax-settings2/displayOptions";
@@ -53,17 +54,19 @@ export default async function TaxSettings2Page() {
     <DashboardWidgetPrefsProvider prefKey={TAX2_PREF_KEY} groups={TAX2_GROUPS} standalone={TAX2_STANDALONE}>
       <AdminShell
         siteName="EduMint24"
-        pageTitle="GST / Tax Settings"
-        pageSubtitle="Manage GST slabs used across products, billing, and checkout"
+        pageTitle="Business Settings"
+        pageSubtitle="GST / tax rates used across products, billing and checkout"
         username={session.username}
         role={session.role}
         permissions={session.permissions}
         headerActions={<div className="hidden items-center gap-3 xl:flex"><DisplayOptionsPanel variant="header" /><Tax2AddButton /></div>}
       >
-        <div className="mb-5 flex flex-wrap items-center justify-end gap-3 xl:hidden">
-          <DisplayOptionsPanel variant="toolbar" /><Tax2AddButton />
-        </div>
-        <TaxSettings2Body rates={rows} orphanProducts={orphanProducts} />
+        <SettingsHub active="gst" permissions={session.permissions}>
+          <div className="mb-5 flex flex-wrap items-center justify-end gap-3 xl:hidden">
+            <DisplayOptionsPanel variant="toolbar" /><Tax2AddButton />
+          </div>
+          <TaxSettings2Body rates={rows} orphanProducts={orphanProducts} />
+        </SettingsHub>
       </AdminShell>
     </DashboardWidgetPrefsProvider>
   );

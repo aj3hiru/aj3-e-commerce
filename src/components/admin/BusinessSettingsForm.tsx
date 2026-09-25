@@ -4,18 +4,17 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus, Trash2, ImagePlus, Building2, Contact, Share2, FileSpreadsheet,
-  FileText, Keyboard, Barcode, Image as ImageIcon, Save,
+  Keyboard, Barcode, Image as ImageIcon, Save,
 } from "lucide-react";
 import { SOCIAL_PLATFORMS } from "@/lib/social-platforms";
-import Link from "next/link";
 import type { StorefrontConfig } from "@/types/storefront";
 import type { InvoiceSettings } from "@/types/invoice-settings";
 import { InvoiceSettingsPanel } from "./invoice-settings/InvoiceSettingsPanel";
 import { StorePreview } from "./store-preview/StorePreview";
+import { FORM_SECTION_KEYS, settingsMenu } from "./SettingsHub";
 import type { ShopCategoryNavItem, SocialPlatform } from "@/types/shop";
 import {
   SettingsMenuLayout, SettingsPanel, Field, CONTROL_CLASS,
-  type SettingsMenuItem,
 } from "./SettingsMenuLayout";
 
 export interface BusinessSettingsInitial {
@@ -75,24 +74,16 @@ const FKEYS = Array.from({ length: 11 }, (_, i) => `F${i + 2}`);
  * Menu order follows how often a shop owner touches each group: identity and
  * contact first, then the storefront, then the paperwork, then the hardware.
  */
-const MENU: SettingsMenuItem[] = [
-  { key: "identity", label: "Business Identity", icon: Building2 },
-  { key: "contact", label: "Contact Information", icon: Contact },
-  { key: "branding", label: "Logo & Branding", icon: ImageIcon },
-  { key: "tax", label: "Tax & Legal", icon: FileSpreadsheet },
-  { key: "invoice", label: "Invoice Settings", icon: FileText },
-  { key: "pos", label: "POS Shortcuts", icon: Keyboard },
-  { key: "orders", label: "Barcode & Orders", icon: Barcode },
-  { key: "social", label: "Social Media", icon: Share2 },
-];
 
 /** `storefrontInitial` feeds the live preview only — menus and footer are edited in Store Customizer. */
-export function BusinessSettingsForm({ initial, storefrontInitial: storefront, invoiceInitial }: {
+export function BusinessSettingsForm({ initial, storefrontInitial: storefront, invoiceInitial, permissions, section }: {
   initial: BusinessSettingsInitial; storefrontInitial: StorefrontConfig; invoiceInitial: InvoiceSettings; categories: ShopCategoryNavItem[];
+  permissions: Record<string, Record<string, boolean>>; section?: string;
 }) {
+  const menu = useMemo(() => settingsMenu(permissions, true), [permissions]);
   const [invoice, setInvoice] = useState(invoiceInitial);
   const router = useRouter();
-  const [active, setActive] = useState("identity");
+  const [active, setActive] = useState(section && FORM_SECTION_KEYS.includes(section) ? section : "identity");
   const [form, setForm] = useState(initial);
   const [contactNumbers, setContactNumbers] = useState(initial.contactNumbers.length ? initial.contactNumbers : [""]);
   const [invoiceNumbers, setInvoiceNumbers] = useState<string[]>(initial.invoiceNumbers);
@@ -215,12 +206,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial: storefront, i
         </div>
       )}
 
-      <SettingsMenuLayout items={MENU} active={active} onSelect={setActive}>
-        {active === "identity" && (
-          <p className="mb-3 rounded-[8px] bg-[#f8eef6] px-3 py-2 text-[13px] text-[#616173]">
-            Header strip, menus, mobile sidebar, push bell and footer are designed in <Link href="/admin/customizer?tab=header" className="font-semibold text-[#9f2089] underline">Store Customizer</Link>.
-          </p>
-        )}
+      <SettingsMenuLayout items={menu} active={active} onSelect={setActive}>
         <div className={withPreview ? "grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]" : undefined}>
         <div className="min-w-0">
         {/* ══════════ BUSINESS IDENTITY ══════════ */}

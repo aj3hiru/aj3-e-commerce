@@ -8,7 +8,7 @@ import { getStorefrontConfig } from "@/lib/storefront-config";
 import { getInvoiceSetup } from "@/lib/invoice-settings";
 
 interface BusinessSettingsPageProps {
-  searchParams: Promise<{ success?: string; header?: string }>;
+  searchParams: Promise<{ success?: string; header?: string; section?: string }>;
 }
 
 export default async function BusinessSettingsPage({ searchParams }: BusinessSettingsPageProps) {
@@ -50,7 +50,7 @@ export default async function BusinessSettingsPage({ searchParams }: BusinessSet
   return (
     <AdminShell
       siteName="EduMint24"
-      pageTitle="Business Setting"
+      pageTitle="Business Settings"
       pageSubtitle="Your business profile, SEO details, and everything that appears on invoices and your storefront"
       username={session.username}
       role={session.role}
@@ -71,6 +71,8 @@ export default async function BusinessSettingsPage({ searchParams }: BusinessSet
       <BusinessSettingsForm
         storefrontInitial={storefront}
         invoiceInitial={invoiceSetup.settings}
+        permissions={session.permissions}
+        section={params.section}
         categories={categoryRows as { slug: string; name: string }[]}
         initial={{
           businessName: biz?.businessName ?? "",

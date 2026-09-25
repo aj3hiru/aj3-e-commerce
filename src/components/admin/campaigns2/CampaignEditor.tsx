@@ -1,13 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Search } from "lucide-react";
+import { Check, Loader2, Monitor, Search, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { campaignPriceFor, type CampaignDef, type CampaignDiscountType, type CampaignScope } from "@/lib/campaign-core";
 import { parseCampaignInput } from "@/lib/campaign-validate";
 import type { CampaignRowData, PickerProduct } from "@/lib/campaigns2";
 import { durationText, fromIstInput, money, toIstInput } from "./format";
 import { Modal } from "./ui";
+import { CampaignBanner } from "@/components/shop/home/CampaignBanner";
+import { LaptopFrame, PhoneFrame } from "@/components/admin/PhoneFrame";
+import { CAMPAIGN_TEMPLATES, DEFAULT_CAMPAIGN_HOME, offerLabel, type CampaignBannerData, type CampaignHome } from "@/types/campaign-home";
 
 /** What the form holds. Ids are kept in arrays so the state stays plain data. */
 export interface CampaignFormState {
@@ -25,11 +28,13 @@ export interface CampaignFormState {
   endMode: "none" | "schedule";
   endAt: string;
   paused: boolean;
+  /** "Show on homepage" banner. */
+  home: CampaignHome;
 }
 
 export const EMPTY_FORM: CampaignFormState = {
   name: "", scope: "all", catIds: [], brandIds: [], prodIds: [], fixed: {}, discountType: "percent", value: "",
-  startMode: "now", startAt: "", endMode: "none", endAt: "", paused: false,
+  startMode: "now", startAt: "", endMode: "none", endAt: "", paused: false, home: DEFAULT_CAMPAIGN_HOME,
 };
 
 /** A saved campaign → the form. */
@@ -49,6 +54,7 @@ export function formFromCampaign(c: CampaignRowData): CampaignFormState {
     endMode: c.endsAt ? "schedule" : "none",
     endAt: c.endsAt ? toIstInput(c.endsAt) : "",
     paused: c.isPaused,
+    home: c.home ?? DEFAULT_CAMPAIGN_HOME,
   };
 }
 
@@ -151,6 +157,7 @@ export function CampaignEditor({ editing, initial, products, categories, brands,
       startsAt: startIso,
       endsAt: endIso,
       isPaused: f.paused,
+      home: f.home,
       targets:
         f.scope === "category" ? f.catIds.map((id) => ({ type: "category", id }))
         : f.scope === "brand" ? f.brandIds.map((id) => ({ type: "brand", id }))
@@ -188,6 +195,18 @@ export function CampaignEditor({ editing, initial, products, categories, brands,
     }
   }
 
+  // What the homepage banner will say, from the form as it is now.
+  const bannerData: CampaignBannerData = useMemo(() => {
+    const pick = <T extends { id: number; name: string }>(list: T[], ids: number[]) => ids.map((id) => list.find((x) => x.id === id)).filter((x): x is T => !!x);
+    const named = f.scope === "category" ? pick(categories, f.catIds) : f.scope === "brand" ? pick(brands, f.brandIds) : f.scope === "product" ? pick(products, f.prodIds) : [];
+    const noun = f.scope === "category" ? "categories" : f.scope === "brand" ? "brands" : "products";
+    const appliesTo = f.scope === "all" ? "on everything" : named.length === 1 ? `on ${named[0].name}` : `on ${named.length} ${noun}`;
+    return {
+      id: 0, home: f.home, name: f.name.trim() || "Your campaign", offer: offerLabel(f.discountType, f.value.trim() === "" ? null : Number(f.value)),
+      appliesTo, endsAt: endIso, href: "#",
+    };
+  }, [f, categories, brands, products, endIso]);
+
   const scopes: { key: CampaignScope; label: string }[] = [
     { key: "all", label: "All products" },
     { key: "category", label: "Categories" },
@@ -202,7 +221,7 @@ export function CampaignEditor({ editing, initial, products, categories, brands,
 
   return (
     <Modal
-      wide
+      xwide
       title={editing ? "Edit Campaign" : "New Campaign"}
       onClose={onClose}
       footer={
@@ -214,7 +233,8 @@ export function CampaignEditor({ editing, initial, products, categories, brands,
         </>
       }
     >
-      <form id="campaign-form" onSubmit={submit} className="space-y-6" noValidate>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+      <form id="campaign-form" onSubmit={submit} className="min-w-0 space-y-6" noValidate>
         {/* name */}
         <div>
           <label htmlFor="cf-name" className={labelCls}>Campaign name</label>
@@ -348,8 +368,13 @@ export function CampaignEditor({ editing, initial, products, categories, brands,
           <p className="text-admin-gray-500">A product on a lower sale price keeps it — offers never stack. If two campaigns overlap, the customer gets the lower price.</p>
         </div>
 
+        {/* homepage banner */}
+        <HomeSection home={f.home} onChange={(home) => set("home", home)} />
+
         {error && <p role="alert" className="rounded-[0.375rem] bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</p>}
       </form>
+      <BannerPreview data={bannerData} show={f.home.show} />
+      </div>
     </Modal>
   );
 }
@@ -409,5 +434,93 @@ function TargetPicker({ noun, items, selected, onChange }: {
         {selected.length > 0 && <button type="button" onClick={() => onChange([])} className="text-[#2563eb] hover:underline">Clear</button>}
       </div>
     </div>
+  );
+}
+
+/** "Show on homepage": switch, template and wording. */
+function HomeSection({ home, onChange }: { home: CampaignHome; onChange: (h: CampaignHome) => void }) {
+  const set = <K extends keyof CampaignHome>(k: K, v: CampaignHome[K]) => onChange({ ...home, [k]: v });
+  return (
+    <div className="rounded-[10px] border border-admin-gray-200 p-4">
+      <label className="flex cursor-pointer items-start justify-between gap-3">
+        <span>
+          <span className="block text-[14px] font-semibold text-admin-gray-900">Show on homepage</span>
+          <span className="block text-[12.5px] text-admin-gray-500">A banner just above “Products For You” while the campaign runs. Several campaigns turn into a slider.</span>
+        </span>
+        <span className="relative mt-0.5 inline-flex shrink-0">
+          <input type="checkbox" checked={home.show} onChange={(e) => set("show", e.target.checked)} className="peer sr-only" aria-label="Show on homepage" />
+          <span className="h-6 w-11 rounded-full bg-admin-gray-300 transition-colors peer-checked:bg-[#2563eb]" />
+          <span className="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform peer-checked:translate-x-5" />
+        </span>
+      </label>
+      {home.show && (
+        <div className="mt-4 space-y-4">
+          <div>
+            <span className={labelCls}>Template</span>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {CAMPAIGN_TEMPLATES.map((t) => (
+                <button key={t.id} type="button" onClick={() => set("template", t.id)} aria-pressed={home.template === t.id}
+                  className={cn("relative rounded-[8px] border-2 px-2.5 py-2 text-left transition", home.template === t.id ? "border-[#2563eb] bg-blue-50" : "border-admin-gray-200 hover:border-admin-gray-300")}>
+                  {home.template === t.id && <Check className="absolute right-1.5 top-1.5 h-3.5 w-3.5 text-[#2563eb]" strokeWidth={3} />}
+                  <span className="block text-[13px] font-semibold text-admin-gray-900">{t.name}</span>
+                  <span className="block text-[11px] leading-4 text-admin-gray-500">{t.blurb}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><label htmlFor="ch-title" className={labelCls}>Headline</label><input id="ch-title" value={home.title} maxLength={80} onChange={(e) => set("title", e.target.value)} placeholder="Blank = campaign name" className={inputCls} /></div>
+            <div><label htmlFor="ch-sub" className={labelCls}>Second line</label><input id="ch-sub" value={home.subtitle} maxLength={120} onChange={(e) => set("subtitle", e.target.value)} placeholder="Blank = the offer, e.g. 20% OFF on Sarees" className={inputCls} /></div>
+            <div><label htmlFor="ch-cta" className={labelCls}>Button text</label><input id="ch-cta" value={home.cta} maxLength={24} onChange={(e) => set("cta", e.target.value)} className={inputCls} /></div>
+            <div>
+              <span className={labelCls}>Colour</span>
+              <div className="flex items-center gap-2">
+                {["#9f2089", "#e11d48", "#2563eb", "#059669", "#ea580c", "#1f2937"].map((c) => (
+                  <button key={c} type="button" aria-label={`Colour ${c}`} onClick={() => set("color", c)} style={{ background: c }}
+                    className={cn("h-8 w-8 rounded-[8px] ring-offset-2", home.color.toLowerCase() === c && "ring-2 ring-admin-gray-800")} />
+                ))}
+                <input type="color" value={home.color} onChange={(e) => set("color", e.target.value)} aria-label="Custom colour" className="h-8 w-10 cursor-pointer rounded-[8px] border border-[#dee2e6] p-0.5" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Right-hand preview: the banner on a phone or laptop, updated as you type. */
+function BannerPreview({ data, show }: { data: CampaignBannerData; show: boolean }) {
+  const [device, setDevice] = useState<"mobile" | "desktop">("mobile");
+  const page = (
+    <div className="h-full overflow-hidden bg-white font-storefront" style={{ ["--hp-accent" as string]: "#9f2089" }}>
+      <div className="flex items-center justify-between border-b border-[#eaeaf2] px-3 py-2.5"><span className="h-3 w-24 rounded bg-[#e8d3e4]" /><span className="h-3 w-14 rounded bg-[#ececf2]" /></div>
+      <div className="mx-3 mt-3 h-16 rounded-[8px] bg-[#f3f3f7]" />
+      <div className="mt-3 flex gap-3 px-3">{[0, 1, 2, 3].map((i) => <span key={i} className="h-11 w-11 shrink-0 rounded-full bg-[#f3f3f7]" />)}</div>
+      <div className="px-3 py-3">
+        {show ? <CampaignBanner c={data} inert /> : <div className="rounded-[8px] border border-dashed border-[#cfcedc] px-3 py-4 text-center text-[12px] text-[#8b8ba3]">Turn on “Show on homepage” to add the banner here.</div>}
+      </div>
+      <p className="px-3 text-[15px] font-semibold text-[#353543]">Products For You</p>
+      <div className="grid grid-cols-2 gap-2 p-3">{[0, 1, 2, 3].map((i) => <span key={i} className="aspect-square rounded-[6px] bg-[#f3f3f7]" />)}</div>
+    </div>
+  );
+  return (
+    <aside className="lg:sticky lg:top-0 lg:self-start">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-[13px] font-semibold text-admin-gray-800">Homepage preview</span>
+        <div className="inline-flex rounded-[8px] bg-admin-gray-100 p-1">
+          {([["mobile", Smartphone], ["desktop", Monitor]] as const).map(([d, Icon]) => (
+            <button key={d} type="button" onClick={() => setDevice(d)} aria-label={`${d} preview`} aria-pressed={device === d}
+              className={cn("grid h-7 w-8 place-items-center rounded-[6px]", device === d ? "bg-white text-[#2563eb] shadow-sm" : "text-admin-gray-500")}><Icon className="h-4 w-4" /></button>
+          ))}
+        </div>
+      </div>
+      <div className="flex justify-center rounded-[10px] bg-[linear-gradient(180deg,#f7f7fa,#ececf2)] p-3">
+        {device === "mobile"
+          ? <PhoneFrame width={270}>{page}</PhoneFrame>
+          : <LaptopFrame fluid>{page}</LaptopFrame>}
+      </div>
+      <p className="mt-2 text-[12px] leading-4 text-admin-gray-500">Updates as you type. On the real homepage it appears just above “Products For You”.</p>
+    </aside>
   );
 }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { SettingsHub } from "@/components/admin/SettingsHub";
 import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
 import { PaymentSettings2Body, type PaymentMethod2Row } from "@/components/admin/payment-settings2/PaymentSettings2Body";
 import { PAYMENT2_GROUPS, PAYMENT2_PREF_KEY, PAYMENT2_STANDALONE } from "@/components/admin/payment-settings2/displayOptions";
@@ -69,15 +70,17 @@ export default async function PaymentSettings2Page() {
     <DashboardWidgetPrefsProvider prefKey={PAYMENT2_PREF_KEY} groups={PAYMENT2_GROUPS} standalone={PAYMENT2_STANDALONE}>
       <AdminShell
         siteName="EduMint24"
-        pageTitle="Payment Settings"
-        pageSubtitle="Manage how your store accepts payments"
+        pageTitle="Business Settings"
+        pageSubtitle="Payment methods — how your store accepts payments"
         username={session.username}
         role={session.role}
         permissions={session.permissions}
         headerActions={<div className="hidden items-center gap-3 xl:flex"><DisplayOptionsPanel variant="header" /></div>}
       >
-        <div className="mb-5 flex justify-end xl:hidden"><DisplayOptionsPanel variant="toolbar" /></div>
-        <PaymentSettings2Body methods={methods} />
+        <SettingsHub active="payment" permissions={session.permissions}>
+          <div className="mb-5 flex justify-end xl:hidden"><DisplayOptionsPanel variant="toolbar" /></div>
+          <PaymentSettings2Body methods={methods} />
+        </SettingsHub>
       </AdminShell>
     </DashboardWidgetPrefsProvider>
   );

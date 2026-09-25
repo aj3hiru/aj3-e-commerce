@@ -30,7 +30,7 @@ export function AdminShell({ siteName, pageTitle, pageSubtitle, username, role, 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] min-h-screen bg-admin-gray-50">
+    <div className="admin-ui grid grid-cols-1 lg:grid-cols-[280px_1fr] min-h-screen bg-admin-gray-50">
       <AdminSidebar
         siteName={siteName}
         permissions={permissions}

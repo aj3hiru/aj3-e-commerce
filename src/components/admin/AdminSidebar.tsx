@@ -127,6 +127,7 @@ function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSide
     const parent = !isSubItem && ADMIN_NAV.flatMap((sec) => sec.links).find((l) => l.href === link.href);
     const childActive = !!parent && (parent.submenu ?? []).some((sub) => isActive(sub, true));
     if (childActive) return false; // highlight the sub-page, not both
+    if (link.alsoActive?.includes(pathname ?? "")) return true;
     // Detail pages (an order, a product being edited) light up their list.
     return pathname === path || (!isSubItem && !!pathname?.startsWith(`${path}/`) && path !== "/admin");
   }

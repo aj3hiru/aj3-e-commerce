@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { getHomeCampaigns } from "@/lib/campaign-home";
+import { CampaignOffers } from "@/components/shop/home/CampaignBanner";
 import { ShopLayout } from "@/components/shop/ShopLayout";
 import { CategoryCircles } from "@/components/shop/home/CategoryCircles";
 import { ProductFeed } from "@/components/shop/home/ProductFeed";
@@ -71,6 +73,9 @@ export default async function ShopHomePage({ searchParams }: ShopHomePageProps) 
     where: { status: "active" }, orderBy: [{ serial: "asc" }, { name: "asc" }], select: { slug: true, name: true, image: true },
   })) as { slug: string; name: string; image: string | null }[];
   const blocks = config.blocks.filter((b) => b.enabled);
+  // Campaign Offers switched to "Show on homepage" go just above the first "Products For You" feed.
+  const campaigns = await getHomeCampaigns();
+  const firstFeed = blocks.find((b) => b.type === "feed")?.id;
   const rows = new Map(await Promise.all(blocks.filter((b) => b.type === "products").map(async (b) => [b.id, await getProductRow(b as Extract<HomeBlock, { type: "products" }>)] as const)));
 
   const rendered = blocks.map((b, i) => <div key={b.id} data-hc={b.id}>{renderBlock(b, i)}</div>);
@@ -90,7 +95,9 @@ export default async function ShopHomePage({ searchParams }: ShopHomePageProps) 
       }
       case "image": return b.image ? <div key={b.id}>{gap}<ImageBanner image={b.image} href={b.href} /></div> : null;
       case "feed": return (
-        <div key={b.id}>{gap}
+        <div key={b.id}>
+          {b.id === firstFeed && campaigns.length > 0 && <>{gap}<div className="shop:px-0"><CampaignOffers items={campaigns} /></div></>}
+          {gap}
           <ProductFeed title={b.title} initial={feed} filters={filters} facets={facets} wishlisted={wishlisted} bar={b} />
         </div>
       );

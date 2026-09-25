@@ -1,6 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { Monitor, Smartphone } from "lucide-react";
+import { CampaignOffers } from "@/components/shop/home/CampaignBanner";
+import { LaptopFrame, PhoneFrame } from "@/components/admin/PhoneFrame";
+import { offerLabel as homeOfferLabel, type CampaignBannerData } from "@/types/campaign-home";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -262,7 +266,8 @@ export function Campaigns2Body({ data, serverNow, filters, isDefaultRange, notic
 
   return (
     // Invisible (space kept) until the saved Display Options are read, so hidden parts never flash in.
-    <div className={cn("relative space-y-5", !loaded && "invisible")} aria-busy={loading}>
+    <div className={cn("grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]", !loaded && "invisible")}>
+    <div className="relative min-w-0 space-y-5" aria-busy={loading}>
       {data.legacyCount > 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-[13px] leading-5 text-admin-gray-700">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
@@ -531,6 +536,8 @@ export function Campaigns2Body({ data, serverNow, filters, isDefaultRange, notic
         document.body
       )}
     </div>
+    <HomeOffersPreview campaigns={data.campaigns} now={now} categoryById={categoryById} brandById={brandById} productById={productById} />
+    </div>
   );
 }
 
@@ -657,5 +664,55 @@ function SetupNeeded() {
       <pre className="my-3 overflow-x-auto rounded-lg bg-slate-900 px-4 py-3 text-[13px] text-slate-100">npx prisma db push</pre>
       <p>then build and restart as usual, and reload this page.</p>
     </section>
+  );
+}
+
+/** Right-hand card: what shoppers see on the homepage right now (running campaigns with "Show on homepage"). */
+function HomeOffersPreview({ campaigns, now, categoryById, brandById, productById }: {
+  campaigns: CampaignRowData[]; now: Date; categoryById: Map<number, string>; brandById: Map<number, string>; productById: Map<number, { name: string }>;
+}) {
+  const [device, setDevice] = useState<"mobile" | "desktop">("mobile");
+  const t = now.getTime();
+  const items: CampaignBannerData[] = campaigns
+    .filter((c) => c.home.show && !c.isPaused && (!c.startsAt || new Date(c.startsAt).getTime() <= t) && (!c.endsAt || new Date(c.endsAt).getTime() > t))
+    .slice(0, 6)
+    .map((c) => {
+      const names = c.targets.map((x) => (x.type === "category" ? categoryById.get(x.id) : x.type === "brand" ? brandById.get(x.id) : productById.get(x.id)?.name)).filter(Boolean) as string[];
+      const noun = c.scope === "category" ? "categories" : c.scope === "brand" ? "brands" : "products";
+      return {
+        id: c.id, home: c.home, name: c.name, offer: homeOfferLabel(c.discountType, c.discountValue),
+        appliesTo: c.scope === "all" ? "on everything" : names.length === 1 ? `on ${names[0]}` : `on ${names.length} ${noun}`,
+        endsAt: c.endsAt, href: "#",
+      };
+    });
+  const page = (
+    <div className="h-full overflow-hidden bg-white font-storefront" style={{ ["--hp-accent" as string]: "#9f2089" }} onClickCapture={(e) => { if ((e.target as HTMLElement).closest("a")) e.preventDefault(); }}>
+      <div className="flex items-center justify-between border-b border-[#eaeaf2] px-3 py-2.5"><span className="h-3 w-24 rounded bg-[#e8d3e4]" /><span className="h-3 w-14 rounded bg-[#ececf2]" /></div>
+      <div className="mx-3 mt-3 h-14 rounded-[8px] bg-[#f3f3f7]" />
+      {items.length > 0
+        ? <CampaignOffers items={items} />
+        : <div className="m-3 rounded-[8px] border border-dashed border-[#cfcedc] px-3 py-4 text-center text-[12px] text-[#8b8ba3]">No running campaign is set to “Show on homepage”.</div>}
+      <p className="px-3 text-[15px] font-semibold text-[#353543]">Products For You</p>
+      <div className="grid grid-cols-2 gap-2 p-3">{[0, 1, 2, 3].map((i) => <span key={i} className="aspect-square rounded-[6px] bg-[#f3f3f7]" />)}</div>
+    </div>
+  );
+  return (
+    <aside className="rounded-[10px] border border-admin-gray-200 bg-white p-4 shadow-sm xl:sticky xl:top-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <p className="text-[14px] font-semibold text-admin-gray-900">On your homepage</p>
+          <p className="text-[12px] text-admin-gray-500">{items.length === 0 ? "Nothing showing" : `${items.length} offer${items.length === 1 ? "" : "s"}${items.length > 1 ? " · slider" : ""}`}</p>
+        </div>
+        <div className="inline-flex rounded-[8px] bg-admin-gray-100 p-1">
+          {([["mobile", Smartphone], ["desktop", Monitor]] as const).map(([d, Icon]) => (
+            <button key={d} type="button" onClick={() => setDevice(d)} aria-label={`${d} preview`} aria-pressed={device === d}
+              className={cn("grid h-7 w-8 place-items-center rounded-[6px]", device === d ? "bg-white text-[#2563eb] shadow-sm" : "text-admin-gray-500")}><Icon className="h-4 w-4" /></button>
+          ))}
+        </div>
+      </div>
+      <div className="flex justify-center rounded-[10px] bg-[linear-gradient(180deg,#f7f7fa,#ececf2)] p-3">
+        {device === "mobile" ? <PhoneFrame width={250}>{page}</PhoneFrame> : <LaptopFrame fluid>{page}</LaptopFrame>}
+      </div>
+    </aside>
   );
 }

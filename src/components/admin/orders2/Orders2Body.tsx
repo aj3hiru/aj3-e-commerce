@@ -370,7 +370,7 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
           )}
 
           <div className="overflow-x-auto rounded-[10px] border border-[#eef0f4]" style={{ minHeight: pageSize === 0 ? undefined : HEAD_H + Math.min(pageSize, MIN_ROWS) * ROW_H }}>
-            <table className="w-full min-w-[1180px] table-fixed border-collapse text-[14px]">
+            <table className="w-full min-w-[1100px] table-fixed border-collapse text-[14px]">
               <colgroup>{cols.map((x) => <col key={x.key} className={x.w} />)}</colgroup>
               <thead>
                 <tr className="bg-[#f8f9fb]" style={{ height: HEAD_H }}>

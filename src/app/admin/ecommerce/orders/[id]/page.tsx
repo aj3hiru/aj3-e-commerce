@@ -60,7 +60,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           customerEmail: order.customerEmail || order.customer?.email || null,
           shippingAddress: order.shippingAddress || order.customer?.address || null,
           mapUrl: order.shippingLat !== null && order.shippingLng !== null ? `https://www.google.com/maps?q=${Number(order.shippingLat)},${Number(order.shippingLng)}` : null,
-          paymentMethod: order.paymentMethod,
+          paymentMethod: (await prisma.ecomPaymentSettings.findFirst({ where: { methodKey: order.paymentMethod }, select: { name: true } }))?.name ?? order.paymentMethod,
           paymentStatus: order.paymentStatus,
           orderStatus: order.orderStatus,
           totalAmount: Number(order.totalAmount),

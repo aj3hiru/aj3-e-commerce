@@ -103,7 +103,7 @@ export async function getOrders2Data(type: string, range: { from: string; to: st
   const base = { orderType: "online", createdAt: inRange } as const;
   const where = type ? { ...base, orderStatus: type } : base;
 
-  const [orderRows, matching, statusCounts, credits] = await Promise.all([
+  const [orderRows, matching, statusCounts, credits, payNames] = await Promise.all([
     prisma.ecomOrder.findMany({
       where,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -125,7 +125,10 @@ export async function getOrders2Data(type: string, range: { from: string; to: st
     ),
     // What is still owed on these orders, so an unpaid order shows its balance.
     prisma.ecomCredit.findMany({ where: { order: { orderType: "online", createdAt: inRange } }, select: { orderId: true, amount: true, amountPaid: true } }),
+    prisma.ecomPaymentSettings.findMany({ select: { methodKey: true, name: true } }),
   ]);
+  // Storefront orders store the payment method key ("cod"); show its name ("Cash On Delivery").
+  const methodName = new Map((payNames as { methodKey: string; name: string }[]).map((m) => [m.methodKey, m.name]));
 
   const dueByOrder = new Map<number, number>();
   for (const c of credits as { orderId: number; amount: unknown; amountPaid: unknown }[]) {
@@ -156,7 +159,7 @@ export async function getOrders2Data(type: string, range: { from: string; to: st
       paid,
       dueBalance: dueByOrder.get(o.id) ?? r2(Math.max(0, total - paid)),
       paymentStatus: o.paymentStatus,
-      paymentMethod: o.paymentMethod,
+      paymentMethod: methodName.get(o.paymentMethod) ?? o.paymentMethod,
       orderStatus: o.orderStatus,
       createdAt: o.createdAt.toISOString(),
       itemCount: o.items.reduce((s, i) => s + i.qty, 0),

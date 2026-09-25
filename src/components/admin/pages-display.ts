@@ -30,11 +30,6 @@ export const PROFILE_GROUPS: readonly WidgetGroup[] = [
   { group: "mp-sections", groupLabel: "Sections", items: [{ key: "mp-card", label: "Photo & role card" }, { key: "mp-details", label: "Personal details" }, { key: "mp-password", label: "Change password" }] },
 ];
 
-export const CSV_PREF_KEY = "ecom_csv_display";
-export const CSV_GROUPS: readonly WidgetGroup[] = [
-  { group: "csv-sections", groupLabel: "Sections", items: [{ key: "csv-export", label: "Export products" }, { key: "csv-import", label: "Import products" }, { key: "csv-help", label: "Column help" }, { key: "csv-type", label: "Default product type" }] },
-];
-
 export const CUSTOMIZER_PREF_KEY = "ecom_customizer_display";
 export const CUSTOMIZER_GROUPS: readonly WidgetGroup[] = [
   { group: "cz-tabs", groupLabel: "Section Tabs", items: [{ key: "cz-t-icons", label: "Icons" }, { key: "cz-t-hints", label: "Short descriptions" }] },

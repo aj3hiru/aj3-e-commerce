@@ -1,7 +1,7 @@
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   faHome, faCashRegister, faHistory, faBoxes, faPlusSquare, faCopyright, faBoxOpen,
-  faFileCsv, faStarHalfAlt, faBarcode, faTags, faList, faReceipt,
+  faStarHalfAlt, faBarcode, faTags, faList, faReceipt,
   faTruck, faUserFriends, faPercentage,
   faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
   faSignOutAlt, faFileInvoiceDollar, faChartLine, faFileAlt, faBars, faGripLines, faBox,
@@ -112,7 +112,6 @@ export const ADMIN_NAV: NavSection[] = [
           { href: "/admin/ecommerce/product-reviews", label: "Reviews", icon: faStarHalfAlt, permission: "ecommerce.manage_products" },
           { href: "/admin/ecommerce/brands", label: "Brands", icon: faCopyright, permission: "ecommerce.manage_products" },
           { href: "/admin/ecommerce/product-tags", label: "Badge Tags & Item Types", icon: faTags, permission: "ecommerce.manage_products" },
-          { href: "/admin/ecommerce/csv-import-export", label: "CSV Import & Export", icon: faFileCsv, permission: "ecommerce.manage_products" },
           { href: "/admin/ecommerce/barcode-print", label: "Print Barcodes", icon: faBarcode, permission: "ecommerce.manage_products" },
         ],
       },

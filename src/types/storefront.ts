@@ -94,8 +94,8 @@ export const DEFAULT_PUSH_UI: PushUiConfig = { showBell: true, autoPrompt: true 
 
 export const DEFAULT_FOOTER: FooterConfig = {
   description: "",
-  bgColor: "#f9f9fb", // Meesho's light footer
-  accentColor: "#9f2089",
+  bgColor: "#9f2089", // Meesho jamun — same as Buy Now and the floating cart bar
+  accentColor: "#ffc2e8",
   columns: [{
     id: "f-quick", title: "Quick Links",
     links: [

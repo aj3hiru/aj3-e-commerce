@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus, Trash2, ImagePlus, Building2, Contact, Share2, FileSpreadsheet,
-  FileText, Keyboard, Barcode, Image as ImageIcon, Printer, LayoutPanelTop, Save,
+  FileText, Keyboard, Barcode, Image as ImageIcon, LayoutPanelTop, Save,
 } from "lucide-react";
 import { SOCIAL_PLATFORMS } from "@/lib/social-platforms";
 import { StorefrontSettingsPanels, STOREFRONT_MENU, STOREFRONT_SECTIONS, storefrontProblem } from "./StorefrontSettingsPanels";
 import type { StorefrontConfig } from "@/types/storefront";
+import type { InvoiceSettings } from "@/types/invoice-settings";
+import { InvoiceSettingsPanel } from "./invoice-settings/InvoiceSettingsPanel";
 import type { ShopCategoryNavItem, SocialPlatform } from "@/types/shop";
 import {
   SettingsMenuLayout, SettingsPanel, Field, CheckRow, CONTROL_CLASS,
@@ -74,16 +76,16 @@ const MENU: SettingsMenuItem[] = [
   ...STOREFRONT_MENU,
   { key: "branding", label: "Logo & Branding", icon: ImageIcon },
   { key: "tax", label: "Tax & Legal", icon: FileSpreadsheet },
-  { key: "invoice", label: "Invoice Format", icon: FileText },
-  { key: "print", label: "Invoice & Print Display", icon: Printer },
-  { key: "pos", label: "Printer & POS", icon: Keyboard },
+  { key: "invoice", label: "Invoice Settings", icon: FileText },
+  { key: "pos", label: "POS Shortcuts", icon: Keyboard },
   { key: "orders", label: "Barcode & Orders", icon: Barcode },
   { key: "social", label: "Social Media", icon: Share2 },
 ];
 
-export function BusinessSettingsForm({ initial, storefrontInitial, categories }: {
-  initial: BusinessSettingsInitial; storefrontInitial: StorefrontConfig; categories: ShopCategoryNavItem[];
+export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitial, categories }: {
+  initial: BusinessSettingsInitial; storefrontInitial: StorefrontConfig; invoiceInitial: InvoiceSettings; categories: ShopCategoryNavItem[];
 }) {
+  const [invoice, setInvoice] = useState(invoiceInitial);
   const [storefront, setStorefront] = useState(storefrontInitial);
   const router = useRouter();
   const [active, setActive] = useState("identity");
@@ -122,6 +124,18 @@ export function BusinessSettingsForm({ initial, storefrontInitial, categories }:
       if (!data.success) { setError(data.message || "Menus & footer couldn't be saved."); setSubmitting(false); return; }
     } catch {
       setError("Something went wrong saving menus & footer. Please try again.");
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/ecommerce/invoice-settings", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(invoice),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!data.success) { setError(data.message || "Invoice settings couldn't be saved."); setActive("invoice"); setSubmitting(false); return; }
+    } catch {
+      setError("Something went wrong saving invoice settings. Please try again.");
       setSubmitting(false);
       return;
     }
@@ -420,7 +434,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial, categories }:
           <SettingsPanel
             icon={FileSpreadsheet}
             title="GST & Tax Details"
-            hint="Just the values here — whether each one prints on your invoice is controlled in Invoice & Print Display."
+            hint="Just the values here — whether each one prints on your invoice is set in Invoice Settings."
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="GSTIN" htmlFor="gstin">
@@ -436,70 +450,30 @@ export function BusinessSettingsForm({ initial, storefrontInitial, categories }:
                 <input id="state" value={form.state} onChange={(e) => update("state", e.target.value)} className={CONTROL_CLASS} />
               </Field>
             </div>
-          </SettingsPanel>
-        )}
-
-        {/* ══════════ INVOICE FORMAT ══════════ */}
-        {active === "invoice" && (
-          <SettingsPanel icon={FileText} title="Invoice Format">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Invoice Display" htmlFor="invoiceDisplay">
-                <select id="invoiceDisplay" value={form.invoiceDisplay} onChange={(e) => update("invoiceDisplay", e.target.value)} className={CONTROL_CLASS}>
-                  <option value="logo">Logo only</option>
-                  <option value="name">Name only</option>
-                  <option value="both">Both</option>
-                </select>
-              </Field>
-              <Field label="Invoice Title" htmlFor="invoiceTitle">
-                <input id="invoiceTitle" value={form.invoiceTitle} onChange={(e) => update("invoiceTitle", e.target.value)} className={CONTROL_CLASS} />
-              </Field>
-            </div>
             <div className="mt-3">
-              <Field label="Invoice Footer Note" htmlFor="invoiceFooterNote">
-                <textarea id="invoiceFooterNote" rows={2} value={form.invoiceFooterNote} onChange={(e) => update("invoiceFooterNote", e.target.value)} className={CONTROL_CLASS} />
-              </Field>
-            </div>
-            <div className="mt-3">
-              <Field label="Return Policy" htmlFor="returnPolicy">
+              <Field label="Return Policy" htmlFor="returnPolicy" hint="Shown to customers on the storefront.">
                 <textarea id="returnPolicy" rows={3} value={form.returnPolicy} onChange={(e) => update("returnPolicy", e.target.value)} className={CONTROL_CLASS} />
               </Field>
             </div>
           </SettingsPanel>
         )}
 
-        {/* ══════════ INVOICE & PRINT DISPLAY ══════════ */}
-        {active === "print" && (
-          <SettingsPanel icon={Printer} title="Invoice & Print Display" hint="Choose which details are printed on invoices and receipts.">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <CheckRow checked={form.showGstinOnInvoice} onChange={(v) => update("showGstinOnInvoice", v)}>Show GSTIN</CheckRow>
-              <CheckRow checked={form.showPanOnInvoice} onChange={(v) => update("showPanOnInvoice", v)}>Show PAN</CheckRow>
-              <CheckRow checked={form.showFssaiOnInvoice} onChange={(v) => update("showFssaiOnInvoice", v)}>Show FSSAI</CheckRow>
-              <CheckRow checked={form.showAddressOnInvoice} onChange={(v) => update("showAddressOnInvoice", v)}>Show address</CheckRow>
-              <CheckRow checked={form.showLocationOnInvoice} onChange={(v) => update("showLocationOnInvoice", v)}>Show location</CheckRow>
-            </div>
-          </SettingsPanel>
+        {/* ══════════ INVOICE SETTINGS ══════════ */}
+        {active === "invoice" && (
+          <InvoiceSettingsPanel value={invoice} onChange={setInvoice}
+            profile={{
+              // Live values from this form, so the preview follows unsaved edits too.
+              businessName: form.businessName || "Your Store", tagline: form.tagline, logo: logoPreview,
+              address: form.address, location: form.location, email: form.email,
+              phones: (invoiceNumbers.length ? invoiceNumbers : contactNumbers).filter(Boolean),
+              gstin: form.gstin, pan: form.panNumber, fssai: form.fssaiNumber, state: form.state,
+            }} />
         )}
 
         {/* ══════════ PRINTER & POS ══════════ */}
         {active === "pos" && (
-          <SettingsPanel icon={Keyboard} title="Printer Format & POS Shortcuts">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Printer Format" htmlFor="printerFormat">
-                <select id="printerFormat" value={form.printerFormat} onChange={(e) => update("printerFormat", e.target.value)} className={CONTROL_CLASS}>
-                  <option value="a4">A4</option>
-                  <option value="thermal_58">Thermal 58mm</option>
-                  <option value="thermal_80">Thermal 80mm</option>
-                </select>
-              </Field>
-              <Field label="POS Print Mode" htmlFor="posPrintMode">
-                <select id="posPrintMode" value={form.posPrintMode} onChange={(e) => update("posPrintMode", e.target.value)} className={CONTROL_CLASS}>
-                  <option value="thermal">Thermal only</option>
-                  <option value="a4">A4 only</option>
-                  <option value="both">Both</option>
-                </select>
-              </Field>
-            </div>
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <SettingsPanel icon={Keyboard} title="POS Shortcuts" hint="Keyboard keys on the billing screen. A4 / thermal printing is set in Invoice Settings.">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Field label="Complete Sale" htmlFor="scComplete">
                 <select id="scComplete" value={form.shortcutCompleteSale} onChange={(e) => update("shortcutCompleteSale", e.target.value)} className={CONTROL_CLASS}>
                   {FKEYS.map((k) => <option key={k} value={k}>{k}</option>)}

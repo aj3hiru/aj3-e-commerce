@@ -94,13 +94,8 @@ export function Billing2Screen({
   }
 
   function printOrder(orderId: number) {
-    const url =
-      posSettings.posPrintMode === "thermal"
-        ? `/admin/ecommerce/invoice/${orderId}?format=${posSettings.printerFormat}`
-        : posSettings.posPrintMode === "a4"
-        ? `/admin/ecommerce/invoice/${orderId}?format=a4`
-        : `/admin/ecommerce/invoice/${orderId}`;
-    window.open(url, "_blank");
+    // A4, thermal or "ask every time" — Business Settings → Invoice Settings decides.
+    window.open(`/admin/ecommerce/invoice/${orderId}`, "_blank");
   }
 
   async function completeSale() {

@@ -1,16 +1,24 @@
 import { notFound, redirect } from "next/navigation";
-import { A4Invoice } from "@/components/admin/A4Invoice";
-import { ThermalInvoice } from "@/components/admin/ThermalInvoice";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
-import { getInvoiceData, getInvoiceBusinessSettings } from "@/lib/invoice-data";
+import { getInvoiceData } from "@/lib/invoice-data";
+import { getInvoiceSetup } from "@/lib/invoice-settings";
+import { resolveSeller } from "@/types/invoice-settings";
+import { A4InvoiceSheet } from "@/components/invoice/A4InvoiceSheet";
+import { ThermalReceipt } from "@/components/invoice/ThermalReceipt";
+import { InvoiceFormatChooser, InvoicePrintShell } from "@/components/invoice/InvoicePrintShell";
 
 interface InvoicePageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ format?: string }>;
+  searchParams: Promise<{ format?: string; print?: string }>;
 }
 
-/** Verified against admin/ecommerce/invoice.php: three-permission access gate,
- *  ?format= override falling back to the business's default printer_format. */
+export const metadata = { title: "Invoice", robots: { index: false, follow: false } };
+
+/**
+ * One invoice, printed the way Business Settings → Invoice Settings says:
+ * A4, thermal, or ask each time. ?format= picks one for this print
+ * (a4 | thermal | thermal_58 | thermal_80); ?print=1 opens the print dialog.
+ */
 export default async function InvoicePage({ params, searchParams }: InvoicePageProps) {
   const session = await getAdminSession();
   if (
@@ -22,19 +30,24 @@ export default async function InvoicePage({ params, searchParams }: InvoicePageP
     redirect("/staff/login");
   }
 
-  const { id } = await params;
-  const { format: formatParam } = await searchParams;
+  const [{ id }, { format, print }] = await Promise.all([params, searchParams]);
   const orderId = Number(id);
   if (!Number.isInteger(orderId)) notFound();
 
-  const [data, biz] = await Promise.all([getInvoiceData(orderId), getInvoiceBusinessSettings()]);
+  const [data, { settings, profile }] = await Promise.all([getInvoiceData(orderId), getInvoiceSetup()]);
   if (!data) notFound();
 
-  const format = (["a4", "thermal_58", "thermal_80"].includes(formatParam ?? "") ? formatParam : biz.printerFormat) as "a4" | "thermal_58" | "thermal_80";
-  const isThermal = format.startsWith("thermal_");
+  const s = { ...settings };
+  if (format === "thermal_58") s.thermalWidth = "58mm";
+  if (format === "thermal_80") s.thermalWidth = "80mm";
+  const kind = format === "a4" ? "a4" : format?.startsWith("thermal") ? "thermal" : s.defaultPrint;
+  if (kind === "ask") return <InvoiceFormatChooser number={data.order.orderNumber} thermalWidth={s.thermalWidth} />;
 
-  if (isThermal) {
-    return <ThermalInvoice data={data} biz={biz} siteName="EduMint24" width={format === "thermal_58" ? "58mm" : "80mm"} />;
-  }
-  return <A4Invoice data={data} biz={biz} siteName="EduMint24" />;
+  const seller = resolveSeller(s, profile);
+  const autoPrint = print === "1" || (s.autoPrint && print !== "0");
+  return (
+    <InvoicePrintShell kind={kind} width={s.thermalWidth} autoPrint={autoPrint}>
+      {kind === "a4" ? <A4InvoiceSheet data={data} s={s} seller={seller} /> : <ThermalReceipt data={data} s={s} seller={seller} />}
+    </InvoicePrintShell>
+  );
 }

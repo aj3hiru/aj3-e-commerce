@@ -41,3 +41,12 @@ body {
   transform: rotate(45deg);
   border-radius: 2px 0 0 0;
 }
+
+/* Homepage info strip: pin hops now and then, the »» chevrons flow left→right. */
+@keyframes strip-hop { 0%, 70%, 100% { transform: translateY(0); } 78% { transform: translateY(-4px); } 86% { transform: translateY(0); } 92% { transform: translateY(-1.5px); } }
+@keyframes strip-flow { 0%, 100% { opacity: .25; transform: translateX(0); } 40% { opacity: 1; transform: translateX(2px); } 70% { opacity: .45; transform: translateX(0); } }
+.strip-hop { animation: strip-hop 2.6s ease-in-out infinite; transform-origin: bottom center; }
+.strip-flow path { animation: strip-flow 1.5s ease-in-out infinite; }
+.strip-flow path:nth-child(2) { animation-delay: .18s; }
+.strip-flow path:nth-child(3) { animation-delay: .36s; }
+@media (prefers-reduced-motion: reduce) { .strip-hop, .strip-flow path { animation: none; } }

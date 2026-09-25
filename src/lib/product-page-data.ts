@@ -10,7 +10,7 @@ import type { ProductPageConfig } from "@/types/product-page";
 export interface ProductPageData {
   product: {
     id: number; slug: string; name: string; description: string | null; sku: string | null; unit: string | null; badge: string;
-    brand: string | null; category: { name: string; slug: string } | null; subcategory: string | null; images: string[];
+    brand: string | null; category: { name: string; slug: string } | null; subcategory: { name: string; slug: string } | null; images: string[];
   };
   price: { mrp: number; final: number; discountPct: number; dealEndsAt: string | null };
   stock: "in" | "low" | "out" | "untracked";
@@ -34,7 +34,7 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
       images: { orderBy: { sortOrder: "asc" } },
       brand: { select: { name: true } },
       category: { select: { name: true, slug: true, status: true } },
-      subcategory: { select: { name: true } },
+      subcategory: { select: { name: true, slug: true, status: true } },
       sizes: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] },
       specs: { orderBy: { sortOrder: "asc" } },
     },
@@ -108,7 +108,7 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
     product: {
       id: p.id, slug: p.slug, name: p.name, description: p.description, sku: p.sku, unit: p.unit, badge: p.badgeTag,
       brand: p.brand?.name ?? null, category: p.category && p.category.status === "active" ? { name: p.category.name, slug: p.category.slug } : null,
-      subcategory: p.subcategory?.name ?? null, images: [...new Set(images)],
+      subcategory: p.subcategory && p.subcategory.status === "active" ? { name: p.subcategory.name, slug: p.subcategory.slug } : null, images: [...new Set(images)],
     },
     price: { mrp: main.mrp, final: main.unitPrice, discountPct: pct(main.mrp, main.unitPrice), dealEndsAt },
     stock: stockOf(physical, main.maxQty),

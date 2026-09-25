@@ -94,7 +94,7 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
               className="h-11 w-auto max-w-[150px] object-contain rounded-[4px] block"
             />
           ) : (
-            <span className="text-[26px] font-extrabold text-storefront-green-dark tracking-[0.2px] leading-none">
+            <span className="text-[26px] font-extrabold text-[var(--hp-accent)] tracking-[0.2px] leading-none">
               {business.businessName}
             </span>
           )}
@@ -102,8 +102,8 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
 
         {/* .location — two lines: truncated location + chevron, then the address */}
         {showLocation && (
-          <div className="flex items-center gap-1.5 px-3 h-11 bg-storefront-green-light rounded-[8px] text-sm whitespace-nowrap shrink-0">
-            <MapPin className="w-[18px] h-[18px] text-storefront-green shrink-0" fill="currentColor" strokeWidth={0} />
+          <div className="flex items-center gap-1.5 px-3 h-11 bg-[#f8f9fe] rounded-[8px] text-sm whitespace-nowrap shrink-0 text-[#353543]">
+            <MapPin className="w-[18px] h-[18px] text-[#5d7eea] shrink-0" fill="#8aa4f4" strokeWidth={1.6} />
             <div>
               <span className="font-bold flex items-center gap-1">
                 {strimwidth(business.location ?? "", 12)}
@@ -124,7 +124,7 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
         {/* .delivery-info */}
         {showDelivery && (
           <div className="text-[13px] whitespace-nowrap shrink-0 text-[#333]">
-            <span className="text-storefront-green font-bold">{header.deliveryLabel}</span>
+            <span className="text-[var(--hp-accent)] font-bold">{header.deliveryLabel}</span>
             <div className="flex items-center gap-[5px] font-bold mt-[3px]">
               <Clock className="w-3.5 h-3.5 text-storefront-orange" strokeWidth={2} />
               {header.deliveryTimeText}
@@ -138,31 +138,31 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
             name="q"
             placeholder={header.searchPlaceholder}
             defaultValue={currentQ}
-            className="flex-1 w-full border border-storefront-border border-r-0 rounded-l-[6px] px-4 text-sm outline-none text-[#333] placeholder:text-[#8a8a8a]"
+            className="flex-1 w-full border border-[#cfcedc] border-r-0 rounded-l-[8px] px-4 text-sm outline-none text-[#353543] placeholder:text-[#8b8ba3] focus:border-[var(--hp-accent)]"
           />
           <button
             type="submit"
-            className="bg-storefront-green hover:bg-storefront-green-dark text-white px-[26px] rounded-r-[6px] font-bold text-[13px] tracking-[0.4px]"
+            className="bg-[var(--hp-accent)] hover:brightness-95 text-white px-[26px] rounded-r-[8px] font-bold text-[13px] tracking-[0.4px]"
           >
             SEARCH
           </button>
         </form>
 
         <div className="flex items-center gap-[26px] whitespace-nowrap shrink-0">
-          <PushBell className="text-storefront-green" iconClassName="w-[22px] h-[22px]" />
+          <PushBell className="text-[#353543]" iconClassName="w-[22px] h-[22px]" />
           <Link href={accountHref} className="flex items-center gap-[7px] text-sm font-semibold text-[#333]">
-            <User className="w-[22px] h-[22px] text-storefront-green shrink-0" strokeWidth={1.8} />
+            <User className="w-[22px] h-[22px] text-[#353543] shrink-0" strokeWidth={1.8} />
             <span>{accountLabel}</span>
           </Link>
           <Link href="/shop/wishlist" className="flex items-center gap-[7px] text-sm font-semibold text-[#333]" aria-label="Wishlist">
-            <Heart className="w-[22px] h-[22px] text-storefront-green shrink-0" strokeWidth={1.8} />
+            <Heart className="w-[22px] h-[22px] text-[#ef4444] shrink-0" fill="#ef4444" strokeWidth={0} />
           </Link>
           <Link href="/shop/cart" className="flex items-center gap-1.5 relative text-sm font-semibold text-[#333]">
             <div className="relative">
-              <ShoppingCart className="w-[22px] h-[22px] text-storefront-green shrink-0" strokeWidth={1.8} />
-              <span className="absolute -top-[9px] left-[13px] bg-[#fdd835] text-[#333] text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+              <ShoppingCart className="w-[22px] h-[22px] text-[var(--hp-accent)] shrink-0" fill="color-mix(in srgb, var(--hp-accent) 22%, white)" strokeWidth={2} />
+              {count > 0 && (<span className="absolute -top-[9px] left-[13px] bg-[var(--hp-accent)] text-white text-[10px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center ring-2 ring-white">
                 {count}
-              </span>
+              </span>)}
             </div>
             <span>{formatMoneyInt(total)}</span>
           </Link>
@@ -173,9 +173,9 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
       <DesktopMenu items={menu} design={design} isActive={isActive} />
 
       {/* ============ MOBILE HEADER (.mobile-topbar) ============ */}
-      <div className="flex shop:hidden items-center justify-between px-4 py-3.5 border-b border-storefront-border bg-white">
+      <div className="flex shop:hidden items-center justify-between px-4 pt-3.5 pb-2.5 bg-white">
         <button onClick={onOpenMobileMenu} aria-label="Open menu" className="shrink-0">
-          <Menu className="w-6 h-6 text-[#333]" strokeWidth={2} />
+          <Menu className="w-6 h-6 text-[#353543]" strokeWidth={2} />
         </button>
         <Link href="/shop" aria-label={`${business.businessName} home`}>
           {business.logo ? (
@@ -187,36 +187,36 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
               className="h-[34px] w-auto max-w-[110px] object-contain"
             />
           ) : (
-            <span className="text-xl font-extrabold text-storefront-green-dark">{business.businessName}</span>
+            <span className="text-[22px] font-extrabold tracking-[-0.2px] text-[var(--hp-accent)]">{business.businessName}</span>
           )}
         </Link>
         <div className="flex items-center gap-[18px]">
-          <PushBell className="text-storefront-green" iconClassName="w-6 h-6" />
+          <PushBell className="text-[#353543]" iconClassName="w-6 h-6" />
           <Link href="/shop/wishlist" aria-label="Wishlist">
-            <Heart className="w-6 h-6 text-storefront-green" strokeWidth={1.8} />
+            <Heart className="w-6 h-6 text-[#ef4444]" fill="#ef4444" strokeWidth={0} />
           </Link>
           <Link href="/shop/cart" className="relative" aria-label="Cart">
-            <ShoppingCart className="w-6 h-6 text-storefront-green" strokeWidth={1.8} />
-            <span className="absolute -top-2 left-[14px] bg-[#fdd835] text-[#333] text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+            <ShoppingCart className="w-6 h-6 text-[var(--hp-accent)]" fill="color-mix(in srgb, var(--hp-accent) 22%, white)" strokeWidth={2} />
+            {count > 0 && (<span className="absolute -top-2 left-[14px] bg-[var(--hp-accent)] text-white text-[10px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center ring-2 ring-white">
               {count}
-            </span>
+            </span>)}
           </Link>
           <Link href={accountHref} aria-label={accountLabel}>
-            <User className="w-6 h-6 text-storefront-green" strokeWidth={1.8} />
+            <User className="w-6 h-6 text-[#353543]" strokeWidth={1.8} />
           </Link>
         </div>
       </div>
 
       {/* ============ MOBILE SEARCH (.mobile-search) ============ */}
-      <form action="/shop" method="GET" className="shop:hidden px-4 pt-3 pb-4 bg-white border-b border-storefront-border">
-        <div className="flex items-center gap-2.5 bg-[#eee] rounded-[6px] px-3.5 py-3">
-          <Search className="w-[18px] h-[18px] text-[#666] shrink-0" strokeWidth={2} />
+      <form action="/shop" method="GET" className="shop:hidden px-4 pt-1 pb-3 bg-white border-b border-[#eaeaf2]">
+        <div className="flex items-center gap-2.5 bg-white border border-[#cfcedc] rounded-[8px] px-3.5 py-3 focus-within:border-[var(--hp-accent)]">
+          <Search className="w-[20px] h-[20px] text-[#5d7eea] shrink-0" strokeWidth={2} />
           <input
             type="text"
             name="q"
             placeholder={header.searchPlaceholder}
             defaultValue={currentQ}
-            className="flex-1 bg-transparent border-none outline-none text-[13px] text-[#333] placeholder:text-[#8a8a8a]"
+            className="flex-1 bg-transparent border-none outline-none text-[14px] text-[#353543] placeholder:text-[#8b8ba3]"
           />
         </div>
       </form>

@@ -44,23 +44,28 @@ export function ShopFooter({ business, footer }: ShopFooterProps) {
   ];
   const socials = business.socialMedia?.filter((s) => s.url) ?? [];
 
-  const heading = "mb-5 inline-flex w-max border-b pb-[5px] text-lg font-semibold text-white";
-  const linkCls = "mb-2.5 inline-flex items-center gap-2 text-[15px] text-white transition-colors duration-300 hover:text-[var(--ftx-accent)]";
+  // Light backgrounds (Meesho's) get dark text; dark ones keep white text.
+  const light = luminance(footer.bgColor) > 0.55;
+  const vars = light
+    ? { "--ft-text": "#353543", "--ft-muted": "#616173", "--ft-line": "#dcdce6" }
+    : { "--ft-text": "#ffffff", "--ft-muted": "rgba(255,255,255,.85)", "--ft-line": "rgba(255,255,255,.18)" };
+  const heading = "mb-5 inline-flex w-max border-b-2 pb-[5px] text-lg font-semibold text-[var(--ft-text)]";
+  const linkCls = "mb-2.5 inline-flex items-center gap-2 text-[15px] text-[var(--ft-muted)] transition-colors duration-300 hover:text-[var(--ftx-accent)]";
 
   return (
-    <footer role="contentinfo" data-hc="footer" className="relative mt-10 md:mt-20"
-      style={{ background: footer.bgColor, ["--ftx-accent" as string]: footer.accentColor }}>
+    <footer role="contentinfo" data-hc="footer" className={cn("relative mt-10 md:mt-20", light && "border-t border-[#eaeaf2]")}
+      style={{ background: footer.bgColor, ["--ftx-accent" as string]: footer.accentColor, ...vars } as React.CSSProperties}>
       <div className="mx-auto max-w-[1200px] px-4 pb-6 pt-6 md:px-5 md:pt-10 xl:px-2.5 xl:pb-5">
-        <div className="grid grid-cols-1 gap-[30px] border-b border-white/[0.18] pb-5 md:grid-cols-2 md:gap-5 min-[1025px]:grid-cols-[1.5fr_2fr_1.5fr] min-[1025px]:gap-10">
+        <div className="grid grid-cols-1 gap-[30px] border-b border-[var(--ft-line)] pb-5 md:grid-cols-2 md:gap-5 min-[1025px]:grid-cols-[1.5fr_2fr_1.5fr] min-[1025px]:gap-10">
           {/* Brand */}
           <div className="flex flex-col">
             {business.logo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={`/${business.logo}`} alt={business.businessName} loading="lazy" className="mb-2.5 h-auto w-[180px] max-w-full object-contain" />
             ) : (
-              <span className="mb-2.5 text-2xl font-extrabold text-white">{business.businessName}</span>
+              <span className="mb-2.5 text-2xl font-extrabold" style={{ color: light ? footer.accentColor : "#fff" }}>{business.businessName}</span>
             )}
-            {description && <p className="m-0 text-sm leading-relaxed text-white">{description}</p>}
+            {description && <p className="m-0 text-sm leading-relaxed text-[var(--ft-muted)]">{description}</p>}
           </div>
 
           {/* Link columns */}
@@ -91,12 +96,12 @@ export function ShopFooter({ business, footer }: ShopFooterProps) {
             <div className="flex flex-col">
               <h2 className={heading} style={{ borderColor: footer.accentColor }}>Follow Us</h2>
               {footer.ctaEnabled && (
-                <div className="mb-[15px] rounded-[10px] border border-white px-2.5 py-[15px]">
+                <div className={cn("mb-[15px] rounded-[10px] border border-[var(--ft-line)] px-2.5 py-[15px]", light && "bg-white")}>
                   <div className="mb-[15px] grid grid-cols-[1fr_4fr] gap-[5px]">
-                    <div className="flex items-center justify-center"><Rss className="h-12 w-12 text-white" strokeWidth={2.2} /></div>
+                    <div className="flex items-center justify-center"><Rss className="h-12 w-12" style={{ color: light ? footer.accentColor : "#fff" }} strokeWidth={2.2} /></div>
                     <div className="flex flex-col justify-center">
-                      <div className="text-[17px] font-bold text-white">{footer.ctaTitle}</div>
-                      <div className="text-xs font-semibold text-white">{footer.ctaSubtitle}</div>
+                      <div className="text-[17px] font-bold text-[var(--ft-text)]">{footer.ctaTitle}</div>
+                      <div className="text-xs font-semibold text-[var(--ft-muted)]">{footer.ctaSubtitle}</div>
                     </div>
                   </div>
                   {footer.ctaButtonLabel && ctaUrl && (
@@ -112,8 +117,9 @@ export function ShopFooter({ business, footer }: ShopFooterProps) {
                 <div className="flex flex-wrap items-center gap-[7px]">
                   {socials.map((s) => (
                     <a key={s.platform + s.url} href={s.url} target="_blank" rel="noopener nofollow" aria-label={s.platform}
-                      className="inline-flex px-1 py-[7px] text-white">
-                      <SocialIcon platform={s.platform} className="h-[1.3em] w-[1.3em] fill-white text-white" />
+                      className={cn("inline-flex", light ? "grid h-9 w-9 place-items-center rounded-full text-white transition-transform hover:-translate-y-0.5" : "px-1 py-[7px] text-white")}
+                      style={light ? { background: footer.accentColor } : undefined}>
+                      <SocialIcon platform={s.platform} className={cn("fill-white text-white", light ? "h-4 w-4" : "h-[1.3em] w-[1.3em]")} />
                     </a>
                   ))}
                 </div>
@@ -122,8 +128,16 @@ export function ShopFooter({ business, footer }: ShopFooterProps) {
           )}
         </div>
 
-        <p className="m-0 pt-5 text-center text-[13px] text-white">{copyright}</p>
+        <p className="m-0 pt-5 text-center text-[13px] text-[var(--ft-muted)]">{copyright}</p>
       </div>
     </footer>
   );
+}
+
+/** Relative luminance (0 = black, 1 = white) of a #rrggbb colour. */
+function luminance(hex: string): number {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return 0;
+  const [r, g, b] = [0, 2, 4].map((i) => { const c = parseInt(m[1].slice(i, i + 2), 16) / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }

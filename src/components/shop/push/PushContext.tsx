@@ -142,7 +142,7 @@ export function PushProvider({ config, children }: { config: PushUiConfig; child
     <Ctx.Provider value={{ state, showBell: config.showBell, subscribe, justSubscribed }}>
       {children}
       {justSubscribed && typeof document !== "undefined" && createPortal(
-        <div role="status" className="fixed bottom-5 left-1/2 z-[1500] flex -translate-x-1/2 items-center gap-2 rounded-full bg-storefront-green px-5 py-2.5 text-sm font-semibold text-white shadow-lg">
+        <div role="status" className="fixed bottom-5 left-1/2 z-[1500] flex -translate-x-1/2 items-center gap-2 rounded-full bg-[var(--hp-accent,#9f2089)] px-5 py-2.5 text-sm font-semibold text-white shadow-lg">
           <CheckCircle2 className="h-4 w-4" /> Notifications enabled!
         </div>, document.body)}
     </Ctx.Provider>

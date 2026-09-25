@@ -51,7 +51,7 @@ export function ShopLayout({ business, header, categories, customer, cartCount, 
       <PushProvider config={storefront.push}>
         {/* font-storefront: the shop uses Segoe UI, not the admin's Inter — see
             the `body` rule at the top of shop-header.php. */}
-        <div className="font-storefront min-h-screen flex flex-col bg-white">
+        <div className="font-storefront min-h-screen flex flex-col bg-white" style={{ ["--hp-accent" as string]: theme.accent }}>
           {promo && <PromoBar promo={promo} />}
           <ShopHeader
             business={business}

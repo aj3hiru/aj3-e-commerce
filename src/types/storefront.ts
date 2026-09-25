@@ -94,8 +94,8 @@ export const DEFAULT_PUSH_UI: PushUiConfig = { showBell: true, autoPrompt: true 
 
 export const DEFAULT_FOOTER: FooterConfig = {
   description: "",
-  bgColor: "#0c6878",
-  accentColor: "#ffb700",
+  bgColor: "#f9f9fb", // Meesho's light footer
+  accentColor: "#9f2089",
   columns: [{
     id: "f-quick", title: "Quick Links",
     links: [

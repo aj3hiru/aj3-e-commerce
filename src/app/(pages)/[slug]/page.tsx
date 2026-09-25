@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ShopLayout } from "@/components/shop/ShopLayout";
+import { Page } from "@/components/shop/ui/Meesho";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
 import { prisma } from "@/lib/db";
 
@@ -31,10 +32,11 @@ export default async function StaticPage({ params }: StaticPageProps) {
 
   return (
     <ShopLayout {...layoutData}>
-      <div className="max-w-3xl mx-auto bg-white rounded-lg border border-storefront-border p-6 md:p-10">
-        <h1 className="text-2xl font-bold mb-4">{page.title}</h1>
-        <div className="prose max-w-none whitespace-pre-line text-storefront-text">{page.content}</div>
-      </div>
+      <Page title={page.title} back="/shop">
+        <article className="bg-white px-4 py-5 text-[15px] leading-7 text-[#353543] shop:px-8 shop:py-8">
+          <div className="whitespace-pre-line break-words">{page.content}</div>
+        </article>
+      </Page>
     </ShopLayout>
   );
 }

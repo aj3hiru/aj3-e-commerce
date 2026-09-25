@@ -15,10 +15,10 @@ export function InfoStripBar({ strip }: { strip: InfoStrip }) {
   const Icon = STRIP_ICON[strip.icon];
   const inner = (
     <>
-      <Icon className="h-[18px] w-[18px] shrink-0 text-[#5d7eea]" fill={strip.icon === "pin" ? "#8aa4f4" : "none"} strokeWidth={strip.icon === "pin" ? 1.6 : 2} />
+      <Icon className="strip-hop h-[18px] w-[18px] shrink-0 text-[#5d7eea]" fill={strip.icon === "pin" ? "#8aa4f4" : "none"} strokeWidth={strip.icon === "pin" ? 1.6 : 2} />
       <span className="min-w-0 truncate text-[13px] font-medium text-[#353543]">{strip.text}</span>
-      <svg viewBox="0 0 26 12" className="h-3 w-[26px] shrink-0" aria-hidden fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 2l4 4-4 4" stroke="#c4c5d0" /><path d="M10 2l4 4-4 4" stroke="#a7a9b6" /><path d="M18 2l4 4-4 4" stroke="#8b8ba3" />
+      <svg viewBox="0 0 26 12" className="strip-flow h-3 w-[26px] shrink-0" aria-hidden fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 2l4 4-4 4" stroke="#8b8ba3" /><path d="M10 2l4 4-4 4" stroke="#8b8ba3" /><path d="M18 2l4 4-4 4" stroke="#8b8ba3" />
       </svg>
     </>
   );

@@ -352,7 +352,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
   const highlights = useMemo(() => {
     const h = cfg.highlights, rows: { name: string; value: string }[] = [];
     if (h.showBrand && d.product.brand) rows.push({ name: "Brand", value: d.product.brand });
-    if (h.showCategory && d.product.category) rows.push({ name: "Category", value: d.product.subcategory ? `${d.product.category.name} · ${d.product.subcategory}` : d.product.category.name });
+    if (h.showCategory && d.product.category) rows.push({ name: "Category", value: d.product.subcategory ? `${d.product.category.name} · ${d.product.subcategory.name}` : d.product.category.name });
     if (h.showUnit && d.product.unit) rows.push({ name: "Sold by", value: d.product.unit });
     if (h.showSku && d.product.sku) rows.push({ name: "SKU", value: d.product.sku });
     return [...d.specs, ...rows];
@@ -387,15 +387,27 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
 
   function section(k: PPSectionKey): React.ReactNode {
     switch (k) {
-      case "breadcrumb":
+      case "breadcrumb": {
+        // Meesho: accent links separated by " / ", wrapping onto a second line, the product name shortened with "…".
+        const crumbs: { label: string; href: string }[] = [{ label: "Home", href: "/shop" }];
+        const cat = d.product.category, sub = d.product.subcategory;
+        if (cat) crumbs.push({ label: cat.name, href: `/shop/category?slug=${encodeURIComponent(cat.slug)}` });
+        if (cat && sub) crumbs.push({ label: sub.name, href: `/shop/category?slug=${encodeURIComponent(cat.slug)}&sub=${encodeURIComponent(sub.slug)}` });
+        const name = d.product.name.length > 18 ? `${d.product.name.slice(0, 16).trimEnd()}…` : d.product.name;
         return (
-          <nav aria-label="Breadcrumb" className="px-4 py-2 text-[14px] leading-[22px]">
-            <Link href="/shop" className="text-[var(--hp-accent)]">Home</Link>
-            {d.product.category && <> <span className="px-0.5">/</span> <Link href={`/shop/category?slug=${encodeURIComponent(d.product.category.slug)}`} className="text-[var(--hp-accent)]">{d.product.category.name}</Link></>}
-            {" "}<span className="px-0.5">/</span>{" "}
-            <span className="inline-block max-w-[170px] truncate align-bottom">{d.product.name}</span>
+          <nav aria-label="Breadcrumb" className="px-4 pb-2 pt-2.5">
+            <ol className="flex flex-wrap items-center gap-y-1 text-[15px] leading-[22px] tracking-[0.15px]">
+              {crumbs.map((c) => (
+                <li key={c.href} className="flex items-center">
+                  <Link href={c.href} className="text-[var(--hp-accent)] hover:underline">{c.label}</Link>
+                  <span aria-hidden className="px-2 text-[#353543]">/</span>
+                </li>
+              ))}
+              <li aria-current="page" className="text-[#353543]" title={d.product.name}>{name}</li>
+            </ol>
           </nav>
         );
+      }
       case "gallery": return <Gallery images={d.product.images} name={d.product.name} cfg={cfg.gallery} track={galleryTrack} active={photo} setActive={setPhoto} />;
       case "trust": {
         const t = cfg.trust;

@@ -85,8 +85,12 @@ export async function assignDeliveryAgent(orderId: number, agentId: number | nul
       if (!agent) throw new WorkflowError("That person isn't an active delivery agent.");
       name = agent.name;
     }
-    await tx.ecomOrder.update({ where: { id: orderId }, data: { deliveryAgentId: agentId, assignedAt: agentId ? new Date() : null } });
+    // Handing it to an agent sends it out for delivery; taking the agent off brings it back to In Progress.
+    const nextStatus = agentId && (o.orderStatus === "Pending" || o.orderStatus === "In Progress") ? "Out for Delivery"
+      : !agentId && o.orderStatus === "Out for Delivery" ? "In Progress" : null;
+    await tx.ecomOrder.update({ where: { id: orderId }, data: { deliveryAgentId: agentId, assignedAt: agentId ? new Date() : null, ...(nextStatus ? { orderStatus: nextStatus } : {}) } });
     await logOrderEvent(tx, orderId, actor, "assign", o.deliveryAgent?.username ?? null, name, null);
+    if (nextStatus) await logOrderEvent(tx, orderId, actor, "status", o.orderStatus, nextStatus, agentId ? `Assigned to ${name}` : "Delivery agent removed");
     return name;
   });
 }
@@ -101,7 +105,7 @@ export async function applyOrderAction(orderId: number, body: Record<string, unk
     if (!can("assign_delivery")) throw new WorkflowError("You don't have permission to assign delivery agents.");
     const agentId = body.agentId === null || body.agentId === "" ? null : Number(body.agentId);
     const name = await assignDeliveryAgent(orderId, agentId && Number.isInteger(agentId) ? agentId : null, actor);
-    return name ? `Assigned to ${name}.` : "Delivery agent removed.";
+    return name ? `Assigned to ${name} — marked Out for Delivery.` : "Delivery agent removed.";
   }
   if (body.action === "update_payment") {
     if (!can("mark_paid")) throw new WorkflowError("You don't have permission to change payments.");

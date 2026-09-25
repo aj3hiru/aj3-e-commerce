@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { OrderDecision } from "@/components/admin/OrderDecision";
 import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
@@ -385,6 +386,14 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
                               <StatusBadge variant={orderStatusVariant(r.orderStatus)}>{r.orderStatus}</StatusBadge>
                             )}
                             {r.agent && <div className="mt-1 truncate text-xs text-admin-gray-500">🛵 {r.agent}</div>}
+                            {canEdit && r.orderStatus === "Pending" && (
+                              <div className="mt-1.5">
+                                <OrderDecision orderId={r.id} orderNumber={r.orderNumber} onDone={(status, text) => {
+                                  setRows((list) => list.map((x) => (x.id === r.id ? { ...x, orderStatus: status } : x)));
+                                  setToast({ ok: true, text }); router.refresh();
+                                }} />
+                              </div>
+                            )}
                           </td>
                         )}
                         {show("or2-c-actions") && (

@@ -23,7 +23,7 @@ export const nearText = (landmark: string) => (/^(near|opp\.?|opposite|behind|be
 
 /** One-line-per-part text used for orders and invoices. */
 export const formatAddress = (a: Pick<SavedAddress, "name" | "phone" | "house" | "area" | "landmark" | "city" | "state" | "pincode">) =>
-  [`${a.name}, ${a.phone}`, [a.house, a.area].filter(Boolean).join(", "), a.landmark ? nearText(a.landmark) : "", `${a.city}, ${a.state} - ${a.pincode}`].filter(Boolean).join("\n");
+  [`${a.name}, ${a.phone}`, [a.house, a.area].filter(Boolean).join(", "), a.landmark ? nearText(a.landmark) : "", `${a.city} - ${a.pincode}`].filter(Boolean).join("\n");
 
 /** Validates and cleans an address form; returns an error message or the data. */
 export function parseAddress(b: Record<string, unknown>): { error: string } | { data: Omit<SavedAddress, "id" | "isDefault"> & { isDefault: boolean } } {
@@ -35,7 +35,7 @@ export function parseAddress(b: Record<string, unknown>): { error: string } | { 
   if (!/^\d{6}$/.test(pincode)) return { error: "Please enter a valid 6-digit pincode." };
   if (!house) return { error: "Please enter the house no. / building name." };
   if (!area) return { error: "Please enter the road name / area / colony." };
-  if (!city || !state) return { error: "Please enter the city and state." };
+  if (!city) return { error: "Please enter the city / district." };
   const type = (["home", "work", "other"].includes(String(b.type)) ? b.type : "home") as AddressType;
   const num = (v: unknown, lim: number) => { const n = Number(v); return v !== null && v !== "" && v !== undefined && Number.isFinite(n) && Math.abs(n) <= lim ? Math.round(n * 1e7) / 1e7 : null; };
   let lat = num(b.lat, 90), lng = num(b.lng, 180);

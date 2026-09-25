@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Briefcase, Check, Crosshair, House, Loader2, MapPin, MapPinned, Pencil, Plus, Trash2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AddressType, SavedAddress } from "@/lib/customer-addresses";
@@ -38,6 +39,10 @@ export function AddressForm({ initial, defaults, onSaved, onClose }: {
   const [loc, setLoc] = useState<{ busy: boolean; error: string; accuracy: number | null }>({ busy: false, error: "", accuracy: null });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // On by default: the delivery partner gets the exact spot (latitude / longitude) and can follow it on the map.
+  const [share, setShare] = useState(initial ? initial.lat !== null : true);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const set = (p: Partial<Draft>) => { setA((x) => ({ ...x, ...p })); setError(""); };
   const lastPin = useRef("");
 
@@ -87,11 +92,26 @@ export function AddressForm({ initial, defaults, onSaved, onClose }: {
     }, { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
   }
 
+  /** The exact spot for the delivery partner, without touching what was typed. */
+  const pinOnly = () => new Promise<{ lat: number; lng: number } | null>((resolve) => {
+    if (!navigator.geolocation) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: Math.round(p.coords.latitude * 1e7) / 1e7, lng: Math.round(p.coords.longitude * 1e7) / 1e7 }),
+      () => resolve(null), { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+  });
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
+    e.stopPropagation();
     setSaving(true);
     try {
-      const res = await api({ action: "save", ...a });
+      let body = { ...a };
+      if (!share) body = { ...body, lat: null, lng: null };
+      else if (body.lat === null || body.lng === null) {
+        const spot = await pinOnly();
+        if (spot) { body = { ...body, ...spot }; setA((x) => ({ ...x, ...spot })); }
+      }
+      const res = await api({ action: "save", ...body });
       onSaved(res.addresses, res.id ?? a.id ?? 0);
     } catch (err) { setError(err instanceof Error ? err.message : "Couldn't save."); }
     setSaving(false);
@@ -101,7 +121,10 @@ export function AddressForm({ initial, defaults, onSaved, onClose }: {
     ? `https://www.openstreetmap.org/export/embed.html?bbox=${a.lng - 0.003},${a.lat - 0.002},${a.lng + 0.003},${a.lat + 0.002}&layer=mapnik&marker=${a.lat},${a.lng}`
     : null;
 
-  return (
+  // Rendered at the end of <body>: on checkout this sheet sits inside the checkout <form>, and a form
+  // inside a form makes “Save Address” submit the checkout instead (the address never saved).
+  if (!mounted) return null;
+  return createPortal(
     <div className="fixed inset-0 z-[1100] flex items-end justify-center bg-black/50 font-storefront text-[#353543] shop:items-center" onClick={onClose}>
       <form onSubmit={save} onClick={(e) => e.stopPropagation()} className="flex max-h-[92vh] w-full max-w-[560px] flex-col overflow-hidden rounded-t-2xl bg-white shop:rounded-2xl" aria-label="Address form">
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-[#eaeaf2] px-4">
@@ -148,13 +171,6 @@ export function AddressForm({ initial, defaults, onSaved, onClose }: {
             </Field>
             <Field label="City / District"><input required value={a.city} onChange={(e) => set({ city: e.target.value })} autoComplete="address-level2" className={cn(inputCls, "h-11")} /></Field>
           </div>
-          <Field label="State">
-            <select required value={a.state} onChange={(e) => set({ state: e.target.value })} className={cn(inputCls, "h-11")}>
-              <option value="">Select state</option>
-              {!STATES.includes(a.state) && a.state && <option value={a.state}>{a.state}</option>}
-              {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </Field>
           <Field label="House No., Building Name"><input required value={a.house} onChange={(e) => set({ house: e.target.value })} autoComplete="address-line1" placeholder="e.g. 12B, Sai Residency" className={cn(inputCls, "h-11")} /></Field>
           <Field label="Road Name, Area, Colony">
             <input required list="area-list" value={a.area} onChange={(e) => set({ area: e.target.value })} autoComplete="address-line2" placeholder="e.g. MG Road, Lajpat Nagar" className={cn(inputCls, "h-11")} />
@@ -178,6 +194,13 @@ export function AddressForm({ initial, defaults, onSaved, onClose }: {
             <input type="checkbox" checked={a.isDefault} onChange={(e) => set({ isDefault: e.target.checked })} className="h-[18px] w-[18px] accent-[var(--hp-accent)]" />
             Make this my default address
           </label>
+          <label className="flex items-start gap-2.5 rounded-[8px] bg-[#f5f7ff] px-3 py-2.5 text-[14px]">
+            <input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} className="mt-0.5 h-[18px] w-[18px] shrink-0 accent-[var(--hp-accent)]" />
+            <span>
+              <span className="block font-medium">Share my exact location with the delivery partner</span>
+              <span className="block text-[12.5px] text-[#616173]">They see your spot on the map and can follow the route to your door.</span>
+            </span>
+          </label>
           {error && <Notice tone="error">{error}</Notice>}
         </div>
 
@@ -185,7 +208,8 @@ export function AddressForm({ initial, defaults, onSaved, onClose }: {
           <button type="submit" disabled={saving} className={cn(btnPrimary, "h-12 w-full")}>{saving ? <><Loader2 className="h-5 w-5 animate-spin" />Saving…</> : "Save Address"}</button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -200,7 +224,7 @@ export function AddressCard({ a, selected, children }: { a: SavedAddress; select
         {a.isDefault && <span className="rounded-full bg-[color-mix(in_srgb,var(--hp-accent)_10%,white)] px-2 py-0.5 text-[11px] font-semibold text-[var(--hp-accent)]">Default</span>}
       </div>
       <p className={cn("mt-1 text-[13.5px] leading-5", selected ? "text-[#353543]" : "text-[#616173]")}>
-        {a.house}, {a.area}{a.landmark && `, ${nearText(a.landmark)}`}, {a.city}, {a.state} - <b className="font-semibold">{a.pincode}</b>
+        {a.house}, {a.area}{a.landmark && `, ${nearText(a.landmark)}`}, {a.city} - <b className="font-semibold">{a.pincode}</b>
       </p>
       <p className="mt-0.5 text-[13px] text-[#616173]">Mobile: {a.phone}</p>
       {a.lat !== null && <p className="mt-1 flex items-center gap-1 text-[12px] font-medium text-[#038d63]"><MapPinned className="h-3.5 w-3.5" />Location pinned</p>}

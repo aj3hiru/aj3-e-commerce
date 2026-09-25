@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { OrderDecision } from "@/components/admin/OrderDecision";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -269,6 +270,9 @@ export function Dashboard2Body({ stats, rangeLabel }: { stats: Dashboard2Stats; 
                         disabled={busyId === o.id}
                         onSelect={(orderStatus) => patch(o.id, { orderStatus })}
                       />
+                      {o.orderStatus === "Pending" && (
+                        <div className="mt-1.5"><OrderDecision orderId={o.id} orderNumber={o.orderNumber} onDone={() => router.refresh()} /></div>
+                      )}
                     </td>
                     <td className="whitespace-nowrap text-[#6b7280]">
                       {o.createdAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}

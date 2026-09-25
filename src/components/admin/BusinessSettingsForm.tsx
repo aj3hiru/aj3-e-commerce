@@ -64,8 +64,10 @@ export interface BusinessSettingsInitial {
   headerSearchPlaceholder: string;
 }
 
-/** Sections that change what shoppers see — they get the live store preview on the left. */
-const PREVIEW_SECTIONS = ["header", "headerMenu", "sidebarMenu", "menuDesign", "push", "footer", "branding"];
+/** Sections that change what shoppers see — they get the live store preview on the right. */
+const PREVIEW_SECTIONS = ["identity", "contact", "social", "header", "headerMenu", "sidebarMenu", "menuDesign", "push", "footer", "branding"];
+/** Details shown in the store footer — the preview scrolls there. */
+const FOOTER_SECTIONS = ["contact", "social", "footer"];
 
 const FKEYS = Array.from({ length: 11 }, (_, i) => `F${i + 2}`);
 
@@ -128,7 +130,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitia
     },
     storefront,
     drawer: active === "sidebarMenu" || active === "menuDesign",
-    focus: (active === "footer" ? "footer" : "top") as "top" | "footer",
+    focus: (FOOTER_SECTIONS.includes(active) ? "footer" : "top") as "top" | "footer",
   }), [form, logoPreview, contactNumbers, socialMedia, storefront, active]);
   const previewDevice = active === "headerMenu" ? "desktop" as const : active === "sidebarMenu" ? "mobile" as const : undefined;
 
@@ -242,8 +244,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitia
       )}
 
       <SettingsMenuLayout items={MENU} active={active} onSelect={setActive}>
-        <div className={withPreview ? "grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]" : undefined}>
-        {withPreview && <StorePreview state={previewState} device={previewDevice} />}
+        <div className={withPreview ? "grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,6fr)_minmax(0,5fr)]" : undefined}>
         <div className="min-w-0">
         {/* ══════════ BUSINESS IDENTITY ══════════ */}
         {active === "identity" && (
@@ -589,6 +590,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitia
             }} />
         )}
         </div>
+        {withPreview && <StorePreview state={previewState} device={previewDevice} />}
         </div>
       </SettingsMenuLayout>
 

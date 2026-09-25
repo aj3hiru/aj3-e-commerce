@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CheckCircle2, CircleAlert, ClipboardPaste, ExternalLink, KeyRound, Loader2, MessageSquareText, Save, ShieldCheck, Smartphone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { otpReady, type AuthSettings } from "@/types/auth-settings";
+import { StorePreview } from "@/components/admin/store-preview/StorePreview";
 
 const INPUT = "w-full rounded-md border border-admin-gray-200 bg-white px-3 py-2 font-mono text-sm text-admin-gray-800 placeholder:font-sans placeholder:text-admin-gray-400 focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/15";
 
@@ -59,6 +60,7 @@ export function LoginSettingsForm({ initial, origin }: { initial: AuthSettings; 
   }
 
   const live = otpReady(JSON.parse(saved) as AuthSettings);
+  const preview = useMemo(() => ({ view: "login" as const, auth: s }), [s]);
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
       <div className="space-y-5">
@@ -111,6 +113,19 @@ export function LoginSettingsForm({ initial, origin }: { initial: AuthSettings; 
           </div>
         </section>
 
+        <section className="rounded-xl border border-admin-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-1 font-semibold text-admin-gray-800">How to set up Firebase OTP</h2>
+          <p className="mb-4 text-xs text-admin-gray-500">About 10 minutes, one time.</p>
+          <ol className="space-y-4">
+            {STEPS.map((st, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-admin-primary text-xs font-bold text-white">{i + 1}</span>
+                <div><p className="text-sm font-semibold text-admin-gray-800">{st.title}</p><p className="mt-0.5 text-xs leading-5 text-admin-gray-600">{st.body}</p></div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         <div className="sticky bottom-0 flex items-center justify-between gap-3 rounded-xl border border-admin-gray-200 bg-white px-5 py-3.5 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
           <span className={cn("text-sm", msg ? (msg.ok ? "text-emerald-600" : "text-red-600") : "text-admin-gray-400")}>{msg?.text ?? (dirty ? "Unsaved changes" : "All changes saved")}</span>
           <button type="button" onClick={save} disabled={busy || !dirty} className="flex items-center gap-2 rounded-lg bg-admin-primary px-6 py-2.5 font-semibold text-white hover:bg-admin-primary-dark disabled:opacity-50">
@@ -119,18 +134,8 @@ export function LoginSettingsForm({ initial, origin }: { initial: AuthSettings; 
         </div>
       </div>
 
-      <aside className="h-fit rounded-xl border border-admin-gray-200 bg-white p-5 shadow-sm xl:sticky xl:top-4">
-        <h2 className="mb-1 font-semibold text-admin-gray-800">How to set up Firebase OTP</h2>
-        <p className="mb-4 text-xs text-admin-gray-500">About 10 minutes, one time.</p>
-        <ol className="space-y-4">
-          {STEPS.map((st, i) => (
-            <li key={i} className="flex gap-3">
-              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-admin-primary text-xs font-bold text-white">{i + 1}</span>
-              <div><p className="text-sm font-semibold text-admin-gray-800">{st.title}</p><p className="mt-0.5 text-xs leading-5 text-admin-gray-600">{st.body}</p></div>
-            </li>
-          ))}
-        </ol>
-      </aside>
+      {/* The customer login page as it will look — OTP or password — updated as you switch things. */}
+      <StorePreview state={preview} device="mobile" className="xl:h-[calc(100vh-9rem)]" />
     </div>
   );
 }

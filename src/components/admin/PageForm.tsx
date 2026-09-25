@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { StorePreview } from "@/components/admin/store-preview/StorePreview";
 import { useRouter } from "next/navigation";
 
 export interface PageFormValues {
@@ -51,8 +52,11 @@ export function PageForm({ initial }: { initial: PageFormValues | null }) {
     }
   }
 
+  const preview = useMemo(() => ({ view: "page" as const, page: { title: form.title, content: form.content } }), [form.title, form.content]);
+
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl space-y-4">
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+    <form onSubmit={handleSubmit} className="min-w-0 space-y-4">
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-3 py-2">{error}</div>}
 
       <div className="bg-white rounded-lg border border-admin-gray-200 p-5 space-y-3">
@@ -103,5 +107,8 @@ export function PageForm({ initial }: { initial: PageFormValues | null }) {
         {submitting ? "Saving…" : isEdit ? "Update Page" : "Create Page"}
       </button>
     </form>
+    {/* The page as shoppers will see it, updated as you type. */}
+    <StorePreview state={preview} device="mobile" className="xl:h-[calc(100vh-9rem)]" />
+    </div>
   );
 }

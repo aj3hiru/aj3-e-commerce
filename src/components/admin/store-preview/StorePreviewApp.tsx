@@ -1,18 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ShopLayout } from "@/components/shop/ShopLayout";
+import { PhoneLogin } from "@/components/shop/auth/PhoneLogin";
+import { LoginForm } from "@/components/shop/LoginForm";
+import { Page } from "@/components/shop/ui/Meesho";
 import type { ShopLayoutData } from "@/lib/shop-layout-data";
-import { PREVIEW_MSG, type StorePreviewState } from "./types";
+import { otpReady, type AuthSettings } from "@/types/auth-settings";
+import { HIDE_SCROLLBARS, PREVIEW_MSG, type StorePreviewState } from "./types";
 
 /**
  * Runs inside the preview frame. Starts from the saved store, then redraws
- * with whatever Business Settings posts (unsaved edits included). Links and
- * forms are inert so the frame never navigates away.
+ * with whatever the admin screen posts (unsaved edits included). Links and
+ * forms are inert so the frame never navigates away; on the login view
+ * nothing is clickable at all, so no OTP is ever sent from a preview.
  */
-export function StorePreviewApp({ initial }: { initial: ShopLayoutData }) {
+export function StorePreviewApp({ initial, auth }: { initial: ShopLayoutData; auth: AuthSettings }) {
   const [live, setLive] = useState<StorePreviewState | null>(null);
-  const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
@@ -24,6 +28,7 @@ export function StorePreviewApp({ initial }: { initial: ShopLayoutData }) {
     return () => window.removeEventListener("message", onMsg);
   }, []);
 
+  const view = live?.view ?? "store";
   const focus = live?.focus ?? "top";
   useEffect(() => {
     const t = setTimeout(() => {
@@ -34,13 +39,17 @@ export function StorePreviewApp({ initial }: { initial: ShopLayoutData }) {
   }, [focus, live]);
 
   const stop = (e: React.SyntheticEvent) => {
+    if (view === "login") { e.preventDefault(); e.stopPropagation(); return; }
     const t = e.target as HTMLElement;
     if (t.closest("a[href]") || e.type === "submit") e.preventDefault();
   };
 
   const storefront = live?.storefront ?? initial.storefront;
+  const a = live?.auth ?? auth;
+  const storeName = (live?.business ?? initial.business).businessName;
   return (
-    <div ref={root} onClickCapture={stop} onSubmitCapture={stop}>
+    <div onClickCapture={stop} onSubmitCapture={stop} onKeyDownCapture={view === "login" ? stop : undefined}>
+      <style>{HIDE_SCROLLBARS}</style>
       <ShopLayout
         {...initial}
         business={live?.business ?? initial.business}
@@ -48,9 +57,21 @@ export function StorePreviewApp({ initial }: { initial: ShopLayoutData }) {
         // Never ask the admin's own browser for notification permission from the preview.
         storefront={{ ...storefront, push: { ...storefront.push, autoPrompt: false } }}
         customer={live?.loggedIn ? { id: 0, name: "Priya Sharma" } : null}
-        previewDrawer={live ? live.drawer : undefined}
+        previewDrawer={live ? !!live.drawer : undefined}
       >
-        <SampleHome categories={initial.categories.map((c) => c.name)} />
+        {view === "login" ? (
+          otpReady(a)
+            ? <PhoneLogin key={JSON.stringify(a)} firebase={a.firebase} countryCode={a.countryCode} passwordLogin={a.passwordLogin} storeName={storeName} />
+            : <LoginForm storeName={storeName} />
+        ) : view === "page" ? (
+          <Page title={live?.page?.title || "Page title"} back="/">
+            <article className="bg-white px-4 py-5 text-[15px] leading-7 text-[#353543] shop:px-8 shop:py-8">
+              <div className="whitespace-pre-line break-words">{live?.page?.content || "Your page content appears here as you type."}</div>
+            </article>
+          </Page>
+        ) : (
+          <SampleHome categories={initial.categories.map((c) => c.name)} />
+        )}
       </ShopLayout>
     </div>
   );
@@ -60,7 +81,7 @@ export function StorePreviewApp({ initial }: { initial: ShopLayoutData }) {
 function SampleHome({ categories }: { categories: string[] }) {
   const cats = (categories.length ? categories : ["Fashion", "Grocery", "Home", "Beauty", "Kids"]).slice(0, 6);
   return (
-    <div className="-mx-8 -my-6 bg-white pb-6 max-[900px]:-mx-8">
+    <div className="-mx-8 -my-6 bg-white pb-6">
       <div className="mx-4 mt-3 grid h-[150px] place-items-center rounded-[8px] bg-[linear-gradient(120deg,color-mix(in_srgb,var(--hp-accent)_18%,white),color-mix(in_srgb,var(--hp-accent)_6%,white))] text-center shop:mx-8 shop:h-[220px]">
         <div>
           <p className="text-[20px] font-extrabold text-[#353543] shop:text-[30px]">Lowest Prices, Best Quality</p>

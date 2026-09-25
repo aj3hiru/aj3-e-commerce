@@ -14,7 +14,7 @@ const DESKTOP_W = 1100; // wide enough for the store's desktop layout (≥ 901 p
  * and footer inside the phone / laptop, redrawn on every edit (nothing needs
  * saving first). Sticky and sized to the window.
  */
-export function StorePreview({ state, device: suggested }: { state: Omit<StorePreviewState, "loggedIn">; device?: Device }) {
+export function StorePreview({ state, device: suggested, className }: { state: Omit<StorePreviewState, "loggedIn">; device?: Device; className?: string }) {
   const [device, setDevice] = useState<Device>(suggested ?? "mobile");
   const [loggedIn, setLoggedIn] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
@@ -34,7 +34,7 @@ export function StorePreview({ state, device: suggested }: { state: Omit<StorePr
 
   const post = useCallback(() => {
     const w = frame.current?.contentWindow;
-    if (w) w.postMessage({ type: PREVIEW_MSG, state: { ...state, loggedIn, drawer: device === "mobile" && state.drawer } }, window.location.origin);
+    if (w) w.postMessage({ type: PREVIEW_MSG, state: { ...state, loggedIn, drawer: device === "mobile" && !!state.drawer } }, window.location.origin);
   }, [state, loggedIn, device]);
 
   useEffect(() => { const t = setTimeout(post, 120); return () => clearTimeout(t); }, [post]);
@@ -50,7 +50,7 @@ export function StorePreview({ state, device: suggested }: { state: Omit<StorePr
   const phoneW = 375;
 
   return (
-    <section className="flex h-[640px] flex-col overflow-hidden rounded-2xl bg-white font-storefront shadow-sm ring-1 ring-[#eaeaf2] xl:sticky xl:top-4 xl:h-[calc(100vh-13rem)] xl:min-h-[520px]">
+    <section className={cn("flex h-[640px] flex-col overflow-hidden rounded-2xl bg-white font-storefront shadow-sm ring-1 ring-[#eaeaf2] xl:sticky xl:top-4 xl:h-[calc(100vh-13rem)] xl:min-h-[520px]", className)}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f0f0f5] px-4 py-3">
         <p className="text-[15px] font-semibold text-[#353543]">Live preview</p>
         <div className="flex items-center gap-2">

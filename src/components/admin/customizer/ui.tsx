@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, CircleAlert, ExternalLink, Loader2, Monitor, RefreshCw, RotateCcw, ShoppingBag, Smartphone, Upload, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LAPTOP_RATIO, LaptopFrame, PhoneFrame } from "@/components/admin/PhoneFrame";
+import { HIDE_SCROLLBARS } from "@/components/admin/store-preview/types";
 import { LINK_PRESETS, isSafeHref } from "@/types/storefront";
 
 /** Shared building blocks of the Store Customizer (Homepage, Product Page, Header & Footer). */
@@ -237,6 +238,11 @@ export function Preview({ url, version, device, focus, anchor }: { url: string; 
   function onLoad(i: number) {
     if (srcs[i] === "about:blank") return;
     const w = frames[i].current?.contentWindow;
+    // No scrollbar strip down the right of the phone / laptop screen.
+    const doc = frames[i].current?.contentDocument;
+    if (doc && !doc.getElementById("pv-noscroll")) {
+      const st = doc.createElement("style"); st.id = "pv-noscroll"; st.textContent = HIDE_SCROLLBARS; doc.head.appendChild(st);
+    }
     // Always open at `anchor` (e.g. the footer); otherwise keep the scroll position across reloads.
     const target = anchor ? frames[i].current?.contentDocument?.querySelector(`[data-hc="${anchor}"]`) : null;
     if (target) target.scrollIntoView({ block: "end" });

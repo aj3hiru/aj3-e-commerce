@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { cachedPage, isCacheable } from "@/lib/page-cache";
 import { STORE_PATHS, appOfPath, staffHosts, storeHostOf, toInternalPath, toPublicPath, type StaffApp } from "@/lib/hosts";
 
 /**
@@ -32,7 +33,7 @@ function crossSiteBlocked(req: NextRequest, hostname: string): boolean {
   return ![store, `www.${store}`, hosts.admin, hosts.delivery, hosts.login].filter(Boolean).includes(from);
 }
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const { pathname, search } = url;
   const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").toLowerCase();
@@ -101,6 +102,10 @@ export function middleware(req: NextRequest) {
     if (moved) return moved;
     // Only the login host is set up: every staff page lives there, as before.
     if (hosts.login) return at(hosts.login, pathname + search);
+  }
+  if (!STAFF_PATHS.test(pathname) && isCacheable(req)) {
+    const page = await cachedPage(req, hostname + port, proto).catch(() => null);
+    if (page) return page;
   }
   return NextResponse.next();
 }

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { cached } from "@/lib/cache";
 import { loadLiveCampaigns, priceRows } from "@/lib/campaign-pricing";
 import { LOW_STOCK_LIMIT } from "@/components/admin/products2/filters";
 import { FEED_PAGE_SIZE, type FeedFilters, type FeedProduct, type FeedResult, type FeedSort } from "@/lib/shop-feed-shared";
@@ -60,7 +61,15 @@ export async function enrichProducts(rows: FeedRow[]): Promise<(FeedProduct & { 
 export const publicProducts = (list: (FeedProduct & { _created: number })[]): FeedProduct[] =>
   list.map((p) => { const out: Partial<typeof p> = { ...p }; delete out._created; return out as FeedProduct; });
 
-export async function getShopFeed(f: FeedFilters): Promise<FeedResult> {
+const FEED_DEPS = ["EcomProduct", "EcomProductReview", "EcomCampaign", "EcomCampaignTarget", "EcomCategory", "EcomBrand", "EcomSubcategory"] as const;
+
+/** Browsing (not searching) results are shared by every shopper, so they're cached until a product / review / campaign changes. */
+export function getShopFeed(f: FeedFilters): Promise<FeedResult> {
+  if (f.q) return loadShopFeed(f);
+  return cached(`feed:${JSON.stringify(f)}`, FEED_DEPS, 30_000, () => loadShopFeed(f));
+}
+
+async function loadShopFeed(f: FeedFilters): Promise<FeedResult> {
   const and: Record<string, unknown>[] = [{ status: "active" }];
   if (f.q) and.push({ OR: [{ name: { contains: f.q } }, { sku: { contains: f.q } }, { category: { name: { contains: f.q } } }, { brand: { name: { contains: f.q } } }] });
   if (f.cat.length) and.push({ category: { slug: { in: f.cat }, status: "active" } });
@@ -102,7 +111,11 @@ export async function getShopFeed(f: FeedFilters): Promise<FeedResult> {
 }
 
 /** Options for the Category / Brand sheets: only ones that have live products. */
-export async function getFeedFacets(): Promise<{ categories: { slug: string; name: string; image: string | null; count: number }[]; brands: { id: number; name: string; count: number }[] }> {
+export function getFeedFacets(): Promise<{ categories: { slug: string; name: string; image: string | null; count: number }[]; brands: { id: number; name: string; count: number }[] }> {
+  return cached("facets", ["EcomCategory", "EcomBrand", "EcomProduct"], 60_000, loadFeedFacets);
+}
+
+async function loadFeedFacets() {
   const [cats, brands, byCat, byBrand] = await Promise.all([
     prisma.ecomCategory.findMany({ where: { status: "active" }, orderBy: [{ serial: "asc" }, { name: "asc" }], select: { id: true, slug: true, name: true, image: true } }),
     prisma.ecomBrand.findMany({ where: { status: "active" }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -119,8 +132,12 @@ export async function getFeedFacets(): Promise<{ categories: { slug: string; nam
 }
 
 /** Products for a homepage "Product row" block. */
-export async function getProductRow(block: { source: "latest" | "deals" | "top_rated" | "category" | "manual"; category: string; productIds: number[]; limit: number }):
-  Promise<{ products: FeedProduct[]; viewAll: string | null }> {
+export function getProductRow(block: { source: "latest" | "deals" | "top_rated" | "category" | "manual"; category: string; productIds: number[]; limit: number }): Promise<Awaited<ReturnType<typeof loadProductRow>>> {
+  const key = `row:${block.source}:${block.category}:${block.productIds.join(",")}:${block.limit}`;
+  return cached(key, FEED_DEPS, 30_000, () => loadProductRow(block));
+}
+
+async function loadProductRow(block: { source: "latest" | "deals" | "top_rated" | "category" | "manual"; category: string; productIds: number[]; limit: number }): Promise<{ products: FeedProduct[]; viewAll: string | null }> {
   const take = Math.max(1, Math.min(30, block.limit));
   if (block.source === "manual") {
     if (!block.productIds.length) return { products: [], viewAll: null };

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { prisma } from "./db";
@@ -22,13 +23,13 @@ export interface AdminSession {
  * status should already be 'active'. This still re-checks status on every
  * request in case an admin was suspended mid-session, exactly like the PHP.
  */
-export async function getAdminSession(): Promise<AdminSession | null> {
+async function loadAdminSession(): Promise<AdminSession | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("admin_session")?.value;
   if (!token) return null;
 
   try {
-    const payload = jwt.verify(token, process.env.ADMIN_JWT_SECRET!) as { userId: number; pv?: string };
+    const payload = jwt.verify(token, process.env.ADMIN_JWT_SECRET!, { algorithms: ["HS256"] }) as { userId: number; pv?: string };
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
     if (!user || user.status !== "active") return null;
     // Password changed since this session was issued -> session is revoked.
@@ -53,3 +54,6 @@ export function hasPermission(
 ): boolean {
   return !!permissions?.[group]?.[key];
 }
+
+/** Looked up once per request, however many components ask. */
+export const getAdminSession: () => Promise<AdminSession | null> = cache(loadAdminSession);

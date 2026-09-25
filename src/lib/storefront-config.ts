@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { cached } from "@/lib/cache";
 import {
   DEFAULT_STOREFRONT, MENU_ICONS, isSafeHref,
   type FooterConfig, type MenuDesign, type MenuItem, type MenuIcon, type MenuVisibility, type PushUiConfig, type StorefrontConfig,
@@ -92,7 +93,11 @@ export function sanitizeStorefront(input: Partial<Record<Key, unknown>>): Storef
   };
 }
 
-export async function getStorefrontConfig(): Promise<StorefrontConfig> {
+export function getStorefrontConfig(): Promise<StorefrontConfig> {
+  return cached("storefront", ["StorefrontSetting"], 60_000, loadStorefrontConfig);
+}
+
+async function loadStorefrontConfig(): Promise<StorefrontConfig> {
   try {
     const rows = (await prisma.storefrontSetting.findMany({ where: { key: { in: [...KEYS] } } })) as { key: string; value: unknown }[];
     return sanitizeStorefront(Object.fromEntries(rows.map((r) => [r.key, r.value])));

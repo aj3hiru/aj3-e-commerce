@@ -1,4 +1,6 @@
 import { prisma } from "./db";
+import { cached } from "@/lib/cache";
+import { getBusinessRow } from "@/lib/business-row";
 import { getCustomerSession } from "./customer-auth";
 import { getCart, cartCount, type CartMap } from "./cart-session";
 import { cartTotal, loadCartLines } from "./cart-lines";
@@ -32,8 +34,8 @@ export interface ShopLayoutData {
  *  from the current session, without each page re-implementing the same fetches. */
 export async function getShopLayoutData(): Promise<ShopLayoutData> {
   const [biz, categories, customerSession, cart, storefront] = await Promise.all([
-    prisma.ecomBusinessSettings.findFirst({ orderBy: { id: "asc" } }),
-    prisma.ecomCategory.findMany({ where: { status: "active" }, orderBy: { serial: "asc" } }),
+    getBusinessRow(),
+    cached("layout:categories", ["EcomCategory"], 60_000, () => prisma.ecomCategory.findMany({ where: { status: "active" }, orderBy: { serial: "asc" } })),
     getCustomerSession(),
     getCart(),
     getStorefrontConfig(),

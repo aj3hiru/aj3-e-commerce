@@ -1,6 +1,26 @@
 import type { NextConfig } from "next";
 
+/** Sent with every page, API response and file. */
+const SECURITY_HEADERS = [
+  // Browsers only ever talk to the site over HTTPS (1 year).
+  { key: "Strict-Transport-Security", value: "max-age=31536000" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // No other website may show our pages in a frame (clickjacking); our own previews still can.
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "Content-Security-Policy", value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'" },
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=(self), payment=(self), usb=(), interest-cohort=()" },
+];
+
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
+  async headers() {
+    return [
+      { source: "/:path*", headers: SECURITY_HEADERS },
+      // Staff sites never show up in Google.
+      { source: "/:path*", has: [{ type: "host", value: "(admin|delivery|login)\\..*" }], headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
+    ];
+  },
   images: {
     remotePatterns: [],
   },

@@ -1,4 +1,5 @@
-import { stat, readFile } from "fs/promises";
+import { stat, readFile, mkdir, writeFile } from "fs/promises";
+import { toWebp } from "./image-webp";
 import path from "path";
 import { NextResponse } from "next/server";
 
@@ -21,7 +22,27 @@ const TYPES: Record<string, string> = {
 };
 const INLINE = /^(image|video|audio)\/|^application\/pdf$|^text\/plain/;
 
-export async function servePublicFile(dir: "uploads" | "files", parts: string[]): Promise<Response> {
+/** Older uploads that are still JPEG / PNG go out as WebP (converted once, kept in .cache/webp). */
+const CONVERT = new Set(["jpg", "jpeg", "png"]);
+const WEBP_CACHE = path.join(process.cwd(), ".cache", "webp");
+
+async function webpCopy(abs: string, rel: string, ext: string, mtime: Date): Promise<Buffer | null> {
+  const out = path.join(WEBP_CACHE, `${rel}.webp`);
+  try {
+    const st = await stat(out);
+    if (st.mtimeMs >= mtime.getTime()) return await readFile(out);
+  } catch { /* not converted yet */ }
+  try {
+    const webp = await toWebp(await readFile(abs), ext);
+    await mkdir(path.dirname(out), { recursive: true });
+    await writeFile(out, webp);
+    return webp;
+  } catch {
+    return null; // unreadable image — send the original
+  }
+}
+
+export async function servePublicFile(dir: "uploads" | "files", parts: string[], accept = ""): Promise<Response> {
   const notFound = () => new NextResponse("Not found", { status: 404 });
   if (!parts.length || parts.some((p) => !p || p.startsWith(".") || p.includes("\\") || p.includes("\0"))) return notFound();
   const ext = (parts[parts.length - 1].split(".").pop() || "").toLowerCase();
@@ -33,11 +54,14 @@ export async function servePublicFile(dir: "uploads" | "files", parts: string[])
   try {
     const st = await stat(abs);
     if (!st.isFile()) return notFound();
-    const body = await readFile(abs);
+    const canWebp = CONVERT.has(ext) && accept.includes("image/webp");
+    const webp = canWebp ? await webpCopy(abs, path.join(dir, ...parts), ext, st.mtime) : null;
+    const body = webp && webp.length < st.size ? webp : await readFile(abs);
     return new NextResponse(new Uint8Array(body), {
       headers: {
-        "Content-Type": type,
-        "Content-Length": String(st.size),
+        "Content-Type": body === webp ? "image/webp" : type,
+        "Content-Length": String(body.length),
+        ...(CONVERT.has(ext) ? { Vary: "Accept" } : {}),
         // Upload names are unique, so a file never changes under its URL.
         "Cache-Control": "public, max-age=31536000, immutable",
         "Last-Modified": st.mtime.toUTCString(),

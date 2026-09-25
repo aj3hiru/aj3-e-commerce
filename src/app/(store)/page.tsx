@@ -13,7 +13,12 @@ import { getFeedFacets, getProductRow, getShopFeed, parseFeedFilters } from "@/l
 import { getDraftHome, getLiveHome } from "@/lib/home-config";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
+import { cached } from "@/lib/cache";
 import type { HomeBlock } from "@/types/home";
+
+const getHomeCategories = () => cached("home:categories", ["EcomCategory"], 60_000, async () => (await prisma.ecomCategory.findMany({
+  where: { status: "active" }, orderBy: [{ serial: "asc" }, { name: "asc" }], select: { slug: true, name: true, image: true },
+})) as { slug: string; name: string; image: string | null }[]);
 
 interface ShopHomePageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -44,12 +49,20 @@ export default async function ShopHomePage({ searchParams }: ShopHomePageProps) 
     preview = !!admin && hasPermission(admin.permissions, "ecommerce", "manage_homepage");
   }
 
-  const [layoutData, config, facets, feed] = await Promise.all([
+  // Everything the page needs is fetched at the same time, not one after another.
+  const [layoutData, config, facets, feed, categories, campaigns] = await Promise.all([
     getShopLayoutData(), preview ? getDraftHome() : getLiveHome(), getFeedFacets(), getShopFeed(filters),
+    filters.q ? Promise.resolve([]) : getHomeCategories(),
+    filters.q ? Promise.resolve([]) : getHomeCampaigns(),
   ]);
-  const wishlisted = layoutData.customer
-    ? ((await prisma.ecomWishlist.findMany({ where: { customerId: layoutData.customer.id }, select: { productId: true } })) as { productId: number }[]).map((w) => w.productId)
-    : [];
+  const enabledRows = config.blocks.filter((b): b is Extract<HomeBlock, { type: "products" }> => b.enabled && b.type === "products");
+  const [wishlisted, rowList] = await Promise.all([
+    layoutData.customer
+      ? prisma.ecomWishlist.findMany({ where: { customerId: layoutData.customer.id }, select: { productId: true } })
+        .then((r) => (r as { productId: number }[]).map((w) => w.productId))
+      : Promise.resolve([] as number[]),
+    filters.q ? Promise.resolve([]) : Promise.all(enabledRows.map(async (b) => [b.id, await getProductRow(b)] as const)),
+  ]);
   const loggedIn = !!layoutData.customer;
   const feedBlock = config.blocks.find((b): b is Extract<HomeBlock, { type: "feed" }> => b.type === "feed" && b.enabled);
   const bar = feedBlock ?? { showSort: true, showCategory: true, showBrand: true, showFilters: true };
@@ -69,14 +82,10 @@ export default async function ShopHomePage({ searchParams }: ShopHomePageProps) 
   }
 
   // ── Homepage ──────────────────────────────────────────────────────────────
-  const categories = (await prisma.ecomCategory.findMany({
-    where: { status: "active" }, orderBy: [{ serial: "asc" }, { name: "asc" }], select: { slug: true, name: true, image: true },
-  })) as { slug: string; name: string; image: string | null }[];
   const blocks = config.blocks.filter((b) => b.enabled);
   // Campaign Offers switched to "Show on homepage" go just above the first "Products For You" feed.
-  const campaigns = await getHomeCampaigns();
   const firstFeed = blocks.find((b) => b.type === "feed")?.id;
-  const rows = new Map(await Promise.all(blocks.filter((b) => b.type === "products").map(async (b) => [b.id, await getProductRow(b as Extract<HomeBlock, { type: "products" }>)] as const)));
+  const rows = new Map(rowList);
 
   const rendered = blocks.map((b, i) => <div key={b.id} data-hc={b.id}>{renderBlock(b, i)}</div>);
   function renderBlock(b: HomeBlock, i: number) {

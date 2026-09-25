@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { cached } from "@/lib/cache";
 import { isSafeHref } from "@/types/storefront";
 import {
   DEFAULT_HOME, MEESHO,
@@ -92,8 +93,8 @@ async function read(key: string): Promise<unknown | null> {
 }
 
 /** What shoppers see. */
-export async function getLiveHome(): Promise<HomeConfig> {
-  return sanitizeHome((await read(LIVE)) ?? DEFAULT_HOME);
+export function getLiveHome(): Promise<HomeConfig> {
+  return cached("home:live", ["StorefrontSetting"], 60_000, async () => sanitizeHome((await read(LIVE)) ?? DEFAULT_HOME));
 }
 
 /** What the customizer is editing (falls back to the live homepage). */

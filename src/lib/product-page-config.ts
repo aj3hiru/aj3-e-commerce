@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { cached } from "@/lib/cache";
 import { isSafeHref } from "@/types/storefront";
 import {
   ASSURANCE_ICONS, DEFAULT_PRODUCT_PAGE, PP_DEFAULT_ORDER, TRUST_ICONS,
@@ -103,8 +104,8 @@ async function read(key: string): Promise<unknown | null> {
   }
 }
 
-export async function getLiveProductPage(): Promise<ProductPageConfig> {
-  return sanitizeProductPage((await read(LIVE)) ?? DEFAULT_PRODUCT_PAGE);
+export function getLiveProductPage(): Promise<ProductPageConfig> {
+  return cached("pp:live", ["StorefrontSetting"], 60_000, async () => sanitizeProductPage((await read(LIVE)) ?? DEFAULT_PRODUCT_PAGE));
 }
 
 export async function getDraftProductPage(): Promise<ProductPageConfig> {

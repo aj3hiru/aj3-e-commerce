@@ -1,8 +1,14 @@
 import { prisma } from "@/lib/db";
+import { cached } from "@/lib/cache";
 import { offerLabel, sanitizeCampaignHome, type CampaignBannerData } from "@/types/campaign-home";
 
 /** Running campaigns switched to "Show on homepage", newest first (max 6). */
-export async function getHomeCampaigns(): Promise<CampaignBannerData[]> {
+export function getHomeCampaigns(): Promise<CampaignBannerData[]> {
+  // Short TTL as well: campaigns start and end by the clock.
+  return cached("home:campaigns", ["EcomCampaign", "EcomCampaignTarget", "EcomCategory", "EcomBrand"], 30_000, loadHomeCampaigns);
+}
+
+async function loadHomeCampaigns(): Promise<CampaignBannerData[]> {
   const now = new Date();
   let rows;
   try {

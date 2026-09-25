@@ -12,13 +12,40 @@ import { STORE_PATHS, appOfPath, staffHosts, storeHostOf, toInternalPath, toPubl
 const PASS = /^\/(uploads|files|auth)(\/|$)|\.[a-z0-9]{2,5}$/i;
 const STAFF_PATHS = /^\/(admin|agent|staff|push-notifications)(\/|$)/;
 
+const UNSAFE = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/**
+ * Blocks cross-site requests that change data (CSRF): another website can't
+ * make a logged-in admin's browser save, delete or order anything. Our own
+ * pages on any of our hosts are fine; server-to-server calls (cron) send no Origin.
+ */
+function crossSiteBlocked(req: NextRequest, hostname: string): boolean {
+  if (!UNSAFE.has(req.method)) return false;
+  if (req.headers.get("sec-fetch-site") === "cross-site") return true;
+  const origin = req.headers.get("origin");
+  if (!origin || origin === "null") return !!origin;
+  let from: string;
+  try { from = new URL(origin).hostname.toLowerCase(); } catch { return true; }
+  if (from === hostname) return false;
+  const hosts = staffHosts();
+  const store = storeHostOf(hostname);
+  return ![store, `www.${store}`, hosts.admin, hosts.delivery, hosts.login].filter(Boolean).includes(from);
+}
+
 export function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const { pathname, search } = url;
-  if (PASS.test(pathname)) return NextResponse.next();
-
   const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "").toLowerCase();
   const hostname = host.split(":")[0];
+
+  if (pathname.startsWith("/api/")) {
+    if (crossSiteBlocked(req, hostname)) return NextResponse.json({ success: false, message: "Request blocked." }, { status: 403 });
+    return NextResponse.next();
+  }
+  // Uploaded files: long browser cache + WebP for old photos (app/media-file).
+  if (/^\/(uploads|files)\//.test(pathname)) return NextResponse.rewrite(new URL(`/media-file${pathname}${search}`, req.url));
+  if (PASS.test(pathname)) return NextResponse.next();
+
   const port = host.includes(":") ? `:${host.split(":")[1]}` : "";
   const proto = (req.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "")).split(",")[0].trim();
   // 308 for moved customer URLs (/shop…, www); staff moves are 307 so browsers don't cache them for good.
@@ -79,5 +106,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/|api/|favicon\\.ico).*)"],
+  matcher: ["/((?!_next/|favicon\\.ico).*)"],
 };

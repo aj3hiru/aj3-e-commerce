@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import { cached } from "@/lib/cache";
 import type { ShopHeaderSettings } from "@/types/shop";
 
 /**
@@ -36,7 +37,11 @@ export const HEADER_SETTING_DEFAULTS: Record<HeaderSettingKey, string> = {
  * not had the customizer migration applied yet, the table simply doesn't exist,
  * and a missing settings table must not take the whole storefront down.
  */
-export async function getShopHeaderSettings(businessHours?: string | null): Promise<ShopHeaderSettings> {
+export function getShopHeaderSettings(businessHours?: string | null): Promise<ShopHeaderSettings> {
+  return cached(`header:${businessHours ?? "\u0000"}`, ["EcomHomeSetting"], 60_000, () => loadHeaderSettings(businessHours));
+}
+
+async function loadHeaderSettings(businessHours?: string | null): Promise<ShopHeaderSettings> {
   let rows: { settingKey: string; settingValue: string }[] = [];
   try {
     rows = await prisma.ecomHomeSetting.findMany({

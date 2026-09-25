@@ -61,7 +61,8 @@ body {
 }
 
 /* Native dropdowns: our own arrow, kept clear of the border. */
-.admin-ui select:not([multiple]):not([size]) {
+/* Selects marked appearance-none already draw their own icon. */
+.admin-ui select:not([multiple]):not([size]):not(.appearance-none) {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;

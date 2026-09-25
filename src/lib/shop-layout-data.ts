@@ -66,6 +66,8 @@ export async function getShopLayoutData(): Promise<ShopLayoutData> {
       returnPolicy: biz?.returnPolicy ?? null,
       contactNumbers: (biz?.contactNumbers as string[]) ?? [],
       socialMedia: (biz?.socialMediaJson as { platform: never; url: string }[]) ?? [],
+      headerDisplay: (["logo", "name", "both"].includes(biz?.siteHeaderDisplay ?? "") ? biz?.siteHeaderDisplay : "logo") as "logo" | "name" | "both",
+      logoWidth: biz?.logoDisplayWidth ?? 150,
     },
     categories: categories.map((c: (typeof categories)[number]) => ({ slug: c.slug, name: c.name })),
     customer,

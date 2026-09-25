@@ -61,7 +61,7 @@ export function ShopFooter({ business, footer }: ShopFooterProps) {
           <div className="flex flex-col">
             {business.logo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={`/${business.logo}`} alt={business.businessName} loading="lazy" className="mb-2.5 h-auto w-[180px] max-w-full object-contain" />
+              <img src={/^(blob:|data:|https?:|\/)/.test(business.logo) ? business.logo : `/${business.logo}`} alt={business.businessName} loading="lazy" className="mb-2.5 h-auto w-[180px] max-w-full object-contain" />
             ) : (
               <span className="mb-2.5 text-2xl font-extrabold" style={{ color: light ? footer.accentColor : "#fff" }}>{business.businessName}</span>
             )}

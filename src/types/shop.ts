@@ -9,6 +9,9 @@ export interface ShopBusinessSettings {
   returnPolicy?: string | null;
   contactNumbers?: string[];
   socialMedia?: { platform: SocialPlatform; url: string }[];
+  /** Logo & Branding: what the store header shows, and the logo's width (px). */
+  headerDisplay?: "logo" | "name" | "both";
+  logoWidth?: number;
 }
 
 /**

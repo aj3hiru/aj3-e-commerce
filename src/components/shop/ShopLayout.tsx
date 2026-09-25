@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ShopHeader } from "./ShopHeader";
 import { ShopMobileDrawer } from "./ShopMobileDrawer";
 import { ShopFooter } from "./ShopFooter";
@@ -35,11 +35,14 @@ interface ShopLayoutProps {
   storefront?: StorefrontConfig;
   /** Offer strip above the header, from the Homepage Customizer. */
   promo?: PromoConfig | null;
+  /** Settings preview only: hold the mobile sidebar open (true) or shut (false). */
+  previewDrawer?: boolean;
   children: React.ReactNode;
 }
 
-export function ShopLayout({ business, header, categories, customer, cartCount, cartTotal, cartItems, cartUi, theme = { accent: DEFAULT_HOME.accent, card: DEFAULT_HOME.card }, storefront = DEFAULT_STOREFRONT, promo = null, children }: ShopLayoutProps) {
+export function ShopLayout({ business, header, categories, customer, cartCount, cartTotal, cartItems, cartUi, theme = { accent: DEFAULT_HOME.accent, card: DEFAULT_HOME.card }, storefront = DEFAULT_STOREFRONT, promo = null, previewDrawer, children }: ShopLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  useEffect(() => { if (previewDrawer !== undefined) setDrawerOpen(previewDrawer); }, [previewDrawer]);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   const headerSettings = header ?? defaultShopHeaderSettings(business.businessHours);
   const loggedIn = !!customer;

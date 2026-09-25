@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus, Trash2, ImagePlus, Building2, Contact, Share2, FileSpreadsheet,
@@ -11,6 +11,7 @@ import { StorefrontSettingsPanels, STOREFRONT_MENU, STOREFRONT_SECTIONS, storefr
 import type { StorefrontConfig } from "@/types/storefront";
 import type { InvoiceSettings } from "@/types/invoice-settings";
 import { InvoiceSettingsPanel } from "./invoice-settings/InvoiceSettingsPanel";
+import { StorePreview } from "./store-preview/StorePreview";
 import type { ShopCategoryNavItem, SocialPlatform } from "@/types/shop";
 import {
   SettingsMenuLayout, SettingsPanel, Field, CheckRow, CONTROL_CLASS,
@@ -63,6 +64,9 @@ export interface BusinessSettingsInitial {
   headerSearchPlaceholder: string;
 }
 
+/** Sections that change what shoppers see — they get the live store preview on the left. */
+const PREVIEW_SECTIONS = ["header", "headerMenu", "sidebarMenu", "menuDesign", "push", "footer", "branding"];
+
 const FKEYS = Array.from({ length: 11 }, (_, i) => `F${i + 2}`);
 
 /**
@@ -106,6 +110,27 @@ export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitia
     setLogoFile(file);
     if (file) setLogoPreview(URL.createObjectURL(file));
   }
+
+  // Live store preview for the storefront-facing sections (unsaved edits included).
+  const withPreview = PREVIEW_SECTIONS.includes(active);
+  const previewState = useMemo(() => ({
+    business: {
+      businessName: form.businessName || "Your Store", logo: logoPreview, tagline: form.tagline, email: form.email,
+      address: form.address, location: form.location, businessHours: form.businessHours, returnPolicy: form.returnPolicy,
+      contactNumbers: contactNumbers.filter(Boolean),
+      socialMedia: socialMedia.filter((sm) => sm.url && sm.platform !== "other") as { platform: SocialPlatform; url: string }[],
+      headerDisplay: (["logo", "name", "both"].includes(form.siteHeaderDisplay) ? form.siteHeaderDisplay : "logo") as "logo" | "name" | "both",
+      logoWidth: form.logoDisplayWidth,
+    },
+    header: {
+      showLocation: form.headerShowLocation, showDeliveryInfo: form.headerShowDeliveryInfo, deliveryLabel: form.headerDeliveryLabel,
+      deliveryTimeText: form.headerDeliveryTimeText || form.businessHours, searchPlaceholder: form.headerSearchPlaceholder,
+    },
+    storefront,
+    drawer: active === "sidebarMenu" || active === "menuDesign",
+    focus: (active === "footer" ? "footer" : "top") as "top" | "footer",
+  }), [form, logoPreview, contactNumbers, socialMedia, storefront, active]);
+  const previewDevice = active === "headerMenu" ? "desktop" as const : active === "sidebarMenu" ? "mobile" as const : undefined;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -217,6 +242,9 @@ export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitia
       )}
 
       <SettingsMenuLayout items={MENU} active={active} onSelect={setActive}>
+        <div className={withPreview ? "grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]" : undefined}>
+        {withPreview && <StorePreview state={previewState} device={previewDevice} />}
+        <div className="min-w-0">
         {/* ══════════ BUSINESS IDENTITY ══════════ */}
         {active === "identity" && (
           <SettingsPanel icon={Building2} title="Business Identity">
@@ -560,6 +588,8 @@ export function BusinessSettingsForm({ initial, storefrontInitial, invoiceInitia
               socialMedia: socialMedia.filter((sm) => sm.url && sm.platform !== "other") as { platform: SocialPlatform; url: string }[],
             }} />
         )}
+        </div>
+        </div>
       </SettingsMenuLayout>
 
       {/*

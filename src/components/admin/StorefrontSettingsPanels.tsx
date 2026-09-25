@@ -4,13 +4,11 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle, ArrowDown, ArrowUp, Bell, ChevronDown, Eye, EyeOff, ExternalLink, LayoutPanelTop, ListTree, Menu as MenuIcon2,
-  Palette, PanelBottom, Plus, RotateCcw, Smartphone, Trash2,
+  Palette, PanelBottom, Plus, RotateCcw, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LaptopFrame, PhoneFrame } from "./PhoneFrame";
 import { SettingsPanel, Field, CheckRow, CONTROL_CLASS } from "./SettingsMenuLayout";
-import { MENU_ICON, SidebarMenu, DesktopMenu, resolveMenu } from "@/components/shop/menu/StoreMenus";
-import { ShopFooter } from "@/components/shop/ShopFooter";
+import { MENU_ICON } from "@/components/shop/menu/StoreMenus";
 import {
   DEFAULT_FOOTER, DEFAULT_HEADER_MENU, DEFAULT_MENU_DESIGN, DEFAULT_SIDEBAR_MENU, LINK_PRESETS, MENU_ICONS, isSafeHref,
   type FooterColumn, type MenuIcon, type MenuItem, type StorefrontConfig,
@@ -157,28 +155,12 @@ function MenuBuilder({ items, onChange, categories, defaults }: {
   );
 }
 
-/* ───────────────────────── previews ───────────────────────── */
-
-function AudienceToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div className="inline-flex rounded-md border border-admin-gray-200 p-0.5 text-xs font-semibold">
-      {[false, true].map((v) => (
-        <button key={String(v)} type="button" onClick={() => onChange(v)}
-          className={cn("rounded px-2.5 py-1", value === v ? "bg-[#9f2089] text-white" : "text-admin-gray-600 hover:bg-admin-gray-50")}>{v ? "Logged in" : "Guest"}</button>
-      ))}
-    </div>
-  );
-}
-
-const never = () => false;
-
 /* ───────────────────────── panels ───────────────────────── */
 
 export function StorefrontSettingsPanels({ active, value, onChange, categories, business }: {
   active: string; value: StorefrontConfig; onChange: (next: StorefrontConfig) => void;
   categories: ShopCategoryNavItem[]; business: ShopBusinessSettings;
 }) {
-  const [loggedIn, setLoggedIn] = useState(false);
   const set = <K extends keyof StorefrontConfig>(k: K, v: StorefrontConfig[K]) => onChange({ ...value, [k]: v });
   const f = value.footer;
   const setF = (patch: Partial<typeof f>) => set("footer", { ...f, ...patch });
@@ -188,14 +170,6 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
     return (
       <SettingsPanel icon={LayoutPanelTop} title="Header Menu" hint="The menu bar under the header on computers. Items with a dropdown open on hover.">
         <MenuBuilder items={value.headerMenu} onChange={(v) => set("headerMenu", v)} categories={categories} defaults={DEFAULT_HEADER_MENU} />
-        <div className="mt-5">
-          <div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-admin-gray-500">Preview</span><AudienceToggle value={loggedIn} onChange={setLoggedIn} /></div>
-          <LaptopFrame fluid className="mx-auto max-w-[760px]">
-            <div className="h-full bg-[#f5f5f8] [&_nav]:!block">
-              <DesktopMenu items={resolveMenu(value.headerMenu, loggedIn, categories)} design={value.menuDesign} isActive={(h) => h === "/"} />
-            </div>
-          </LaptopFrame>
-        </div>
       </SettingsPanel>
     );
   }
@@ -203,17 +177,7 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
   if (active === "sidebarMenu") {
     return (
       <SettingsPanel icon={MenuIcon2} title="Sidebar Menu (Mobile)" hint="The menu inside the ☰ sidebar on phones and tablets, below the location, bell and profile.">
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px]">
-          <MenuBuilder items={value.sidebarMenu} onChange={(v) => set("sidebarMenu", v)} categories={categories} defaults={DEFAULT_SIDEBAR_MENU} />
-          <div>
-            <div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-admin-gray-500"><Smartphone className="h-3.5 w-3.5" /> Preview</span><AudienceToggle value={loggedIn} onChange={setLoggedIn} /></div>
-            <PhoneFrame width={272} height={520} className="mx-auto">
-              <div className="h-full overflow-y-auto font-storefront">
-                <SidebarMenu items={resolveMenu(value.sidebarMenu, loggedIn, categories)} design={value.menuDesign} isActive={(h) => h === "/"} />
-              </div>
-            </PhoneFrame>
-          </div>
-        </div>
+        <MenuBuilder items={value.sidebarMenu} onChange={(v) => set("sidebarMenu", v)} categories={categories} defaults={DEFAULT_SIDEBAR_MENU} />
       </SettingsPanel>
     );
   }
@@ -235,18 +199,6 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
           </div>
         </div>
         <button type="button" onClick={() => set("menuDesign", DEFAULT_MENU_DESIGN)} className="mt-3 flex items-center gap-1.5 text-[0.8rem] font-semibold text-admin-gray-500 hover:text-admin-gray-800"><RotateCcw className="h-3.5 w-3.5" /> Store default (green)</button>
-        <div className="mt-5 grid gap-5 md:grid-cols-2">
-          <PhoneFrame width={250} height={330} className="mx-auto">
-            <div className="h-full overflow-y-auto font-storefront">
-              <SidebarMenu items={resolveMenu(value.sidebarMenu, false, categories).slice(0, 4)} design={d} isActive={(h) => h === "/"} />
-            </div>
-          </PhoneFrame>
-          <LaptopFrame fluid className="self-center">
-            <div className="h-full bg-[#f5f5f8] [&_nav]:!block">
-              <DesktopMenu items={resolveMenu(value.headerMenu, false, categories).slice(0, 3)} design={d} isActive={never} />
-            </div>
-          </LaptopFrame>
-        </div>
       </SettingsPanel>
     );
   }
@@ -343,10 +295,6 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
         </Field>
         <button type="button" onClick={() => { if (confirm("Reset the footer to the default design?")) set("footer", DEFAULT_FOOTER); }} className="mt-1 flex items-center gap-1.5 text-[0.8rem] font-semibold text-admin-gray-500 hover:text-admin-gray-800"><RotateCcw className="h-3.5 w-3.5" /> Reset footer to default</button>
 
-        <p className="mb-2 mt-6 text-xs font-bold uppercase tracking-wide text-admin-gray-500">Preview</p>
-        <div className="overflow-hidden rounded-lg border border-admin-gray-200 font-storefront [&_footer]:!mt-0">
-          <ShopFooter business={business} footer={f} />
-        </div>
       </SettingsPanel>
     );
   }

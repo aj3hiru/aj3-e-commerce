@@ -85,19 +85,7 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
       {/* ============ DESKTOP HEADER (.topbar) ============ */}
       <header className="hidden shop:flex items-center gap-5 px-8 py-3 border-b border-storefront-border bg-white h-[76px]">
         <Link href="/" className="flex items-center gap-1.5 shrink-0" aria-label={`${business.businessName} home`}>
-          {business.logo ? (
-            <Image
-              src={`/${business.logo}`}
-              alt={`${business.businessName} logo`}
-              width={150}
-              height={44}
-              className="h-11 w-auto max-w-[150px] object-contain rounded-[4px] block"
-            />
-          ) : (
-            <span className="text-[26px] font-extrabold text-[var(--hp-accent)] tracking-[0.2px] leading-none">
-              {business.businessName}
-            </span>
-          )}
+          <Brand business={business} size="desktop" />
         </Link>
 
         {/* .location — two lines: truncated location + chevron, then the address */}
@@ -178,17 +166,7 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
           <Menu className="w-6 h-6 text-[#353543]" strokeWidth={2} />
         </button>
         <Link href="/" aria-label={`${business.businessName} home`}>
-          {business.logo ? (
-            <Image
-              src={`/${business.logo}`}
-              alt={`${business.businessName} logo`}
-              width={110}
-              height={34}
-              className="h-[34px] w-auto max-w-[110px] object-contain"
-            />
-          ) : (
-            <span className="text-[22px] font-extrabold tracking-[-0.2px] text-[var(--hp-accent)]">{business.businessName}</span>
-          )}
+          <Brand business={business} size="mobile" />
         </Link>
         <div className="flex items-center gap-[18px]">
           <PushBell className="text-[#353543]" iconClassName="w-6 h-6" />
@@ -221,5 +199,30 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
         </div>
       </form>
     </>
+  );
+}
+
+/** Logo and/or name, as Business Settings → Logo & Branding says. */
+function Brand({ business, size }: { business: ShopBusinessSettings; size: "desktop" | "mobile" }) {
+  const display = business.headerDisplay ?? "logo";
+  const showLogo = !!business.logo && display !== "name";
+  const showName = !business.logo || display !== "logo";
+  const desktop = size === "desktop";
+  const maxW = Math.min(business.logoWidth ?? 150, desktop ? 220 : 140);
+  const src = business.logo && /^(blob:|data:|https?:|\/)/.test(business.logo) ? business.logo : `/${business.logo}`;
+  return (
+    <span className="flex items-center gap-2">
+      {showLogo && (
+        src.startsWith("/")
+          ? <Image src={src} alt={`${business.businessName} logo`} width={220} height={44} style={{ maxWidth: maxW }} className={desktop ? "h-11 w-auto object-contain rounded-[4px] block" : "h-[34px] w-auto object-contain"} />
+          // eslint-disable-next-line @next/next/no-img-element -- an unsaved logo in the settings preview (blob: URL)
+          : <img src={src} alt={`${business.businessName} logo`} style={{ maxWidth: maxW }} className={desktop ? "h-11 w-auto object-contain rounded-[4px] block" : "h-[34px] w-auto object-contain"} />
+      )}
+      {showName && (
+        <span className={desktop ? "text-[26px] font-extrabold text-[var(--hp-accent)] tracking-[0.2px] leading-none" : "text-[22px] font-extrabold tracking-[-0.2px] text-[var(--hp-accent)]"}>
+          {business.businessName}
+        </span>
+      )}
+    </span>
   );
 }

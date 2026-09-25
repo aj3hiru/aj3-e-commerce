@@ -21,9 +21,10 @@ export function middleware(req: NextRequest) {
   const hostname = host.split(":")[0];
   const port = host.includes(":") ? `:${host.split(":")[1]}` : "";
   const proto = (req.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "")).split(",")[0].trim();
-  const at = (h: string, path: string) => NextResponse.redirect(`${proto}://${h}${h.includes(":") ? "" : port}${path}`, 308);
+  // 308 for moved customer URLs (/shop…, www); staff moves are 307 so browsers don't cache them for good.
+  const at = (h: string, path: string, status = 307) => NextResponse.redirect(`${proto}://${h}${h.includes(":") ? "" : port}${path}`, status);
   // www.* → the bare domain.
-  if (hostname.startsWith("www.")) return at(hostname.slice(4), pathname + search);
+  if (hostname.startsWith("www.")) return at(hostname.slice(4), pathname + search, 308);
   const hosts = staffHosts();
   const app: StaffApp | "login" | null =
     hostname === hosts.admin ? "admin" : hostname === hosts.delivery ? "delivery" : hostname === hosts.login || hostname.startsWith("login.") ? "login" : null;
@@ -49,14 +50,14 @@ export function middleware(req: NextRequest) {
     const moved = toStaffHost();
     if (moved) return moved;
     if (STAFF_PATHS.test(pathname)) return NextResponse.next();
-    return at(store, pathname + search);
+    return at(store, pathname + search, 308);
   }
 
   if (app === "admin" || app === "delivery") {
     // Customizer previews (?hc=…) render the store on the admin host so the editor can reach into the frame.
     const preview = app === "admin" && url.searchParams.has("hc") && (pathname === "/" || STORE_PATHS.test(pathname));
     if (preview) return NextResponse.next();
-    if (STORE_PATHS.test(pathname)) return at(store, pathname + search);
+    if (STORE_PATHS.test(pathname)) return at(store, pathname + search, 308);
     // Old /admin/… (or /agent/…) links → the clean URL.
     const own = app === "admin" ? /^\/admin(\/|$)/ : /^\/agent(\/|$)/;
     if (own.test(pathname)) return at(hostname, toPublicPath(pathname, app) + search);
@@ -67,7 +68,7 @@ export function middleware(req: NextRequest) {
   }
 
   // Customers' domain.
-  if (/^\/shop(\/|$)/.test(pathname)) return at(hostname, (pathname.replace(/^\/shop/, "") || "/") + search);
+  if (/^\/shop(\/|$)/.test(pathname)) return at(hostname, (pathname.replace(/^\/shop/, "") || "/") + search, 308);
   if (STAFF_PATHS.test(pathname)) {
     const moved = toStaffHost();
     if (moved) return moved;

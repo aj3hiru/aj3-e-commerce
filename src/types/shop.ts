@@ -31,7 +31,7 @@ export interface ShopHeaderSettings {
   searchPlaceholder: string;
 }
 
-export type SocialPlatform = "facebook" | "instagram" | "youtube" | "x" | "linkedin" | "whatsapp";
+export type SocialPlatform = "facebook" | "instagram" | "youtube" | "x" | "linkedin" | "whatsapp" | "pinterest";
 
 export interface ShopCategoryNavItem {
   slug: string;

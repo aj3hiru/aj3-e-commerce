@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { clearCustomerSessionCookie } from "@/lib/session-cookies";
+import { publicOrigin } from "@/lib/hosts";
 
 /**
  * Verified against shop/logout.php — no activity logging for customer
@@ -12,5 +13,5 @@ import { clearCustomerSessionCookie } from "@/lib/session-cookies";
  */
 export async function POST(req: NextRequest) {
   await clearCustomerSessionCookie();
-  return NextResponse.redirect(new URL("/", req.url), 303);
+  return NextResponse.redirect(`${publicOrigin(req)}/`, 303);
 }

@@ -16,7 +16,7 @@ interface LoginFormProps {
   bare?: boolean;
 }
 
-/** Login — customers and store staff both sign in here (same two fields as shop/login.php). */
+/** Customer login: email / mobile + password. Staff log in on the staff login host. */
 export function LoginForm({ redirectTo, storeName = "our store", bare = false }: LoginFormProps) {
   const router = useRouter();
   const [identity, setIdentity] = useState("");
@@ -73,7 +73,6 @@ export function LoginForm({ redirectTo, storeName = "our store", bare = false }:
       {form}
       <div className="my-5 flex items-center gap-3 text-[12px] text-[#8b8ba3]"><span className="h-px flex-1 bg-[#eaeaf2]" />New to {storeName}?<span className="h-px flex-1 bg-[#eaeaf2]" /></div>
       <Link href={`/register${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className={cn(btnOutline, "h-12 w-full")}>Create an account</Link>
-      <p className="mt-5 text-center text-[12.5px] text-[#8b8ba3]">Store staff? <a href="/staff/login" className="font-semibold text-[var(--hp-accent)]">Staff login →</a></p>
     </AuthCard>
   );
 }

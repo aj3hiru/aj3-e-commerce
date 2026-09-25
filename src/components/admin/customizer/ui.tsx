@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, CircleAlert, ExternalLink, Loader2, Monitor, RefreshCw, RotateCcw, ShoppingBag, Smartphone, Upload, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { LaptopFrame, PhoneFrame } from "@/components/admin/PhoneFrame";
+import { LAPTOP_RATIO, LaptopFrame, PhoneFrame } from "@/components/admin/PhoneFrame";
 import { LINK_PRESETS, isSafeHref } from "@/types/storefront";
 
 /** Shared building blocks of the Store Customizer (Homepage, Product Page, Header & Footer). */
@@ -256,8 +256,8 @@ export function Preview({ url, version, device, focus, anchor }: { url: string; 
   }, [focus]);
 
   const W = device === "mobile" ? 375 : 1280;
-  // Laptop: fit the 1280 × 800 screen plus lid and base (≈ 12% wider, ~50 px taller) into the box.
-  const scale = device === "mobile" ? 1 : Math.max(0.2, Math.min(1, (boxW - 40) / (W * 1.12 + 36), (boxH - 90) / 800));
+  // Laptop: the whole device (screen + lid + base) must fit the box.
+  const scale = device === "mobile" ? 1 : Math.max(0.2, Math.min(1, (boxW - 32) / (W * LAPTOP_RATIO.w), (boxH - 48) / (W * LAPTOP_RATIO.pageH * LAPTOP_RATIO.h)));
   const iframes = [0, 1].map((i) => (
     <iframe key={i} ref={frames[i]} src={srcs[i]} title={i === front ? "Store preview" : "Preview buffer"} onLoad={() => onLoad(i)}
       className={cn("absolute inset-0 h-full w-full border-0 bg-white", i === front ? "z-10" : "z-0 opacity-0")} />
@@ -267,7 +267,7 @@ export function Preview({ url, version, device, focus, anchor }: { url: string; 
       {device === "mobile" ? (
         <PhoneFrame width={W} height={780} fill>{iframes}</PhoneFrame>
       ) : (
-        <LaptopFrame width={W} height={800} scale={scale} className="self-center">{iframes}</LaptopFrame>
+        <LaptopFrame width={W} scale={scale} className="self-center">{iframes}</LaptopFrame>
       )}
       {loading && (
         <span className="absolute right-6 top-6 z-20 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-admin-gray-600 shadow">

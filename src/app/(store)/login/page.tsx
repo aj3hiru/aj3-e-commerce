@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { getAdminSession } from "@/lib/admin-auth";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { LoginForm } from "@/components/shop/LoginForm";
 import { PhoneLogin } from "@/components/shop/auth/PhoneLogin";
@@ -14,12 +13,11 @@ interface LoginPageProps {
 
 /**
  * Login. With mobile OTP on (Settings → Login & OTP): mobile number → OTP
- * (sign-up included), password and staff login as alternatives. Otherwise the
+ * (sign-up included), with password login as the alternative. Otherwise the
  * email / username + password form. Logged-in visitors are sent on.
  */
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const [adminSession, customerSession, resolvedParams] = await Promise.all([getAdminSession(), getCustomerSession(), searchParams]);
-  if (adminSession) redirect("/admin/dashboard");
+  const [customerSession, resolvedParams] = await Promise.all([getCustomerSession(), searchParams]);
   if (customerSession) redirect("/account");
 
   const [layout, auth] = await Promise.all([getShopLayoutData(), getAuthSettings()]);

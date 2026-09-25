@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/admin-auth";
 import { clearAdminSessionCookie } from "@/lib/session-cookies";
 import { logActivity } from "@/lib/activity-log";
+import { publicOrigin, staffHosts } from "@/lib/hosts";
 
 /**
  * Verified against admin/api/logout.php — logs the logout event
@@ -59,5 +60,7 @@ export async function POST(req: NextRequest) {
   // the rest of the project, not the other way around. Going straight to
   // "/login" avoids an unnecessary extra redirect hop through the
   // now-vestigial /admin/admin-login-portal route.
-  return NextResponse.redirect(new URL("/staff/login", req.url), 303);
+  // Straight to the staff login host when there is one (req.url is the internal localhost address).
+  const login = staffHosts().login;
+  return NextResponse.redirect(login ? `https://${login}/` : `${publicOrigin(req)}/staff/login`, 303);
 }

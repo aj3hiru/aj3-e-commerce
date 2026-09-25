@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const hostname = host.split(":")[0];
   const proto = (req.headers.get("x-forwarded-proto") ?? req.nextUrl.protocol.replace(":", "")).split(",")[0].trim();
   const login = staffHosts().login;
-  const fail = NextResponse.redirect(login ? `${proto}://${login}/` : new URL("/staff/login", req.url), 303);
+  const fail = NextResponse.redirect(login ? `${proto}://${login}/` : `${proto}://${host}/staff/login`, 303);
 
   const h = readHandoff(req.nextUrl.searchParams.get("t") ?? "", hostname);
   if (!h) return fail;

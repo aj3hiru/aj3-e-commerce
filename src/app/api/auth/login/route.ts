@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
-import { setAdminSessionCookie, setCustomerSessionCookie } from "@/lib/session-cookies";
+import { setCustomerSessionCookie } from "@/lib/session-cookies";
 import { getAttemptState, isLocked, lockSecondsLeft, recordFailedAttempt, clearAttempts } from "@/lib/login-lockout";
-import { logActivity } from "@/lib/activity-log";
 import { loginSchema } from "@/lib/validators/auth";
 import { getAuthSettings } from "@/lib/auth-settings";
 import { findCustomerByPhone } from "@/lib/customer-phone";
 import { STAFF_ROLE_IDS } from "@/lib/roles";
-import { normalizePermissions } from "@/lib/permissions";
 
 /**
  * Verified 1:1 against shop/login.php's POST handler. Preserves:
@@ -53,26 +51,10 @@ export async function POST(req: NextRequest) {
   const adminPassOk = await verifyPassword(password, adminUser?.passwordHash);
 
   if (adminUser && adminPassOk) {
-    if (adminUser.status === "suspended") {
-      await logActivity(req, adminUser.id, "login_blocked", `Suspended account login attempt: ${adminUser.username}`);
-      return NextResponse.json({ success: false, message: "Your account has been suspended. Contact the administrator." });
-    }
-    if (adminUser.status === "pending") {
-      await logActivity(req, adminUser.id, "login_blocked", `Pending account login attempt: ${adminUser.username}`);
-      return NextResponse.json({ success: false, message: "Your account is pending approval. Please wait for admin activation." });
-    }
-
-    const permissions = normalizePermissions(adminUser.permissions, adminUser.role) as Record<string, unknown>;
-    if (!permissions.dashboard_access) {
-      await logActivity(req, adminUser.id, "login_denied", `No dashboard_access: ${adminUser.username}`);
-      return NextResponse.json({ success: false, message: "You do not have permission to access the admin panel." });
-    }
-
+    // Staff have their own login (login.* host) — this form is for customers only,
+    // so a staff session is never created on the customers' domain.
     await clearAttempts(identity);
-    await setAdminSessionCookie(adminUser.id, adminUser.passwordHash);
-    await logActivity(req, adminUser.id, "login_success", `Logged in as ${adminUser.role}: ${adminUser.username}`);
-
-    return NextResponse.json({ success: true, redirect: "/admin/dashboard" });
+    return NextResponse.json({ success: false, message: "This is a staff account — please use the staff login page." });
   }
 
   // ── 2) Not an admin match — try a customer account (matched by email, or by mobile number) ──

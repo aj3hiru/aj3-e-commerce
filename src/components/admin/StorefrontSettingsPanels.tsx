@@ -191,7 +191,7 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
         <div className="mt-5">
           <div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-admin-gray-500">Preview</span><AudienceToggle value={loggedIn} onChange={setLoggedIn} /></div>
           <LaptopFrame fluid className="mx-auto max-w-[760px]">
-            <div className="h-[230px] bg-[#f5f5f8] [&_nav]:!block">
+            <div className="h-full bg-[#f5f5f8] [&_nav]:!block">
               <DesktopMenu items={resolveMenu(value.headerMenu, loggedIn, categories)} design={value.menuDesign} isActive={(h) => h === "/"} />
             </div>
           </LaptopFrame>
@@ -242,7 +242,7 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
             </div>
           </PhoneFrame>
           <LaptopFrame fluid className="self-center">
-            <div className="h-[190px] bg-[#f5f5f8] [&_nav]:!block">
+            <div className="h-full bg-[#f5f5f8] [&_nav]:!block">
               <DesktopMenu items={resolveMenu(value.headerMenu, false, categories).slice(0, 3)} design={d} isActive={never} />
             </div>
           </LaptopFrame>

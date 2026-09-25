@@ -63,3 +63,11 @@ export function storeOrigin(): string {
 
 /** Customer pages — on a staff host they belong to the main domain. */
 export const STORE_PATHS = /^\/(product|category|cart|checkout|login|register|account|wishlist|order)(\/|$)/;
+
+/** The site's own origin for a redirect ("https://admin.x.in"): behind the proxy req.url is http://localhost:3003. */
+export function publicOrigin(req: { headers: Headers; nextUrl: URL }): string {
+  const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? req.nextUrl.host).split(",")[0].trim();
+  const local = /^(localhost|127\.|\[::1\])/.test(host);
+  const proto = (req.headers.get("x-forwarded-proto") ?? (local ? req.nextUrl.protocol.replace(":", "") : "https")).split(",")[0].trim();
+  return `${proto}://${host}`;
+}

@@ -256,7 +256,6 @@ export function PhoneLogin({ firebase, countryCode, passwordLogin, redirectTo, s
         <button type="button" onClick={() => { abort.current?.abort(); setMode("staff"); setError(""); }} className="w-full py-1 text-center text-[13px] font-medium text-[#616173] underline-offset-2 hover:underline">
           Login with email &amp; password
         </button>
-        <a href="/staff/login" className="block py-1 text-center text-[12.5px] text-[#8b8ba3]">Store staff? <span className="font-semibold text-[var(--hp-accent)]">Staff login →</span></a>
       </div>
       <p className="mt-5 text-center text-[11px] leading-4 text-[#a7a9b6]">This site is protected by reCAPTCHA and the Google Privacy Policy and Terms of Service apply.</p>
     </AuthCard>

@@ -1,52 +1,28 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { Heart } from "lucide-react";
 import { ShopLayout } from "@/components/shop/ShopLayout";
-import { ProductCard } from "@/components/shop/ProductCard";
+import { WishlistGrid } from "@/components/shop/pages/WishlistGrid";
+import { Page } from "@/components/shop/ui/Meesho";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { prisma } from "@/lib/db";
-import { campaignSalePrices } from "@/lib/campaign-pricing";
+import { enrichProducts, publicProducts, FEED_SELECT, type FeedRow } from "@/lib/shop-feed";
 
-/** Verified against shop/wishlist.php. */
+/** Wishlist (Meesho product cards with live prices, ratings and Add to Cart). */
 export default async function WishlistPage() {
   const customer = await getCustomerSession();
   if (!customer) redirect(`/shop/login?redirect=${encodeURIComponent("/shop/wishlist")}`);
 
-  const layoutData = await getShopLayoutData();
-  const wishlistItems = await prisma.ecomWishlist.findMany({
-    where: { customerId: customer.customerId },
-    include: { product: true },
-    orderBy: { createdAt: "desc" },
-  });
-  const campaign = await campaignSalePrices(wishlistItems.map((w: (typeof wishlistItems)[number]) => w.product)); // campaign prices, when a campaign is live
+  const [layoutData, rows] = await Promise.all([
+    getShopLayoutData(),
+    prisma.ecomWishlist.findMany({ where: { customerId: customer.customerId, product: { status: "active" } }, orderBy: { createdAt: "desc" }, select: { product: { select: FEED_SELECT } } }),
+  ]);
+  const products = publicProducts(await enrichProducts(rows.map((r) => r.product as FeedRow)));
 
   return (
     <ShopLayout {...layoutData}>
-      <h2 className="text-lg font-bold mb-4">My Wishlist</h2>
-
-      {wishlistItems.length === 0 ? (
-        <div className="text-center py-16 text-storefront-muted">
-          <Heart className="w-10 h-10 mx-auto mb-3" />
-          <p className="mb-3">Your wishlist is empty.</p>
-          <Link href="/shop" className="inline-block bg-storefront-green hover:bg-storefront-green-dark text-white font-semibold rounded px-5 py-2.5">
-            Browse Products
-          </Link>
-        </div>
-      ) : (
-        <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(230px,1fr))]">
-          {wishlistItems.map((w: (typeof wishlistItems)[number]) => (
-            <ProductCard
-              key={w.id}
-              product={{
-                id: w.product.id, slug: w.product.slug, name: w.product.name, image: w.product.image,
-                price: Number(w.product.price), salePrice: campaign.get(w.product.id) ?? (w.product.salePrice ? Number(w.product.salePrice) : null),
-                productType: w.product.productType, stockQty: w.product.stockQty,
-              }}
-            />
-          ))}
-        </div>
-      )}
+      <Page title="My Wishlist" back="/shop/account">
+        <WishlistGrid products={products} />
+      </Page>
     </ShopLayout>
   );
 }

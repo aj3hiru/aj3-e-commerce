@@ -9,6 +9,7 @@ import { getLiveHome } from "@/lib/home-config";
 import type { PromoBar } from "@/types/home";
 import type { StorefrontConfig } from "@/types/storefront";
 import type { CartUi } from "@/types/product-page";
+import type { CardOptions } from "@/types/home";
 import { getLiveProductPage } from "./product-page-config";
 
 export interface ShopLayoutData {
@@ -20,6 +21,8 @@ export interface ShopLayoutData {
   cartTotal: number;
   cartItems: Record<string, number>;
   cartUi: CartUi;
+  /** Accent colour and product-card options (Customizer → Homepage), for every storefront page. */
+  theme: { accent: string; card: CardOptions };
   storefront: StorefrontConfig;
   promo: PromoBar;
 }
@@ -70,6 +73,7 @@ export async function getShopLayoutData(): Promise<ShopLayoutData> {
     cartTotal,
     cartItems: cart,
     cartUi: productPage.cart,
+    theme: { accent: home.accent, card: home.card },
     storefront,
     promo,
   };

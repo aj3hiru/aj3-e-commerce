@@ -1,9 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, ArrowLeft, Check } from "lucide-react";
+import { PackageSearch } from "lucide-react";
 import { ShopLayout } from "@/components/shop/ShopLayout";
+import { Empty, Page, btnPrimary } from "@/components/shop/ui/Meesho";
+import { OrderDetailView } from "@/components/shop/pages/OrderDetail";
+import { OrderCard } from "@/components/shop/pages/Orders";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
 import { getCustomerSession } from "@/lib/customer-auth";
+import { loadCustomerOrders } from "@/lib/customer-orders";
 import { prisma } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -11,107 +15,54 @@ interface OrderPageProps {
   searchParams: Promise<{ id?: string; placed?: string }>;
 }
 
-// The customer-facing progress stepper. Deliberately NOT the full admin list:
-// "Canceled" is not a step on the happy path (it is handled by `isCanceled`
-// below, which replaces the tracker entirely), so the stepper shows only the
-// forward-moving stages — now including the "Out for Delivery" stage added to
-// the admin status vocabulary, or an order sitting at it would show as stuck
-// at step -1 with no progress at all.
-const STATUSES = ["Pending", "In Progress", "Out for Delivery", "Delivered"];
-
-/** Verified against shop/order.php. */
+/**
+ * /shop/order — without an id: all the customer's orders ("Track Order");
+ * with ?id=: that order's tracking timeline, items, prices and address.
+ */
 export default async function OrderPage({ searchParams }: OrderPageProps) {
   const { id, placed } = await searchParams;
   const customer = await getCustomerSession();
-  if (!customer) redirect(`/shop/login?redirect=${encodeURIComponent(`/shop/order?id=${id ?? 0}`)}`);
-
+  const here = id ? `/shop/order?id=${id}` : "/shop/order";
+  if (!customer) redirect(`/shop/login?redirect=${encodeURIComponent(here)}`);
   const layoutData = await getShopLayoutData();
-  const orderId = Number(id ?? 0);
+
+  // ── All orders ─────────────────────────────────────────────────────────────
+  if (!id) {
+    const orders = await loadCustomerOrders(customer.customerId);
+    return (
+      <ShopLayout {...layoutData}>
+        <Page title="My Orders" back="/shop/account">
+          {orders.length === 0
+            ? <Empty icon={PackageSearch} title="No orders yet" text="When you place an order, you can track it here."
+                action={<Link href="/shop" className={cn(btnPrimary, "w-56")}>Start Shopping</Link>} />
+            : orders.map((o) => <OrderCard key={o.id} o={o} />)}
+        </Page>
+      </ShopLayout>
+    );
+  }
+
+  // ── One order ──────────────────────────────────────────────────────────────
   const order = await prisma.ecomOrder.findFirst({
-    where: { id: orderId, customerId: customer.customerId },
-    include: { items: true, customer: { select: { address: true } } },
+    where: { id: Number(id) || 0, customerId: customer.customerId },
+    include: { items: true, customer: { select: { address: true, phone: true } } },
   });
   if (!order) notFound();
-
-  const currentStep = STATUSES.indexOf(order.orderStatus);
-  const isCanceled = order.orderStatus === "Canceled";
+  const [products, payment] = await Promise.all([
+    prisma.ecomProduct.findMany({ where: { id: { in: order.items.map((i) => i.productId) } }, select: { id: true, slug: true, image: true } }),
+    prisma.ecomPaymentSettings.findFirst({ where: { methodKey: order.paymentMethod }, select: { name: true } }),
+  ]);
+  const prod = new Map(products.map((p) => [p.id, p]));
 
   return (
     <ShopLayout {...layoutData}>
-      <div className="max-w-2xl mx-auto">
-        {placed && (
-          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm rounded px-4 py-2.5 mb-4">
-            <CheckCircle2 className="w-4 h-4" /> Your order has been placed successfully!
-          </div>
-        )}
-
-        <h2 className="text-lg font-bold mb-4">Order {order.orderNumber}</h2>
-
-        {isCanceled ? (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-4 py-2.5 mb-4">This order was canceled.</div>
-        ) : (
-          <div className="flex justify-between mb-6 text-center">
-            {STATUSES.map((s, i) => (
-              <div key={s} className="flex-1">
-                <div className={cn("w-9 h-9 rounded-full mx-auto mb-1.5 flex items-center justify-center text-white", i <= currentStep ? "bg-admin-primary" : "bg-storefront-border")}>
-                  <Check className="w-4 h-4" />
-                </div>
-                <div className="text-xs">{s}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="bg-white rounded-lg border border-storefront-border p-5 mb-3">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left border-b border-storefront-border">
-                  <th className="py-2">Item</th>
-                  <th className="py-2">Qty</th>
-                  <th className="py-2">Price</th>
-                  <th className="py-2">GST</th>
-                  <th className="py-2 text-right">Subtotal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {order.items.map((it: (typeof order.items)[number]) => (
-                  <tr key={it.id} className="border-b border-storefront-border">
-                    <td className="py-2">{it.productName}</td>
-                    <td className="py-2">{it.qty}</td>
-                    <td className="py-2">₹{Number(it.price).toFixed(2)}</td>
-                    <td className="py-2">{Number(it.gstRate).toFixed(2)}%</td>
-                    <td className="py-2 text-right">₹{(Number(it.price) * it.qty).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                {Number(order.discountAmount) > 0 && (
-                  <tr><td colSpan={4} className="text-right py-1">Discount</td><td className="text-right py-1">-₹{Number(order.discountAmount).toFixed(2)}</td></tr>
-                )}
-                {Number(order.gstAmount) > 0 && (
-                  <tr><td colSpan={4} className="text-right py-1">GST</td><td className="text-right py-1">+₹{Number(order.gstAmount).toFixed(2)}</td></tr>
-                )}
-                <tr className="font-bold"><td colSpan={4} className="text-right py-2">Total</td><td className="text-right py-2">₹{Number(order.totalAmount).toFixed(2)}</td></tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg border border-storefront-border p-5">
-          <p className="mb-1"><strong>Payment Status:</strong>{" "}
-            <span className={cn("text-xs font-semibold rounded px-2 py-1 text-white", order.paymentStatus === "Paid" ? "bg-emerald-500" : "bg-admin-gray-400")}>
-              {order.paymentStatus}
-            </span>
-          </p>
-          <p className="mb-1"><strong>Order Date:</strong> {order.createdAt.toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
-          <p className="mb-0"><strong>Delivery Address:</strong> {order.customer?.address ?? "—"}</p>
-        </div>
-
-        <Link href="/shop/account#orders" className="inline-flex items-center gap-1.5 border border-storefront-green text-storefront-green-dark font-semibold rounded px-4 py-2 mt-3">
-          <ArrowLeft className="w-4 h-4" /> Back to My Orders
-        </Link>
-      </div>
+      <OrderDetailView o={{
+        number: order.orderNumber, createdAt: order.createdAt.toISOString(), status: order.orderStatus, placed: !!placed,
+        storeName: layoutData.business.businessName, helpPhone: layoutData.business.contactNumbers?.find(Boolean) ?? null,
+        items: order.items.map((it) => { const p = prod.get(it.productId); return { id: it.id, name: it.productName, qty: it.qty, price: Number(it.price), slug: p?.slug ?? null, image: p?.image ?? null }; }),
+        discount: Number(order.discountAmount), gst: Number(order.gstAmount), total: Number(order.totalAmount),
+        paymentName: payment?.name ?? order.paymentMethod, paymentStatus: order.paymentStatus,
+        customerName: order.customerName, customerPhone: order.customer?.phone ?? null, address: order.shippingAddress || order.customer?.address || "",
+      }} />
     </ShopLayout>
   );
 }

@@ -64,6 +64,7 @@ export async function getShopFeed(f: FeedFilters): Promise<FeedResult> {
   const and: Record<string, unknown>[] = [{ status: "active" }];
   if (f.q) and.push({ OR: [{ name: { contains: f.q } }, { sku: { contains: f.q } }, { category: { name: { contains: f.q } } }, { brand: { name: { contains: f.q } } }] });
   if (f.cat.length) and.push({ category: { slug: { in: f.cat }, status: "active" } });
+  if (f.sub) and.push({ subcategory: { slug: f.sub } });
   if (f.brand.length) and.push({ brandId: { in: f.brand } });
   if (f.inStock) and.push({ OR: [{ productType: { not: "physical" } }, { stockQty: null }, { stockQty: { gt: 0 } }] });
 

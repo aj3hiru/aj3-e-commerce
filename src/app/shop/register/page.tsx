@@ -14,7 +14,7 @@ export default async function RegisterPage() {
 
   return (
     <ShopLayout {...layout}>
-      <RegisterForm />
+      <RegisterForm storeName={layout.business.businessName} />
     </ShopLayout>
   );
 }

@@ -14,7 +14,7 @@ export interface FeedFacets {
 }
 
 type Draft = Omit<FeedFilters, "page" | "q">;
-const EMPTY: Draft = { cat: [], brand: [], min: null, max: null, rating: null, disc: null, inStock: false, sort: "relevance" };
+const EMPTY: Draft = { cat: [], sub: "", brand: [], min: null, max: null, rating: null, disc: null, inStock: false, sort: "relevance" };
 
 const PRICE_PRESETS: { label: string; min: number | null; max: number | null }[] = [
   { label: "Under ₹199", min: null, max: 199 },
@@ -30,6 +30,7 @@ function toQuery(q: string, d: Draft, page?: number): string {
   const sp = new URLSearchParams();
   if (q) sp.set("q", q);
   if (d.cat.length) sp.set("cat", d.cat.join(","));
+  if (d.sub) sp.set("sub", d.sub);
   if (d.brand.length) sp.set("brand", d.brand.join(","));
   if (d.min !== null) sp.set("min", String(d.min));
   if (d.max !== null) sp.set("max", String(d.max));
@@ -52,12 +53,15 @@ const activeCount = (d: Draft) =>
  */
 export interface FeedBar { showSort: boolean; showCategory: boolean; showBrand: boolean; showFilters: boolean }
 
-export function ProductFeed({ title, initial, filters, facets, wishlisted, bar = { showSort: true, showCategory: true, showBrand: true, showFilters: true } }: {
+export function ProductFeed({ title, initial, filters, facets, wishlisted, bar = { showSort: true, showCategory: true, showBrand: true, showFilters: true }, scope }: {
   title: string; initial: FeedResult; filters: FeedFilters; facets: FeedFacets; wishlisted: number[]; bar?: FeedBar;
+  /** Category pages: always this category (and subcategory); `path` is the page URL the filters are appended to. */
+  scope?: { cat: string; sub: string; path: string };
 }) {
   const { card } = useHomeTheme();
   const q = filters.q;
-  const [applied, setApplied] = useState<Draft>({ ...EMPTY, ...filters });
+  const [applied, setApplied] = useState<Draft>({ ...EMPTY, ...filters, ...(scope ? { cat: [], sub: "" } : {}) });
+  const withScope = useCallback((d: Draft): Draft => (scope ? { ...d, cat: [scope.cat], sub: scope.sub } : d), [scope]);
   const [items, setItems] = useState<FeedProduct[]>(initial.products);
   const [page, setPage] = useState(initial.page);
   const [pageCount, setPageCount] = useState(initial.pageCount);
@@ -76,20 +80,20 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted, bar =
     const id = ++req.current;
     setLoading(mode);
     setError(false);
-    const res = await fetch(`/api/shop/feed?${toQuery(q, d, p)}`).then((r) => r.json()).catch(() => null);
+    const res = await fetch(`/api/shop/feed?${toQuery(q, withScope(d), p)}`).then((r) => r.json()).catch(() => null);
     if (id !== req.current) return;
     setLoading(null);
     if (!res?.success) { setError(true); return; }
     setItems((prev) => (mode === "replace" ? res.products : [...prev, ...res.products.filter((x: FeedProduct) => !prev.some((y) => y.id === x.id))]));
     setPage(res.page); setPageCount(res.pageCount); setTotal(res.total);
-  }, [q]);
+  }, [q, withScope]);
 
   function apply(next: Draft) {
     setApplied(next);
     setSheet(null);
     // Keep the URL in step without a full navigation (header/banners don't need to reload).
     const qs = toQuery(q, next);
-    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    window.history.replaceState(null, "", scope ? `${scope.path}${qs ? `&${qs}` : ""}` : `${window.location.pathname}${qs ? `?${qs}` : ""}`);
     void load(next, 1, "replace");
     const y = top.current ? top.current.getBoundingClientRect().top + window.scrollY - 8 : 0;
     if (window.scrollY > y) window.scrollTo({ top: y, behavior: "smooth" });

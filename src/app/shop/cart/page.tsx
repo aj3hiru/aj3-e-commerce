@@ -1,19 +1,24 @@
 import { ShopLayout } from "@/components/shop/ShopLayout";
-import { CartTable } from "@/components/shop/CartTable";
+import { CartView } from "@/components/shop/pages/CartView";
+import { Page, Steps } from "@/components/shop/ui/Meesho";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
 import { getCart } from "@/lib/cart-session";
-import { cartTotal, loadCartLines } from "@/lib/cart-lines";
+import { loadCartLines } from "@/lib/cart-lines";
 
-/** Verified against shop/cart.php (lines are per product, or per product size). */
+/** Cart (Meesho style): lines are per product, or per product size. */
 export default async function CartPage() {
   const [layoutData, cart] = await Promise.all([getShopLayoutData(), getCart()]);
   const lines = await loadCartLines(cart);
-  const items = lines.map((l) => ({ key: l.key, productId: l.product.id, slug: l.product.slug, name: l.name, image: l.product.image, unitPrice: l.unitPrice, qty: l.qty }));
+  const items = lines.map((l) => ({
+    key: l.key, slug: l.product.slug, name: l.product.name, size: l.size?.label ?? null, image: l.product.image,
+    unitPrice: l.unitPrice, mrp: l.mrp, qty: l.qty, maxQty: l.maxQty,
+  }));
 
   return (
     <ShopLayout {...layoutData}>
-      <h2 className="text-lg font-bold mb-4">Your Cart</h2>
-      <CartTable items={items} subtotal={cartTotal(lines)} />
+      <Page title="Cart" back="/shop" steps={items.length ? <Steps active={0} /> : undefined}>
+        <CartView key={JSON.stringify(items.map((i) => [i.key, i.qty, i.unitPrice]))} items={items} />
+      </Page>
     </ShopLayout>
   );
 }

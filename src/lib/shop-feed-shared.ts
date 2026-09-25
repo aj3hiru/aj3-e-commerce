@@ -16,6 +16,7 @@ export const FEED_SORTS: { value: FeedSort; label: string }[] = [
 export interface FeedFilters {
   q: string;
   cat: string[]; // category slugs
+  sub: string; // subcategory slug (category pages)
   brand: number[];
   min: number | null;
   max: number | null;
@@ -54,6 +55,7 @@ export function parseFeedFilters(sp: URLSearchParams): FeedFilters {
   return {
     q: (sp.get("q") ?? "").trim().slice(0, 100),
     cat: list("cat").map((s) => s.slice(0, 120)),
+    sub: (sp.get("sub") ?? "").trim().slice(0, 120),
     brand: list("brand").map(Number).filter((n) => Number.isInteger(n) && n > 0),
     min: num("min"),
     max: num("max"),

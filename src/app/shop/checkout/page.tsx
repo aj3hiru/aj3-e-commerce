@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { ShopLayout } from "@/components/shop/ShopLayout";
 import { CheckoutForm } from "@/components/shop/CheckoutForm";
+import { Page } from "@/components/shop/ui/Meesho";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { getCart } from "@/lib/cart-session";
@@ -29,19 +30,22 @@ export default async function CheckoutPage() {
     const lineTotal = l.unitPrice * l.qty;
     subtotal += lineTotal;
     estimatedGst += lineTotal * (Number(l.product.gstRate) / 100);
-    return { name: l.name, qty: l.qty, lineTotal };
+    return { name: l.name, qty: l.qty, lineTotal, image: l.product.image };
   });
 
   return (
     <ShopLayout {...layoutData}>
-      <h2 className="text-lg font-bold mb-4">Checkout</h2>
-      <CheckoutForm
-        initialAddress={customerRow?.address ?? ""}
-        paymentMethods={paymentMethods}
-        items={items}
-        subtotal={subtotal}
-        estimatedGst={estimatedGst}
-      />
+      <Page title="Checkout" back="/shop/cart">
+        <CheckoutForm
+          initialAddress={customerRow?.address ?? ""}
+          customerName={customerRow?.name}
+          customerPhone={customerRow?.phone}
+          paymentMethods={paymentMethods}
+          items={items}
+          subtotal={subtotal}
+          estimatedGst={estimatedGst}
+        />
+      </Page>
     </ShopLayout>
   );
 }

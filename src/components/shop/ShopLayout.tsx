@@ -6,7 +6,8 @@ import { ShopMobileDrawer } from "./ShopMobileDrawer";
 import { ShopFooter } from "./ShopFooter";
 import { PushProvider } from "./push/PushContext";
 import { PromoBar } from "./PromoBar";
-import type { PromoBar as PromoConfig } from "@/types/home";
+import { DEFAULT_HOME, type CardOptions, type PromoBar as PromoConfig } from "@/types/home";
+import { HomeTheme } from "./home/HomeTheme";
 import { resolveMenu } from "./menu/StoreMenus";
 import { CartProvider } from "@/hooks/useCart";
 import { FloatingCartBar } from "./FloatingCartBar";
@@ -28,6 +29,8 @@ interface ShopLayoutProps {
   cartItems?: Record<string, number>;
   /** Add-to-cart / floating bar options (Customizer → Product Page). */
   cartUi?: CartUi;
+  /** Accent + product-card options, so every page (cart, account, login…) uses the store theme. */
+  theme?: { accent: string; card: CardOptions };
   /** Menus, menu design, push bell/prompt and footer from Business Settings. */
   storefront?: StorefrontConfig;
   /** Offer strip above the header, from the Homepage Customizer. */
@@ -35,7 +38,7 @@ interface ShopLayoutProps {
   children: React.ReactNode;
 }
 
-export function ShopLayout({ business, header, categories, customer, cartCount, cartTotal, cartItems, cartUi, storefront = DEFAULT_STOREFRONT, promo = null, children }: ShopLayoutProps) {
+export function ShopLayout({ business, header, categories, customer, cartCount, cartTotal, cartItems, cartUi, theme = { accent: DEFAULT_HOME.accent, card: DEFAULT_HOME.card }, storefront = DEFAULT_STOREFRONT, promo = null, children }: ShopLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
   const headerSettings = header ?? defaultShopHeaderSettings(business.businessHours);
@@ -70,7 +73,7 @@ export function ShopLayout({ business, header, categories, customer, cartCount, 
             />
           </Suspense>
           <div className="flex-1 max-w-[1360px] w-full mx-auto px-8 py-6">
-            {children}
+            <HomeTheme accent={theme.accent} card={theme.card}>{children}</HomeTheme>
           </div>
           <ShopFooter business={business} footer={storefront.footer} />
           <FloatingCartBar />

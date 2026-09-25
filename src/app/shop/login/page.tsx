@@ -30,7 +30,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <ShopLayout {...layout}>
-      <LoginForm redirectTo={resolvedParams.redirect} />
+      <LoginForm redirectTo={resolvedParams.redirect} storeName={layout.business.businessName} />
     </ShopLayout>
   );
 }

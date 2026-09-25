@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronRight, ShoppingCart } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 
-const HIDE_ON = ["/shop/cart", "/shop/checkout", "/shop/order", "/shop/login", "/shop/register"];
+const HIDE_ON = ["/shop/cart", "/shop/checkout", "/shop/order", "/shop/login", "/shop/register", "/shop/account"];
 
 /**
  * Floating "View Cart" bar: slides up with a bounce the moment the cart has

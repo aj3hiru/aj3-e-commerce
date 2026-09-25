@@ -3,14 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Loader2, UserRound } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AuthCard } from "@/components/shop/ui/AuthCard";
+import { PasswordInput } from "@/components/shop/ui/PasswordInput";
+import { Field, Notice, btnOutline, btnPrimary, inputCls } from "@/components/shop/ui/Meesho";
 
 interface LoginFormProps {
   redirectTo?: string;
+  storeName?: string;
 }
 
-/** Verified against the <form> in shop/login.php — same two fields (identity,
- *  password), same copy ("customers and store staff both sign in here"). */
-export function LoginForm({ redirectTo }: LoginFormProps) {
+/** Login — customers and store staff both sign in here (same two fields as shop/login.php). */
+export function LoginForm({ redirectTo, storeName = "our store" }: LoginFormProps) {
   const router = useRouter();
   const [identity, setIdentity] = useState("");
   const [password, setPassword] = useState("");
@@ -21,7 +26,6 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
     e.preventDefault();
     setSubmitting(true);
     setError("");
-
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
@@ -29,10 +33,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
         body: JSON.stringify({ identity, password, redirect: redirectTo }),
       });
       const data = await res.json();
-      if (!data.success) {
-        setError(data.message || "Login failed.");
-        return;
-      }
+      if (!data.success) { setError(data.message || "Login failed."); return; }
       router.push(data.redirect || "/shop");
       router.refresh();
     } catch {
@@ -43,59 +44,27 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
   }
 
   return (
-    <div className="max-w-[420px] mx-auto">
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h4 className="text-xl font-bold mb-1">Welcome Back</h4>
-        <p className="text-storefront-muted mb-4 text-sm">
-          Login to your account to continue — customers and store staff both sign in here.
-        </p>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-3 py-2 mb-4">
-            {error}
+    <AuthCard heading="Welcome back!" sub="Login to see your orders, wishlist and checkout faster.">
+      <h1 className="mb-4 text-[20px] font-semibold">Login</h1>
+      {error && <div className="mb-4"><Notice tone="error">{error}</Notice></div>}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Field label="Email or Username">
+          <div className="relative">
+            <UserRound className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#a7a9b6]" strokeWidth={1.8} />
+            <input type="text" required autoFocus autoComplete="username" value={identity} onChange={(e) => setIdentity(e.target.value)}
+              placeholder="you@example.com" className={cn(inputCls, "h-12 pl-10")} />
           </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-3">
-            <label className="block text-sm font-medium mb-1">Email or Username</label>
-            <input
-              type="text"
-              required
-              autoFocus
-              autoComplete="username"
-              value={identity}
-              onChange={(e) => setIdentity(e.target.value)}
-              className="w-full border border-storefront-border rounded px-3 py-2 text-sm focus:outline-none focus:border-storefront-green"
-            />
-          </div>
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Password</label>
-            <input
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-storefront-border rounded px-3 py-2 text-sm focus:outline-none focus:border-storefront-green"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-storefront-green hover:bg-storefront-green-dark text-white rounded py-2.5 font-semibold text-sm disabled:opacity-60"
-          >
-            {submitting ? "Logging in…" : "Login"}
-          </button>
-        </form>
-
-        <p className="text-center mt-4 text-sm">
-          New here?{" "}
-          <Link href="/shop/register" className="text-storefront-green font-medium">
-            Create a customer account
-          </Link>
-        </p>
-      </div>
-    </div>
+        </Field>
+        <Field label="Password">
+          <PasswordInput required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Your password" />
+        </Field>
+        <button type="submit" disabled={submitting} className={cn(btnPrimary, "h-12 w-full")}>
+          {submitting ? <><Loader2 className="h-5 w-5 animate-spin" />Logging in…</> : "Continue"}
+        </button>
+      </form>
+      <div className="my-5 flex items-center gap-3 text-[12px] text-[#8b8ba3]"><span className="h-px flex-1 bg-[#eaeaf2]" />New to {storeName}?<span className="h-px flex-1 bg-[#eaeaf2]" /></div>
+      <Link href={`/shop/register${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className={cn(btnOutline, "h-12 w-full")}>Create an account</Link>
+      <p className="mt-5 text-center text-[11.5px] leading-4 text-[#a7a9b6]">Customers and store staff both sign in here.</p>
+    </AuthCard>
   );
 }

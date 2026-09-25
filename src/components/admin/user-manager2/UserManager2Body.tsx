@@ -46,8 +46,8 @@ const EVT_ADD = "users2:add";
 export function Users2AddButton() {
   return (
     <button type="button" onClick={() => window.dispatchEvent(new Event(EVT_ADD))}
-      className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[0.5rem] bg-[#2563eb] px-4 text-[0.875rem] font-semibold text-white shadow-sm transition-colors hover:bg-[#1d4ed8]">
-      <Plus className="h-4 w-4" /> Add User
+      className="flex h-10 items-center gap-2 whitespace-nowrap rounded-[4px] bg-[#9f2089] px-4 text-[0.875rem] font-semibold text-white shadow-sm transition hover:brightness-95">
+      <Plus className="h-4 w-4" /> Add Staff
     </button>
   );
 }

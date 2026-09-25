@@ -22,13 +22,20 @@ const SELECT = {
 } as const;
 
 export const phoneFromAddress = (address: string) => /(\+?\d[\d\s-]{8,}\d)/.exec(address.split("\n")[0] ?? "")?.[1] ?? null;
+/** The saved-address format starts with "Recipient name, phone" — that's who the parcel goes to. */
+export function recipient(address: string, accountName: string, accountPhone: string | null) {
+  const first = address.split("\n")[0] ?? "";
+  const phone = phoneFromAddress(address);
+  const name = phone ? first.replace(phone, "").replace(/[,\s]+$/, "").trim() : "";
+  return { name: name || accountName || "Customer", phone: phone || accountPhone, orderedBy: name && accountName && name !== accountName ? accountName : null };
+}
 async function payNames() { return new Map((await prisma.ecomPaymentSettings.findMany({ select: { methodKey: true, name: true } })).map((m) => [m.methodKey, m.name])); }
 function card(o: Row, names: Map<string, string>): AgentOrderCard {
   const address = o.shippingAddress || o.customer?.address || "";
   const lines = address.split("\n");
   return {
     id: o.id, number: o.orderNumber, status: o.orderStatus, paid: o.paymentStatus === "Paid", paymentName: names.get(o.paymentMethod) ?? o.paymentMethod,
-    total: Number(o.totalAmount), customer: o.customerName || "Customer", phone: o.customer?.phone || phoneFromAddress(address),
+    total: Number(o.totalAmount), customer: recipient(address, o.customerName, o.customer?.phone ?? null).name, phone: recipient(address, o.customerName, o.customer?.phone ?? null).phone,
     area: (lines.length > 2 ? lines[lines.length - 1] : lines[1] ?? lines[0] ?? "").trim(), address,
     itemCount: o.items.reduce((n, i) => n + i.qty, 0), hasPin: o.shippingLat !== null,
     assignedAt: o.assignedAt?.toISOString() ?? null, deliveredAt: o.deliveredAt?.toISOString() ?? null, cancelReason: o.cancelReason,
@@ -75,7 +82,8 @@ export async function agentOrder(agentId: number, orderId: number) {
   return {
     id: o.id, number: o.orderNumber, status: o.orderStatus, paid: o.paymentStatus === "Paid", paymentName: pay?.name ?? o.paymentMethod,
     total: Number(o.totalAmount), subtotal: Number(o.subtotalAmount), discount: Number(o.discountAmount), gst: Number(o.gstAmount),
-    customer: o.customerName || "Customer", phone: o.customer?.phone || phoneFromAddress(address), address, lat, lng,
+    ...(() => { const r = recipient(address, o.customerName, o.customer?.phone ?? null); return { customer: r.name, phone: r.phone, orderedBy: r.orderedBy }; })(),
+    address, lat, lng,
     placedAt: o.createdAt.toISOString(), assignedAt: o.assignedAt?.toISOString() ?? null, deliveredAt: o.deliveredAt?.toISOString() ?? null, cancelReason: o.cancelReason,
     items: o.items.map((i) => ({ id: i.id, name: i.productName, qty: i.qty, price: Number(i.price), image: img.get(i.productId) ?? null })),
     events: o.events.map((e) => ({ id: e.id, type: e.type, from: e.fromValue, to: e.toValue, note: e.note, actor: e.actorName, at: e.createdAt.toISOString() })),

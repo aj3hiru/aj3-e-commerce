@@ -93,6 +93,7 @@ export function AgentOrderView({ o }: { o: AgentOrder }) {
           <p className="text-[12px] font-semibold uppercase tracking-wide text-[#8b8ba3]">Deliver to</p>
           <p className="mt-1 text-[18px] font-bold">{o.customer}</p>
           {o.phone && <p className="text-[14px] text-[#616173]">{o.phone}</p>}
+          {o.orderedBy && <p className="text-[12px] text-[#8b8ba3]">Ordered by {o.orderedBy}</p>}
           <div className="mt-2 flex gap-2 text-[14px] leading-5 text-[#353543]">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--hp-accent)]" />
             <p className="whitespace-pre-line">{(lines.length > 1 ? lines.slice(1) : lines).join("\n") || "No address"}</p>

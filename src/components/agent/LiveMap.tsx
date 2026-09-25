@@ -117,7 +117,7 @@ export function LiveMap({ dest, addressText }: { dest: LatLng | null; addressTex
         route.current = L.polyline([pos.c, dest], { color: "#9f2089", weight: 3, dashArray: "6 8" }).addTo(m);
         setInfo({ km: straight, min: null });
       });
-  }, [pos, dest]);
+  }, [pos, dest, status]); // status: draw the first fix once the map has loaded
 
   const destParam = dest ? `${dest[0]},${dest[1]}` : encodeURIComponent(addressText.replace(/\n/g, ", "));
   const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${destParam}${pos ? `&origin=${pos.c[0]},${pos.c[1]}` : ""}&travelmode=driving`;

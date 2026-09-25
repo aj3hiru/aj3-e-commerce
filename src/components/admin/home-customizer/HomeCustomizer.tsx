@@ -277,7 +277,7 @@ export function HomeCustomizer({ initialDraft, initialLive, categories, products
         sent.current = "";
         setSave("error"); setError(e instanceof Error ? e.message : "Couldn't save.");
       }
-    }, 650);
+    }, 300);
     return () => clearTimeout(t);
   }, [config, problem, post]);
 

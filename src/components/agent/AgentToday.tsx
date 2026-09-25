@@ -62,7 +62,8 @@ export function AgentToday({ name, active, delivered, cancelled, stats }: { name
   const hour = new Date().getHours();
 
   return (
-    <div className="space-y-3 px-3 pb-4 pt-3">
+    <div className="space-y-3 px-3 pb-4 pt-3 lg:px-0">
+      <div className="space-y-3 lg:grid lg:grid-cols-[1.4fr_1fr] lg:gap-4 lg:space-y-0">
       <section className="overflow-hidden rounded-2xl text-white shadow-md" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--hp-accent) 78%, black), var(--hp-accent) 60%, #d0429f)" }}>
         <div className="px-5 pb-4 pt-5">
           <div className="flex items-start justify-between gap-3">
@@ -85,7 +86,7 @@ export function AgentToday({ name, active, delivered, cancelled, stats }: { name
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-3">
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-1">
         <div className="rounded-xl bg-white p-3.5 shadow-sm ring-1 ring-[#eaeaf2]">
           <p className="flex items-center gap-1.5 text-[12px] font-medium text-[#c77700]"><Banknote className="h-4 w-4" />To collect</p>
           <p className="mt-1 text-[20px] font-bold">{money(stats.toCollect)}</p>
@@ -97,7 +98,9 @@ export function AgentToday({ name, active, delivered, cancelled, stats }: { name
         </div>
       </section>
 
-      <div className="sticky top-14 z-20 -mx-3 bg-[#f5f5f8] px-3 pb-2 pt-1">
+      </div>
+
+      <div className="sticky top-14 z-20 -mx-3 bg-[#f5f5f8] px-3 pb-2 pt-1 lg:top-0 lg:mx-0 lg:max-w-[520px] lg:px-0 lg:pt-2">
         <div className="grid grid-cols-3 rounded-xl bg-white p-1 shadow-sm ring-1 ring-[#eaeaf2]">
           {([["todo", `To deliver (${active.length})`], ["done", `Delivered (${delivered.length})`], ["cancelled", `Cancelled (${cancelled.length})`]] as const).map(([k, l]) => (
             <button key={k} type="button" onClick={() => setTab(k)} className={cn("h-9 rounded-lg text-[12.5px] font-semibold transition", tab === k ? "bg-[var(--hp-accent)] text-white" : "text-[#616173]")}>{l}</button>
@@ -112,7 +115,7 @@ export function AgentToday({ name, active, delivered, cancelled, stats }: { name
           {tab === "todo" && <p className="mt-1 text-[13px] text-[#8b8ba3]">New orders assigned to you will appear here.</p>}
         </div>
       ) : (
-        <div className="space-y-3">{list.map((o) => <OrderCardLink key={o.id} o={o} />)}</div>
+        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">{list.map((o) => <OrderCardLink key={o.id} o={o} />)}</div>
       )}
     </div>
   );

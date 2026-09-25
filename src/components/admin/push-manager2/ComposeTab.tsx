@@ -6,6 +6,7 @@ import {
   Link2, Sparkles, ChevronDown, RefreshCw, BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PhoneFrame } from "@/components/admin/PhoneFrame";
 import { formatInt } from "@/lib/format";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { PushCatalog, PushProductHit } from "@/lib/push-catalog";
@@ -427,7 +428,7 @@ function TargetCard({ target, origin, onChange, onClear }: { target: Target; ori
   );
 }
 
-/** The smartphone lock-screen mockup from admin_push.php: notch, clock/date,
+/** The smartphone lock-screen mockup (PhoneFrame): clock/date,
  *  and an Android-style notification card that updates as you type. */
 function PhonePreview({ appName, title, body, image }: { appName: string; title: string; body: string; image: string }) {
   // The clock is the viewer's local time, so it's only filled in after mount
@@ -445,8 +446,7 @@ function PhonePreview({ appName, title, body, image }: { appName: string; title:
   const date = now ? now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : "";
 
   return (
-    <div className="relative h-[600px] w-[300px] shrink-0 overflow-hidden rounded-[40px] border-4 border-[#444] bg-[#111] shadow-[0_0_0_10px_#333,0_20px_50px_rgba(0,0,0,0.2)]">
-      <div className="absolute left-1/2 top-0 z-[5] h-[25px] w-[120px] -translate-x-1/2 rounded-b-[15px] bg-[#111]" />
+    <PhoneFrame width={292} height={592}>
       <div className="relative h-full w-full bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)] pt-[60px]" style={{ fontFamily: "Roboto, system-ui, sans-serif" }}>
         <div className="mb-5 h-[62px] text-center text-[52px] font-light leading-none text-white/80" suppressHydrationWarning>{time}</div>
         <div className="-mt-2.5 mb-[30px] h-5 text-center text-sm text-white/80" suppressHydrationWarning>{date}</div>
@@ -470,6 +470,6 @@ function PhonePreview({ appName, title, body, image }: { appName: string; title:
         </div>
       </div>
       <style>{"@keyframes pm2-slide-in{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}"}</style>
-    </div>
+    </PhoneFrame>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { Bike, Receipt, ShieldCheck, Store } from "lucide-react";
 import { StaffLoginForm } from "@/components/staff/StaffLoginForm";
 import { getAdminSession } from "@/lib/admin-auth";
@@ -14,6 +15,9 @@ export const metadata: Metadata = { title: "Staff Login", robots: { index: false
 export default async function StaffLoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const session = await getAdminSession();
   if (session) redirect(staffHome(session.role, session.permissions));
+  const h = await headers();
+  const host = (h.get("x-forwarded-host") ?? h.get("host") ?? "").split(":")[0];
+  const storeUrl = host.startsWith("login.") ? `https://${host.slice(6)}` : "";
   const [{ next }, biz, home] = await Promise.all([searchParams, prisma.ecomBusinessSettings.findFirst({ orderBy: { id: "asc" }, select: { businessName: true, logo: true } }), getLiveHome()]);
   const store = biz?.businessName ?? "Our Store";
 
@@ -41,7 +45,7 @@ export default async function StaffLoginPage({ searchParams }: { searchParams: P
             <StaffLoginForm next={next} />
           </div>
         </div>
-        <p className="mt-5 text-center text-[13px] text-[#8b8ba3]">Shopping? <Link href="/shop/login" className="font-semibold text-[var(--hp-accent)]">Customer login</Link></p>
+        <p className="mt-5 text-center text-[13px] text-[#8b8ba3]">Shopping? <Link href={`${storeUrl}/shop/login`} className="font-semibold text-[var(--hp-accent)]">Customer login</Link></p>
       </div>
     </main>
   );

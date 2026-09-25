@@ -197,7 +197,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial, categories }:
   return (
     <form onSubmit={handleSubmit}>
       {error && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+        <div className="mb-4 rounded-[6px] bg-[#fdecee] px-3 py-2.5 text-[13.5px] font-medium text-[#d0263a]" role="alert">
           {error}
         </div>
       )}
@@ -254,7 +254,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial, categories }:
             </div>
 
             <div className="mt-4">
-              <span className="mb-[0.35rem] block text-[0.825rem] font-semibold text-admin-gray-600">Contact Numbers</span>
+              <span className="mb-1.5 block text-[13px] font-medium text-[#616173]">Contact Numbers</span>
               {contactNumbers.map((num, i) => (
                 <div key={i} className="mb-2 flex items-center gap-2">
                   <input
@@ -276,7 +276,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial, categories }:
                   <label className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[0.8rem] text-admin-gray-600">
                     <input
                       type="checkbox"
-                      className="accent-admin-primary"
+                      className="accent-[#9f2089]"
                       checked={invoiceNumbers.includes(num)}
                       onChange={(e) =>
                         setInvoiceNumbers((prev) => (e.target.checked ? [...prev, num] : prev.filter((n) => n !== num)))
@@ -300,7 +300,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial, categories }:
               <button
                 type="button"
                 onClick={() => setContactNumbers((prev) => [...prev, ""])}
-                className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-admin-primary hover:underline"
+                className="flex items-center gap-1.5 text-[13px] font-bold uppercase text-[#9f2089]"
               >
                 <Plus className="h-3.5 w-3.5" /> Add number
               </button>
@@ -378,7 +378,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial, categories }:
           <SettingsPanel icon={ImageIcon} title="Logo & Branding">
             <label
               htmlFor="bizLogo"
-              className="mb-3 flex h-28 cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border-2 border-dashed border-admin-gray-300 hover:border-admin-primary"
+              className="mb-3 flex h-28 cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border-2 border-dashed border-[#dcdce6] bg-[#fafafc] hover:border-[#9f2089]"
             >
               {logoPreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -571,7 +571,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial, categories }:
             <button
               type="button"
               onClick={() => setSocialMedia((prev) => [...prev, { platform: "facebook", url: "" }])}
-              className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-admin-primary hover:underline"
+              className="flex items-center gap-1.5 text-[13px] font-bold uppercase text-[#9f2089]"
             >
               <Plus className="h-3.5 w-3.5" /> Add social link
             </button>
@@ -593,12 +593,12 @@ export function BusinessSettingsForm({ initial, storefrontInitial, categories }:
         every panel. One submit posts all ten panels, which is why switching
         panels must not navigate away.
       */}
-      <div className="sticky bottom-0 z-[5] mt-6 flex items-center justify-between gap-3 rounded-b-card border-t border-admin-gray-200 bg-white px-5 py-3.5 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
-        <span className="text-[0.8rem] text-admin-gray-400">Changes across all sections are saved together.</span>
+      <div className="sticky bottom-0 z-[5] mt-5 flex items-center justify-between gap-3 rounded-2xl bg-white px-5 py-3 font-storefront shadow-[0_-4px_16px_rgba(53,53,67,0.08)] ring-1 ring-[#eaeaf2]">
+        <span className="text-[13px] text-[#8b8ba3]">Changes in every section are saved together.</span>
         <button
           type="submit"
           disabled={submitting}
-          className="flex items-center gap-2 rounded-lg bg-admin-primary px-6 py-2.5 font-semibold text-white hover:bg-admin-primary-dark disabled:opacity-60"
+          className="flex h-11 items-center gap-2 rounded-[4px] bg-[#9f2089] px-6 text-[15px] font-medium text-white hover:bg-[#861b73] disabled:opacity-60"
         >
           <Save className="h-4 w-4" />
           {submitting ? "Saving…" : "Save Settings"}

@@ -4,6 +4,7 @@ import { AgentShell } from "@/components/agent/AgentShell";
 import { getAdminSession } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { staffName } from "@/lib/staff";
+import { roleLabel } from "@/lib/roles";
 
 export const metadata: Metadata = { title: "Deliveries", robots: { index: false, follow: false } };
 export const viewport: Viewport = { themeColor: "#9f2089" };
@@ -17,5 +18,11 @@ export default async function AgentLayout({ children }: { children: React.ReactN
     prisma.user.findUnique({ where: { id: session.userId }, select: { username: true, firstName: true, lastName: true, avatar: true } }),
     prisma.ecomBusinessSettings.findFirst({ orderBy: { id: "asc" }, select: { businessName: true } }),
   ]);
-  return <AgentShell name={u ? staffName(u) : session.username} avatar={u?.avatar ?? null} store={biz?.businessName ?? "Store"}>{children}</AgentShell>;
+  const p = session.permissions;
+  const adminLink = session.role === "admin" || !!p.orders?.view || !!p.ecommerce?.manage_billing || !!p.ecommerce?.manage_products;
+  return (
+    <AgentShell name={u ? staffName(u) : session.username} avatar={u?.avatar ?? null} store={biz?.businessName ?? "Store"} roleLabel={roleLabel(session.role)} adminLink={adminLink}>
+      {children}
+    </AgentShell>
+  );
 }

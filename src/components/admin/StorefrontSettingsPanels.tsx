@@ -7,6 +7,7 @@ import {
   Palette, PanelBottom, Plus, RotateCcw, Smartphone, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PhoneFrame } from "./PhoneFrame";
 import { SettingsPanel, Field, CheckRow, CONTROL_CLASS } from "./SettingsMenuLayout";
 import { MENU_ICON, SidebarMenu, DesktopMenu, resolveMenu } from "@/components/shop/menu/StoreMenus";
 import { ShopFooter } from "@/components/shop/ShopFooter";
@@ -79,7 +80,7 @@ function IconSelect({ value, onChange }: { value: MenuIcon; onChange: (v: MenuIc
   const Icon = MENU_ICON[value];
   return (
     <div className="relative w-[124px] shrink-0">
-      <Icon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-primary" />
+      <Icon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9f2089]" />
       <select aria-label="Icon" value={value} onChange={(e) => onChange(e.target.value as MenuIcon)} className={cn(CONTROL_CLASS, "pl-8")}>
         {MENU_ICONS.map((i) => <option key={i} value={i}>{i}</option>)}
       </select>
@@ -117,7 +118,7 @@ function MenuBuilder({ items, onChange, categories, defaults }: {
               <button type="button" onClick={() => set(i, { enabled: !it.enabled })} title={it.enabled ? "Hide" : "Show"} aria-label={it.enabled ? "Hide item" : "Show item"}
                 className="rounded p-1.5 text-admin-gray-500 hover:bg-admin-gray-100">{it.enabled ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}</button>
               <button type="button" onClick={() => setOpen(open === it.id ? null : it.id)} aria-expanded={open === it.id} title="Dropdown & options"
-                className={cn("flex items-center gap-1 rounded px-2 py-1.5 text-xs font-semibold", open === it.id ? "bg-admin-primary-light text-admin-primary" : "text-admin-gray-600 hover:bg-admin-gray-100")}>
+                className={cn("flex items-center gap-1 rounded px-2 py-1.5 text-xs font-semibold", open === it.id ? "bg-[#f7d9ef] text-[#9f2089]" : "text-admin-gray-600 hover:bg-admin-gray-100")}>
                 <ListTree className="h-4 w-4" />{(it.children.length > 0 || it.autoCategories) && <span>{it.autoCategories ? "All" : it.children.length}</span>}
                 <ChevronDown className={cn("h-3 w-3 transition-transform", open === it.id && "rotate-180")} />
               </button>
@@ -141,14 +142,14 @@ function MenuBuilder({ items, onChange, categories, defaults }: {
                 </div>
               ))}
               <button type="button" onClick={() => set(i, { children: [...it.children, { id: newId(), label: "", href: "/shop" }] })}
-                className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-admin-primary hover:underline"><Plus className="h-3.5 w-3.5" /> Add dropdown link</button>
+                className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-[#9f2089] hover:underline"><Plus className="h-3.5 w-3.5" /> Add dropdown link</button>
             </div>
           )}
         </div>
       ))}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
         <button type="button" onClick={() => { const it: MenuItem = { id: newId(), label: "", href: "/shop", icon: "link", visibility: "all", enabled: true, newTab: false, autoCategories: false, children: [] }; onChange([...items, it]); setOpen(it.id); }}
-          className="flex items-center gap-1.5 rounded-lg border border-admin-primary px-3 py-2 text-[0.85rem] font-semibold text-admin-primary hover:bg-admin-primary-lighter"><Plus className="h-4 w-4" /> Add menu item</button>
+          className="flex items-center gap-1.5 rounded-lg border border-[#9f2089] px-3 py-2 text-[0.85rem] font-semibold text-[#9f2089] hover:bg-[#fdf0f9]"><Plus className="h-4 w-4" /> Add menu item</button>
         <button type="button" onClick={() => { if (confirm("Replace this menu with the default items?")) onChange(defaults); }}
           className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-admin-gray-500 hover:text-admin-gray-800"><RotateCcw className="h-3.5 w-3.5" /> Reset to default</button>
       </div>
@@ -163,7 +164,7 @@ function AudienceToggle({ value, onChange }: { value: boolean; onChange: (v: boo
     <div className="inline-flex rounded-md border border-admin-gray-200 p-0.5 text-xs font-semibold">
       {[false, true].map((v) => (
         <button key={String(v)} type="button" onClick={() => onChange(v)}
-          className={cn("rounded px-2.5 py-1", value === v ? "bg-admin-primary text-white" : "text-admin-gray-600 hover:bg-admin-gray-50")}>{v ? "Logged in" : "Guest"}</button>
+          className={cn("rounded px-2.5 py-1", value === v ? "bg-[#9f2089] text-white" : "text-admin-gray-600 hover:bg-admin-gray-50")}>{v ? "Logged in" : "Guest"}</button>
       ))}
     </div>
   );
@@ -204,11 +205,11 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
           <MenuBuilder items={value.sidebarMenu} onChange={(v) => set("sidebarMenu", v)} categories={categories} defaults={DEFAULT_SIDEBAR_MENU} />
           <div>
             <div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-admin-gray-500"><Smartphone className="h-3.5 w-3.5" /> Preview</span><AudienceToggle value={loggedIn} onChange={setLoggedIn} /></div>
-            <div className="mx-auto w-[280px] overflow-hidden rounded-[22px] border-[6px] border-[#222] bg-white shadow-lg">
-              <div className="max-h-[440px] overflow-y-auto font-storefront">
+            <PhoneFrame width={272} height={520} className="mx-auto">
+              <div className="h-full overflow-y-auto font-storefront">
                 <SidebarMenu items={resolveMenu(value.sidebarMenu, loggedIn, categories)} design={value.menuDesign} isActive={(h) => h === "/shop"} />
               </div>
-            </div>
+            </PhoneFrame>
           </div>
         </div>
       </SettingsPanel>
@@ -265,7 +266,7 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
         {!p.showBell && !p.autoPrompt && (
           <p className="mt-3 flex items-start gap-2 text-[0.8rem] text-amber-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />With both off, shoppers have no way to subscribe.</p>
         )}
-        <Link href="/push-notifications/push-manager2" className="mt-4 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-admin-primary hover:underline">
+        <Link href="/push-notifications/push-manager2" className="mt-4 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-[#9f2089] hover:underline">
           Send notifications &amp; manage subscribers in Push Manager <ExternalLink className="h-3.5 w-3.5" />
         </Link>
       </SettingsPanel>
@@ -308,11 +309,11 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
                   <button type="button" onClick={() => setCol(i, { links: col.links.filter((_, k) => k !== li) })} aria-label="Remove link" className="rounded p-1.5 text-red-500 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
                 </div>
               ))}
-              <button type="button" onClick={() => setCol(i, { links: [...col.links, { id: newId(), label: "", href: "/shop" }] })} className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-admin-primary hover:underline"><Plus className="h-3.5 w-3.5" /> Add link</button>
+              <button type="button" onClick={() => setCol(i, { links: [...col.links, { id: newId(), label: "", href: "/shop" }] })} className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-[#9f2089] hover:underline"><Plus className="h-3.5 w-3.5" /> Add link</button>
             </div>
           ))}
           {f.columns.length < 3 && (
-            <button type="button" onClick={() => setF({ columns: [...f.columns, { id: newId(), title: "", links: [] }] })} className="flex items-center gap-1.5 rounded-lg border border-admin-primary px-3 py-2 text-[0.85rem] font-semibold text-admin-primary hover:bg-admin-primary-lighter"><Plus className="h-4 w-4" /> Add column</button>
+            <button type="button" onClick={() => setF({ columns: [...f.columns, { id: newId(), title: "", links: [] }] })} className="flex items-center gap-1.5 rounded-lg border border-[#9f2089] px-3 py-2 text-[0.85rem] font-semibold text-[#9f2089] hover:bg-[#fdf0f9]"><Plus className="h-4 w-4" /> Add column</button>
           )}
         </div>
 

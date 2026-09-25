@@ -40,14 +40,14 @@ export function AgentHistory({ from, to, preset, orders, totals }: { from: strin
   ];
 
   return (
-    <div className="space-y-3 px-3 pb-4 pt-3">
-      <section className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-[#eaeaf2]">
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
+    <div className="space-y-3 px-3 pb-4 pt-3 lg:px-0">
+      <section className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-[#eaeaf2] lg:flex lg:items-end lg:gap-4">
+        <div className="-mx-1 flex lg:flex-1 gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
           {chips.map(([k, l]) => (
             <Link key={k} href={`/agent/history?range=${k}`} className={cn("shrink-0 rounded-full border px-3.5 py-1.5 text-[13px]", preset === k ? "border-[var(--hp-accent)] bg-[color-mix(in_srgb,var(--hp-accent)_8%,white)] font-semibold text-[var(--hp-accent)]" : "border-[#dcdce6] text-[#616173]")}>{l}</Link>
           ))}
         </div>
-        <form action="/agent/history" method="GET" className="mt-2 grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+        <form action="/agent/history" method="GET" className="mt-2 lg:mt-0 lg:w-[420px] grid grid-cols-[1fr_1fr_auto] items-end gap-2">
           <label className="text-[12px] text-[#8b8ba3]">From<input type="date" name="from" defaultValue={from} max={to} className="mt-0.5 h-10 w-full rounded-[4px] border border-[#cfcedc] px-2 text-[14px] text-[#353543]" /></label>
           <label className="text-[12px] text-[#8b8ba3]">To<input type="date" name="to" defaultValue={to} className="mt-0.5 h-10 w-full rounded-[4px] border border-[#cfcedc] px-2 text-[14px] text-[#353543]" /></label>
           <button type="submit" className="h-10 rounded-[4px] bg-[var(--hp-accent)] px-4 text-[14px] font-semibold text-white">Show</button>
@@ -56,7 +56,7 @@ export function AgentHistory({ from, to, preset, orders, totals }: { from: strin
 
       <p className="flex items-center gap-1.5 px-1 text-[13px] text-[#616173]"><CalendarDays className="h-4 w-4" />{from === to ? new Date(from).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : `${new Date(from).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(to).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`} · order value {money(totals.value)}</p>
 
-      <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+      <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
         {tiles.map((t) => (
           <div key={t.label} className="flex items-center gap-2.5 rounded-xl bg-white p-3 shadow-sm ring-1 ring-[#eaeaf2]">
             <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-lg", t.tone)}><t.icon className="h-5 w-5" /></span>
@@ -71,7 +71,7 @@ export function AgentHistory({ from, to, preset, orders, totals }: { from: strin
         [...groups].map(([day, list]) => (
           <div key={day} className="space-y-2.5">
             <p className="px-1 pt-1 text-[13px] font-semibold text-[#616173]">{day} · {list.filter((o) => o.status === "Delivered").length} delivered</p>
-            {list.map((o) => <OrderCardLink key={o.id} o={o} />)}
+            <div className="grid gap-2.5 lg:grid-cols-2 xl:grid-cols-3">{list.map((o) => <OrderCardLink key={o.id} o={o} />)}</div>
           </div>
         ))
       )}

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, CircleAlert, ExternalLink, Loader2, Monitor, RefreshCw, RotateCcw, ShoppingBag, Smartphone, Upload, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PhoneFrame } from "@/components/admin/PhoneFrame";
 import { LINK_PRESETS, isSafeHref } from "@/types/storefront";
 
 /** Shared building blocks of the Store Customizer (Homepage, Product Page, Header & Footer). */
@@ -253,19 +254,21 @@ export function Preview({ url, version, device, focus, anchor }: { url: string; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus]);
 
-  const W = device === "mobile" ? 390 : 1280;
+  const W = device === "mobile" ? 375 : 1280;
   const scale = device === "mobile" ? 1 : Math.min(1, (boxW - 32) / W);
+  const iframes = [0, 1].map((i) => (
+    <iframe key={i} ref={frames[i]} src={srcs[i]} title={i === front ? "Store preview" : "Preview buffer"} onLoad={() => onLoad(i)}
+      className={cn("absolute inset-0 h-full w-full border-0 bg-white", i === front ? "z-10" : "z-0 opacity-0")} />
+  ));
   return (
-    <div ref={box} className="relative flex h-full items-start justify-center overflow-hidden rounded-xl bg-[radial-gradient(circle_at_1px_1px,#d4d4dc_1px,transparent_0)] [background-size:18px_18px] bg-admin-gray-100 p-4">
-      <div className={cn("relative shrink-0 overflow-hidden bg-white shadow-2xl", device === "mobile" ? "h-full max-h-[844px] rounded-[36px] border-[10px] border-[#1f1f28]" : "rounded-lg border border-admin-gray-300")}
-        style={device === "mobile" ? { width: W + 20 } : { width: W * scale, height: `calc(100%)` }}>
-        <div style={device === "desktop" ? { width: W, height: `${100 / scale}%`, transform: `scale(${scale})`, transformOrigin: "0 0" } : { width: "100%", height: "100%" }} className="relative">
-          {[0, 1].map((i) => (
-            <iframe key={i} ref={frames[i]} src={srcs[i]} title={i === front ? "Homepage preview" : "Preview buffer"} onLoad={() => onLoad(i)}
-              className={cn("absolute inset-0 h-full w-full border-0 bg-white", i === front ? "z-10" : "z-0 opacity-0")} />
-          ))}
+    <div ref={box} className="relative flex h-full items-start justify-center overflow-hidden rounded-xl bg-[radial-gradient(circle_at_1px_1px,#d4d4dc_1px,transparent_0)] [background-size:18px_18px] bg-admin-gray-100 px-4 py-6">
+      {device === "mobile" ? (
+        <PhoneFrame width={W} height={780} fill>{iframes}</PhoneFrame>
+      ) : (
+        <div className="relative shrink-0 overflow-hidden rounded-lg border border-admin-gray-300 bg-white shadow-2xl" style={{ width: W * scale, height: "100%" }}>
+          <div style={{ width: W, height: `${100 / scale}%`, transform: `scale(${scale})`, transformOrigin: "0 0" }} className="relative">{iframes}</div>
         </div>
-      </div>
+      )}
       {loading && (
         <span className="absolute right-6 top-6 z-20 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-admin-gray-600 shadow">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-admin-primary" /> Updating preview
@@ -318,7 +321,7 @@ export function useDraftEditor<T>(initialDraft: T, initialLive: T, endpoint: str
         sent.current = "";
         setSave("error"); setError(e instanceof Error ? e.message : "Couldn't save.");
       }
-    }, 650);
+    }, 300); // near-live: save the draft right after typing pauses, then the preview swaps in
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config, problem]);

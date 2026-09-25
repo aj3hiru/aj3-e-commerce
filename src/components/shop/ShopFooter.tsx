@@ -93,10 +93,10 @@ export function ShopFooter({ business, footer }: ShopFooterProps) {
 
           {/* Follow us */}
           {(footer.ctaEnabled || socials.length > 0) && (
-            <div className="flex flex-col">
+            <div className="flex flex-col items-center text-center">
               <h2 className={heading} style={{ borderColor: footer.accentColor }}>Follow Us</h2>
               {footer.ctaEnabled && (
-                <div className={cn("mb-[15px] rounded-[10px] border border-[var(--ft-line)] px-2.5 py-[15px]", light && "bg-white")}>
+                <div className={cn("mb-[15px] w-full rounded-[10px] border border-[var(--ft-line)] px-2.5 py-[15px] text-left", light && "bg-white")}>
                   <div className="mb-[15px] grid grid-cols-[1fr_4fr] gap-[5px]">
                     <div className="flex items-center justify-center"><Rss className="h-12 w-12" style={{ color: light ? footer.accentColor : "#fff" }} strokeWidth={2.2} /></div>
                     <div className="flex flex-col justify-center">
@@ -114,7 +114,7 @@ export function ShopFooter({ business, footer }: ShopFooterProps) {
                 </div>
               )}
               {socials.length > 0 && (
-                <div className="flex flex-wrap items-center gap-[7px]">
+                <div className="flex flex-wrap items-center justify-center gap-[7px]">
                   {socials.map((s) => (
                     <a key={s.platform + s.url} href={s.url} target="_blank" rel="noopener nofollow" aria-label={s.platform}
                       className={cn("inline-flex", light ? "grid h-9 w-9 place-items-center rounded-full text-white transition-transform hover:-translate-y-0.5" : "px-1 py-[7px] text-white")}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Banknote, CheckCircle2, CircleAlert, CircleX, Clock, History, ImageIcon, Loader2, MapPin, MessageCircle, PackageCheck,
@@ -48,8 +48,15 @@ function ReasonPicker({ reasons, value, onChange, other }: { reasons: string[]; 
   );
 }
 
+function useIsDesktop() {
+  const [d, setD] = useState(false);
+  useEffect(() => { const mq = window.matchMedia("(min-width: 1024px)"); const f = () => setD(mq.matches); f(); mq.addEventListener("change", f); return () => mq.removeEventListener("change", f); }, []);
+  return d;
+}
+
 export function AgentOrderView({ o }: { o: AgentOrder }) {
   const router = useRouter();
+  const desktop = useIsDesktop();
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
   const [method, setMethod] = useState("Cash");
@@ -72,10 +79,33 @@ export function AgentOrderView({ o }: { o: AgentOrder }) {
     return ok;
   }
   const finalReason = reason === OTHER ? otherText.trim() : reason;
+  const mainAction = (
+    <>
+            {ready ? (
+              <button type="button" disabled={!!busy} onClick={() => act("start")} className="flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[var(--hp-accent)] text-[15px] font-bold text-white disabled:opacity-60">
+                {busy === "start" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Truck className="h-5 w-5" />}Picked up — start delivery
+              </button>
+            ) : (
+              <>
+                <button type="button" disabled={!!busy || !o.paid} onClick={() => act("deliver")} className="flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#038d63] text-[15px] font-bold text-white disabled:opacity-50">
+                  {busy === "deliver" ? <Loader2 className="h-5 w-5 animate-spin" /> : <PackageCheck className="h-5 w-5" />}Mark as Delivered
+                </button>
+                {!o.paid && <p className="mt-1 flex items-center justify-center gap-1 text-[12px] text-[#c77700]"><CircleAlert className="h-3.5 w-3.5" />Collect {money(o.total)} first, then mark delivered</p>}
+              </>
+            )}
+    </>
+  );
+  const sideButtons = (ready || out) && (
+    <div className="grid grid-cols-2 gap-2 pb-2">
+      <button type="button" onClick={() => { setSheet("retry"); setReason(""); }} className="flex h-11 items-center justify-center gap-1.5 rounded-[6px] border border-[#dcdce6] bg-white text-[13.5px] font-semibold text-[#616173]"><RotateCcw className="h-4 w-4" />Can&rsquo;t deliver now</button>
+      <button type="button" onClick={() => { setSheet("cancel"); setReason(""); }} className="flex h-11 items-center justify-center gap-1.5 rounded-[6px] border border-[#f3b8c0] bg-white text-[13.5px] font-semibold text-[#d0263a]"><CircleX className="h-4 w-4" />Cancel order</button>
+    </div>
+  );
+  const map = !done && !cancelled && <LiveMap dest={o.lat !== null && o.lng !== null ? [o.lat, o.lng] : null} addressText={o.address} />;
 
   return (
-    <div className="pb-[calc(96px+env(safe-area-inset-bottom))]">
-      <div className="sticky top-14 z-20 flex h-12 items-center gap-2 border-b border-[#eaeaf2] bg-white px-2">
+    <div className="pb-[calc(96px+env(safe-area-inset-bottom))] lg:pb-6">
+      <div className="sticky top-14 z-20 lg:top-0 lg:rounded-xl lg:ring-1 lg:ring-[#eaeaf2] flex h-12 items-center gap-2 border-b border-[#eaeaf2] bg-white px-2">
         <Link href="/agent" aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full hover:bg-[#f5f5f8]"><ArrowLeft className="h-5 w-5" /></Link>
         <p className="flex-1 text-[15px] font-semibold">Order #{o.number}</p>
         <span className={cn("mr-2 rounded-full px-2.5 py-0.5 text-[12px] font-semibold",
@@ -84,7 +114,8 @@ export function AgentOrderView({ o }: { o: AgentOrder }) {
         </span>
       </div>
 
-      <div className="space-y-3 px-3 pt-3">
+      <div className="px-3 pt-3 lg:grid lg:grid-cols-[minmax(0,1fr)_440px] lg:items-start lg:gap-4 lg:px-0">
+      <div className="space-y-3">
         {cancelled && o.cancelReason && <div className="flex gap-2 rounded-xl bg-[#fdecee] px-4 py-3 text-[13.5px] text-[#d0263a]"><CircleX className="h-5 w-5 shrink-0" />{o.cancelReason}</div>}
         {done && <div className="flex items-center gap-2 rounded-xl bg-[#e7f8ee] px-4 py-3 text-[14px] font-semibold text-[#038d63]"><CheckCircle2 className="h-5 w-5" />Delivered{o.deliveredAt && ` on ${when(o.deliveredAt)}`}</div>}
 
@@ -110,7 +141,7 @@ export function AgentOrderView({ o }: { o: AgentOrder }) {
           )}
         </section>
 
-        {!done && !cancelled && <LiveMap dest={o.lat !== null && o.lng !== null ? [o.lat, o.lng] : null} addressText={o.address} />}
+        {!desktop && map}
 
         {/* Items */}
         <section className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-[#eaeaf2]">
@@ -168,31 +199,21 @@ export function AgentOrderView({ o }: { o: AgentOrder }) {
           </ol>
         </section>
 
-        {(ready || out) && (
-          <div className="grid grid-cols-2 gap-2 pb-2">
-            <button type="button" onClick={() => { setSheet("retry"); setReason(""); }} className="flex h-11 items-center justify-center gap-1.5 rounded-[6px] border border-[#dcdce6] bg-white text-[13.5px] font-semibold text-[#616173]"><RotateCcw className="h-4 w-4" />Can&rsquo;t deliver now</button>
-            <button type="button" onClick={() => { setSheet("cancel"); setReason(""); }} className="flex h-11 items-center justify-center gap-1.5 rounded-[6px] border border-[#f3b8c0] bg-white text-[13.5px] font-semibold text-[#d0263a]"><CircleX className="h-4 w-4" />Cancel order</button>
-          </div>
-        )}
+        {!desktop && sideButtons}
+      </div>
+      {desktop && (
+        <aside className="sticky top-4 space-y-3">
+          {map}
+          {(ready || out) && <div className="rounded-xl bg-white p-3 shadow-sm ring-1 ring-[#eaeaf2]">{mainAction}</div>}
+          {sideButtons}
+        </aside>
+      )}
       </div>
 
-      {/* Main action, fixed above the tab bar */}
-      {(ready || out) && (
+      {/* Main action, fixed above the tab bar (phones) */}
+      {(ready || out) && !desktop && (
         <div className="fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] z-20 border-t border-[#eaeaf2] bg-white px-3 py-2.5 shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
-          <div className="mx-auto max-w-[640px]">
-            {ready ? (
-              <button type="button" disabled={!!busy} onClick={() => act("start")} className="flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[var(--hp-accent)] text-[15px] font-bold text-white disabled:opacity-60">
-                {busy === "start" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Truck className="h-5 w-5" />}Picked up — start delivery
-              </button>
-            ) : (
-              <>
-                <button type="button" disabled={!!busy || !o.paid} onClick={() => act("deliver")} className="flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-[#038d63] text-[15px] font-bold text-white disabled:opacity-50">
-                  {busy === "deliver" ? <Loader2 className="h-5 w-5 animate-spin" /> : <PackageCheck className="h-5 w-5" />}Mark as Delivered
-                </button>
-                {!o.paid && <p className="mt-1 flex items-center justify-center gap-1 text-[12px] text-[#c77700]"><CircleAlert className="h-3.5 w-3.5" />Collect {money(o.total)} first, then mark delivered</p>}
-              </>
-            )}
-          </div>
+          <div className="mx-auto max-w-[640px]">{mainAction}</div>
         </div>
       )}
 

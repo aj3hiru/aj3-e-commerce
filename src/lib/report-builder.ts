@@ -99,7 +99,7 @@ export async function getReport(f: ReportFilters): Promise<ReportData> {
         events: { where: { type: "placed", userId: { not: null } }, select: { userId: true }, take: 1 },
       },
     }),
-    f.channel === "offline" ? Promise.resolve([]) : prisma.ecomOrder.findMany({ where: { orderType: "online", createdAt: inRange }, select: { orderStatus: true } }),
+    f.channel === "offline" ? Promise.resolve([]) : prisma.ecomOrder.findMany({ where: { orderType: "online", createdAt: inRange, ...(f.userId ? { deliveryAgentId: f.userId } : {}) }, select: { orderStatus: true } }),
     prisma.ecomCredit.findMany({
       where: { createdAt: inRange }, orderBy: { createdAt: "desc" },
       select: { id: true, orderId: true, customerName: true, customerPhone: true, amount: true, amountPaid: true, promisedDate: true, status: true, createdAt: true, order: { select: { orderNumber: true, orderType: true, deliveryAgentId: true } } },

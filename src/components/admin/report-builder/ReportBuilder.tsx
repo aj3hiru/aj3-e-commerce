@@ -122,8 +122,8 @@ function Sheet({ data, all }: { data: ReportData; all: boolean }) {
   const tlCols = ([
     { key: "rb-c-time", label: "Time", cell: (r) => <span className="whitespace-nowrap">{fDate(r.at)}<br /><span className="text-[#6b7280]">{fTime(r.at)}</span></span> },
     { key: "rb-c-order", label: "Order ID", cell: (r) => <Link href={`/admin/ecommerce/orders/${r.orderId}`} className="font-medium text-[#6d28d9] hover:underline">{r.orderNumber}</Link> },
-    { key: "rb-c-channel", label: "Channel", cell: (r) => <span className={cn("whitespace-nowrap rounded-[6px] px-2 py-0.5 text-[12px] font-medium", r.channel === "online" ? "bg-[#e8f8ee] text-[#15803d]" : "bg-[#eaf1ff] text-[#1d4ed8]")}>{r.channel === "online" ? "Online" : "In-store"}</span> },
-    { key: "rb-c-customer", label: "Customer", cell: (r) => <span><span className="block">{r.customer}</span>{isVisible("rb-c-phone") && <span className="text-[12px] text-[#6b7280]">{r.phone ?? "—"}</span>}</span> },
+    { key: "rb-c-channel", label: "Channel", cell: (r) => <span className={cn("whitespace-nowrap rounded-[6px] px-2 py-0.5 text-[12px] font-medium print:px-1 print:text-[9px]", r.channel === "online" ? "bg-[#e8f8ee] text-[#15803d]" : "bg-[#eaf1ff] text-[#1d4ed8]")}>{r.channel === "online" ? "Online" : "In-store"}</span> },
+    { key: "rb-c-customer", label: "Customer", cell: (r) => <span><span className="block">{r.customer}</span>{isVisible("rb-c-phone") && <span className="text-[12px] text-[#6b7280] print:text-[9px]">{r.phone ?? "—"}</span>}</span> },
     { key: "rb-c-product", label: "Product", cell: (r) => <span className="font-medium">{r.product}</span> },
     { key: "rb-c-sku", label: "SKU", cell: (r) => r.sku ?? "—" },
     { key: "rb-c-category", label: "Category", cell: (r) => r.category ?? "—" },
@@ -175,7 +175,7 @@ function Sheet({ data, all }: { data: ReportData; all: boolean }) {
               )}
             </div>
           )}
-          <div className="min-w-[200px] flex-1 text-[13.5px] leading-6 text-[#374151] print:text-[11px] print:leading-5">
+          <div className="min-w-[200px] flex-1 text-[13.5px] leading-6 text-[#374151] empty:hidden print:text-[11px] print:leading-5">
             {(on("rb-head", "rb-h-logo") && logo || !on("rb-head", "rb-h-name")) && <p className="text-[17px] font-semibold text-[#111827] print:text-[14px]">{b.name}</p>}
             {on("rb-head", "rb-h-address") && b.address && <p className="whitespace-pre-line">{b.address}</p>}
             {on("rb-head", "rb-h-contact") && (b.phones.length > 0 || b.email) && <p>{b.phones.length > 0 && <>Mobile: {b.phones.join(", ")}</>}{b.phones.length > 0 && b.email && " · "}{b.email}</p>}
@@ -201,6 +201,7 @@ function Sheet({ data, all }: { data: ReportData; all: boolean }) {
             <p className="font-semibold text-[#111827]">{su.name} <span className="ml-1 rounded-[6px] bg-white px-2 py-0.5 text-[12px] font-medium text-[#6d28d9]">{su.role}</span></p>
             <p className="text-[12.5px] text-[#6b7280]">{[su.phone, su.email].filter(Boolean).join(" · ")} · Staff since {fDate(su.since)}</p>
           </div>
+          <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-5 print:grid-cols-5">
           {[
             ["Store sales", `${staffRow?.posSales ?? 0} · ${money(staffRow?.posAmount ?? 0)}`],
             ["Dues collected", `${staffRow?.collections ?? 0} · ${money(staffRow?.collectedAmount ?? 0)}`],
@@ -208,8 +209,9 @@ function Sheet({ data, all }: { data: ReportData; all: boolean }) {
             ["Products added", String(staffRow?.productsAdded ?? 0)],
             ["Actions", String(data.activity.length)],
           ].map(([l, v]) => (
-            <div key={l} className="rounded-[8px] bg-white px-3 py-2 text-center"><p className="text-[11.5px] text-[#6b7280]">{l}</p><p className="text-[14px] font-semibold text-[#111827]">{v}</p></div>
+            <div key={l} className="rounded-[8px] bg-white px-3 py-2 text-center"><p className="text-[11.5px] text-[#6b7280]">{l}</p><p className="whitespace-nowrap text-[14px] font-semibold text-[#111827]">{v}</p></div>
           ))}
+          </div>
         </div>
       )}
 

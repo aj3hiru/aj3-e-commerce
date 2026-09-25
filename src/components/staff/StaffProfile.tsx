@@ -38,7 +38,7 @@ export function StaffProfile({ me }: { me: StaffProfileData }) {
   }
 
   return (
-    <div className="mx-auto max-w-[640px] space-y-3 font-storefront text-[#353543]" style={{ ["--hp-accent" as string]: "var(--hp-accent, #9f2089)" }}>
+    <div className="mx-auto max-w-[640px] space-y-3 font-storefront text-[#353543]" style={{ ["--hp-accent" as string]: "#9f2089" }}>
       {show("mp-sections") && show("mp-card") && (
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-[#eaeaf2]">
           <div className="h-20" style={{ background: "linear-gradient(120deg, color-mix(in srgb, var(--hp-accent,#9f2089) 85%, black), var(--hp-accent,#9f2089))" }} />

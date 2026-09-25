@@ -94,7 +94,7 @@ export const DEFAULT_PRODUCT_PAGE: ProductPageConfig = {
     deliveryText: "Free Delivery", deliveryStrike: "",
   },
   sizes: { title: "Select Size", showPrice: true },
-  soldBy: { title: "Sold By", name: "", showRating: true, showViewShop: true, viewShopLabel: "View Shop", viewShopUrl: "/shop" },
+  soldBy: { title: "Sold By", name: "", showRating: true, showViewShop: true, viewShopLabel: "View Shop", viewShopUrl: "/" },
   highlights: {
     title: "Product Highlights", showCopy: true, showBrand: true, showCategory: true, showUnit: true, showSku: false,
     detailsTitle: "Additional Details", detailsOpen: false,

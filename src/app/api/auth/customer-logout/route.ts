@@ -12,5 +12,5 @@ import { clearCustomerSessionCookie } from "@/lib/session-cookies";
  */
 export async function POST(req: NextRequest) {
   await clearCustomerSessionCookie();
-  return NextResponse.redirect(new URL("/shop", req.url), 303);
+  return NextResponse.redirect(new URL("/", req.url), 303);
 }

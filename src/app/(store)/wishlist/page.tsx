@@ -10,7 +10,7 @@ import { enrichProducts, publicProducts, FEED_SELECT, type FeedRow } from "@/lib
 /** Wishlist (Meesho product cards with live prices, ratings and Add to Cart). */
 export default async function WishlistPage() {
   const customer = await getCustomerSession();
-  if (!customer) redirect(`/shop/login?redirect=${encodeURIComponent("/shop/wishlist")}`);
+  if (!customer) redirect(`/login?redirect=${encodeURIComponent("/wishlist")}`);
 
   const [layoutData, rows] = await Promise.all([
     getShopLayoutData(),
@@ -20,7 +20,7 @@ export default async function WishlistPage() {
 
   return (
     <ShopLayout {...layoutData}>
-      <Page title="My Wishlist" back="/shop/account">
+      <Page title="My Wishlist" back="/account">
         <WishlistGrid products={products} />
       </Page>
     </ShopLayout>

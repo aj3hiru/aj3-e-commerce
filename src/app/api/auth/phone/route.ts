@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   await setCustomerSessionCookie(customer.id, customer.password);
   const needsProfile = created || !customer.name.trim();
-  const redirect = needsProfile ? `/shop/account?setup=1${next ? `&next=${encodeURIComponent(next)}` : ""}` : next ?? "/shop/account";
+  const redirect = needsProfile ? `/account?setup=1${next ? `&next=${encodeURIComponent(next)}` : ""}` : next ?? "/account";
   return NextResponse.json({ success: true, created, redirect });
 }
 

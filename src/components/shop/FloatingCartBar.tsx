@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronRight, ShoppingCart } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 
-const HIDE_ON = ["/shop/cart", "/shop/checkout", "/shop/order", "/shop/login", "/shop/register", "/shop/account"];
+const HIDE_ON = ["/cart", "/checkout", "/order", "/login", "/register", "/account"];
 
 /**
  * Floating "View Cart" bar: slides up with a bounce the moment the cart has
@@ -45,7 +45,7 @@ export function FloatingCartBar() {
     {/* Room at the page bottom so the bar never covers the end of the footer. */}
     {show && <div aria-hidden className="h-[76px] shrink-0" />}
     <div className="pointer-events-none fixed inset-x-0 z-[950] flex justify-center px-3 transition-[bottom] duration-300" style={{ bottom: "calc(var(--fcb-offset, 0px) + 12px)" }}>
-      <Link ref={bar} href="/shop/cart" onClick={ripple} aria-live="polite" aria-hidden={!show} tabIndex={show ? 0 : -1}
+      <Link ref={bar} href="/cart" onClick={ripple} aria-live="polite" aria-hidden={!show} tabIndex={show ? 0 : -1}
         className="relative flex h-[56px] w-full max-w-[560px] items-center gap-3 overflow-hidden rounded-[8px] pl-3 pr-2 text-white no-underline"
         style={{
           background: ui.barColor,

@@ -29,7 +29,7 @@ export function OrderDetailView({ o }: { o: OrderDetail }) {
   const canceled = o.status === "Canceled";
   const itemsTotal = o.items.reduce((n, i) => n + i.price * i.qty, 0);
   return (
-      <Page title="Order Details" back="/shop/order">
+      <Page title="Order Details" back="/order">
         {o.placed && (
           <section className="mb-2 flex flex-col items-center bg-white px-4 py-7 text-center">
             <span className="grid h-16 w-16 animate-[pop_.5s_cubic-bezier(.34,1.56,.64,1)] place-items-center rounded-full bg-[#038d63] text-white shadow-[0_8px_20px_rgba(3,141,99,.35)]">
@@ -97,7 +97,7 @@ export function OrderDetailView({ o }: { o: OrderDetail }) {
                   <span className="text-[14px] font-semibold">{rupees(it.price * it.qty)}</span>
                 </>
               );
-              return <li key={it.id}>{it.slug ? <Link href={`/shop/product?slug=${encodeURIComponent(it.slug)}`} className="flex items-center gap-3 py-3">{body}</Link> : <div className="flex items-center gap-3 py-3">{body}</div>}</li>;
+              return <li key={it.id}>{it.slug ? <Link href={`/product?slug=${encodeURIComponent(it.slug)}`} className="flex items-center gap-3 py-3">{body}</Link> : <div className="flex items-center gap-3 py-3">{body}</div>}</li>;
             })}
           </ul>
         </Section>
@@ -120,10 +120,10 @@ export function OrderDetailView({ o }: { o: OrderDetail }) {
         </Section>
 
         <div className="grid grid-cols-2 gap-2 bg-white px-4 py-4">
-          <Link href="/shop/order" className={btnOutline}>All Orders</Link>
+          <Link href="/order" className={btnOutline}>All Orders</Link>
           {o.helpPhone
             ? <a href={`tel:${o.helpPhone.replace(/\s/g, "")}`} className={btnPrimary}><Headphones className="h-[18px] w-[18px]" />Need Help?</a>
-            : <Link href="/shop" className={btnPrimary}>Shop More</Link>}
+            : <Link href="/" className={btnPrimary}>Shop More</Link>}
         </div>
       </Page>
   );

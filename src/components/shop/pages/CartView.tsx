@@ -34,7 +34,7 @@ export function CartView({ items: initial }: { items: CartViewItem[] }) {
   if (items.length === 0) {
     return (
       <Empty icon={ShoppingCart} title="Your cart is empty" text="Just relax, let us help you find some first-class products."
-        action={<Link href="/shop" className={cn(btnPrimary, "w-56")}>Start Shopping</Link>} />
+        action={<Link href="/" className={cn(btnPrimary, "w-56")}>Start Shopping</Link>} />
     );
   }
 
@@ -53,14 +53,14 @@ export function CartView({ items: initial }: { items: CartViewItem[] }) {
             const atMax = it.maxQty !== null && it.qty >= it.maxQty;
             return (
               <li key={it.key} className={cn("flex gap-3 py-3.5 transition-opacity", busy === it.key && "opacity-60")}>
-                <Link href={`/shop/product?slug=${encodeURIComponent(it.slug)}`} className="h-[84px] w-[70px] shrink-0 overflow-hidden rounded-[6px] border border-[#eaeaf2] bg-white">
+                <Link href={`/product?slug=${encodeURIComponent(it.slug)}`} className="h-[84px] w-[70px] shrink-0 overflow-hidden rounded-[6px] border border-[#eaeaf2] bg-white">
                   {it.image
                     // eslint-disable-next-line @next/next/no-img-element
                     ? <img src={`/${it.image}`} alt="" className="h-full w-full object-contain" />
                     : <span className="grid h-full w-full place-items-center bg-[#f5f5f8] text-[#c9c9d6]"><ImageIcon className="h-6 w-6" /></span>}
                 </Link>
                 <div className="min-w-0 flex-1">
-                  <Link href={`/shop/product?slug=${encodeURIComponent(it.slug)}`} className="line-clamp-2 text-[14px] leading-5 text-[#353543]">{it.name}</Link>
+                  <Link href={`/product?slug=${encodeURIComponent(it.slug)}`} className="line-clamp-2 text-[14px] leading-5 text-[#353543]">{it.name}</Link>
                   <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
                     <b className="text-[16px] font-bold">{rupees(it.unitPrice)}</b>
                     {off > 0 && <><s className="text-[12px] text-[#8b8ba3]">{rupees(it.mrp)}</s><span className="text-[12px] font-semibold text-[#038d63]">{off}% off</span></>}
@@ -103,7 +103,7 @@ export function CartView({ items: initial }: { items: CartViewItem[] }) {
           <p className="text-[18px] font-bold">{rupees(total)}</p>
           <a href="#price-details" className="text-[12px] font-bold uppercase text-[var(--hp-accent)]">View price details</a>
         </div>
-        <Link href="/shop/checkout" className={cn(btnPrimary, "h-12 w-[52%]")}>Continue</Link>
+        <Link href="/checkout" className={cn(btnPrimary, "h-12 w-[52%]")}>Continue</Link>
       </StickyBottom>
     </>
   );

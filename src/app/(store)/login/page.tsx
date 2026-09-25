@@ -20,7 +20,7 @@ interface LoginPageProps {
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const [adminSession, customerSession, resolvedParams] = await Promise.all([getAdminSession(), getCustomerSession(), searchParams]);
   if (adminSession) redirect("/admin/dashboard");
-  if (customerSession) redirect("/shop/account");
+  if (customerSession) redirect("/account");
 
   const [layout, auth] = await Promise.all([getShopLayoutData(), getAuthSettings()]);
   const storeName = layout.business.businessName;

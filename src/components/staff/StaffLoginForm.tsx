@@ -19,11 +19,12 @@ export function StaffLoginForm({ next }: { next?: string }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setError("");
-    const res = await fetch("/api/auth/staff-login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identity, password, remember }) })
+    const res = await fetch("/api/auth/staff-login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identity, password, remember, next }) })
       .then((r) => r.json()).catch(() => null);
     if (!res?.success) { setError(res?.message || "Couldn't log in. Check your connection."); setBusy(false); return; }
-    const safe = next && next.startsWith("/") && !next.startsWith("//") && (next.startsWith("/admin") || next.startsWith("/agent") || next.startsWith("/push-notifications")) ? next : null;
-    router.push(safe && res.redirect !== "/agent" ? safe : res.redirect);
+    // The server picks the page (and host) — another host is a full URL.
+    if (/^https?:\/\//.test(res.redirect)) { window.location.assign(res.redirect); return; }
+    router.push(res.redirect);
     router.refresh();
   }
 

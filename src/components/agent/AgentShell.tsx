@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useStaffPathname } from "@/hooks/useStaffPathname";
 import { History, House, LayoutDashboard, LogOut, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -10,10 +10,13 @@ import { cn } from "@/lib/utils";
  * Computers: a left sidebar (profile, menu, admin-panel link for managers,
  * logout) and a wide content area.
  */
+/** A plain link: on its own subdomain the admin panel is another host. */
+const ADMIN_HOME = "/admin/dashboard";
+
 export function AgentShell({ name, avatar, store, roleLabel, adminLink, children }: {
   name: string; avatar: string | null; store: string; roleLabel: string; adminLink: boolean; children: React.ReactNode;
 }) {
-  const path = usePathname() ?? "";
+  const path = useStaffPathname("agent");
   const tabs = [
     { href: "/agent", label: "Today", icon: House, on: path === "/agent" || path.startsWith("/agent/order") },
     { href: "/agent/history", label: "History", icon: History, on: path.startsWith("/agent/history") },
@@ -48,9 +51,9 @@ export function AgentShell({ name, avatar, store, roleLabel, adminLink, children
             </Link>
           ))}
           {adminLink && (
-            <Link href="/admin/dashboard" className="flex h-11 items-center gap-3 rounded-[8px] px-3 text-[14.5px] text-[#616173] hover:bg-[#f8f9fe]">
+            <a href={ADMIN_HOME} className="flex h-11 items-center gap-3 rounded-[8px] px-3 text-[14.5px] text-[#616173] hover:bg-[#f8f9fe]">
               <LayoutDashboard className="h-5 w-5" strokeWidth={1.7} />Admin panel
-            </Link>
+            </a>
           )}
         </nav>
         <form action="/api/auth/logout" method="POST" className="border-t border-[#eaeaf2] p-3">
@@ -64,7 +67,7 @@ export function AgentShell({ name, avatar, store, roleLabel, adminLink, children
           <p className="truncate text-[17px] font-extrabold text-[var(--hp-accent)]">{store}</p>
           <p className="-mt-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#8b8ba3]">Delivery Partner</p>
         </div>
-        {adminLink && <Link href="/admin/dashboard" aria-label="Admin panel" className="grid h-10 w-10 place-items-center rounded-full text-[#616173] hover:bg-[#f5f5f8]"><LayoutDashboard className="h-5 w-5" /></Link>}
+        {adminLink && <a href={ADMIN_HOME} aria-label="Admin panel" className="grid h-10 w-10 place-items-center rounded-full text-[#616173] hover:bg-[#f5f5f8]"><LayoutDashboard className="h-5 w-5" /></a>}
         <Link href="/agent/profile" aria-label="Profile">{face("h-10 w-10")}</Link>
       </header>
 

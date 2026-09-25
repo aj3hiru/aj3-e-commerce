@@ -65,7 +65,7 @@ export function LoginSettingsForm({ initial, origin }: { initial: AuthSettings; 
         <div className={cn("flex items-center gap-3 rounded-xl border px-4 py-3", live ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800")}>
           {live ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <CircleAlert className="h-5 w-5 shrink-0" />}
           <p className="flex-1 text-sm font-medium">{live ? "Mobile OTP login is live on your store." : "Customers log in with email/mobile + password. Set up Firebase to turn on OTP login."}</p>
-          <a href={`${origin}/shop/login`} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold underline">Open login page<ExternalLink className="h-3.5 w-3.5" /></a>
+          <a href={`${origin}/login`} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold underline">Open login page<ExternalLink className="h-3.5 w-3.5" /></a>
         </div>
 
         <section className="rounded-xl border border-admin-gray-200 bg-white p-5 shadow-sm">

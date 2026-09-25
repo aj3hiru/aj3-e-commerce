@@ -19,7 +19,7 @@ const safeNext = (t?: string) => (t && t.startsWith("/") && !t.startsWith("//") 
 /** My Account — see AccountView. A new OTP account without a name gets the profile setup first. */
 export default async function AccountPage({ searchParams }: AccountPageProps) {
   const customer = await getCustomerSession();
-  if (!customer) redirect(`/shop/login?redirect=${encodeURIComponent("/shop/account")}`);
+  if (!customer) redirect(`/login?redirect=${encodeURIComponent("/account")}`);
 
   const { welcome, setup, next } = await searchParams;
   const [layoutData, full, orders, orderCount, wishCount, addresses, auth] = await Promise.all([

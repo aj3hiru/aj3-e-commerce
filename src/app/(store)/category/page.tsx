@@ -32,13 +32,13 @@ export default async function CategoryPage({ searchParams }: CategoryPageProps) 
   const wishlisted = customer
     ? ((await prisma.ecomWishlist.findMany({ where: { customerId: customer.customerId }, select: { productId: true } })) as { productId: number }[]).map((w) => w.productId)
     : [];
-  const base = `/shop/category?slug=${encodeURIComponent(category.slug)}`;
+  const base = `/category?slug=${encodeURIComponent(category.slug)}`;
   const chip = (on: boolean) => cn("shrink-0 whitespace-nowrap rounded-full border px-4 py-1.5 text-[14px] transition",
     on ? "border-[var(--hp-accent)] bg-[color-mix(in_srgb,var(--hp-accent)_9%,white)] font-medium text-[var(--hp-accent)]" : "border-[#dcdce6] bg-white text-[#353543]");
 
   return (
     <ShopLayout {...layoutData}>
-      <Page title={category.name} back="/shop" wide>
+      <Page title={category.name} back="/" wide>
         {subcats.length > 0 && (
           <div className="-mt-2 flex gap-2 overflow-x-auto bg-white px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <Link href={base} className={chip(!activeSub)}>All</Link>

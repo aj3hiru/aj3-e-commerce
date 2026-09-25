@@ -25,7 +25,7 @@ export function resolveMenu(items: MenuItem[], loggedIn: boolean, categories: Sh
     .map((i) => ({
       ...i,
       children: i.autoCategories
-        ? [...categories.map((c) => ({ id: `cat-${c.slug}`, label: c.name, href: `/shop/category?slug=${encodeURIComponent(c.slug)}` })),
+        ? [...categories.map((c) => ({ id: `cat-${c.slug}`, label: c.name, href: `/category?slug=${encodeURIComponent(c.slug)}` })),
            ...i.children]
         : i.children,
     }));

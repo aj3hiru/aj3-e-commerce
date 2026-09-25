@@ -1,5 +1,6 @@
 "use client";
 
+import { storeOrigin } from "@/lib/hosts";
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -126,7 +127,7 @@ export function FileManager2Grid({ files: initial }: { files: FileAsset[] }) {
   }
 
   function copyLink(f: FileAsset) {
-    navigator.clipboard?.writeText(`${window.location.origin}/${f.relPath}`).catch(() => {});
+    navigator.clipboard?.writeText(`${storeOrigin()}/${f.relPath}`).catch(() => {});
     notify(true, "Link copied.");
   }
 

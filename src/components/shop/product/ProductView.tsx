@@ -166,7 +166,7 @@ function WriteReview({ productId, loggedIn, slug }: { productId: number; loggedI
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   if (!loggedIn) {
     return (
-      <Link href={`/shop/login?redirect=${encodeURIComponent(`/shop/product?slug=${slug}`)}`} className="block py-3 text-[14px] font-medium text-[var(--hp-accent)]">
+      <Link href={`/login?redirect=${encodeURIComponent(`/product?slug=${slug}`)}`} className="block py-3 text-[14px] font-medium text-[var(--hp-accent)]">
         Login to write a review
       </Link>
     );
@@ -313,7 +313,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
   }, [floating]);
 
   async function toggleWish() {
-    if (!loggedIn) { router.push(`/shop/login?redirect=${encodeURIComponent(`/shop/product?slug=${d.product.slug}`)}`); return; }
+    if (!loggedIn) { router.push(`/login?redirect=${encodeURIComponent(`/product?slug=${d.product.slug}`)}`); return; }
     const next = !wished;
     setWished(next);
     const res = await fetch("/api/shop/wishlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ product_id: d.product.id }) })
@@ -337,7 +337,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
     if (buy) setBuying(true);
     const res = await addToCart(d.product.id, 1, sizeId, { silent: buy });
     if (buy) {
-      if (res?.success) router.push("/shop/checkout");
+      if (res?.success) router.push("/checkout");
       else { setBuying(false); setToast(res?.message || "Couldn't add to cart"); }
       return;
     }
@@ -389,10 +389,10 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
     switch (k) {
       case "breadcrumb": {
         // Meesho: accent links separated by " / ", wrapping onto a second line, the product name shortened with "…".
-        const crumbs: { label: string; href: string }[] = [{ label: "Home", href: "/shop" }];
+        const crumbs: { label: string; href: string }[] = [{ label: "Home", href: "/" }];
         const cat = d.product.category, sub = d.product.subcategory;
-        if (cat) crumbs.push({ label: cat.name, href: `/shop/category?slug=${encodeURIComponent(cat.slug)}` });
-        if (cat && sub) crumbs.push({ label: sub.name, href: `/shop/category?slug=${encodeURIComponent(cat.slug)}&sub=${encodeURIComponent(sub.slug)}` });
+        if (cat) crumbs.push({ label: cat.name, href: `/category?slug=${encodeURIComponent(cat.slug)}` });
+        if (cat && sub) crumbs.push({ label: sub.name, href: `/category?slug=${encodeURIComponent(cat.slug)}&sub=${encodeURIComponent(sub.slug)}` });
         const name = d.product.name.length > 18 ? `${d.product.name.slice(0, 16).trimEnd()}…` : d.product.name;
         return (
           <nav aria-label="Breadcrumb" className="px-4 pb-2 pt-2.5">

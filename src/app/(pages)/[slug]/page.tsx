@@ -32,7 +32,7 @@ export default async function StaticPage({ params }: StaticPageProps) {
 
   return (
     <ShopLayout {...layoutData}>
-      <Page title={page.title} back="/shop">
+      <Page title={page.title} back="/">
         <article className="bg-white px-4 py-5 text-[15px] leading-7 text-[#353543] shop:px-8 shop:py-8">
           <div className="whitespace-pre-line break-words">{page.content}</div>
         </article>

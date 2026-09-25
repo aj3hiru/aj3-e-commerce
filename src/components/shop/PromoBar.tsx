@@ -25,7 +25,7 @@ export function PromoBar({ promo }: { promo: PromoConfig }) {
     setVisible(!hidden);
   }, [key, promo.dismissHours]);
 
-  if (!promo.enabled || !promo.title || (promo.showOn === "home" && pathname !== "/shop") || !visible) return null;
+  if (!promo.enabled || !promo.title || (promo.showOn === "home" && pathname !== "/") || !visible) return null;
 
   function close() {
     try { localStorage.setItem(key, String(Date.now())); sessionStorage.setItem(key, "1"); } catch { /* ignore */ }

@@ -51,7 +51,7 @@ export function storefrontProblem(c: StorefrontConfig): { section: string; messa
 function LinkPicker({ value, onChange, categories, id }: { value: string; onChange: (href: string) => void; categories: ShopCategoryNavItem[]; id?: string }) {
   const options = useMemo(() => [
     ...LINK_PRESETS.map((p) => ({ label: p.label, href: p.href })),
-    ...categories.map((c) => ({ label: `Category: ${c.name}`, href: `/shop/category?slug=${encodeURIComponent(c.slug)}` })),
+    ...categories.map((c) => ({ label: `Category: ${c.name}`, href: `/category?slug=${encodeURIComponent(c.slug)}` })),
   ], [categories]);
   const known = options.some((o) => o.href === value);
   const [custom, setCustom] = useState(!known && value !== "");
@@ -62,7 +62,7 @@ function LinkPicker({ value, onChange, categories, id }: { value: string; onChan
         onChange={(e) => { if (e.target.value === "__custom") { setCustom(true); } else { setCustom(false); onChange(e.target.value); } }}>
         {!known && !custom && <option value="">Choose a page…</option>}
         <optgroup label="Pages">{LINK_PRESETS.map((p) => <option key={p.href} value={p.href}>{p.label}</option>)}</optgroup>
-        {categories.length > 0 && <optgroup label="Categories">{categories.map((c) => { const h = `/shop/category?slug=${encodeURIComponent(c.slug)}`; return <option key={h} value={h}>{c.name}</option>; })}</optgroup>}
+        {categories.length > 0 && <optgroup label="Categories">{categories.map((c) => { const h = `/category?slug=${encodeURIComponent(c.slug)}`; return <option key={h} value={h}>{c.name}</option>; })}</optgroup>}
         <option value="__custom">Custom link…</option>
       </select>
       {custom && (
@@ -141,14 +141,14 @@ function MenuBuilder({ items, onChange, categories, defaults }: {
                   <button type="button" onClick={() => set(i, { children: it.children.filter((_, k) => k !== ci) })} aria-label="Remove dropdown link" className="rounded p-1.5 text-red-500 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
                 </div>
               ))}
-              <button type="button" onClick={() => set(i, { children: [...it.children, { id: newId(), label: "", href: "/shop" }] })}
+              <button type="button" onClick={() => set(i, { children: [...it.children, { id: newId(), label: "", href: "/" }] })}
                 className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-[#9f2089] hover:underline"><Plus className="h-3.5 w-3.5" /> Add dropdown link</button>
             </div>
           )}
         </div>
       ))}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-        <button type="button" onClick={() => { const it: MenuItem = { id: newId(), label: "", href: "/shop", icon: "link", visibility: "all", enabled: true, newTab: false, autoCategories: false, children: [] }; onChange([...items, it]); setOpen(it.id); }}
+        <button type="button" onClick={() => { const it: MenuItem = { id: newId(), label: "", href: "/", icon: "link", visibility: "all", enabled: true, newTab: false, autoCategories: false, children: [] }; onChange([...items, it]); setOpen(it.id); }}
           className="flex items-center gap-1.5 rounded-lg border border-[#9f2089] px-3 py-2 text-[0.85rem] font-semibold text-[#9f2089] hover:bg-[#fdf0f9]"><Plus className="h-4 w-4" /> Add menu item</button>
         <button type="button" onClick={() => { if (confirm("Replace this menu with the default items?")) onChange(defaults); }}
           className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-admin-gray-500 hover:text-admin-gray-800"><RotateCcw className="h-3.5 w-3.5" /> Reset to default</button>
@@ -191,7 +191,7 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
         <div className="mt-5">
           <div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-admin-gray-500">Preview</span><AudienceToggle value={loggedIn} onChange={setLoggedIn} /></div>
           <div className="overflow-visible rounded-lg border border-admin-gray-200 pb-40 [&_nav]:!block">
-            <DesktopMenu items={resolveMenu(value.headerMenu, loggedIn, categories)} design={value.menuDesign} isActive={(h) => h === "/shop"} />
+            <DesktopMenu items={resolveMenu(value.headerMenu, loggedIn, categories)} design={value.menuDesign} isActive={(h) => h === "/"} />
           </div>
         </div>
       </SettingsPanel>
@@ -207,7 +207,7 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
             <div className="mb-2 flex items-center justify-between"><span className="flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-admin-gray-500"><Smartphone className="h-3.5 w-3.5" /> Preview</span><AudienceToggle value={loggedIn} onChange={setLoggedIn} /></div>
             <PhoneFrame width={272} height={520} className="mx-auto">
               <div className="h-full overflow-y-auto font-storefront">
-                <SidebarMenu items={resolveMenu(value.sidebarMenu, loggedIn, categories)} design={value.menuDesign} isActive={(h) => h === "/shop"} />
+                <SidebarMenu items={resolveMenu(value.sidebarMenu, loggedIn, categories)} design={value.menuDesign} isActive={(h) => h === "/"} />
               </div>
             </PhoneFrame>
           </div>
@@ -235,7 +235,7 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
         <button type="button" onClick={() => set("menuDesign", DEFAULT_MENU_DESIGN)} className="mt-3 flex items-center gap-1.5 text-[0.8rem] font-semibold text-admin-gray-500 hover:text-admin-gray-800"><RotateCcw className="h-3.5 w-3.5" /> Store default (green)</button>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           <div className="overflow-hidden rounded-lg border border-admin-gray-200 font-storefront">
-            <SidebarMenu items={resolveMenu(value.sidebarMenu, false, categories).slice(0, 4)} design={d} isActive={(h) => h === "/shop"} />
+            <SidebarMenu items={resolveMenu(value.sidebarMenu, false, categories).slice(0, 4)} design={d} isActive={(h) => h === "/"} />
           </div>
           <div className="rounded-lg border border-admin-gray-200 pb-36 [&_nav]:!block">
             <DesktopMenu items={resolveMenu(value.headerMenu, false, categories).slice(0, 3)} design={d} isActive={never} />
@@ -309,7 +309,7 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
                   <button type="button" onClick={() => setCol(i, { links: col.links.filter((_, k) => k !== li) })} aria-label="Remove link" className="rounded p-1.5 text-red-500 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
                 </div>
               ))}
-              <button type="button" onClick={() => setCol(i, { links: [...col.links, { id: newId(), label: "", href: "/shop" }] })} className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-[#9f2089] hover:underline"><Plus className="h-3.5 w-3.5" /> Add link</button>
+              <button type="button" onClick={() => setCol(i, { links: [...col.links, { id: newId(), label: "", href: "/" }] })} className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-[#9f2089] hover:underline"><Plus className="h-3.5 w-3.5" /> Add link</button>
             </div>
           ))}
           {f.columns.length < 3 && (

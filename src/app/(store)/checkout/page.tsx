@@ -13,13 +13,13 @@ import { listAddresses } from "@/lib/customer-addresses";
  *  cart must not be empty) and the order-summary display. */
 export default async function CheckoutPage() {
   const customer = await getCustomerSession();
-  if (!customer) redirect("/shop/login?redirect=" + encodeURIComponent("/shop/checkout"));
+  if (!customer) redirect("/login?redirect=" + encodeURIComponent("/checkout"));
 
   // A new mobile-OTP account names itself before its first order.
-  if (!customer.name.trim()) redirect(`/shop/account?setup=1&next=${encodeURIComponent("/shop/checkout")}`);
+  if (!customer.name.trim()) redirect(`/account?setup=1&next=${encodeURIComponent("/checkout")}`);
 
   const cart = await getCart();
-  if (Object.keys(cart).length === 0) redirect("/shop/cart");
+  if (Object.keys(cart).length === 0) redirect("/cart");
 
   const [layoutData, customerRow, lines, paymentMethods, addresses] = await Promise.all([
     getShopLayoutData(),
@@ -40,7 +40,7 @@ export default async function CheckoutPage() {
 
   return (
     <ShopLayout {...layoutData}>
-      <Page title="Checkout" back="/shop/cart">
+      <Page title="Checkout" back="/cart">
         <CheckoutForm
           addresses={addresses}
           customerName={customerRow?.name}

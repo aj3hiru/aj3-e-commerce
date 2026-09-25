@@ -1,5 +1,6 @@
 "use client";
 
+import { useStoreOrigin } from "@/hooks/useStoreOrigin";
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -55,6 +56,7 @@ interface Props {
 }
 
 export function HomepageBuilder2({ slides: initialSlides, stripItems: initialStrip, stripMode: initialMode, stripCount: initialCount, sections: initialSections, categories, products }: Props) {
+  const storeOrigin = useStoreOrigin();
   const router = useRouter();
   const [slides, setSlides] = useState(initialSlides);
   const [stripItems, setStripItems] = useState(initialStrip);
@@ -133,7 +135,7 @@ export function HomepageBuilder2({ slides: initialSlides, stripItems: initialStr
           <span className="flex items-center gap-1.5 text-sm text-admin-gray-500">
             {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…</> : savedAt ? <><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Autosaved {savedAt.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}</> : null}
           </span>
-          <a href="/shop" target="_blank" rel="noopener noreferrer" className="flex h-10 items-center gap-2 rounded-[0.5rem] border border-[#dee2e6] bg-white px-3.5 text-sm font-medium text-[#374151] hover:bg-[#f9fafb]">
+          <a href={`${storeOrigin}/`} target="_blank" rel="noopener noreferrer" className="flex h-10 items-center gap-2 rounded-[0.5rem] border border-[#dee2e6] bg-white px-3.5 text-sm font-medium text-[#374151] hover:bg-[#f9fafb]">
             <ExternalLink className="h-4 w-4" /> Preview Homepage
           </a>
         </div>
@@ -394,10 +396,10 @@ function HeroEditor({ slides, setSlides, notify, refresh }: PanelProps) {
     const form = new FormData();
     form.set("action", "add_slide");
     form.set("image", file);
-    form.set("button_link", "/shop");
+    form.set("button_link", "/");
     const res = await callActionForm(form);
     setUploading(false);
-    if (res.success && res.id && res.image) { setSlides((l) => [...l, { id: res.id!, image: res.image!, buttonLink: "/shop", status: "active" }]); notify(true, "Slide added."); refresh(); }
+    if (res.success && res.id && res.image) { setSlides((l) => [...l, { id: res.id!, image: res.image!, buttonLink: "/", status: "active" }]); notify(true, "Slide added."); refresh(); }
     else notify(false, res.message ?? "Couldn't add that slide.");
   }
   async function removeSlide(id: number) {

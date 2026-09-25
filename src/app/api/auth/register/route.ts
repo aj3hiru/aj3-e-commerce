@@ -32,5 +32,5 @@ export async function POST(req: NextRequest) {
 
   await setCustomerSessionCookie(created.id, hash);
 
-  return NextResponse.json({ success: true, redirect: "/shop/account?welcome=1" });
+  return NextResponse.json({ success: true, redirect: "/account?welcome=1" });
 }

@@ -88,9 +88,9 @@ export function LinkInput({ label, value, onChange, categories, optional }: { la
         className={cn(INPUT, bad && "border-red-400 focus:border-red-500 focus:ring-red-100")} aria-invalid={bad} />
       <datalist id={listId}>
         {LINK_PRESETS.map((p) => <option key={p.href} value={p.href}>{p.label}</option>)}
-        <option value="/shop?sort=discount">Deals (biggest discount)</option>
-        <option value="/shop?sort=new">New arrivals</option>
-        {categories.map((c) => <option key={c.slug} value={`/shop/category?slug=${encodeURIComponent(c.slug)}`}>{`Category: ${c.name}`}</option>)}
+        <option value="/?sort=discount">Deals (biggest discount)</option>
+        <option value="/?sort=new">New arrivals</option>
+        {categories.map((c) => <option key={c.slug} value={`/category?slug=${encodeURIComponent(c.slug)}`}>{`Category: ${c.name}`}</option>)}
       </datalist>
       {bad && <span className="mt-1 block text-[11px] text-red-600">Use a site path (/…) or a full https:// link.</span>}
     </label>

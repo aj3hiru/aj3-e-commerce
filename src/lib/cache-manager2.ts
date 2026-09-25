@@ -88,7 +88,7 @@ export async function clearCacheSection(section: CacheSection, req: NextRequest,
     count++;
   }
   if (section === "shop" || section === "all") {
-    revalidatePath("/shop", "layout");
+    revalidatePath("/", "layout");
     count++;
   }
   if (section === "blog" || section === "all") {

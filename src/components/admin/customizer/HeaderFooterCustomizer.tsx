@@ -101,7 +101,7 @@ export function HeaderFooterCustomizer({ part, initial, categories, business }: 
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save
           </button>
         </div>
-        <div className="min-h-0 flex-1"><Preview url={part === "footer" ? "/shop?hc=footer" : "/shop?hc=header"} version={version} device={device} focus={null} anchor={part === "footer" ? "footer" : undefined} /></div>
+        <div className="min-h-0 flex-1"><Preview url={part === "footer" ? "/?hc=footer" : "/?hc=header"} version={version} device={device} focus={null} anchor={part === "footer" ? "footer" : undefined} /></div>
       </div>
       <Toast text={toast} />
     </div>

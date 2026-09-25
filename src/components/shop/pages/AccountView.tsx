@@ -22,9 +22,9 @@ export function AccountView({ a }: { a: AccountData }) {
     return <Page title="Complete Profile"><ProfileSetup phone={a.phone} next={a.setup.next} /></Page>;
   }
   const tiles = [
-    { href: "/shop/order", label: "Orders", n: a.orderCount, icon: Package },
-    { href: "/shop/wishlist", label: "Wishlist", n: a.wishCount, icon: Heart },
-    { href: "/shop/cart", label: "Cart", n: a.cartCount, icon: ShoppingCart },
+    { href: "/order", label: "Orders", n: a.orderCount, icon: Package },
+    { href: "/wishlist", label: "Wishlist", n: a.wishCount, icon: Heart },
+    { href: "/cart", label: "Cart", n: a.cartCount, icon: ShoppingCart },
   ];
   return (
     <Page title="My Account">
@@ -59,10 +59,10 @@ export function AccountView({ a }: { a: AccountData }) {
 
       <div id="orders" className="flex items-center justify-between bg-white px-4 pb-1 pt-4">
         <h2 className="text-[16px] font-semibold">Recent Orders</h2>
-        {a.orderCount > 0 && <Link href="/shop/order" className="text-[13px] font-bold uppercase text-[var(--hp-accent)]">View all</Link>}
+        {a.orderCount > 0 && <Link href="/order" className="text-[13px] font-bold uppercase text-[var(--hp-accent)]">View all</Link>}
       </div>
       {a.orders.length === 0
-        ? <p className="mb-2 bg-white px-4 pb-4 pt-2 text-[14px] text-[#8b8ba3]">No orders yet. <Link href="/shop" className="font-semibold text-[var(--hp-accent)]">Start shopping</Link></p>
+        ? <p className="mb-2 bg-white px-4 pb-4 pt-2 text-[14px] text-[#8b8ba3]">No orders yet. <Link href="/" className="font-semibold text-[var(--hp-accent)]">Start shopping</Link></p>
         : a.orders.map((o) => <OrderCard key={o.id} o={o} />)}
 
       <AddressBook initial={a.addresses} defaults={{ name: a.name, phone: a.phone }} />
@@ -71,10 +71,10 @@ export function AccountView({ a }: { a: AccountData }) {
       <PasswordCard hasPassword={a.hasPassword} hasEmail={!!a.email} />
 
       <section className="mb-2 bg-white">
-        <Link href="/shop/order" className="flex items-center gap-3.5 border-b border-[#eaeaf2] px-4 py-4">
+        <Link href="/order" className="flex items-center gap-3.5 border-b border-[#eaeaf2] px-4 py-4">
           <Truck className="h-5 w-5 text-[#666]" strokeWidth={1.7} /><span className="flex-1 text-[15px] font-medium">Track Orders</span><ChevronRight className="h-5 w-5 text-[#a7a9b6]" />
         </Link>
-        <Link href="/shop/wishlist" className="flex items-center gap-3.5 border-b border-[#eaeaf2] px-4 py-4">
+        <Link href="/wishlist" className="flex items-center gap-3.5 border-b border-[#eaeaf2] px-4 py-4">
           <Heart className="h-5 w-5 text-[#666]" strokeWidth={1.7} /><span className="flex-1 text-[15px] font-medium">My Wishlist</span><ChevronRight className="h-5 w-5 text-[#a7a9b6]" />
         </Link>
         <form action="/api/auth/customer-logout" method="POST">

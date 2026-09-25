@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     await clearAttempts(identity);
     await setCustomerSessionCookie(customer.id, customer.password);
 
-    return NextResponse.json({ success: true, redirect: safeRedirect(redirect) ?? "/shop/account" });
+    return NextResponse.json({ success: true, redirect: safeRedirect(redirect) ?? "/account" });
   }
 
   // ── Neither matched ──

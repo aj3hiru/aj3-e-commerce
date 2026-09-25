@@ -52,7 +52,7 @@ export function ShopMobileDrawer({ business, header, customer, menu, design, isO
     if (path !== pathname) return false;
     const slug = new URLSearchParams(query).get("slug");
     // Same rule as the header: #anchor links (e.g. All Categories) never mark the page itself as current.
-    return slug ? searchParams?.get("slug") === slug : path !== "/shop/category" && !href.includes("#");
+    return slug ? searchParams?.get("slug") === slug : path !== "/category" && !href.includes("#");
   };
 
   return (
@@ -96,17 +96,17 @@ export function ShopMobileDrawer({ business, header, customer, menu, design, isO
           </div>
           <div className="mt-3.5 grid grid-cols-2 gap-2">
             {customer ? <>
-              <Link href="/shop/account#orders" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-[4px] border bg-white text-[15px] font-medium" style={{ borderColor: design.accent, color: design.accent }}>
+              <Link href="/account#orders" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-[4px] border bg-white text-[15px] font-medium" style={{ borderColor: design.accent, color: design.accent }}>
                 <Package className="h-[18px] w-[18px]" strokeWidth={1.9} />My Orders
               </Link>
-              <Link href="/shop/account" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-[4px] text-[15px] font-medium text-white" style={{ background: design.accent }}>
+              <Link href="/account" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-[4px] text-[15px] font-medium text-white" style={{ background: design.accent }}>
                 <UserRound className="h-[18px] w-[18px]" strokeWidth={1.9} />Profile
               </Link>
             </> : <>
-              <Link href="/shop/register" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-[4px] border bg-white text-[15px] font-medium" style={{ borderColor: design.accent, color: design.accent }}>
+              <Link href="/register" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-[4px] border bg-white text-[15px] font-medium" style={{ borderColor: design.accent, color: design.accent }}>
                 <UserPlus className="h-[18px] w-[18px]" strokeWidth={1.9} />Sign up
               </Link>
-              <Link href="/shop/login" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-[4px] text-[15px] font-medium text-white" style={{ background: design.accent }}>
+              <Link href="/login" onClick={onClose} className="flex h-10 items-center justify-center gap-1.5 rounded-[4px] text-[15px] font-medium text-white" style={{ background: design.accent }}>
                 <LogIn className="h-[18px] w-[18px]" strokeWidth={1.9} />Login
               </Link>
             </>}

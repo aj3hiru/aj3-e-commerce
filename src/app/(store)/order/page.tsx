@@ -22,8 +22,8 @@ interface OrderPageProps {
 export default async function OrderPage({ searchParams }: OrderPageProps) {
   const { id, placed } = await searchParams;
   const customer = await getCustomerSession();
-  const here = id ? `/shop/order?id=${id}` : "/shop/order";
-  if (!customer) redirect(`/shop/login?redirect=${encodeURIComponent(here)}`);
+  const here = id ? `/order?id=${id}` : "/order";
+  if (!customer) redirect(`/login?redirect=${encodeURIComponent(here)}`);
   const layoutData = await getShopLayoutData();
 
   // ── All orders ─────────────────────────────────────────────────────────────
@@ -31,10 +31,10 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
     const orders = await loadCustomerOrders(customer.customerId);
     return (
       <ShopLayout {...layoutData}>
-        <Page title="My Orders" back="/shop/account">
+        <Page title="My Orders" back="/account">
           {orders.length === 0
             ? <Empty icon={PackageSearch} title="No orders yet" text="When you place an order, you can track it here."
-                action={<Link href="/shop" className={cn(btnPrimary, "w-56")}>Start Shopping</Link>} />
+                action={<Link href="/" className={cn(btnPrimary, "w-56")}>Start Shopping</Link>} />
             : orders.map((o) => <OrderCard key={o.id} o={o} />)}
         </Page>
       </ShopLayout>

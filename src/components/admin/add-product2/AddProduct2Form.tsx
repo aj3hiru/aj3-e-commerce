@@ -1,5 +1,6 @@
 "use client";
 
+import { useStoreOrigin } from "@/hooks/useStoreOrigin";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -143,6 +144,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
   /** Where Cancel and a finished save go back to (defaults to All Products 2). */
   listPath?: string;
 }) {
+  const storeOrigin = useStoreOrigin();
   const router = useRouter();
   const { isVisible, loaded } = useDashboardWidgetPrefs();
   const editing = product !== null;
@@ -500,7 +502,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
                     className={inputCls(false)}
                   />
                   {editing && (
-                    <a href={`/shop/product?slug=${encodeURIComponent(product!.slug)}`} target="_blank" rel="noreferrer" title="View in shop" className={cn(btnCls, "shrink-0")}>
+                    <a href={`${storeOrigin}/product?slug=${encodeURIComponent(product!.slug)}`} target="_blank" rel="noreferrer" title="View in shop" className={cn(btnCls, "shrink-0")}>
                       <ExternalLink className="h-4 w-4" /> <span className="hidden sm:inline">View in shop</span>
                     </a>
                   )}

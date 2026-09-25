@@ -71,7 +71,7 @@ export function newBlock(type: HomeBlockType): HomeBlock {
     case "banner": return { id, type, enabled: true, slides: [], autoplay: 5, rounded: true };
     case "categories": return { id, type, enabled: true, source: "all", slugs: [], limit: 12, showAllButton: true };
     case "products": return { id, type, enabled: true, title: "Deals of the Day", source: "deals", category: "", productIds: [], limit: 10 };
-    case "image": return { id, type, enabled: true, image: "", href: "/shop" };
+    case "image": return { id, type, enabled: true, image: "", href: "/" };
     case "feed": return { id, type, enabled: true, title: "Products For You", showSort: true, showCategory: true, showBrand: true, showFilters: true };
   }
 }
@@ -80,9 +80,9 @@ export const DEFAULT_HOME: HomeConfig = {
   accent: MEESHO.jamun,
   promo: {
     enabled: true, image: "", title: "Welcome! Discover today's best deals", subtitle: "New arrivals added every day",
-    buttonLabel: "Shop Now", buttonUrl: "/shop", bgColor: MEESHO.promoBg, buttonColor: MEESHO.jamun, showOn: "home", dismissHours: 24,
+    buttonLabel: "Shop Now", buttonUrl: "/", bgColor: MEESHO.promoBg, buttonColor: MEESHO.jamun, showOn: "home", dismissHours: 24,
   },
-  strip: { enabled: true, icon: "pin", text: "Add your delivery address for a faster checkout", href: "/shop/account" },
+  strip: { enabled: true, icon: "pin", text: "Add your delivery address for a faster checkout", href: "/account" },
   blocks: [
     { id: "b-banner", type: "banner", enabled: true, slides: [], autoplay: 5, rounded: true },
     { id: "b-cats", type: "categories", enabled: true, source: "all", slugs: [], limit: 12, showAllButton: true },

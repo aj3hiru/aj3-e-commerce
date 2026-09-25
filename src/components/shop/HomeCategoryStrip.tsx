@@ -32,7 +32,7 @@ export function HomeCategoryStrip({ categories }: { categories: StripCategoryDat
       {categories.map((cat, i) => {
         const c = STRIP_COLORS[i % STRIP_COLORS.length];
         return (
-          <Link key={cat.slug} href={`/shop/category?slug=${cat.slug}`} className="flex flex-col items-center gap-2 shrink-0 w-[76px]">
+          <Link key={cat.slug} href={`/category?slug=${cat.slug}`} className="flex flex-col items-center gap-2 shrink-0 w-[76px]">
             <div className="w-[52px] h-[52px] rounded-[14px] flex items-center justify-center text-[22px] overflow-hidden" style={{ background: c.bg, color: c.text }}>
               {cat.image ? (
                 // eslint-disable-next-line @next/next/no-img-element

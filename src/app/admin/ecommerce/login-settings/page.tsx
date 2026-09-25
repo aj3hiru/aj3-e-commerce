@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { storeHostOf } from "@/lib/hosts";
 import { redirect } from "next/navigation";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { LoginSettingsForm } from "@/components/admin/login-settings/LoginSettingsForm";
@@ -11,7 +12,7 @@ export default async function LoginSettingsPage() {
   if (!session || !hasPermission(session.permissions, "ecommerce", "manage_payment")) redirect("/staff/login");
   const [settings, h] = await Promise.all([getAuthSettings(), headers()]);
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const origin = host ? `${h.get("x-forwarded-proto") ?? "https"}://${host}` : "";
+  const origin = host ? `${h.get("x-forwarded-proto") ?? "https"}://${storeHostOf(host)}` : "";
 
   return (
     <AdminShell siteName="EduMint24" pageTitle="Login & OTP" pageSubtitle="Let customers log in and sign up with their mobile number and an OTP"

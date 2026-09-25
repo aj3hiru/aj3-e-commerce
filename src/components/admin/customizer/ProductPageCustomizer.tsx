@@ -84,7 +84,7 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
     return (q ? products.filter((p) => p.name.toLowerCase().includes(q)) : products).slice(0, 8);
   }, [pq, products]);
   const current = products.find((p) => p.slug === previewSlug);
-  const url = previewSlug ? `/shop/product?slug=${encodeURIComponent(previewSlug)}&hc=draft` : "/shop?hc=draft";
+  const url = previewSlug ? `/product?slug=${encodeURIComponent(previewSlug)}&hc=draft` : "/?hc=draft";
 
   function editor(k: PPSectionKey) {
     switch (k) {

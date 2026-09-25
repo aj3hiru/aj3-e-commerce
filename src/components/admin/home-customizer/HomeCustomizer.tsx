@@ -50,7 +50,7 @@ function BannerEditor({ b, set }: { b: Block<"banner">; set: (p: Partial<Block<"
     setBusy(list.length);
     const added: BannerSlide[] = [];
     for (const f of list) {
-      try { added.push({ id: rid(), image: await uploadImage(f), href: "/shop" }); } catch (e) { setErr(e instanceof Error ? e.message : "Upload failed."); }
+      try { added.push({ id: rid(), image: await uploadImage(f), href: "/" }); } catch (e) { setErr(e instanceof Error ? e.message : "Upload failed."); }
       setBusy((n) => n - 1);
     }
     if (added.length) set({ slides: [...slides, ...added] });
@@ -522,7 +522,7 @@ export function HomeCustomizer({ initialDraft, initialLive, categories, products
           </div>
           <button type="button" onClick={() => setVersion((v) => v + 1)} title="Reload preview" aria-label="Reload preview"
             className="grid h-9 w-9 place-items-center rounded-lg border border-admin-gray-200 text-admin-gray-600 hover:bg-admin-gray-50"><RefreshCw className="h-4 w-4" /></button>
-          <a href="/shop?hc=draft" target="_blank" rel="noreferrer" title="Open preview in a new tab" aria-label="Open preview in a new tab" className="grid h-9 w-9 place-items-center rounded-lg border border-admin-gray-200 text-admin-gray-600 hover:bg-admin-gray-50">
+          <a href="/?hc=draft" target="_blank" rel="noreferrer" title="Open preview in a new tab" aria-label="Open preview in a new tab" className="grid h-9 w-9 place-items-center rounded-lg border border-admin-gray-200 text-admin-gray-600 hover:bg-admin-gray-50">
             <ExternalLink className="h-4 w-4" />
           </a>
           {unpublished && (
@@ -535,7 +535,7 @@ export function HomeCustomizer({ initialDraft, initialLive, categories, products
             {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}Publish
           </button>
         </div>
-          <div className="min-h-0 flex-1"><Preview url="/shop?hc=draft" version={version} device={device} focus={focus} /></div>
+          <div className="min-h-0 flex-1"><Preview url="/?hc=draft" version={version} device={device} focus={focus} /></div>
         </div>
       </div>
 

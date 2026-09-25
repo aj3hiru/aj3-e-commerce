@@ -36,7 +36,7 @@ export function LoginForm({ redirectTo, storeName = "our store", bare = false }:
       });
       const data = await res.json();
       if (!data.success) { setError(data.message || "Login failed."); return; }
-      router.push(data.redirect || "/shop");
+      router.push(data.redirect || "/");
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -72,7 +72,7 @@ export function LoginForm({ redirectTo, storeName = "our store", bare = false }:
       <h1 className="mb-4 text-[20px] font-semibold">Login</h1>
       {form}
       <div className="my-5 flex items-center gap-3 text-[12px] text-[#8b8ba3]"><span className="h-px flex-1 bg-[#eaeaf2]" />New to {storeName}?<span className="h-px flex-1 bg-[#eaeaf2]" /></div>
-      <Link href={`/shop/register${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className={cn(btnOutline, "h-12 w-full")}>Create an account</Link>
+      <Link href={`/register${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className={cn(btnOutline, "h-12 w-full")}>Create an account</Link>
       <p className="mt-5 text-center text-[12.5px] text-[#8b8ba3]">Store staff? <a href="/staff/login" className="font-semibold text-[var(--hp-accent)]">Staff login →</a></p>
     </AuthCard>
   );

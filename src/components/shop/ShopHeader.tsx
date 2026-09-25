@@ -68,7 +68,7 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
     const [path, query = ""] = href.split("#")[0].split("?");
     if (path !== pathname) return false;
     const slug = new URLSearchParams(query).get("slug");
-    return slug ? slug === currentSlug : path !== "/shop/category" && !href.includes("#");
+    return slug ? slug === currentSlug : path !== "/category" && !href.includes("#");
   };
   const currentQ = searchParams?.get("q") ?? "";
 
@@ -77,14 +77,14 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
   const showLocation = header.showLocation && !!business.location;
   const showDelivery = header.showDeliveryInfo && !!header.deliveryTimeText;
 
-  const accountHref = customer ? "/shop/account" : "/shop/login";
+  const accountHref = customer ? "/account" : "/login";
   const accountLabel = customer ? customer.name.split(" ")[0] : "Login";
 
   return (
     <>
       {/* ============ DESKTOP HEADER (.topbar) ============ */}
       <header className="hidden shop:flex items-center gap-5 px-8 py-3 border-b border-storefront-border bg-white h-[76px]">
-        <Link href="/shop" className="flex items-center gap-1.5 shrink-0" aria-label={`${business.businessName} home`}>
+        <Link href="/" className="flex items-center gap-1.5 shrink-0" aria-label={`${business.businessName} home`}>
           {business.logo ? (
             <Image
               src={`/${business.logo}`}
@@ -132,7 +132,7 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
           </div>
         )}
 
-        <form action="/shop" method="GET" className="flex-1 min-w-[200px] flex h-11">
+        <form action="/" method="GET" className="flex-1 min-w-[200px] flex h-11">
           <input
             type="text"
             name="q"
@@ -154,10 +154,10 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
             <User className="w-[22px] h-[22px] text-[#353543] shrink-0" strokeWidth={1.8} />
             <span>{accountLabel}</span>
           </Link>
-          <Link href="/shop/wishlist" className="flex items-center gap-[7px] text-sm font-semibold text-[#333]" aria-label="Wishlist">
+          <Link href="/wishlist" className="flex items-center gap-[7px] text-sm font-semibold text-[#333]" aria-label="Wishlist">
             <Heart className="w-[22px] h-[22px] text-[#ef4444] shrink-0" fill="#ef4444" strokeWidth={0} />
           </Link>
-          <Link href="/shop/cart" className="flex items-center gap-1.5 relative text-sm font-semibold text-[#333]">
+          <Link href="/cart" className="flex items-center gap-1.5 relative text-sm font-semibold text-[#333]">
             <div className="relative">
               <ShoppingCart className="w-[22px] h-[22px] text-[var(--hp-accent)] shrink-0" fill="color-mix(in srgb, var(--hp-accent) 22%, white)" strokeWidth={2} />
               {count > 0 && (<span className="absolute -top-[9px] left-[13px] bg-[var(--hp-accent)] text-white text-[10px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center ring-2 ring-white">
@@ -177,7 +177,7 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
         <button onClick={onOpenMobileMenu} aria-label="Open menu" className="shrink-0">
           <Menu className="w-6 h-6 text-[#353543]" strokeWidth={2} />
         </button>
-        <Link href="/shop" aria-label={`${business.businessName} home`}>
+        <Link href="/" aria-label={`${business.businessName} home`}>
           {business.logo ? (
             <Image
               src={`/${business.logo}`}
@@ -192,10 +192,10 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
         </Link>
         <div className="flex items-center gap-[18px]">
           <PushBell className="text-[#353543]" iconClassName="w-6 h-6" />
-          <Link href="/shop/wishlist" aria-label="Wishlist">
+          <Link href="/wishlist" aria-label="Wishlist">
             <Heart className="w-6 h-6 text-[#ef4444]" fill="#ef4444" strokeWidth={0} />
           </Link>
-          <Link href="/shop/cart" className="relative" aria-label="Cart">
+          <Link href="/cart" className="relative" aria-label="Cart">
             <ShoppingCart className="w-6 h-6 text-[var(--hp-accent)]" fill="color-mix(in srgb, var(--hp-accent) 22%, white)" strokeWidth={2} />
             {count > 0 && (<span className="absolute -top-2 left-[14px] bg-[var(--hp-accent)] text-white text-[10px] font-bold rounded-full min-w-4 h-4 px-1 flex items-center justify-center ring-2 ring-white">
               {count}
@@ -208,7 +208,7 @@ function ShopHeaderInner({ business, header, customer, menu, design, onOpenMobil
       </div>
 
       {/* ============ MOBILE SEARCH (.mobile-search) ============ */}
-      <form action="/shop" method="GET" className="shop:hidden px-4 pt-1 pb-3 bg-white border-b border-[#eaeaf2]">
+      <form action="/" method="GET" className="shop:hidden px-4 pt-1 pb-3 bg-white border-b border-[#eaeaf2]">
         <div className="flex items-center gap-2.5 bg-white border border-[#cfcedc] rounded-[8px] px-3.5 py-3 focus-within:border-[var(--hp-accent)]">
           <Search className="w-[20px] h-[20px] text-[#5d7eea] shrink-0" strokeWidth={2} />
           <input

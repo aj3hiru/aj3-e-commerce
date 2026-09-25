@@ -53,7 +53,7 @@ export function CheckoutForm({ addresses, customerName, customerPhone, paymentMe
       });
       const data = await res.json();
       if (!data.success) { setError(data.message || "Could not place order."); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
-      router.push(`/shop/order?id=${data.order_id}&placed=1`);
+      router.push(`/order?id=${data.order_id}&placed=1`);
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

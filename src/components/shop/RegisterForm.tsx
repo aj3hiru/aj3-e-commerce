@@ -36,7 +36,7 @@ export function RegisterForm({ storeName = "our store" }: { storeName?: string }
       });
       const data = await res.json();
       if (!data.success) { setError(data.message || "Registration failed."); return; }
-      router.push(data.redirect || "/shop/account");
+      router.push(data.redirect || "/account");
       router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -61,7 +61,7 @@ export function RegisterForm({ storeName = "our store" }: { storeName?: string }
         </button>
       </form>
       <div className="my-5 flex items-center gap-3 text-[12px] text-[#8b8ba3]"><span className="h-px flex-1 bg-[#eaeaf2]" />Already have an account?<span className="h-px flex-1 bg-[#eaeaf2]" /></div>
-      <Link href="/shop/login" className={cn(btnOutline, "h-12 w-full")}>Login</Link>
+      <Link href="/login" className={cn(btnOutline, "h-12 w-full")}>Login</Link>
     </AuthCard>
   );
 }

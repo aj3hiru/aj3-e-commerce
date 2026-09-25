@@ -16,7 +16,7 @@ export default async function StaffLoginPage({ searchParams }: { searchParams: P
   if (session) redirect(staffHome(session.role, session.permissions));
   const h = await headers();
   const host = (h.get("x-forwarded-host") ?? h.get("host") ?? "").split(":")[0];
-  const storeUrl = host.startsWith("login.") ? `https://${host.slice(6)}/shop` : "/shop";
+  const storeUrl = host.startsWith("login.") ? `https://${host.slice(6)}/` : "/";
   const [{ next }, biz, home] = await Promise.all([searchParams, prisma.ecomBusinessSettings.findFirst({ orderBy: { id: "asc" }, select: { businessName: true, logo: true } }), getLiveHome()]);
   const store = biz?.businessName ?? "Our Store";
 

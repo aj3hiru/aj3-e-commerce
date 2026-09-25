@@ -93,7 +93,7 @@ export function ProductTile({ p, wished, onWish, priority, lines = true }: {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ product_id: p.id }),
     }).then((r) => r.json()).catch(() => null);
     setBusy(false);
-    if (res?.need_login) { onWish(p.id, wished); router.push(`/shop/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`); return; }
+    if (res?.need_login) { onWish(p.id, wished); router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`); return; }
     if (!res?.success) { onWish(p.id, wished); return; }
     onWish(p.id, !!res.wishlisted);
   }
@@ -103,7 +103,7 @@ export function ProductTile({ p, wished, onWish, priority, lines = true }: {
   const boxed = card.gap && lines; // grid tiles become small rounded cards with a gap between them
   return (
     <div className={cn("flex min-w-0 flex-col bg-white pb-3", boxed ? "overflow-hidden rounded-[10px] border border-[#eaeaf2]" : lines && "shadow-[inset_-1px_-1px_0_#eaeaf2]")}>
-    <Link href={`/shop/product?slug=${encodeURIComponent(p.slug)}`}
+    <Link href={`/product?slug=${encodeURIComponent(p.slug)}`}
       className="group flex min-w-0 flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--hp-accent)]">
       <div className="relative aspect-[1/1.1] w-full overflow-hidden bg-white">
         {p.image && imgOk ? (

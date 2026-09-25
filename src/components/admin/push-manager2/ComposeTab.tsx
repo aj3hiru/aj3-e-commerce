@@ -1,5 +1,6 @@
 "use client";
 
+import { storeOrigin } from "@/lib/hosts";
 import { useEffect, useMemo, useState } from "react";
 import {
   Bell, Send, History, Smartphone, Loader2, CheckCircle2, AlertCircle, X, PenSquare, Package, FolderTree, Tag, FileText,
@@ -55,11 +56,11 @@ const BODY_MAX = 120; // and roughly two lines of body text
 function targetUrl(t: Target, origin: string): string | null {
   const o = origin.replace(/\/$/, "");
   switch (t.type) {
-    case "product": return `${o}/shop/product?slug=${encodeURIComponent(t.product.slug)}`;
+    case "product": return `${o}/product?slug=${encodeURIComponent(t.product.slug)}`;
     case "category": return t.category.kind === "subcategory"
-      ? `${o}/shop/category?slug=${encodeURIComponent(t.category.parentSlug ?? "")}&sub=${encodeURIComponent(t.category.slug)}`
-      : `${o}/shop/category?slug=${encodeURIComponent(t.category.slug)}`;
-    case "brand": return `${o}/shop?q=${encodeURIComponent(t.brand.name)}`;
+      ? `${o}/category?slug=${encodeURIComponent(t.category.parentSlug ?? "")}&sub=${encodeURIComponent(t.category.slug)}`
+      : `${o}/category?slug=${encodeURIComponent(t.category.slug)}`;
+    case "brand": return `${o}/?q=${encodeURIComponent(t.brand.name)}`;
     case "post": return `${o}/${t.post.slug}`;
     default: return null;
   }
@@ -144,7 +145,7 @@ export function ComposeTab({ draft, setDraft, catalog, appName, siteUrl, configu
 }) {
   const { isVisible: show } = useDashboardWidgetPrefs();
   const [origin, setOrigin] = useState(siteUrl);
-  useEffect(() => { if (!siteUrl) setOrigin(window.location.origin); }, [siteUrl]);
+  useEffect(() => { if (!siteUrl) setOrigin(storeOrigin()); }, [siteUrl]);
 
   const kind = draft.kind;
   // Display Options → "Promote options" decides which link types are offered.

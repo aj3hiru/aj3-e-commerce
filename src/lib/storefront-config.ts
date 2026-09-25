@@ -25,7 +25,7 @@ function menu(v: unknown, fallback: MenuItem[]): MenuItem[] {
     const r = (raw ?? {}) as Record<string, unknown>;
     const label = str(r.label, 40);
     const autoCategories = bool(r.autoCategories, false);
-    const link = href(r.href) || (autoCategories ? "/shop#categories" : "");
+    const link = href(r.href) || (autoCategories ? "/#categories" : "");
     if (!label || !link) return [];
     const children = Array.isArray(r.children) ? r.children.slice(0, 20).flatMap((c) => {
       const cc = (c ?? {}) as Record<string, unknown>;

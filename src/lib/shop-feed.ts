@@ -134,16 +134,16 @@ export async function getProductRow(block: { source: "latest" | "deals" | "top_r
     const rows = (await prisma.ecomProduct.findMany({
       where: { status: "active", category: { slug: block.category, status: "active" } }, orderBy: { createdAt: "desc" }, take, select: FEED_SELECT,
     })) as FeedRow[];
-    return { products: publicProducts(await enrichProducts(rows)), viewAll: `/shop/category?slug=${encodeURIComponent(block.category)}` };
+    return { products: publicProducts(await enrichProducts(rows)), viewAll: `/category?slug=${encodeURIComponent(block.category)}` };
   }
   if (block.source === "latest") {
     const rows = (await prisma.ecomProduct.findMany({ where: { status: "active" }, orderBy: { createdAt: "desc" }, take, select: FEED_SELECT })) as FeedRow[];
-    return { products: publicProducts(await enrichProducts(rows)), viewAll: "/shop?sort=new" };
+    return { products: publicProducts(await enrichProducts(rows)), viewAll: "/?sort=new" };
   }
   // Deals / top rated need live prices and ratings, so rank a recent pool.
   const pool = await enrichProducts((await prisma.ecomProduct.findMany({ where: { status: "active" }, orderBy: { createdAt: "desc" }, take: 400, select: FEED_SELECT })) as FeedRow[]);
   const ranked = block.source === "deals"
     ? pool.filter((p) => p.discountPct > 0 && p.stock !== "out").sort((a, b) => Number(!!b.dealEndsAt) - Number(!!a.dealEndsAt) || b.discountPct - a.discountPct)
     : pool.filter((p) => p.rating !== null).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || b.reviews - a.reviews);
-  return { products: publicProducts(ranked.slice(0, take)), viewAll: block.source === "deals" ? "/shop?sort=discount" : "/shop?sort=rating" };
+  return { products: publicProducts(ranked.slice(0, take)), viewAll: block.source === "deals" ? "/?sort=discount" : "/?sort=rating" };
 }

@@ -16,7 +16,7 @@ export default async function CartPage() {
 
   return (
     <ShopLayout {...layoutData}>
-      <Page title="Cart" back="/shop" steps={items.length ? <Steps active={0} /> : undefined}>
+      <Page title="Cart" back="/" steps={items.length ? <Steps active={0} /> : undefined}>
         <CartView key={JSON.stringify(items.map((i) => [i.key, i.qty, i.unitPrice]))} items={items} />
       </Page>
     </ShopLayout>

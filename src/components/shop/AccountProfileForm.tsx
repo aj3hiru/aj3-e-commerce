@@ -113,7 +113,7 @@ export function ProfileSetup({ phone, next }: { phone: string; next: string | nu
     setBusy(true); setError("");
     const res = await post("/api/shop/account", { name, email });
     if (!res?.success) { setError(res?.message || "Couldn't save."); setBusy(false); return; }
-    router.push(next ?? "/shop/account?setup=done");
+    router.push(next ?? "/account?setup=done");
     router.refresh();
   }
   return (

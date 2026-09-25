@@ -140,7 +140,7 @@ export function PhoneLogin({ firebase, countryCode, passwordLogin, redirectTo, s
       window.firebase?.auth().signOut().catch(() => {}); // our own session cookie takes over from here
       if (!res?.success) { setError(res?.message || "Couldn't log you in. Please try again."); setBusy(false); return; }
       abort.current?.abort();
-      router.push(res.redirect || "/shop/account");
+      router.push(res.redirect || "/account");
       router.refresh();
       return;
     } catch (e) {
@@ -158,7 +158,7 @@ export function PhoneLogin({ firebase, countryCode, passwordLogin, redirectTo, s
     const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identity: full, password, redirect: redirectTo }) })
       .then((r) => r.json()).catch(() => null);
     if (!res?.success) { setError(res?.message || "Login failed."); setBusy(false); return; }
-    router.push(res.redirect || "/shop");
+    router.push(res.redirect || "/");
     router.refresh();
   }
 

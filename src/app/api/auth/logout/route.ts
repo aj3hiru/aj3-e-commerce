@@ -32,7 +32,7 @@ import { logActivity } from "@/lib/activity-log";
  *    <form> submission land somewhere sensible.
  *
  * A THIRD "fix" I made in an earlier pass — changing the redirect target
- * from "/shop/login" to "/admin/admin-login-portal" — was itself wrong,
+ * from "/login" to "/admin/admin-login-portal" — was itself wrong,
  * and has been reverted below. See the comment at the return statement.
  */
 export async function POST(req: NextRequest) {
@@ -54,10 +54,10 @@ export async function POST(req: NextRequest) {
   // explicitly states "Login is now unified — admin, staff, and customer
   // accounts all sign in from the same page" and itself just redirects to
   // /shop/login.php. Every other admin page in this codebase (34 of them)
-  // already redirects unauthenticated visitors to "/shop/login" for
+  // already redirects unauthenticated visitors to "/login" for
   // exactly this reason — my earlier change was the one inconsistent with
   // the rest of the project, not the other way around. Going straight to
-  // "/shop/login" avoids an unnecessary extra redirect hop through the
+  // "/login" avoids an unnecessary extra redirect hop through the
   // now-vestigial /admin/admin-login-portal route.
   return NextResponse.redirect(new URL("/staff/login", req.url), 303);
 }

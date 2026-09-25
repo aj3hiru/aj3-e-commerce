@@ -9,10 +9,10 @@ import { otpReady } from "@/types/auth-settings";
 /** Verified against shop/register.php — already-logged-in customer redirects to /shop/account. */
 export default async function RegisterPage() {
   const customerSession = await getCustomerSession();
-  if (customerSession) redirect("/shop/account");
+  if (customerSession) redirect("/account");
 
   // With mobile OTP on, signing up happens on the login screen (verify the number → account created).
-  if (otpReady(await getAuthSettings())) redirect("/shop/login");
+  if (otpReady(await getAuthSettings())) redirect("/login");
 
   // Same header/footer/menus as every other storefront page (visitor is logged out here).
   const layout = await getShopLayoutData();

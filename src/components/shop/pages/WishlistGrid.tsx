@@ -16,7 +16,7 @@ export function WishlistGrid({ products }: { products: FeedProduct[] }) {
   const onWish = useCallback((id: number, next: boolean) => { if (!next) setList((l) => l.filter((p) => p.id !== id)); }, []);
   if (list.length === 0) {
     return <Empty icon={Heart} title="Your wishlist is empty" text="Tap the ♡ on any product to save it here for later."
-      action={<Link href="/shop" className={cn(btnPrimary, "w-56")}>Explore Products</Link>} />;
+      action={<Link href="/" className={cn(btnPrimary, "w-56")}>Explore Products</Link>} />;
   }
   return (
     <>

@@ -62,7 +62,7 @@ export function CategoryCircles({ strip, all, showAllButton = true }: { strip: C
           </button>
         )}
         {shown.map((c) => (
-          <Link key={c.slug} href={`/shop/category?slug=${encodeURIComponent(c.slug)}`} className="w-[73px] shrink-0 text-center">
+          <Link key={c.slug} href={`/category?slug=${encodeURIComponent(c.slug)}`} className="w-[73px] shrink-0 text-center">
             <Circle c={c} size="sm" />
             <span className="mt-1.5 block truncate px-0.5 text-[13px] leading-4 text-[#353543]">{c.name}</span>
           </Link>
@@ -78,7 +78,7 @@ export function CategoryCircles({ strip, all, showAllButton = true }: { strip: C
             </div>
             <div className="grid grid-cols-3 gap-4 overflow-y-auto p-5 sm:grid-cols-4">
               {all.map((c) => (
-                <Link key={c.slug} href={`/shop/category?slug=${encodeURIComponent(c.slug)}`} onClick={() => setOpen(false)} className="text-center">
+                <Link key={c.slug} href={`/category?slug=${encodeURIComponent(c.slug)}`} onClick={() => setOpen(false)} className="text-center">
                   <Circle c={c} size="lg" />
                   <span className="mt-2 line-clamp-2 block text-[12.5px] leading-tight text-[#353543]">{c.name}</span>
                 </Link>

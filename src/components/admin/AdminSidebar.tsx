@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
+import { useStaffPathname } from "@/hooks/useStaffPathname";
 import { useEffect, useRef, useState, Suspense } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
@@ -71,7 +72,7 @@ function SidebarPlaceholder() {
 }
 
 function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSidebarProps) {
-  const pathname = usePathname();
+  const pathname = useStaffPathname("admin");
   const searchParams = useSearchParams();
   const navRef = useRef<HTMLElement>(null);
 

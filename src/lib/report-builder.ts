@@ -170,7 +170,11 @@ export async function getReport(f: ReportFilters): Promise<ReportData> {
     channels[ch].amount += total; channels[ch].orders++;
 
     // Paid at the sale (by method), paid later against the due, still due.
-    const atSale = o.payments.length ? o.payments.map((p) => ({ m: p.paymentMethod, a: Number(p.amount) })) : [{ m: o.paymentMethod, a: Math.max(0, total - dueAtSale) }];
+    // Never more than was actually owed at the counter (older bills stored the cash handed over, change included).
+    const paidAtSale = Math.max(0, total - dueAtSale);
+    let atSale = o.payments.length ? o.payments.map((p) => ({ m: p.paymentMethod, a: Number(p.amount) })) : [{ m: o.paymentMethod, a: paidAtSale }];
+    const given = atSale.reduce((sum, p) => sum + p.a, 0);
+    if (given > paidAtSale + 0.004) atSale = atSale.map((p) => ({ m: p.m, a: given > 0 ? (p.a * paidAtSale) / given : 0 }));
     for (const p of atSale) payMap.set(methodBucket(p.m), (payMap.get(methodBucket(p.m)) ?? 0) + p.a);
     if (collectedLater > 0) payMap.set("Collected later", (payMap.get("Collected later") ?? 0) + collectedLater);
     if (due > 0.004) payMap.set("Due", (payMap.get("Due") ?? 0) + due);

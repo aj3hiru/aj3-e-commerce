@@ -85,7 +85,7 @@ function Pager({ page, pages, total, size, setPage, setSize }: { page: number; p
 
 function SectionTitle({ icon: Icon, children, extra }: { icon: typeof History; children: React.ReactNode; extra?: React.ReactNode }) {
   return (
-    <div className="mb-3 mt-7 flex items-center justify-between gap-3 first:mt-0 print:mb-1.5 print:mt-4">
+    <div className="mb-3 mt-8 flex items-center justify-between gap-3 print:mb-1.5 print:mt-4">
       <h3 className="flex items-center gap-2 text-[15px] font-semibold text-[#6d28d9] print:text-[12px]"><Icon className="h-[18px] w-[18px]" />{children}</h3>
       {extra}
     </div>
@@ -122,7 +122,7 @@ function Sheet({ data, all }: { data: ReportData; all: boolean }) {
   const tlCols = ([
     { key: "rb-c-time", label: "Time", cell: (r) => <span className="whitespace-nowrap">{fDate(r.at)}<br /><span className="text-[#6b7280]">{fTime(r.at)}</span></span> },
     { key: "rb-c-order", label: "Order ID", cell: (r) => <Link href={`/admin/ecommerce/orders/${r.orderId}`} className="font-medium text-[#6d28d9] hover:underline">{r.orderNumber}</Link> },
-    { key: "rb-c-channel", label: "Channel", cell: (r) => <span className={cn("rounded-[6px] px-2 py-0.5 text-[12px] font-medium", r.channel === "online" ? "bg-[#e8f8ee] text-[#15803d]" : "bg-[#eaf1ff] text-[#1d4ed8]")}>{r.channel === "online" ? "Online" : "In-store"}</span> },
+    { key: "rb-c-channel", label: "Channel", cell: (r) => <span className={cn("whitespace-nowrap rounded-[6px] px-2 py-0.5 text-[12px] font-medium", r.channel === "online" ? "bg-[#e8f8ee] text-[#15803d]" : "bg-[#eaf1ff] text-[#1d4ed8]")}>{r.channel === "online" ? "Online" : "In-store"}</span> },
     { key: "rb-c-customer", label: "Customer", cell: (r) => <span><span className="block">{r.customer}</span>{isVisible("rb-c-phone") && <span className="text-[12px] text-[#6b7280]">{r.phone ?? "—"}</span>}</span> },
     { key: "rb-c-product", label: "Product", cell: (r) => <span className="font-medium">{r.product}</span> },
     { key: "rb-c-sku", label: "SKU", cell: (r) => r.sku ?? "—" },
@@ -176,7 +176,7 @@ function Sheet({ data, all }: { data: ReportData; all: boolean }) {
             </div>
           )}
           <div className="min-w-[200px] flex-1 text-[13.5px] leading-6 text-[#374151] print:text-[11px] print:leading-5">
-            <p className="text-[17px] font-semibold text-[#111827] print:text-[14px]">{b.name}</p>
+            {(on("rb-head", "rb-h-logo") && logo || !on("rb-head", "rb-h-name")) && <p className="text-[17px] font-semibold text-[#111827] print:text-[14px]">{b.name}</p>}
             {on("rb-head", "rb-h-address") && b.address && <p className="whitespace-pre-line">{b.address}</p>}
             {on("rb-head", "rb-h-contact") && (b.phones.length > 0 || b.email) && <p>{b.phones.length > 0 && <>Mobile: {b.phones.join(", ")}</>}{b.phones.length > 0 && b.email && " · "}{b.email}</p>}
             {on("rb-head", "rb-h-gstin") && b.gstin && <p>GSTIN: {b.gstin}</p>}
@@ -217,11 +217,11 @@ function Sheet({ data, all }: { data: ReportData; all: boolean }) {
       {kpis.length > 0 && (
         <div className={cn("mt-5 grid grid-cols-2 gap-y-4 border-b border-[#eef0f4] pb-5 print:mt-3 print:grid-cols-4 print:pb-3", kpis.length >= 4 ? "lg:grid-cols-4" : kpis.length === 3 ? "lg:grid-cols-3" : "")}>
           {kpis.map((x, i) => (
-            <div key={x.key} className={cn("flex items-center gap-3.5 px-4 print:gap-2 print:px-2", i > 0 && "lg:border-l lg:border-[#e5e7eb] print:border-l print:border-[#e5e7eb]")}>
-              <span className={cn("grid h-14 w-14 shrink-0 place-items-center rounded-full print:h-9 print:w-9", x.tone)}><x.icon className="h-6 w-6 print:h-4 print:w-4" /></span>
+            <div key={x.key} className={cn("flex min-w-0 items-center gap-3 px-3 2xl:px-4 print:gap-2 print:px-2", i > 0 && "lg:border-l lg:border-[#e5e7eb] print:border-l print:border-[#e5e7eb]")}>
+              <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-full 2xl:h-14 2xl:w-14 print:h-9 print:w-9", x.tone)}><x.icon className="h-6 w-6 print:h-4 print:w-4" /></span>
               <span className="min-w-0">
                 <span className="block text-[13px] text-[#4b5563] print:text-[10px]">{x.label}</span>
-                <span className="block truncate text-[22px] font-bold leading-tight text-[#111827] print:text-[15px]">{x.value}</span>
+                <span className="block whitespace-nowrap text-[21px] font-bold leading-tight text-[#111827] print:text-[15px]">{x.value}</span>
                 <span className="block text-[12.5px] text-[#6b7280] print:text-[9.5px]">{x.sub}</span>
               </span>
             </div>
@@ -265,7 +265,7 @@ function Sheet({ data, all }: { data: ReportData; all: boolean }) {
 
       <Section show={isVisible("rb-g-daily") && data.daily.length > 1} all={all} icon={CalendarDays} title="Day-wise Summary" rows={data.daily} rowKey={(r) => r.day} empty="—" foot
         cols={([
-          { key: "rb-d-day", label: "Date", cell: (r) => fDay(r.day), foot: "Total" },
+          { key: "rb-d-day", label: "Date", cell: (r) => <span className={r.orders || r.collected ? "" : "text-[#9ca3af]"}>{fDay(r.day)}</span>, foot: "Total" },
           { key: "rb-d-orders", label: "Orders", right: true, cell: (r) => r.orders, foot: k.orders },
           { key: "rb-d-offline", label: "In-store", right: true, cell: (r) => r.offline, foot: data.channels.offline.orders },
           { key: "rb-d-online", label: "Online", right: true, cell: (r) => r.online, foot: data.channels.online.orders },

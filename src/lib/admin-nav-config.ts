@@ -4,7 +4,7 @@ import {
   faStarHalfAlt, faBarcode, faTags, faList, faReceipt,
   faTruck, faUserFriends, faPercentage,
   faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
-  faSignOutAlt, faFileInvoiceDollar, faChartLine, faFileAlt, faBars, faGripLines, faBox,
+  faSignOutAlt, faMobileAlt, faFileInvoiceDollar, faChartLine, faFileAlt, faBars, faGripLines, faBox,
   faBrush, faCog, faUsersCog,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -191,6 +191,7 @@ export const ADMIN_NAV: NavSection[] = [
     permission: null,
     links: [
       { href: "/admin/my-profile", label: "My Profile", icon: faUser, permission: null },
+      { href: "/admin/staff-app", label: "Staff App", icon: faMobileAlt, permission: null },
       { href: "/api/auth/logout", label: "Logout", icon: faSignOutAlt, permission: null, isLogout: true },
     ],
   },

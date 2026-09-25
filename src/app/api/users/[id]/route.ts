@@ -51,7 +51,8 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
     }
     const guard = await guardTarget(userId, session);
     if (guard) return guard;
-    await prisma.user.update({ where: { id: userId }, data: { role: body.role } });
+    // A new role comes with that role's standard permissions (like the full edit form).
+    await prisma.user.update({ where: { id: userId }, data: { role: body.role, permissions: getRolePermissionDefaults(body.role) as object } });
     return NextResponse.json({ success: true });
   }
 

@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, type AdminSession } from "@/lib/admin-auth";
 import { roleLabel } from "@/lib/roles";
+import { cached } from "@/lib/cache";
 
 /** The signed-in staff member for an app request (Bearer token), or a 401 answer. */
 export async function appSession(): Promise<AdminSession | NextResponse> {
@@ -20,7 +21,28 @@ export async function appProfile(session: AdminSession) {
   };
 }
 
-/** Latest app release (public/app/latest.json, written by the release workflow). */
-export async function latestRelease(): Promise<Record<string, unknown> | null> {
-  try { return JSON.parse(await readFile(path.join(process.cwd(), "public", "app", "latest.json"), "utf8")); } catch { return null; }
+export interface AppRelease { version: string; android: string | null; windows: string | null; page: string; publishedAt: string | null }
+
+const REPO = process.env.STAFF_APP_REPO ?? "aj3hiru/aj3-e-commerce";
+
+/**
+ * Newest staff app release. A public/app/latest.json on the server wins (manual
+ * override); otherwise the newest "staff-app-v*" GitHub Release built by the
+ * workflow (checked at most every 10 minutes).
+ */
+export async function latestRelease(): Promise<AppRelease | null> {
+  try { return JSON.parse(await readFile(path.join(process.cwd(), "public", "app", "latest.json"), "utf8")); } catch { /* no override */ }
+  return cached("staff-app-release", [], 10 * 60_000, async () => {
+    try {
+      const r = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=20`, { headers: { Accept: "application/vnd.github+json", "User-Agent": "sriandal-staff-site" }, signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return null;
+      const list = (await r.json()) as { tag_name: string; html_url: string; published_at: string | null; draft: boolean; assets: { name: string; browser_download_url: string }[] }[];
+      const rel = list.find((x) => !x.draft && x.tag_name.startsWith("staff-app-v"));
+      if (!rel) return null;
+      const asset = (ext: string) => rel.assets.find((a) => a.name.toLowerCase().endsWith(ext))?.browser_download_url ?? null;
+      return { version: rel.tag_name.replace("staff-app-v", ""), android: asset(".apk"), windows: asset(".exe"), page: rel.html_url, publishedAt: rel.published_at };
+    } catch {
+      return null; // GitHub unreachable — try again next time
+    }
+  });
 }

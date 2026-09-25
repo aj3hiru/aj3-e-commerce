@@ -61,9 +61,10 @@ export function InvoiceSettingsPanel({ value, onChange, profile }: { value: Invo
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {PRINT_CHOICES.map((c) => (
               <button key={c.id} type="button" onClick={() => { set("defaultPrint", c.id); if (c.id !== "ask") setView(c.id); }}
-                className={cn("flex items-center gap-3 rounded-[8px] border-2 px-3 py-3 text-left transition", value.defaultPrint === c.id ? "border-[#9f2089] bg-[#fdf0f9]" : "border-[#eaeaf2] hover:border-[#cfcedc]")}>
+                className={cn("relative flex items-center gap-3 rounded-[8px] border-2 px-3 py-3 text-left transition sm:flex-col sm:gap-2 sm:py-4 sm:text-center", value.defaultPrint === c.id ? "border-[#9f2089] bg-[#fdf0f9]" : "border-[#eaeaf2] hover:border-[#cfcedc]")}>
+                {value.defaultPrint === c.id && <Check className="absolute right-2 top-2 h-4 w-4 text-[#9f2089]" strokeWidth={3} />}
                 <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full", value.defaultPrint === c.id ? "bg-[#9f2089] text-white" : "bg-[#f3f3f7] text-[#616173]")}><c.icon className="h-5 w-5" /></span>
-                <span className="min-w-0"><span className="block text-[14px] font-semibold">{c.label}</span><span className="block text-[12px] text-[#8b8ba3]">{c.blurb}</span></span>
+                <span className="min-w-0"><span className="block text-[14px] font-semibold leading-5">{c.label}</span><span className="block text-[12px] leading-4 text-[#8b8ba3]">{c.blurb}</span></span>
               </button>
             ))}
           </div>

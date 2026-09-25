@@ -50,7 +50,7 @@ export function StorePreview({ state, device: suggested }: { state: Omit<StorePr
   const phoneW = 375;
 
   return (
-    <section className="flex h-[640px] flex-col overflow-hidden rounded-2xl bg-white font-storefront shadow-sm ring-1 ring-[#eaeaf2] xl:sticky xl:top-4 xl:h-[calc(100vh-2rem)]">
+    <section className="flex h-[640px] flex-col overflow-hidden rounded-2xl bg-white font-storefront shadow-sm ring-1 ring-[#eaeaf2] xl:sticky xl:top-4 xl:h-[calc(100vh-13rem)] xl:min-h-[520px]">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f0f0f5] px-4 py-3">
         <p className="text-[15px] font-semibold text-[#353543]">Live preview</p>
         <div className="flex items-center gap-2">

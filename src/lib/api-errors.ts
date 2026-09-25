@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { BusyError } from "./work-queue";
+import { prisma } from "./db";
 
 /**
  * Every API route is wrapped in this (see the bottom of each route.ts), so an
@@ -11,8 +12,48 @@ import { BusyError } from "./work-queue";
  *  - the request itself was unreadable                      → 400
  *  - anything else                                          → 500, logged on the server
  */
+const UNSAFE = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/**
+ * "Idempotency-Key: <id>" (sent by the staff app with every change): the first
+ * answer is stored and handed back for any repeat of the same key, so a change
+ * re-sent after a lost reply or an offline spell happens exactly once.
+ */
+async function idempotent(req: Request | undefined, run: () => Promise<Response>): Promise<Response> {
+  const key = req && UNSAFE.has(req.method) ? req.headers.get("idempotency-key") : null;
+  if (!key || !/^[A-Za-z0-9_-]{8,80}$/.test(key)) return run();
+  try {
+    await prisma.apiIdempotency.create({ data: { key } });
+  } catch (e) {
+    if ((e as { code?: string })?.code !== "P2002") return run(); // table missing etc. — just carry on
+    const done = await prisma.apiIdempotency.findUnique({ where: { key } });
+    if (done?.status != null) {
+      return new NextResponse(done.body ?? "", { status: done.status, headers: { "Content-Type": "application/json", "Idempotent-Replay": "true" } });
+    }
+    return NextResponse.json({ success: false, retry: true, message: "Still working on this change — trying again shortly." }, { status: 409 });
+  }
+  let res: Response;
+  try {
+    res = await run();
+  } catch (e) {
+    await prisma.apiIdempotency.delete({ where: { key } }).catch(() => {});
+    throw e;
+  }
+  if (res.status >= 500) await prisma.apiIdempotency.delete({ where: { key } }).catch(() => {}); // let it be tried again
+  else {
+    const body = await res.clone().text().catch(() => "");
+    await prisma.apiIdempotency.update({ where: { key }, data: { status: res.status, body: body.slice(0, 1_000_000) } }).catch(() => {});
+  }
+  if (Math.random() < 0.01) prisma.apiIdempotency.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 30 * 86_400_000) } } }).catch(() => {});
+  return res;
+}
+
 export function withApiErrors<A extends unknown[]>(handler: (...args: A) => Promise<Response | undefined> | Response | undefined) {
-  return async (...args: A): Promise<Response> => {
+  return async (...args: A): Promise<Response> => idempotent(args[0] as Request | undefined, () => guarded(handler, args));
+}
+
+async function guarded<A extends unknown[]>(handler: (...args: A) => Promise<Response | undefined> | Response | undefined, args: A): Promise<Response> {
+  {
     try {
       const res = await handler(...args);
       // A code path that forgot to answer: say so instead of leaving the request hanging / erroring.
@@ -37,5 +78,5 @@ export function withApiErrors<A extends unknown[]>(handler: (...args: A) => Prom
       console.error(`[api] ${req?.method ?? ""} ${req?.url ?? ""}`, e);
       return json(500, "Something went wrong. Please try again.");
     }
-  };
+  }
 }

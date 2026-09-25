@@ -1,9 +1,10 @@
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import jwt from "jsonwebtoken";
 import { prisma } from "./db";
 import { sessionVersion } from "./session-cookies";
 import { normalizePermissions } from "./permissions";
+import { readAppToken } from "./app-token";
 
 export interface AdminSession {
   userId: number;
@@ -26,10 +27,21 @@ export interface AdminSession {
 async function loadAdminSession(): Promise<AdminSession | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("admin_session")?.value;
-  if (!token) return null;
+  let payload: { userId: number; pv?: string } | null = null;
+  if (token) {
+    try {
+      payload = jwt.verify(token, process.env.ADMIN_JWT_SECRET!, { algorithms: ["HS256"] }) as { userId: number; pv?: string };
+    } catch {
+      payload = null;
+    }
+  } else {
+    // The staff app signs in with "Authorization: Bearer <app token>" instead of a cookie.
+    const auth = (await headers()).get("authorization") ?? "";
+    if (auth.startsWith("Bearer ")) payload = readAppToken(auth.slice(7).trim());
+  }
+  if (!payload) return null;
 
   try {
-    const payload = jwt.verify(token, process.env.ADMIN_JWT_SECRET!, { algorithms: ["HS256"] }) as { userId: number; pv?: string };
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
     if (!user || user.status !== "active") return null;
     // Password changed since this session was issued -> session is revoked.

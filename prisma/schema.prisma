@@ -977,3 +977,14 @@ model EcomOrderEvent {
   @@index([orderId])
   @@map("ecom_order_events")
 }
+
+/// Staff app: first answer to each change sent with an Idempotency-Key (see lib/api-errors.ts).
+model ApiIdempotency {
+  key       String   @id @map("idem_key") @db.VarChar(80)
+  status    Int?     @db.SmallInt
+  body      String?  @db.MediumText
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@index([createdAt], map: "idx_api_idem_created")
+  @@map("api_idempotency")
+}

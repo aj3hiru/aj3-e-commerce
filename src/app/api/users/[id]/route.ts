@@ -133,8 +133,9 @@ async function handleDELETE(req: NextRequest, { params }: { params: Promise<{ id
     await logActivity(req, session.userId, "user_delete", `Deleted user ID: ${userId}`);
     return NextResponse.json({ success: true, message: "User deleted successfully." });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "unexpected error";
-    return NextResponse.json({ success: false, message: `Delete failed: ${message}` }, { status: 500 });
+    const code = (err as { code?: string })?.code;
+    if (code === "P2003") return NextResponse.json({ success: false, message: "This user has sales, deliveries or activity on record, so they can't be deleted. Suspend them instead." }, { status: 409 });
+    throw err;
   }
 }
 

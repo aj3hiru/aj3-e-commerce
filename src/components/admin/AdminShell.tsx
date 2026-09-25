@@ -5,6 +5,7 @@ import { AdminSidebar } from "./AdminSidebar";
 import { AdminHeader } from "./AdminHeader";
 import { SelectEnhancer } from "./SelectEnhancer";
 import { DeniedNotice } from "./DeniedNotice";
+import { NavProgress } from "./NavProgress";
 
 interface AdminShellProps {
   siteName: string;
@@ -57,6 +58,7 @@ export function AdminShell({ siteName, pageTitle, pageSubtitle, username, role, 
           {children}
         </div>
       </main>
+      <NavProgress />
       {/* Every dropdown opens the admin's own list, not the browser pop-up. */}
       <SelectEnhancer />
     </div>

@@ -43,6 +43,7 @@ async function handleDELETE(req: NextRequest, { params }: { params: Promise<{ id
 
   try {
     const product = await prisma.ecomProduct.findUnique({ where: { id: productId }, select: { name: true, image: true } });
+    if (!product) return NextResponse.json({ success: false, message: "This product no longer exists." }, { status: 404 });
     await prisma.ecomProduct.delete({ where: { id: productId } });
 
     if (product?.image) {
@@ -61,8 +62,10 @@ async function handleDELETE(req: NextRequest, { params }: { params: Promise<{ id
     );
 
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ success: false, message: "Delete failed. Please try again." }, { status: 500 });
+  } catch (e) {
+    // Already sold: its bills must keep pointing at it.
+    if ((e as { code?: string })?.code === "P2003") return NextResponse.json({ success: false, message: "This product is on past orders, so it can't be deleted. Set it to Inactive instead." }, { status: 409 });
+    throw e;
   }
 }
 

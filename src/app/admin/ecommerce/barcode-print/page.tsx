@@ -26,13 +26,9 @@ interface PageProps {
 
 export default async function BarcodePrint2Page({ searchParams }: PageProps) {
   const session = await getAdminSession();
-  if (
-    !session ||
-    (!hasPermission(session.permissions, "ecommerce", "manage_products") &&
-      !hasPermission(session.permissions, "ecommerce", "manage_billing"))
-  ) {
-    redirect("/staff/login");
-  }
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_products") &&
+      !hasPermission(session.permissions, "ecommerce", "manage_billing")) redirect("/admin/dashboard?denied=1");
 
   const sp = await searchParams;
   const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);

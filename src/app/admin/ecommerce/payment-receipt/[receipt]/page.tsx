@@ -13,14 +13,10 @@ interface PaymentReceiptPageProps {
  *  ?format=/&return_to= handling. */
 export default async function PaymentReceiptPage({ params, searchParams }: PaymentReceiptPageProps) {
   const session = await getAdminSession();
-  if (
-    !session ||
-    (!hasPermission(session.permissions, "ecommerce", "manage_credits") &&
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "ecommerce", "manage_credits") &&
       !hasPermission(session.permissions, "ecommerce", "manage_customers") &&
-      !hasPermission(session.permissions, "ecommerce", "manage_billing"))
-  ) {
-    redirect("/staff/login");
-  }
+      !hasPermission(session.permissions, "ecommerce", "manage_billing")) redirect("/admin/dashboard?denied=1");
 
   const { receipt } = await params;
   const { format: formatParam, return_to } = await searchParams;

@@ -20,6 +20,7 @@ async function handlePUT(req: NextRequest, { params }: { params: Promise<{ id: s
     return NextResponse.json({ success: true, id: product.id, name: product.name });
   } catch (e) {
     if (e instanceof SaveError) return NextResponse.json({ success: false, message: e.message, field: e.field }, { status: e.status });
+    if ((e as { code?: string })?.code || e instanceof TypeError) throw e; // missing product / unreadable form → clear 404 / 400
     console.error("add-product2 update failed", e);
     return NextResponse.json({ success: false, message: "Could not save the product. Please try again." }, { status: 500 });
   }

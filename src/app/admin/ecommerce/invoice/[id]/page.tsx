@@ -21,14 +21,10 @@ export const metadata = { title: "Invoice", robots: { index: false, follow: fals
  */
 export default async function InvoicePage({ params, searchParams }: InvoicePageProps) {
   const session = await getAdminSession();
-  if (
-    !session ||
-    (!hasPermission(session.permissions, "orders", "view") &&
+  if (!session) redirect("/staff/login");
+  if (!hasPermission(session.permissions, "orders", "view") &&
       !hasPermission(session.permissions, "ecommerce", "manage_customers") &&
-      !hasPermission(session.permissions, "ecommerce", "manage_billing"))
-  ) {
-    redirect("/staff/login");
-  }
+      !hasPermission(session.permissions, "ecommerce", "manage_billing")) redirect("/admin/dashboard?denied=1");
 
   const [{ id }, { format, print }] = await Promise.all([params, searchParams]);
   const orderId = Number(id);

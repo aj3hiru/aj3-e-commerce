@@ -48,10 +48,12 @@ const ACCENTS = ["#9f2089", "#1f2937", "#1d4ed8", "#047857", "#b91c1c", "#c2410c
  * Business Settings → Invoice Settings: what an invoice prints and how, with
  * a live A4 / thermal preview that follows every tick and keystroke.
  */
-export function InvoiceSettingsPanel({ value, onChange, profile }: { value: InvoiceSettings; onChange: (v: InvoiceSettings) => void; profile: InvoiceProfile }) {
+export function InvoiceSettingsPanel({ value, onChange, profile }: { value: InvoiceSettings; onChange: React.Dispatch<React.SetStateAction<InvoiceSettings>>; profile: InvoiceProfile }) {
   const [view, setView] = useState<"a4" | "thermal">(value.defaultPrint === "thermal" ? "thermal" : "a4");
-  const set = <K extends keyof InvoiceSettings>(k: K, v: InvoiceSettings[K]) => onChange({ ...value, [k]: v });
-  const setField = (k: "address" | "location" | "phones" | "email" | "gstin" | "pan" | "fssai", patch: Partial<InvoiceField>) => set(k, { ...value[k], ...patch });
+  // Functional updates, so quick successive edits never overwrite each other.
+  const set = <K extends keyof InvoiceSettings>(k: K, v: InvoiceSettings[K]) => onChange((prev) => ({ ...prev, [k]: v }));
+  const setField = (k: "address" | "location" | "phones" | "email" | "gstin" | "pan" | "fssai", patch: Partial<InvoiceField>) =>
+    onChange((prev) => ({ ...prev, [k]: { ...prev[k], ...patch } }));
   const seller = useMemo(() => resolveSeller(value, profile), [value, profile]);
 
   return (

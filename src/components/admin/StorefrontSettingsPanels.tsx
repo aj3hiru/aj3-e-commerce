@@ -7,7 +7,7 @@ import {
   Palette, PanelBottom, Plus, RotateCcw, Smartphone, Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PhoneFrame } from "./PhoneFrame";
+import { LaptopFrame, PhoneFrame } from "./PhoneFrame";
 import { SettingsPanel, Field, CheckRow, CONTROL_CLASS } from "./SettingsMenuLayout";
 import { MENU_ICON, SidebarMenu, DesktopMenu, resolveMenu } from "@/components/shop/menu/StoreMenus";
 import { ShopFooter } from "@/components/shop/ShopFooter";
@@ -190,9 +190,11 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
         <MenuBuilder items={value.headerMenu} onChange={(v) => set("headerMenu", v)} categories={categories} defaults={DEFAULT_HEADER_MENU} />
         <div className="mt-5">
           <div className="mb-2 flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-wide text-admin-gray-500">Preview</span><AudienceToggle value={loggedIn} onChange={setLoggedIn} /></div>
-          <div className="overflow-visible rounded-lg border border-admin-gray-200 pb-40 [&_nav]:!block">
-            <DesktopMenu items={resolveMenu(value.headerMenu, loggedIn, categories)} design={value.menuDesign} isActive={(h) => h === "/"} />
-          </div>
+          <LaptopFrame fluid className="mx-auto max-w-[760px]">
+            <div className="h-[230px] bg-[#f5f5f8] [&_nav]:!block">
+              <DesktopMenu items={resolveMenu(value.headerMenu, loggedIn, categories)} design={value.menuDesign} isActive={(h) => h === "/"} />
+            </div>
+          </LaptopFrame>
         </div>
       </SettingsPanel>
     );
@@ -234,12 +236,16 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
         </div>
         <button type="button" onClick={() => set("menuDesign", DEFAULT_MENU_DESIGN)} className="mt-3 flex items-center gap-1.5 text-[0.8rem] font-semibold text-admin-gray-500 hover:text-admin-gray-800"><RotateCcw className="h-3.5 w-3.5" /> Store default (green)</button>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
-          <div className="overflow-hidden rounded-lg border border-admin-gray-200 font-storefront">
-            <SidebarMenu items={resolveMenu(value.sidebarMenu, false, categories).slice(0, 4)} design={d} isActive={(h) => h === "/"} />
-          </div>
-          <div className="rounded-lg border border-admin-gray-200 pb-36 [&_nav]:!block">
-            <DesktopMenu items={resolveMenu(value.headerMenu, false, categories).slice(0, 3)} design={d} isActive={never} />
-          </div>
+          <PhoneFrame width={250} height={330} className="mx-auto">
+            <div className="h-full overflow-y-auto font-storefront">
+              <SidebarMenu items={resolveMenu(value.sidebarMenu, false, categories).slice(0, 4)} design={d} isActive={(h) => h === "/"} />
+            </div>
+          </PhoneFrame>
+          <LaptopFrame fluid className="self-center">
+            <div className="h-[190px] bg-[#f5f5f8] [&_nav]:!block">
+              <DesktopMenu items={resolveMenu(value.headerMenu, false, categories).slice(0, 3)} design={d} isActive={never} />
+            </div>
+          </LaptopFrame>
         </div>
       </SettingsPanel>
     );

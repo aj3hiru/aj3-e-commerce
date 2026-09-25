@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, CircleAlert, ExternalLink, Loader2, Monitor, RefreshCw, RotateCcw, ShoppingBag, Smartphone, Upload, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PhoneFrame } from "@/components/admin/PhoneFrame";
+import { LaptopFrame, PhoneFrame } from "@/components/admin/PhoneFrame";
 import { LINK_PRESETS, isSafeHref } from "@/types/storefront";
 
 /** Shared building blocks of the Store Customizer (Homepage, Product Page, Header & Footer). */
@@ -212,13 +212,14 @@ export function Preview({ url, version, device, focus, anchor }: { url: string; 
   const [loading, setLoading] = useState(true);
   const box = useRef<HTMLDivElement>(null);
   const [boxW, setBoxW] = useState(900);
+  const [boxH, setBoxH] = useState(700);
   const pending = useRef<number | null>(null);
   const first = useRef(true);
 
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setBoxW(el.clientWidth));
+    const ro = new ResizeObserver(() => { setBoxW(el.clientWidth); setBoxH(el.clientHeight); });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -255,19 +256,18 @@ export function Preview({ url, version, device, focus, anchor }: { url: string; 
   }, [focus]);
 
   const W = device === "mobile" ? 375 : 1280;
-  const scale = device === "mobile" ? 1 : Math.min(1, (boxW - 32) / W);
+  // Laptop: fit the 1280 × 800 screen plus lid and base (≈ 12% wider, ~50 px taller) into the box.
+  const scale = device === "mobile" ? 1 : Math.max(0.2, Math.min(1, (boxW - 40) / (W * 1.12 + 36), (boxH - 90) / 800));
   const iframes = [0, 1].map((i) => (
     <iframe key={i} ref={frames[i]} src={srcs[i]} title={i === front ? "Store preview" : "Preview buffer"} onLoad={() => onLoad(i)}
       className={cn("absolute inset-0 h-full w-full border-0 bg-white", i === front ? "z-10" : "z-0 opacity-0")} />
   ));
   return (
-    <div ref={box} className="relative flex h-full items-start justify-center overflow-hidden rounded-xl bg-[radial-gradient(circle_at_1px_1px,#d4d4dc_1px,transparent_0)] [background-size:18px_18px] bg-admin-gray-100 px-4 py-6">
+    <div ref={box} className="relative flex h-full items-start justify-center overflow-hidden rounded-xl bg-[linear-gradient(180deg,#f7f7fa,#ececf2)] px-4 py-6">
       {device === "mobile" ? (
         <PhoneFrame width={W} height={780} fill>{iframes}</PhoneFrame>
       ) : (
-        <div className="relative shrink-0 overflow-hidden rounded-lg border border-admin-gray-300 bg-white shadow-2xl" style={{ width: W * scale, height: "100%" }}>
-          <div style={{ width: W, height: `${100 / scale}%`, transform: `scale(${scale})`, transformOrigin: "0 0" }} className="relative">{iframes}</div>
-        </div>
+        <LaptopFrame width={W} height={800} scale={scale} className="self-center">{iframes}</LaptopFrame>
       )}
       {loading && (
         <span className="absolute right-6 top-6 z-20 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-semibold text-admin-gray-600 shadow">

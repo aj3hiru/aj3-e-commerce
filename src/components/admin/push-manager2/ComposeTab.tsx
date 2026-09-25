@@ -447,7 +447,7 @@ function PhonePreview({ appName, title, body, image }: { appName: string; title:
   const date = now ? now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : "";
 
   return (
-    <PhoneFrame width={292} height={592}>
+    <PhoneFrame width={292} height={592} status="light" overlay>
       <div className="relative h-full w-full bg-[linear-gradient(135deg,#667eea_0%,#764ba2_100%)] pt-[60px]" style={{ fontFamily: "Roboto, system-ui, sans-serif" }}>
         <div className="mb-5 h-[62px] text-center text-[52px] font-light leading-none text-white/80" suppressHydrationWarning>{time}</div>
         <div className="-mt-2.5 mb-[30px] h-5 text-center text-sm text-white/80" suppressHydrationWarning>{date}</div>

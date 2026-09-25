@@ -197,6 +197,9 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      // Who made the sale — shown in the order history and the staff reports.
+      await tx.ecomOrderEvent.create({ data: { orderId: order.id, type: "placed", toValue: "Delivered", userId: session.userId, actorName: session.username } });
+
       const campaignSales: CampaignSaleInput[] = [];
       for (const li of lineItems) {
         const item = await tx.ecomOrderItem.create({

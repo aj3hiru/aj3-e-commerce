@@ -89,7 +89,8 @@ const DEFAULT_STANDALONE = [{ key: "recentorders", label: "Recent Orders" }] as 
 function useWidgetPrefsStore(
   prefKey: string,
   groups: readonly WidgetGroup[],
-  standalone: readonly { key: string; label: string }[]
+  standalone: readonly { key: string; label: string }[],
+  defaultHidden: readonly string[] = []
 ): WidgetPrefsValue {
   const [prefs, setPrefs] = useState<Record<string, boolean>>({});
   const [loaded, setLoaded] = useState(false);
@@ -105,7 +106,8 @@ function useWidgetPrefsStore(
     }
   }, [prefKey]);
 
-  const isVisible = useCallback((key: string) => prefs[key] !== false, [prefs]);
+  // Shown unless switched off — or, for the few items listed in defaultHidden, until switched on.
+  const isVisible = useCallback((key: string) => prefs[key] ?? !defaultHidden.includes(key), [prefs, defaultHidden]);
 
   const toggle = useCallback(
     (key: string, visible: boolean) => {
@@ -145,13 +147,16 @@ export function DashboardWidgetPrefsProvider({
   prefKey = PREF_KEY,
   groups = DASHBOARD_WIDGETS,
   standalone = DEFAULT_STANDALONE,
+  defaultHidden,
 }: {
   children: ReactNode;
   prefKey?: string;
   groups?: readonly WidgetGroup[];
   standalone?: readonly { key: string; label: string }[];
+  /** Items that start hidden until someone ticks them. */
+  defaultHidden?: readonly string[];
 }) {
-  const value = useWidgetPrefsStore(prefKey, groups, standalone);
+  const value = useWidgetPrefsStore(prefKey, groups, standalone, defaultHidden);
   return createElement(WidgetPrefsContext.Provider, { value }, children);
 }
 

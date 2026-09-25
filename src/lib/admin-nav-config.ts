@@ -4,7 +4,7 @@ import {
   faFileCsv, faStarHalfAlt, faBarcode, faTags, faList, faReceipt,
   faTruck, faUserFriends, faPercentage,
   faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
-  faSignOutAlt, faChartLine, faFileAlt, faBars, faGripLines, faBox,
+  faSignOutAlt, faFileInvoiceDollar, faChartLine, faFileAlt, faBars, faGripLines, faBox,
   faBrush, faCog, faUsersCog,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -28,6 +28,7 @@ export type NavPermissionPath =
   | "files.access_file_manager"
   | "pages.create"
   | "push_notifications.send"
+  | "reports.any" // special: orders (manage_orders) or billing (manage_billing)
   | "offers.any" // special: campaigns (manage_products) or coupons (manage_coupons)
   | "blogs.any" // special: true if ANY key under `blogs` is true, OR analytics.view_basic is true
   | "blogs.manage_categories"
@@ -135,6 +136,7 @@ export const ADMIN_NAV: NavSection[] = [
     title: "Reports",
     permission: null,
     links: [
+      { href: "/admin/ecommerce/reports", label: "Report Builder", icon: faFileInvoiceDollar, permission: "reports.any" },
       { href: "/admin/ecommerce/analytics", label: "Sales Analytics", icon: faChartLine, permission: "ecommerce.manage_orders" },
       { href: "/admin/ecommerce/sales-history", label: "Sales History", icon: faHistory, permission: "ecommerce.manage_billing" },
     ],
@@ -204,6 +206,7 @@ export function hasPermission(
   if (path === null) return true;
   if (!permissions) return false;
 
+  if (path === "reports.any") return !!permissions.ecommerce?.manage_orders || !!permissions.ecommerce?.manage_billing;
   if (path === "offers.any") return !!permissions.ecommerce?.manage_products || !!permissions.ecommerce?.manage_coupons;
 
   if (path === "blogs.any") {

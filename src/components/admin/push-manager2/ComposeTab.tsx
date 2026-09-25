@@ -443,7 +443,7 @@ function PhonePreview({ appName, title, body, image }: { appName: string; title:
   const [imgOk, setImgOk] = useState(true);
   useEffect(() => setImgOk(true), [image]);
 
-  const time = now ? now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }) : "";
+  const time = now ? now.toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true }).replace(/\s?[ap]m$/i, "") : "";
   const date = now ? now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : "";
 
   return (

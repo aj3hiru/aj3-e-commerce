@@ -65,10 +65,12 @@ interface Filters {
 }
 const NO_FILTERS: Filters = { payment: "all", method: "all", product: "all", dues: "all", agent: "all" };
 
-const ROW_H = 84;
-const HEAD_H = 50;
+const ROW_H_COMFY = 76;
+const ROW_H_COMPACT = 60;
+const HEAD_H = 44;
 const MIN_ROWS = 5;
 const td = "border-b border-[#eef0f4] px-3 align-middle";
+const th = "border-b border-[#e6e8ef] px-3 text-left text-[12px] font-semibold uppercase tracking-[0.05em] text-admin-gray-500";
 
 export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agents = [] }: {
   data: Orders2Data; canEdit: boolean; canBill: boolean; canDecide?: boolean; agents?: { id: number; name: string }[];
@@ -93,6 +95,8 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
   const [bulkAgent, setBulkAgent] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
   const canAssign = agents.length > 0;
+  const ROW_H = show("or2-d-compact") ? ROW_H_COMPACT : ROW_H_COMFY;
+  const dShow = (k: string) => show("or2-details") && show(k);
   const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
   useEffect(() => {
     if (!toast) return;
@@ -254,21 +258,22 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
 
   return (
     <div className={cn("space-y-5", !loaded && "invisible")} aria-busy={navigating}>
-      {show("or2-range") && <RangeBar range={range} type={data.type} navigate={navigate} pending={navigating} />}
-
-      {show("or2-tabs") && (
-        <section className="rounded-xl border border-admin-gray-200 bg-white p-2 shadow-sm">
-          <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Order status">
-            <TabButton active={data.type === ""} onClick={() => goType("")} label="All Orders" count={data.statusCounts.reduce((s, x) => s + x.count, 0)} />
-            {data.statusCounts.map((s) => (
-              <TabButton key={s.status} active={data.type === s.status} onClick={() => goType(s.status)} label={`${s.status} Orders`} count={s.count} dot={statusDot(s.status)} />
-            ))}
-          </div>
+      {(show("or2-range") || show("or2-tabs")) && (
+        <section className="overflow-hidden rounded-[10px] border border-admin-gray-200 bg-white shadow-sm">
+          {show("or2-range") && <RangeBar range={range} type={data.type} navigate={navigate} pending={navigating} />}
+          {show("or2-tabs") && (
+            <div className={cn("flex gap-1 overflow-x-auto px-3 [scrollbar-width:none]", show("or2-range") && "border-t border-admin-gray-100")} role="tablist" aria-label="Order status">
+              <TabButton active={data.type === ""} onClick={() => goType("")} label="All" count={data.statusCounts.reduce((s, x) => s + x.count, 0)} />
+              {data.statusCounts.map((s) => (
+                <TabButton key={s.status} active={data.type === s.status} onClick={() => goType(s.status)} label={s.status} count={s.count} dot={statusDot(s.status)} />
+              ))}
+            </div>
+          )}
         </section>
       )}
 
       {show("or2-cards") && (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {show("or2-k-total") && <Card icon={ShoppingBag} tint="bg-blue-50 text-blue-600" value={String(c.total)} label={data.type ? `${data.type} Orders` : "All Orders"} sub={money(c.totalValue) + " in this range"} />}
           {show("or2-k-today") && <Card icon={Clock} tint="bg-violet-50 text-violet-600" value={String(c.today)} label="Today's Orders" sub={money(c.todayValue)} />}
           {show("or2-k-unpaid") && <Card icon={Wallet} tint="bg-red-50 text-red-600" value={String(c.unpaid)} label="Unpaid" sub={money(c.unpaidValue) + " not collected"} />}
@@ -282,9 +287,18 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
         </div>
       )}
 
-      {show("or2-filters") && (
-        <section className="rounded-xl border border-admin-gray-200 bg-white p-3.5 shadow-sm">
-          <div className="flex flex-wrap gap-3">
+      {show("or2-table") && (
+        <section className="rounded-[10px] border border-admin-gray-200 bg-white p-4 shadow-sm">
+          {/* Toolbar: search, filters, orders per page */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            {show("or2-t-search") && (
+              <span className="relative min-w-[220px] flex-1 sm:max-w-[320px]">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-400" />
+                <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search orders" placeholder="Search order, name, phone, product…"
+                  className="h-9 w-full rounded-[8px] border border-admin-gray-200 pl-8 pr-3 text-sm focus:border-[#2563eb] focus:outline-none focus:ring-4 focus:ring-[#2563eb]/10" />
+              </span>
+            )}
+            {show("or2-filters") && (<>
             {show("or2-f-payment") && (
               <Select icon={Wallet} label="Payment" value={f.payment} onChange={(v) => set("payment", v as Filters["payment"])} on={f.payment !== "all"}>
                 <option value="all">Paid and unpaid</option>
@@ -318,43 +332,22 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
                 <option value="without">Nothing owed</option>
               </Select>
             )}
-          </div>
-        </section>
-      )}
-
-      {show("or2-table") && (
-        <section className="rounded-xl border border-admin-gray-200 bg-white p-5 shadow-sm sm:p-7">
-          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-3 text-[15px] text-admin-gray-900">
-            <label className="flex items-center gap-2">
-              Show
-              <span className="relative">
-                <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} aria-label="Entries per page"
-                  className="h-10 w-[90px] appearance-none rounded-[0.375rem] border border-[#dee2e6] bg-white pl-3 pr-8 text-sm focus:border-[#86b7fe] focus:outline-none focus:ring-4 focus:ring-[#0d6efd]/15">
-                  {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n}</option>)}
-                  <option value={0}>All</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-600" />
-              </span>
-              entries
-            </label>
+            </>)}
             {filtersActive && (
-              <button type="button" onClick={() => { setF(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb] hover:underline">
-                <X className="h-3.5 w-3.5" /> Clear filters
+              <button type="button" onClick={() => { setF(NO_FILTERS); setSearch(""); }} className="flex h-9 items-center gap-1 rounded-[8px] px-2 text-[13px] font-medium text-[#2563eb] hover:bg-blue-50">
+                <X className="h-3.5 w-3.5" /> Clear
               </button>
             )}
-            {show("or2-t-search") && (
-              <label className="ml-auto flex items-center gap-2">
-                Search:
-                <span className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-400" />
-                  <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search orders" placeholder="Order no, name, phone, product…"
-                    className="h-10 w-[280px] rounded-[0.375rem] border border-[#dee2e6] pl-8 pr-3 text-sm focus:border-[#86b7fe] focus:outline-none focus:ring-4 focus:ring-[#0d6efd]/15" />
-                </span>
-              </label>
+            {show("or2-t-pagesize") && (
+              <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} aria-label="Orders per page"
+                className="ml-auto h-9 rounded-[8px] border border-admin-gray-200 bg-white pl-3 text-sm focus:border-[#2563eb] focus:outline-none">
+                {[10, 25, 50, 100].map((n) => <option key={n} value={n}>{n} / page</option>)}
+                <option value={0}>All</option>
+              </select>
             )}
           </div>
 
-          {picked.size > 0 && (
+          {picked.size > 0 && show("or2-bulk") && (
             <div className="mb-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm">
               <b className="text-blue-800">{picked.size} selected</b>
               {canDecide && (
@@ -376,12 +369,12 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
           )}
 
           <div className="overflow-x-auto rounded-[10px] border border-[#eef0f4]" style={{ minHeight: pageSize === 0 ? undefined : HEAD_H + Math.min(pageSize, MIN_ROWS) * ROW_H }}>
-            <table className="w-full min-w-[1300px] table-fixed border-collapse text-[15px]">
+            <table className="w-full min-w-[1180px] table-fixed border-collapse text-[14px]">
               <colgroup>{cols.map((x) => <col key={x.key} className={x.w} />)}</colgroup>
               <thead>
-                <tr className="bg-[#f8f9fb] text-left font-bold text-admin-gray-900" style={{ height: HEAD_H }}>
+                <tr className="bg-[#f8f9fb]" style={{ height: HEAD_H }}>
                   {show("or2-c-select") && canEdit && (
-                    <th className={td}>
+                    <th className={th}>
                       <input type="checkbox" aria-label="Select all on this page" className="h-4 w-4 accent-[#2563eb]"
                         checked={pageRows.length > 0 && pageRows.every((r) => picked.has(r.id))}
                         onChange={(e) => setPicked((p) => { const n = new Set(p); pageRows.forEach((r) => (e.target.checked ? n.add(r.id) : n.delete(r.id))); return n; })} />
@@ -389,12 +382,12 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
                   )}
                   {show("or2-c-order") && <SortTh label="Order" active={sort.key === "created" ? sort.dir : null} onClick={() => toggleSort("created")} />}
                   {show("or2-c-customer") && <SortTh label="Customer" active={sort.key === "customer" ? sort.dir : null} onClick={() => toggleSort("customer")} />}
-                  {show("or2-c-items") && <th className={td}>Items</th>}
+                  {show("or2-c-items") && <th className={th}>Items</th>}
                   {show("or2-c-total") && <SortTh label="Total" active={sort.key === "total" ? sort.dir : null} onClick={() => toggleSort("total")} />}
-                  {show("or2-c-payment") && <th className={td}>Payment</th>}
+                  {show("or2-c-payment") && <th className={th}>Payment</th>}
                   {show("or2-c-status") && <SortTh label="Status" active={sort.key === "status" ? sort.dir : null} onClick={() => toggleSort("status")} />}
-                  {show("or2-c-agent") && canAssign && <th className={td}>Delivery agent</th>}
-                  {show("or2-c-actions") && <th className={td}>Actions</th>}
+                  {show("or2-c-agent") && canAssign && <th className={th}>Delivery agent</th>}
+                  {show("or2-c-actions") && <th className={th}>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -408,7 +401,7 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
                   pageRows.map((r) => {
                     const isBusy = busy.has(r.id);
                     return (
-                      <tr key={r.id} style={{ height: ROW_H }} className={cn("bg-white transition-colors hover:bg-[#f8f9fe]", picked.has(r.id) && "bg-blue-50/60", r.orderStatus === "Pending" && "shadow-[inset_3px_0_0_#f6c23e]", isBusy && "opacity-60")}>
+                      <tr key={r.id} style={{ height: ROW_H }} className={cn("bg-white transition-colors hover:bg-[#f8f9fe]", picked.has(r.id) && "bg-blue-50/60", r.orderStatus === "Pending" && dShow("or2-d-highlight") && "shadow-[inset_3px_0_0_#f6c23e]", isBusy && "opacity-60")}>
                         {show("or2-c-select") && canEdit && (
                           <td className={td}>
                             <input type="checkbox" aria-label={`Select ${r.orderNumber}`} className="h-4 w-4 accent-[#2563eb]" checked={picked.has(r.id)}
@@ -418,7 +411,7 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
                         {show("or2-c-order") && (
                           <td className={td}>
                             <Link href={`/admin/ecommerce/orders/${r.id}`} className="block truncate font-medium text-[#2563eb] hover:underline">{r.orderNumber}</Link>
-                            <div className="truncate text-xs text-admin-gray-500">{fmtDateTime(r.createdAt)}</div>
+                            {dShow("or2-d-date") && <div className="truncate text-xs text-admin-gray-500">{fmtDateTime(r.createdAt)}</div>}
                           </td>
                         )}
                         {show("or2-c-customer") && (
@@ -426,9 +419,11 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
                             {r.customerId !== null
                               ? <Link href={`/admin/ecommerce/customers/${r.customerId}`} className="block truncate font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.customerName}</Link>
                               : <span className="block truncate font-medium text-admin-gray-900">{r.customerName}{r.isGuest ? " (guest)" : ""}</span>}
-                            <div className="truncate text-xs text-admin-gray-500">
-                              {r.customerPhone ?? r.customerEmail ?? "No contact"}
-                            </div>
+                            {dShow("or2-d-phone") && (
+                              <div className="truncate text-xs text-admin-gray-500">
+                                {r.customerPhone ?? r.customerEmail ?? "No contact"}
+                              </div>
+                            )}
                             {show("or2-c-contact") && (r.customerPhone || r.mapUrl) && (
                               <div className="mt-1 flex gap-1">
                                 {r.customerPhone && <a href={`tel:${r.customerPhone}`} title="Call" className="grid h-6 w-6 place-items-center rounded-[6px] bg-admin-gray-100 text-admin-gray-600 hover:bg-admin-gray-200"><Phone className="h-3 w-3" /></a>}
@@ -443,15 +438,17 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
                             <button type="button" onClick={() => setDetails(r)} className="text-left hover:text-[#2563eb] hover:underline" title="See the items">
                               {r.itemCount} item{r.itemCount === 1 ? "" : "s"}
                             </button>
-                            <div className="truncate text-xs text-admin-gray-500" title={r.items.map((i) => i.productName).join(", ")}>
-                              {r.items[0]?.productName ?? "—"}
-                            </div>
+                            {dShow("or2-d-itemname") && (
+                              <div className="truncate text-xs text-admin-gray-500" title={r.items.map((i) => i.productName).join(", ")}>
+                                {r.items[0]?.productName ?? "—"}
+                              </div>
+                            )}
                           </td>
                         )}
                         {show("or2-c-total") && (
                           <td className={cn(td, "whitespace-nowrap")}>
                             <div className="font-semibold text-admin-gray-900">{money(r.total)}</div>
-                            {r.dueBalance > PAISA && <div className="text-xs font-semibold text-[#dc3545]">{money(r.dueBalance)} due</div>}
+                            {r.dueBalance > PAISA && dShow("or2-d-due") && <div className="text-xs font-semibold text-[#dc3545]">{money(r.dueBalance)} due</div>}
                           </td>
                         )}
                         {show("or2-c-payment") && (
@@ -467,7 +464,7 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
                             ) : (
                               <StatusBadge variant={paymentStatusVariant(r.paymentStatus)}>{r.paymentStatus}</StatusBadge>
                             )}
-                            <div className="mt-0.5 truncate text-xs text-admin-gray-500">{r.paymentMethod}</div>
+                            {dShow("or2-d-method") && <div className="mt-0.5 truncate text-xs text-admin-gray-500">{r.paymentMethod}</div>}
                           </td>
                         )}
                         {show("or2-c-status") && (
@@ -483,8 +480,8 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
                             ) : (
                               <StatusBadge variant={orderStatusVariant(r.orderStatus)}>{r.orderStatus}</StatusBadge>
                             )}
-                            {r.agent && <div className="mt-1 truncate text-xs text-admin-gray-500">🛵 {r.agent}</div>}
-                            {canEdit && r.orderStatus === "Pending" && (
+                            {r.agent && dShow("or2-d-agentline") && <div className="mt-1 truncate text-xs text-admin-gray-500">🛵 {r.agent}</div>}
+                            {canEdit && r.orderStatus === "Pending" && dShow("or2-d-decide") && (
                               <div className="mt-1.5">
                                 <OrderDecision orderId={r.id} orderNumber={r.orderNumber} onDone={(status, text) => {
                                   setRows((list) => list.map((x) => (x.id === r.id ? { ...x, orderStatus: status } : x)));
@@ -524,14 +521,18 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
             </table>
           </div>
 
-          <div className="mt-4 flex min-h-10 flex-wrap items-center justify-between gap-3 text-[15px] text-admin-gray-800">
-            <span>
-              {filtered.length === 0 ? "Showing 0 entries" : `Showing ${start + 1} to ${start + pageRows.length} of ${filtered.length} entries`}
-              {filtered.length !== rows.length && <span className="text-admin-gray-500"> (filtered from {rows.length} total entries)</span>}
-              {filtered.length > 0 && <span className="ml-2">· Value shown: <b>{money(shownValue)}</b></span>}
-            </span>
-            {pageCount > 1 && <Pager page={cur} pageCount={pageCount} onPage={setPage} label="Order pages" />}
-          </div>
+          {(show("or2-summary") || (show("or2-pager") && pageCount > 1)) && (
+            <div className="mt-3 flex min-h-9 flex-wrap items-center justify-between gap-3 text-[13px] text-admin-gray-600">
+              {show("or2-summary") ? (
+                <span>
+                  {filtered.length === 0 ? "No orders" : `${start + 1}–${start + pageRows.length} of ${filtered.length} orders`}
+                  {filtered.length !== rows.length && <span className="text-admin-gray-400"> (filtered from {rows.length})</span>}
+                  {filtered.length > 0 && <span className="ml-2">· Value <b className="text-admin-gray-900">{money(shownValue)}</b></span>}
+                </span>
+              ) : <span />}
+              {show("or2-pager") && pageCount > 1 && <Pager page={cur} pageCount={pageCount} onPage={setPage} label="Order pages" />}
+            </div>
+          )}
 
           {data.truncated && (
             <p className="mt-3 rounded-[0.375rem] bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -597,20 +598,20 @@ function ItemsDialog({ order, onClose }: { order: Order2Row; onClose: () => void
 function TabButton({ active, onClick, label, count, dot }: { active: boolean; onClick: () => void; label: string; count: number; dot?: string }) {
   return (
     <button type="button" role="tab" aria-selected={active} onClick={onClick}
-      className={cn("flex h-10 items-center gap-2 rounded-[0.5rem] px-3.5 text-sm font-medium transition-colors", active ? "bg-[#2563eb] text-white" : "text-admin-gray-700 hover:bg-admin-gray-50")}>
-      {dot && <span className="h-2 w-2 rounded-full" style={{ background: active ? "#fff" : dot }} />}
+      className={cn("-mb-px flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors", active ? "border-[#2563eb] text-[#2563eb]" : "border-transparent text-admin-gray-600 hover:text-admin-gray-900")}>
+      {dot && <span className="h-2 w-2 rounded-full" style={{ background: dot }} />}
       {label}
-      <span className={cn("rounded-full px-2 py-0.5 text-xs font-semibold", active ? "bg-white/20 text-white" : "bg-admin-gray-100 text-admin-gray-700")}>{count}</span>
+      <span className={cn("rounded-[6px] px-1.5 py-0.5 text-xs font-semibold", active ? "bg-blue-50 text-[#2563eb]" : "bg-admin-gray-100 text-admin-gray-600")}>{count}</span>
     </button>
   );
 }
 
 function SortTh({ label, active, onClick }: { label: string; active: "asc" | "desc" | null; onClick: () => void }) {
   return (
-    <th className={cn(td, "font-bold text-admin-gray-900")} aria-sort={active ? (active === "asc" ? "ascending" : "descending") : undefined}>
-      <button type="button" onClick={onClick} className="flex w-full items-center justify-between gap-2 font-bold">
+    <th className={th} aria-sort={active ? (active === "asc" ? "ascending" : "descending") : undefined}>
+      <button type="button" onClick={onClick} className="flex w-full items-center gap-1.5 uppercase hover:text-admin-gray-800">
         {label}
-        {active === "asc" ? <ArrowUp className="h-4 w-4 text-admin-gray-600" /> : active === "desc" ? <ArrowDown className="h-4 w-4 text-admin-gray-600" /> : <ChevronsUpDown className="h-4 w-4 text-admin-gray-300" />}
+        {active === "asc" ? <ArrowUp className="h-3.5 w-3.5 text-[#2563eb]" /> : active === "desc" ? <ArrowDown className="h-3.5 w-3.5 text-[#2563eb]" /> : <ChevronsUpDown className="h-3.5 w-3.5 text-admin-gray-300" />}
       </button>
     </th>
   );
@@ -620,12 +621,14 @@ function Card({ icon: Icon, tint, value, label, sub }: {
   icon: React.ComponentType<{ className?: string }>; tint: string; value: string; label: string; sub: string;
 }) {
   return (
-    <div className="flex items-center gap-3.5 rounded-xl border border-admin-gray-200 bg-white px-4 py-4 shadow-sm">
-      <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-full", tint)}><Icon className="h-5 w-5" /></span>
+    <div className="flex items-center gap-3 rounded-[10px] border border-admin-gray-200 bg-white px-3.5 py-3 shadow-sm">
+      <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px]", tint)}><Icon className="h-[18px] w-[18px]" /></span>
       <span className="min-w-0">
-        <span className="block truncate text-xl font-bold leading-tight text-admin-gray-900" title={value}>{value}</span>
-        <span className="block truncate text-sm text-admin-gray-700">{label}</span>
-        <span className="block truncate text-xs text-admin-gray-500">{sub}</span>
+        <span className="flex items-baseline gap-1.5">
+          <span className="truncate text-lg font-bold leading-tight text-admin-gray-900" title={value}>{value}</span>
+          <span className="truncate text-[13px] text-admin-gray-600">{label}</span>
+        </span>
+        <span className="block truncate text-xs text-admin-gray-400">{sub}</span>
       </span>
     </div>
   );
@@ -635,17 +638,14 @@ function Select({ icon: Icon, label, value, onChange, on, children }: {
   icon: React.ComponentType<{ className?: string }>; label: string; value: string; onChange: (v: string) => void; on: boolean; children: React.ReactNode;
 }) {
   return (
-    <label className={cn("relative flex h-12 min-w-[190px] flex-1 cursor-pointer items-center gap-2.5 rounded-[0.5rem] border pl-3 pr-9 transition-colors focus-within:ring-2 focus-within:ring-[#2563eb]/15",
-      on ? "border-[#2563eb]/40 bg-blue-50/50" : "border-admin-gray-200 bg-white hover:border-admin-gray-300")}>
-      <Icon className={cn("h-4 w-4 shrink-0", on ? "text-[#2563eb]" : "text-admin-gray-500")} />
-      <span className="min-w-0 flex-1">
-        <span className="block text-xs leading-4 text-admin-gray-500">{label}</span>
-        <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}
-          className="w-full min-w-0 cursor-pointer appearance-none truncate bg-transparent text-sm font-medium leading-5 text-admin-gray-900 focus:outline-none">
-          {children}
-        </select>
-      </span>
-      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-500" />
+    <label title={label} className={cn("relative flex h-9 cursor-pointer items-center gap-1.5 rounded-[8px] border pl-2.5 pr-7 text-sm transition-colors focus-within:ring-2 focus-within:ring-[#2563eb]/15",
+      on ? "border-[#2563eb]/40 bg-blue-50 text-[#1d4ed8]" : "border-admin-gray-200 bg-white text-admin-gray-700 hover:border-admin-gray-300")}>
+      <Icon className={cn("h-3.5 w-3.5 shrink-0", on ? "text-[#2563eb]" : "text-admin-gray-400")} />
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={label}
+        className="max-w-[160px] cursor-pointer appearance-none truncate bg-transparent font-medium focus:outline-none">
+        {children}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-gray-400" />
     </label>
   );
 }
@@ -671,22 +671,22 @@ function RangeBar({ range, type, navigate, pending }: { range: { from: string; t
   const canApply = /^\d{4}-\d{2}-\d{2}$/.test(from) && /^\d{4}-\d{2}-\d{2}$/.test(to) && !(from === range.from && to === range.to);
 
   return (
-    <section className="rounded-xl border border-admin-gray-200 bg-white px-5 py-3.5 shadow-sm">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+    <section className="px-4 py-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2.5">
         <div className="flex items-center gap-2 text-sm text-admin-gray-700"><CalendarDays className="h-4 w-4 text-admin-gray-500" /> Showing: <b className="text-admin-gray-900">{showing}</b></div>
         <div className="flex flex-wrap gap-1.5">
           {presets.map((p) => (
             <button key={p.key} type="button" disabled={pending} onClick={() => go(p.range[0], p.range[1])} aria-pressed={active?.key === p.key}
-              className={cn("h-9 rounded-[0.375rem] px-3 text-sm font-medium transition-colors", active?.key === p.key ? "bg-[#2563eb] text-white" : "border border-admin-gray-200 bg-white text-admin-gray-700 hover:bg-admin-gray-50")}>
+              className={cn("h-8 rounded-[8px] px-3 text-[13px] font-medium transition-colors", active?.key === p.key ? "bg-[#2563eb] text-white" : "bg-admin-gray-100 text-admin-gray-700 hover:bg-admin-gray-200")}>
               {p.label}
             </button>
           ))}
         </div>
         <form className="ml-auto flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (canApply) go(from, to); }}>
-          <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} aria-label="From date" className="h-9 rounded-[0.375rem] border border-[#dee2e6] px-2.5 text-sm focus:border-[#86b7fe] focus:outline-none" />
+          <input type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} aria-label="From date" className="h-8 rounded-[8px] border border-admin-gray-200 px-2 text-[13px] focus:border-[#2563eb] focus:outline-none" />
           <span className="text-sm text-admin-gray-500">to</span>
-          <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} aria-label="To date" className="h-9 rounded-[0.375rem] border border-[#dee2e6] px-2.5 text-sm focus:border-[#86b7fe] focus:outline-none" />
-          <button type="submit" disabled={!canApply || pending} className="flex h-9 items-center gap-2 rounded-[0.375rem] bg-[#2563eb] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-50">
+          <input type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} aria-label="To date" className="h-8 rounded-[8px] border border-admin-gray-200 px-2 text-[13px] focus:border-[#2563eb] focus:outline-none" />
+          <button type="submit" disabled={!canApply || pending} className="flex h-8 items-center gap-2 rounded-[8px] bg-[#2563eb] px-3.5 text-[13px] font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-50">
             {pending && <Loader2 className="h-4 w-4 animate-spin" />} Apply
           </button>
         </form>

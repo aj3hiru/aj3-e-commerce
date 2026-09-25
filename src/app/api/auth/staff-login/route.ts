@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   await clearAttempts(identity);
-  await setAdminSessionCookie(user.id, user.passwordHash);
+  await setAdminSessionCookie(user.id, user.passwordHash, body.remember !== false);
   await logActivity(req, user.id, "login_success", `Staff login (${user.role}): ${user.username}`);
   return NextResponse.json({ success: true, redirect: staffHome(user.role, perms) });
 }

@@ -11,14 +11,15 @@ export function sessionVersion(passwordHash: string | null | undefined): string 
   return createHash("sha256").update(passwordHash ?? "").digest("hex").slice(0, 16);
 }
 
-export async function setAdminSessionCookie(userId: number, passwordHash: string) {
-  const token = jwt.sign({ userId, pv: sessionVersion(passwordHash) }, process.env.ADMIN_JWT_SECRET!, { expiresIn: SESSION_MAX_AGE });
+/** remember = false: the cookie ends when the browser closes (and the token after 12 hours). */
+export async function setAdminSessionCookie(userId: number, passwordHash: string, remember = true) {
+  const token = jwt.sign({ userId, pv: sessionVersion(passwordHash) }, process.env.ADMIN_JWT_SECRET!, { expiresIn: remember ? SESSION_MAX_AGE : 60 * 60 * 12 });
   const cookieStore = await cookies();
   cookieStore.set("admin_session", token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
-    maxAge: SESSION_MAX_AGE,
+    ...(remember ? { maxAge: SESSION_MAX_AGE } : {}),
     path: "/",
   });
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ShoppingBag, HandCoins, Save } from "lucide-react";
+import { ShoppingBag, HandCoins, Save, MapPin, ExternalLink, KeyRound, Smartphone } from "lucide-react";
 
 export interface CustomerProfileData {
   id: number;
@@ -34,8 +34,14 @@ export interface CustomerCreditRow {
   payments: { paymentMethod: string; amount: number; createdAt: string }[];
 }
 
+export interface CustomerAddressRow {
+  id: number; name: string; phone: string; text: string; type: string; isDefault: boolean; mapUrl: string | null;
+}
+
 interface CustomerProfileViewProps {
   customer: CustomerProfileData;
+  addresses?: CustomerAddressRow[];
+  login?: { hasPassword: boolean; email: boolean; phone: boolean };
   orders: CustomerOrderRow[];
   credits: CustomerCreditRow[];
   totalSpent: number;
@@ -45,7 +51,7 @@ interface CustomerProfileViewProps {
 const fmt = (n: number) => n.toFixed(2);
 
 /** Verified against admin/ecommerce/customer-profile.php. */
-export function CustomerProfileView({ customer, orders, credits, totalSpent, totalOrders }: CustomerProfileViewProps) {
+export function CustomerProfileView({ customer, orders, credits, totalSpent, totalOrders, addresses = [], login }: CustomerProfileViewProps) {
   const router = useRouter();
   const [form, setForm] = useState(customer);
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -92,6 +98,40 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
           </div>
         )}
 
+        {login && customer.customerType === "online" && (
+          <div className="bg-white rounded-lg border border-admin-gray-200 p-4">
+            <h5 className="font-bold mb-2 text-sm">Store login</h5>
+            <div className="flex flex-wrap gap-1.5 text-xs">
+              {login.phone && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 font-semibold text-emerald-700"><Smartphone className="h-3.5 w-3.5" />Mobile OTP</span>}
+              {login.hasPassword && <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 font-semibold text-sky-700"><KeyRound className="h-3.5 w-3.5" />Password{login.email ? " (email / mobile)" : " (mobile)"}</span>}
+              {!login.hasPassword && !login.phone && <span className="rounded-full bg-admin-gray-100 px-2.5 py-1 text-admin-gray-600">No login set up</span>}
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white rounded-lg border border-admin-gray-200 p-5">
+          <h5 className="font-bold mb-3">Saved Addresses <span className="font-normal text-admin-gray-400">({addresses.length})</span></h5>
+          {addresses.length === 0 ? (
+            <p className="text-sm text-admin-gray-500">No saved addresses yet.</p>
+          ) : (
+            <ul className="space-y-2.5">
+              {addresses.map((a) => (
+                <li key={a.id} className={`rounded-lg border p-3 text-sm ${a.isDefault ? "border-violet-300 bg-violet-50/40" : "border-admin-gray-200"}`}>
+                  <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                    <span className="font-semibold text-admin-gray-800">{a.name}</span>
+                    <span className="rounded bg-admin-gray-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-admin-gray-600">{a.type}</span>
+                    {a.isDefault && <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-violet-700">Default</span>}
+                  </div>
+                  <p className="whitespace-pre-line text-admin-gray-600">{a.text}</p>
+                  {a.mapUrl
+                    ? <a href={a.mapUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><MapPin className="h-3.5 w-3.5" />Open pinned location in Google Maps<ExternalLink className="h-3 w-3" /></a>
+                    : <p className="mt-1.5 text-xs text-admin-gray-400">No map location pinned</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
         <div className="bg-white rounded-lg border border-admin-gray-200 p-5">
           <h5 className="font-bold mb-3">Edit Customer</h5>
           {notice && (
@@ -105,8 +145,8 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
               <input required value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} className="w-full border border-admin-gray-200 rounded px-3 py-2 text-sm" />
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1">Email *</label>
-              <input type="email" required value={form.email ?? ""} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="w-full border border-admin-gray-200 rounded px-3 py-2 text-sm" />
+              <label className="block text-xs font-medium mb-1">Email</label>
+              <input type="email" placeholder="Optional for mobile-OTP customers" value={form.email ?? ""} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className="w-full border border-admin-gray-200 rounded px-3 py-2 text-sm" />
             </div>
             <div>
               <label className="block text-xs font-medium mb-1">Phone</label>

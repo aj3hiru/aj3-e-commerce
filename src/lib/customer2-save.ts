@@ -39,9 +39,9 @@ export function parseCustomerInput(raw: unknown): CustomerParse {
   const address = str(b.address);
   if (address.length > 500) return { ok: false, message: "The address is too long.", field: "address" };
 
-  // An online customer signs in with an email, so for them it isn't optional.
+  // An online customer signs in with an email or (mobile OTP) a phone number.
   const customerType = b.customerType === "offline" ? "offline" : "online";
-  if (customerType === "online" && !email) return { ok: false, message: "An online customer needs an email to sign in. Choose Walk-in, or add an email.", field: "email" };
+  if (customerType === "online" && !email && !phone) return { ok: false, message: "An online customer needs an email or a mobile number to sign in.", field: "email" };
 
   return {
     ok: true,

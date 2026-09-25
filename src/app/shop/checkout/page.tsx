@@ -15,6 +15,9 @@ export default async function CheckoutPage() {
   const customer = await getCustomerSession();
   if (!customer) redirect("/shop/login?redirect=" + encodeURIComponent("/shop/checkout"));
 
+  // A new mobile-OTP account names itself before its first order.
+  if (!customer.name.trim()) redirect(`/shop/account?setup=1&next=${encodeURIComponent("/shop/checkout")}`);
+
   const cart = await getCart();
   if (Object.keys(cart).length === 0) redirect("/shop/cart");
 

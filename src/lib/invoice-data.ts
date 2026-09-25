@@ -11,6 +11,9 @@ export interface InvoiceData {
     orderStatus: string;
     paymentMethod: string;
     createdAt: Date;
+    shippingAddress: string | null;
+    /** Google Maps link to the pinned delivery spot, when the customer shared one. */
+    mapUrl: string | null;
   };
   customer: { name: string; email: string | null; phone: string | null; address: string | null } | null;
   items: { productName: string; hsnCode: string | null; qty: number; price: number; gstRate: number }[];
@@ -114,6 +117,8 @@ export async function getInvoiceData(orderId: number): Promise<InvoiceData | nul
       orderStatus: order.orderStatus,
       paymentMethod: order.paymentMethod,
       createdAt: order.createdAt,
+      shippingAddress: order.shippingAddress,
+      mapUrl: order.shippingLat !== null && order.shippingLng !== null ? `https://maps.google.com/?q=${Number(order.shippingLat)},${Number(order.shippingLng)}` : null,
     },
     customer: order.customer,
     items,

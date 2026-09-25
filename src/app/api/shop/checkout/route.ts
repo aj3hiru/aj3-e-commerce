@@ -24,6 +24,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Your cart is empty." }, { status: 400 });
   }
 
+  if (!customer.name.trim()) {
+    return NextResponse.json({ success: false, message: "Please add your name in your profile before placing an order." }, { status: 400 });
+  }
   const body = await req.json().catch(() => ({}));
   let address = String(body.address ?? "").trim();
   let pin: { lat: number; lng: number } | null = null;

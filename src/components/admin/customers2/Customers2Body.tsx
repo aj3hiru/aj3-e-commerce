@@ -345,7 +345,7 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
                       <tr key={r.id} style={{ height: ROW_H }} className={cn("odd:bg-[#f2f2f2] even:bg-white", isBusy && "opacity-60")}>
                         {show("cus2-c-customer") && (
                           <td className={td}>
-                            <Link href={`/admin/ecommerce/customers/${r.id}`} title={`Open ${r.name}'s profile`} className="block max-w-full truncate font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.name}</Link>
+                            <Link href={`/admin/ecommerce/customers/${r.id}`} title={`Open ${r.name}'s profile`} className="block max-w-full truncate font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.name || <span className="font-normal italic text-admin-gray-400">No name yet</span>}</Link>
                             <div className="truncate text-xs text-admin-gray-500">
                               Joined {fmtDate(r.createdAt)}{r.lastOrderAt ? ` · last order ${fmtDate(r.lastOrderAt)}` : " · never ordered"}
                             </div>

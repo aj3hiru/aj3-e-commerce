@@ -458,7 +458,12 @@ function ItemsDialog({ order, onClose }: { order: Order2Row; onClose: () => void
             </div>
           ))}
         </div>
-        {order.shippingAddress && <p className="text-xs leading-5 text-admin-gray-500">Ships to: {order.shippingAddress}</p>}
+        {order.shippingAddress && <p className="whitespace-pre-line text-xs leading-5 text-admin-gray-500">Ships to: {order.shippingAddress}</p>}
+        {order.mapUrl && (
+          <a href={order.mapUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">
+            📍 Open delivery location in Google Maps
+          </a>
+        )}
         <Link href={`/admin/ecommerce/orders/${order.id}`} className="inline-flex h-10 items-center rounded-[0.375rem] bg-[#2563eb] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8]">Open full order</Link>
       </div>
     </Modal>

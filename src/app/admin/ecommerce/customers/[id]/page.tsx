@@ -3,6 +3,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { CustomerProfileView } from "@/components/admin/CustomerProfileView";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
+import { formatAddress, toAddress } from "@/lib/customer-addresses";
 
 interface CustomerProfilePageProps {
   params: Promise<{ id: string }>;
@@ -22,21 +23,26 @@ export default async function CustomerProfilePage({ params }: CustomerProfilePag
   const customer = await prisma.ecomCustomer.findUnique({ where: { id: customerId } });
   if (!customer) notFound();
 
-  const [orders, credits] = await Promise.all([
+  const [orders, credits, addressRows] = await Promise.all([
     prisma.ecomOrder.findMany({ where: { customerId }, orderBy: { createdAt: "desc" } }),
     prisma.ecomCredit.findMany({
       where: { customerId },
       include: { order: { select: { orderNumber: true } }, payments: { orderBy: { createdAt: "asc" } } },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.ecomCustomerAddress.findMany({ where: { customerId }, orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }] }),
   ]);
+  const addresses = addressRows.map(toAddress).map((a) => ({
+    id: a.id, name: a.name, phone: a.phone, text: formatAddress(a), type: a.type, isDefault: a.isDefault,
+    mapUrl: a.lat !== null && a.lng !== null ? `https://www.google.com/maps?q=${a.lat},${a.lng}` : null,
+  }));
 
   const totalSpent = orders.reduce((s: number, o: (typeof orders)[number]) => s + Number(o.totalAmount), 0);
 
   return (
     <AdminShell
       siteName="EduMint24"
-      pageTitle={customer.name}
+      pageTitle={customer.name || "New customer (no name yet)"}
       pageSubtitle="Customer profile, order history, and due"
       username={session.username}
       role={session.role}
@@ -58,6 +64,8 @@ export default async function CustomerProfilePage({ params }: CustomerProfilePag
         }))}
         totalSpent={totalSpent}
         totalOrders={orders.length}
+        addresses={addresses}
+        login={{ hasPassword: !!customer.password, email: !!customer.email, phone: !!customer.phone && customer.customerType === "online" }}
       />
     </AdminShell>
   );

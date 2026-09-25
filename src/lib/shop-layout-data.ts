@@ -43,7 +43,7 @@ export async function getShopLayoutData(): Promise<ShopLayoutData> {
 
   let customer: ShopCustomer | null = null;
   if (customerSession) {
-    customer = { id: customerSession.customerId, name: customerSession.name };
+    customer = { id: customerSession.customerId, name: customerSession.name.trim() || "My Account" };
   }
 
   // Depends on `biz` (business_hours is the delivery-time fallback), so this

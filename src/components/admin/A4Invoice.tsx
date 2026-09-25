@@ -56,7 +56,8 @@ export function A4Invoice({ data, biz, siteName }: A4InvoiceProps) {
             <div><strong>{order.customerName || customer?.name || "Walk-in Customer"}</strong></div>
             <div>{order.customerEmail || customer?.email || ""}</div>
             {customer?.phone && <div>{customer.phone}</div>}
-            {customer?.address && <div>{customer.address}</div>}
+            {(order.shippingAddress || customer?.address) && <div style={{ whiteSpace: "pre-line" }}>{order.shippingAddress || customer?.address}</div>}
+            {order.mapUrl && <div style={{ fontSize: "0.8rem", marginTop: 4 }}>Location: <a href={order.mapUrl}>{order.mapUrl.replace("https://", "")}</a></div>}
           </div>
           <div>
             <h6 style={blockH6}>Payment</h6>

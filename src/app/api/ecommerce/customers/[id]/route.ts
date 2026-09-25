@@ -31,14 +31,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const address = (body.address ?? "").trim();
   const status = body.status === "inactive" ? "inactive" : "active";
 
-  if (!name || !email) {
-    return NextResponse.json({ success: false, message: "Name and email are required." }, { status: 400 });
-  }
+  if (!name) return NextResponse.json({ success: false, message: "Name is required." }, { status: 400 });
+  // Mobile-OTP customers sign in with their phone, so an email is optional — but one of the two is needed.
+  if (!email && !phone) return NextResponse.json({ success: false, message: "Add an email or a mobile number." }, { status: 400 });
 
   try {
     await prisma.ecomCustomer.update({
       where: { id: customerId },
-      data: { name, email, phone: phone || null, customerType, address: address || null, status },
+      data: { name, email: email || null, phone: phone || null, customerType, address: address || null, status },
     });
 
     await logActivity(req, session.userId, "ecom_customer_update", `Updated Customer: ${name} (ID: ${customerId})`);

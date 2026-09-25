@@ -43,6 +43,8 @@ export interface Order2Row {
   customerPhone: string | null;
   isGuest: boolean;
   shippingAddress: string | null;
+  /** Google Maps link to the pinned delivery location, if the customer shared one. */
+  mapUrl: string | null;
   total: number;
   paid: number;
   dueBalance: number;
@@ -108,7 +110,7 @@ export async function getOrders2Data(type: string, range: { from: string; to: st
       take: ORDERS_PAGE_SIZE,
       select: {
         id: true, orderNumber: true, customerId: true, customerName: true, customerEmail: true, isGuest: true,
-        shippingAddress: true, totalAmount: true, paidAmount: true, paymentStatus: true, paymentMethod: true,
+        shippingAddress: true, shippingLat: true, shippingLng: true, totalAmount: true, paidAmount: true, paymentStatus: true, paymentMethod: true,
         orderStatus: true, createdAt: true,
         customer: { select: { phone: true } },
         items: { select: { productId: true, productName: true, qty: true, price: true } },
@@ -133,7 +135,7 @@ export async function getOrders2Data(type: string, range: { from: string; to: st
 
   const rows: Order2Row[] = (orderRows as {
     id: number; orderNumber: string; customerId: number | null; customerName: string; customerEmail: string | null;
-    isGuest: boolean; shippingAddress: string | null; totalAmount: unknown; paidAmount: unknown; paymentStatus: string;
+    isGuest: boolean; shippingAddress: string | null; shippingLat: unknown; shippingLng: unknown; totalAmount: unknown; paidAmount: unknown; paymentStatus: string;
     paymentMethod: string; orderStatus: string; createdAt: Date;
     customer: { phone: string | null } | null;
     items: { productId: number | null; productName: string; qty: number; price: unknown }[];
@@ -149,6 +151,7 @@ export async function getOrders2Data(type: string, range: { from: string; to: st
       customerPhone: o.customer?.phone ?? null,
       isGuest: o.isGuest,
       shippingAddress: o.shippingAddress,
+      mapUrl: o.shippingLat !== null && o.shippingLng !== null ? `https://www.google.com/maps?q=${Number(o.shippingLat)},${Number(o.shippingLng)}` : null,
       total,
       paid,
       dueBalance: dueByOrder.get(o.id) ?? r2(Math.max(0, total - paid)),

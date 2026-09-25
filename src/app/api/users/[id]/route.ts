@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isStaffRole } from "@/lib/roles";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission, type AdminSession } from "@/lib/admin-auth";
 import { hashPassword } from "@/lib/password";
@@ -36,7 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (!hasPermission(session.permissions, "users", "change_roles")) {
       return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
     }
-    if (!["admin", "editor", "author"].includes(body.role)) {
+    if (!isStaffRole(body.role)) {
       return NextResponse.json({ success: false, message: "Invalid role." }, { status: 400 });
     }
     if (userId === session.userId) {
@@ -68,7 +69,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // enough to escalate anyone (including their own account). A missing role
   // keeps the current one instead of silently demoting to "author".
   const isSelf = userId === session.userId;
-  const requestedRole = ["admin", "editor", "author"].includes(body.role) ? body.role : target.role;
+  const requestedRole = isStaffRole(body.role) ? body.role : target.role;
   const canChangeRole =
     !isSelf &&
     hasPermission(session.permissions, "users", "change_roles") &&

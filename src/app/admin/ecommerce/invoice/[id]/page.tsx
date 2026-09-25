@@ -15,7 +15,7 @@ export default async function InvoicePage({ params, searchParams }: InvoicePageP
   const session = await getAdminSession();
   if (
     !session ||
-    (!hasPermission(session.permissions, "ecommerce", "manage_orders") &&
+    (!hasPermission(session.permissions, "orders", "view") &&
       !hasPermission(session.permissions, "ecommerce", "manage_customers") &&
       !hasPermission(session.permissions, "ecommerce", "manage_billing"))
   ) {

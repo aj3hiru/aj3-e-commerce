@@ -162,6 +162,8 @@ export async function POST(req: NextRequest) {
         throw new CheckoutError("This coupon has just reached its usage limit. Please remove it and try again.");
       }
 
+      await tx.ecomOrderEvent.create({ data: { orderId: order.id, type: "placed", toValue: "Pending", actorName: custRow!.name || "Customer" } });
+
       return { orderId: order.id, campaignSales };
     });
 

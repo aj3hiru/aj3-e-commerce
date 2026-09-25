@@ -2,69 +2,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import type { Prisma } from "@prisma/client";
-import { isOrderLocked, paymentChangeBlocked, syncCancelStock } from "@/lib/order-recalc";
 import { adjustOrderStock } from "@/lib/order-stock";
+import { applyOrderAction, WorkflowError } from "@/lib/order-workflow";
 
 // Single source of truth shared with both status dropdowns, so the UI can never
 // offer a value this endpoint would silently drop.
 import { isOrderStatus, isPaymentStatus } from "@/lib/order-statuses";
 
-/** Verified against the set_order_status / set_payment_status GET-based quick
- *  toggles in orders.php. */
+/** Quick status / payment dropdowns on the orders list — same rules as the order page (lib/order-workflow.ts). */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_orders")) {
+  if (!session || !session.permissions.orders?.view) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
   }
-
-  const { id } = await params;
-  const orderId = Number(id);
-  if (!Number.isInteger(orderId)) {
-    return NextResponse.json({ success: false, message: "Invalid order id" }, { status: 400 });
-  }
-
+  const orderId = Number((await params).id);
+  if (!Number.isInteger(orderId)) return NextResponse.json({ success: false, message: "Invalid order id" }, { status: 400 });
   const body = await req.json().catch(() => ({}));
-
-  // The PHP silently ignored an unrecognised status (in_array guard, then a
-  // redirect). Returning 400 instead means the caller can tell a rejected
-  // update apart from an applied one and avoid showing a value that was never
-  // saved — the dashboard table relies on this.
-  if (body.orderStatus !== undefined && !isOrderStatus(body.orderStatus)) {
-    return NextResponse.json({ success: false, message: "Unknown order status" }, { status: 400 });
+  if (body.orderStatus !== undefined && !isOrderStatus(body.orderStatus)) return NextResponse.json({ success: false, message: "Unknown order status" }, { status: 400 });
+  if (body.paymentStatus !== undefined && !isPaymentStatus(body.paymentStatus)) return NextResponse.json({ success: false, message: "Unknown payment status" }, { status: 400 });
+  if (body.orderStatus === undefined && body.paymentStatus === undefined) return NextResponse.json({ success: false, message: "Nothing to update" }, { status: 400 });
+  try {
+    // Payment first, so "Paid + Delivered" in one request passes the payment rule.
+    if (body.paymentStatus !== undefined) await applyOrderAction(orderId, { action: "update_payment", paymentStatus: body.paymentStatus }, session);
+    if (body.orderStatus !== undefined) await applyOrderAction(orderId, { action: "update_status", orderStatus: body.orderStatus, note: body.note }, session);
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    if (e instanceof WorkflowError) return NextResponse.json({ success: false, message: e.message }, { status: 409 });
+    console.error("order update failed", e);
+    return NextResponse.json({ success: false, message: "Couldn't update the order." }, { status: 500 });
   }
-  if (body.paymentStatus !== undefined && !isPaymentStatus(body.paymentStatus)) {
-    return NextResponse.json({ success: false, message: "Unknown payment status" }, { status: 400 });
-  }
-
-  if (body.orderStatus === undefined && body.paymentStatus === undefined) {
-    return NextResponse.json({ success: false, message: "Nothing to update" }, { status: 400 });
-  }
-
-  const order = await prisma.ecomOrder.findUnique({ where: { id: orderId }, select: { orderStatus: true, totalAmount: true } });
-  if (!order) return NextResponse.json({ success: false, message: "Order not found." }, { status: 404 });
-
-  // Same "Delivered orders are locked" rule the order detail page enforces —
-  // the list's quick dropdown used to bypass it.
-  if (body.orderStatus !== undefined && body.orderStatus !== order.orderStatus && isOrderLocked(order.orderStatus)) {
-    return NextResponse.json({ success: false, message: "This order is completed (Delivered) and its status can no longer be changed." }, { status: 409 });
-  }
-  if (body.paymentStatus !== undefined) {
-    const blocked = await paymentChangeBlocked(prisma, orderId);
-    if (blocked) return NextResponse.json({ success: false, message: blocked }, { status: 409 });
-  }
-
-  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    const data: { orderStatus?: string; paymentStatus?: string; paidAmount?: Prisma.Decimal | number } = {};
-    if (body.orderStatus !== undefined) data.orderStatus = body.orderStatus;
-    if (body.paymentStatus !== undefined) {
-      data.paymentStatus = body.paymentStatus;
-      data.paidAmount = body.paymentStatus === "Paid" ? order.totalAmount : 0;
-    }
-    await tx.ecomOrder.update({ where: { id: orderId }, data });
-    if (body.orderStatus !== undefined) await syncCancelStock(tx, orderId, order.orderStatus, body.orderStatus);
-  });
-
-  return NextResponse.json({ success: true });
 }
 
 /** Verified against the POST action==='delete' handler in orders.php. */

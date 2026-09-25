@@ -6,7 +6,7 @@ import { USERS2_GROUPS, USERS2_PREF_KEY, USERS2_STANDALONE } from "@/components/
 import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
-import type { PermissionsShape } from "@/lib/permissions";
+import { DEFAULT_PERMISSIONS, normalizePermissions, type PermissionsShape } from "@/lib/permissions";
 
 /**
  * /admin/user-manager2 — a trial redesign of Users Manager, kept alongside
@@ -32,8 +32,8 @@ export default async function UserManager2Page() {
   const rows = await prisma.user.findMany({ orderBy: { id: "desc" } });
   const users: User2Row[] = (rows as { id: number; username: string; email: string; role: string; status: string; permissions: unknown }[]).map((u) => ({
     id: u.id, username: u.username, email: u.email,
-    role: (["admin", "editor", "author"].includes(u.role) ? u.role : "author") as User2Row["role"],
-    status: u.status, permissions: u.permissions as PermissionsShape,
+    role: u.role,
+    status: u.status, permissions: { ...(JSON.parse(JSON.stringify(DEFAULT_PERMISSIONS)) as PermissionsShape), ...(normalizePermissions(u.permissions, u.role) as unknown as PermissionsShape) },
   }));
 
   return (

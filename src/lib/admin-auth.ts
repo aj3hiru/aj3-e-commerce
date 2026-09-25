@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { prisma } from "./db";
 import { sessionVersion } from "./session-cookies";
+import { normalizePermissions } from "./permissions";
 
 export interface AdminSession {
   userId: number;
@@ -38,7 +39,7 @@ export async function getAdminSession(): Promise<AdminSession | null> {
       username: user.username,
       email: user.email,
       role: user.role,
-      permissions: user.permissions as Record<string, Record<string, boolean>>,
+      permissions: normalizePermissions(user.permissions, user.role),
     };
   } catch {
     return null;

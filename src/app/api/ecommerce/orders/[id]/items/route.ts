@@ -10,7 +10,7 @@ import type { Prisma } from "@prisma/client";
  *  matching the PHP. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_orders")) {
+  if (!session || !hasPermission(session.permissions, "orders", "edit_items")) {
     return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
   }
 

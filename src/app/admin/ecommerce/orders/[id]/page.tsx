@@ -4,6 +4,7 @@ import { OrderDetailView } from "@/components/admin/OrderDetailView";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { isOrderLocked } from "@/lib/order-recalc";
 import { prisma } from "@/lib/db";
+import { listDeliveryAgents } from "@/lib/order-workflow";
 
 interface OrderDetailPageProps {
   params: Promise<{ id: string }>;
@@ -12,7 +13,7 @@ interface OrderDetailPageProps {
 /** Verified against admin/ecommerce/order-view.php. */
 export default async function OrderDetailPage({ params }: OrderDetailPageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_orders")) {
+  if (!session || !hasPermission(session.permissions, "orders", "view")) {
     redirect("/shop/login");
   }
 
@@ -25,6 +26,8 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
     include: {
       items: true,
       customer: { select: { phone: true, email: true, address: true } },
+      deliveryAgent: { select: { id: true, username: true } },
+      events: { orderBy: { createdAt: "asc" } },
       credits: { include: { payments: true }, take: 1 },
     },
   });
@@ -34,7 +37,9 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
   const linkedCredit = order.credits[0] ?? null;
   const dueBalance = linkedCredit ? Math.max(0, Number(linkedCredit.amount) - Number(linkedCredit.amountPaid)) : 0;
 
-  const availableProducts = locked
+  const perms = session.permissions.orders ?? {};
+  const agents = order.orderType === "online" ? await listDeliveryAgents() : [];
+  const availableProducts = locked || !perms.edit_items
     ? []
     : await prisma.ecomProduct.findMany({
         where: { status: "active" },
@@ -68,7 +73,13 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           dueBalance,
           duePaymentCount: linkedCredit?.payments.length ?? 0,
           linkedCreditId: linkedCredit?.id ?? null,
+          orderType: order.orderType,
+          agent: order.deliveryAgent ? { id: order.deliveryAgent.id, name: order.deliveryAgent.username, assignedAt: order.assignedAt?.toISOString() ?? null } : null,
+          cancelReason: order.cancelReason,
         }}
+        perms={{ accept: !!perms.accept_reject, status: !!perms.update_status, assign: !!perms.assign_delivery, pay: !!perms.mark_paid, cancel: !!perms.cancel, editItems: !!perms.edit_items }}
+        agents={agents}
+        events={order.events.map((e) => ({ id: e.id, type: e.type, from: e.fromValue, to: e.toValue, note: e.note, actor: e.actorName, at: e.createdAt.toISOString() }))}
         items={order.items.map((it: (typeof order.items)[number]) => ({
           id: it.id,
           productName: it.productName,

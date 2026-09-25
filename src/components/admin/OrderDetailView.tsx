@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Phone, Mail, MapPin, CreditCard, RefreshCw, Trash2, FileText, Lock } from "lucide-react";
+import { Phone, Mail, MapPin, CreditCard, RefreshCw, Trash2, FileText, Lock, Check, X, Truck, Bike, Banknote, PackageCheck, History, ChevronDown, CircleAlert, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ORDER_STATUSES } from "@/lib/order-statuses";
 
@@ -31,15 +31,35 @@ export interface OrderDetailData {
   dueBalance: number;
   duePaymentCount: number;
   linkedCreditId: number | null;
+  orderType?: string;
+  agent?: { id: number; name: string; assignedAt: string | null } | null;
+  cancelReason?: string | null;
 }
+
+export interface OrderEventRow { id: number; type: string; from: string | null; to: string | null; note: string | null; actor: string; at: string }
+export interface OrderPerms { accept: boolean; status: boolean; assign: boolean; pay: boolean; cancel: boolean; editItems: boolean }
 
 interface OrderDetailViewProps {
   order: OrderDetailData;
   items: OrderDetailItem[];
   availableProducts: { id: number; name: string; sku: string | null; price: number }[];
+  perms?: OrderPerms;
+  agents?: { id: number; name: string }[];
+  events?: OrderEventRow[];
 }
 
-export function OrderDetailView({ order, items, availableProducts }: OrderDetailViewProps) {
+const ALL: OrderPerms = { accept: true, status: true, assign: true, pay: true, cancel: true, editItems: true };
+const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+function eventText(e: OrderEventRow): string {
+  if (e.type === "placed") return "Order placed by the customer";
+  if (e.type === "assign") return e.to ? `Assigned to ${e.to}${e.from ? ` (was ${e.from})` : ""}` : `Delivery agent ${e.from ?? ""} removed`;
+  if (e.type === "payment") return `Payment ${e.from ?? "?"} → ${e.to ?? "?"}`;
+  if (e.type === "note") return "Note";
+  if (e.type === "status") return e.from === "Pending" && e.to === "In Progress" ? "Order accepted" : e.from === "Pending" && e.to === "Canceled" ? "Order rejected" : `Status ${e.from ?? "?"} → ${e.to ?? "?"}`;
+  return e.type;
+}
+
+export function OrderDetailView({ order, items, availableProducts, perms = ALL, agents = [], events = [] }: OrderDetailViewProps) {
   const router = useRouter();
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [orderStatus, setOrderStatus] = useState(order.orderStatus);
@@ -47,6 +67,13 @@ export function OrderDetailView({ order, items, availableProducts }: OrderDetail
   const [addProductId, setAddProductId] = useState("");
   const [addQty, setAddQty] = useState("1");
   const [busy, setBusy] = useState(false);
+  const [agentId, setAgentId] = useState(order.agent ? String(order.agent.id) : "");
+  const [payMethod, setPayMethod] = useState("Cash");
+  const [reasonFor, setReasonFor] = useState<null | "reject" | "cancel">(null);
+  const [reason, setReason] = useState("");
+  const [more, setMore] = useState(false);
+  const online = order.orderType !== "offline";
+  const st = order.orderStatus, paid = order.paymentStatus === "Paid";
 
   async function callStatusApi(body: Record<string, unknown>) {
     setBusy(true);
@@ -110,7 +137,7 @@ export function OrderDetailView({ order, items, availableProducts }: OrderDetail
                   <th className="py-2">Due</th>
                   <th className="py-2">Subtotal</th>
                   <th className="py-2">Invoice</th>
-                  {!order.locked && <th className="py-2">Actions</th>}
+                  {!order.locked && perms.editItems && <th className="py-2">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -118,7 +145,7 @@ export function OrderDetailView({ order, items, availableProducts }: OrderDetail
                   <tr key={it.id} className="border-b border-admin-gray-100">
                     <td className="py-2.5">{it.productName}</td>
                     <td className="py-2.5">
-                      {order.locked ? (
+                      {order.locked || !perms.editItems ? (
                         it.qty
                       ) : (
                         <QtyEditor itemId={it.id} initialQty={it.qty} busy={busy} onSubmit={(qty) => callItemsApi({ action: "update_qty", itemId: it.id, qty })} />
@@ -153,7 +180,7 @@ export function OrderDetailView({ order, items, availableProducts }: OrderDetail
                         </Link>
                       </td>
                     )}
-                    {!order.locked && (
+                    {!order.locked && perms.editItems && (
                       <td className="py-2.5">
                         <button
                           type="button"
@@ -173,7 +200,7 @@ export function OrderDetailView({ order, items, availableProducts }: OrderDetail
             </table>
           </div>
 
-          {!order.locked && (
+          {!order.locked && perms.editItems && (
             <>
               <hr className="my-4 border-admin-gray-100" />
               <h6 className="font-semibold mb-2 text-sm">Add a Product to this Order</h6>
@@ -205,6 +232,23 @@ export function OrderDetailView({ order, items, availableProducts }: OrderDetail
             </>
           )}
         </div>
+
+        {events.length > 0 && (
+          <div className="bg-white rounded-card border border-card shadow-card p-5">
+            <h5 className="mb-3 flex items-center gap-2 font-bold"><History className="h-4 w-4 text-admin-primary" />Order History</h5>
+            <ol className="relative ml-2 border-l-2 border-admin-gray-100">
+              {events.slice().reverse().map((e) => (
+                <li key={e.id} className="relative mb-3.5 pl-5 last:mb-0">
+                  <span className={cn("absolute -left-[7px] top-1 h-3 w-3 rounded-full ring-2 ring-white",
+                    e.type === "payment" ? "bg-emerald-500" : e.type === "assign" ? "bg-sky-500" : e.to === "Canceled" ? "bg-red-500" : e.type === "note" ? "bg-amber-400" : "bg-admin-primary")} />
+                  <p className="text-sm font-medium text-admin-gray-800">{eventText(e)}</p>
+                  {e.note && <p className="text-sm text-admin-gray-600">{e.note}</p>}
+                  <p className="text-xs text-admin-gray-400">{when(e.at)} · {e.actor}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
       </div>
 
       {/* RIGHT: summary */}
@@ -221,39 +265,122 @@ export function OrderDetailView({ order, items, availableProducts }: OrderDetail
           <span className="text-xs font-bold rounded-full px-3 py-1 bg-sky-100 text-sky-800">{order.orderStatus}</span>
         </div>
 
-        {!order.locked && (
-          <div className="space-y-3 mb-4">
-            <div>
-              <label className="block text-xs font-medium mb-1">Order Status</label>
-              <div className="flex gap-2">
-                <select value={orderStatus} onChange={(e) => setOrderStatus(e.target.value)} className="flex-1 border border-admin-gray-200 rounded px-3 py-2 text-sm">
-                  {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => callStatusApi({ action: "update_status", orderStatus })}
-                  className="bg-admin-primary hover:bg-admin-primary-dark text-white text-sm rounded px-3 py-2"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </button>
+        {st === "Canceled" && order.cancelReason && (
+          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"><b>Reason:</b> {order.cancelReason}</div>
+        )}
+
+        {!order.locked && st !== "Canceled" && (
+          <div className="mb-4 space-y-3">
+            {/* 1. New order → accept / reject */}
+            {st === "Pending" && perms.accept && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="mb-2 text-sm font-semibold text-amber-800">New order — accept or reject it</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" disabled={busy} onClick={() => callStatusApi({ action: "update_status", orderStatus: "In Progress" })}
+                    className="flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"><Check className="h-4 w-4" />Accept</button>
+                  <button type="button" disabled={busy} onClick={() => { setReasonFor("reject"); setReason(""); }}
+                    className="flex items-center justify-center gap-1.5 rounded-md border border-red-300 bg-white py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"><X className="h-4 w-4" />Reject</button>
+                </div>
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-1">Payment Status</label>
-              <div className="flex gap-2">
-                <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} className="flex-1 border border-admin-gray-200 rounded px-3 py-2 text-sm">
-                  <option value="Paid">Paid</option>
-                  <option value="Unpaid">Unpaid</option>
-                </select>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => callStatusApi({ action: "update_payment", paymentStatus })}
-                  className="bg-admin-primary hover:bg-admin-primary-dark text-white text-sm rounded px-3 py-2"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
+            )}
+
+            {/* 2. Delivery agent */}
+            {online && st !== "Pending" && (perms.assign || order.agent) && (
+              <div className="rounded-lg border border-admin-gray-200 p-3">
+                <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-admin-gray-800"><Bike className="h-4 w-4 text-sky-600" />Delivery agent</p>
+                {order.agent && <p className="mb-2 text-sm text-admin-gray-600"><b className="text-admin-gray-900">{order.agent.name}</b>{order.agent.assignedAt && <span className="text-xs text-admin-gray-400"> · since {when(order.agent.assignedAt)}</span>}</p>}
+                {perms.assign && (agents.length === 0
+                  ? <p className="text-xs text-admin-gray-500">No delivery agents yet — add a user with the <b>Delivery Agent</b> role in Users.</p>
+                  : (
+                    <div className="flex gap-2">
+                      <select value={agentId} onChange={(e) => setAgentId(e.target.value)} className="min-w-0 flex-1 rounded border border-admin-gray-200 px-2.5 py-2 text-sm">
+                        <option value="">— Not assigned —</option>
+                        {agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      </select>
+                      <button type="button" disabled={busy || agentId === String(order.agent?.id ?? "")} onClick={() => callStatusApi({ action: "assign", agentId: agentId ? Number(agentId) : null })}
+                        className="rounded bg-sky-600 px-3 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50">{order.agent ? "Change" : "Assign"}</button>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            {/* 3. Payment (Cash on Delivery is collected before delivery) */}
+            {!paid && perms.pay && st !== "Pending" && (
+              <div className="rounded-lg border border-admin-gray-200 p-3">
+                <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-admin-gray-800"><Banknote className="h-4 w-4 text-emerald-600" />Payment not received — ₹{order.totalAmount.toFixed(2)}</p>
+                <div className="flex gap-2">
+                  <select value={payMethod} onChange={(e) => setPayMethod(e.target.value)} className="min-w-0 flex-1 rounded border border-admin-gray-200 px-2.5 py-2 text-sm">
+                    {["Cash", "UPI", "Card", "Other"].map((m) => <option key={m}>{m}</option>)}
+                  </select>
+                  <button type="button" disabled={busy} onClick={() => callStatusApi({ action: "update_payment", paymentStatus: "Paid", method: payMethod })}
+                    className="rounded bg-emerald-600 px-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">Mark Paid</button>
+                </div>
+              </div>
+            )}
+
+            {/* 4. Next step */}
+            {perms.status && st === "In Progress" && (
+              <button type="button" disabled={busy || (online && agents.length > 0 && !order.agent)} onClick={() => callStatusApi({ action: "update_status", orderStatus: "Out for Delivery" })}
+                title={online && agents.length > 0 && !order.agent ? "Assign a delivery agent first" : undefined}
+                className="flex w-full items-center justify-center gap-2 rounded-md bg-admin-primary py-2.5 text-sm font-semibold text-white hover:bg-admin-primary-dark disabled:opacity-50"><Truck className="h-4 w-4" />Send Out for Delivery</button>
+            )}
+            {perms.status && (st === "Out for Delivery" || (st === "In Progress" && !online)) && (
+              <>
+                <button type="button" disabled={busy || !paid} onClick={() => callStatusApi({ action: "update_status", orderStatus: "Delivered" })}
+                  className="flex w-full items-center justify-center gap-2 rounded-md bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"><PackageCheck className="h-4 w-4" />Mark Delivered</button>
+                {!paid && <p className="flex items-start gap-1.5 text-xs text-amber-700"><CircleAlert className="mt-px h-3.5 w-3.5 shrink-0" />Collect the payment and mark it Paid first — then it can be marked Delivered.</p>}
+              </>
+            )}
+            {perms.cancel && st !== "Pending" && (
+              <button type="button" disabled={busy} onClick={() => { setReasonFor("cancel"); setReason(""); }} className="w-full text-center text-xs font-semibold text-red-600 hover:underline">Cancel this order</button>
+            )}
+
+            {(perms.status || perms.pay) && (
+              <div className="border-t border-admin-gray-100 pt-2">
+                <button type="button" onClick={() => setMore((v) => !v)} className="flex w-full items-center justify-between text-xs font-semibold text-admin-gray-500">
+                  Set status / payment manually <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", more && "rotate-180")} />
                 </button>
+                {more && (
+                  <div className="mt-2 space-y-2">
+                    {perms.status && (
+                      <div className="flex gap-2">
+                        <select value={orderStatus} onChange={(e) => setOrderStatus(e.target.value)} className="flex-1 border border-admin-gray-200 rounded px-3 py-2 text-sm">
+                          {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <button type="button" disabled={busy} onClick={() => callStatusApi({ action: "update_status", orderStatus })} className="bg-admin-primary hover:bg-admin-primary-dark text-white text-sm rounded px-3 py-2" aria-label="Save status"><RefreshCw className="w-3.5 h-3.5" /></button>
+                      </div>
+                    )}
+                    {perms.pay && (
+                      <div className="flex gap-2">
+                        <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} className="flex-1 border border-admin-gray-200 rounded px-3 py-2 text-sm">
+                          <option value="Paid">Paid</option>
+                          <option value="Unpaid">Unpaid</option>
+                        </select>
+                        <button type="button" disabled={busy} onClick={() => callStatusApi({ action: "update_payment", paymentStatus })} className="bg-admin-primary hover:bg-admin-primary-dark text-white text-sm rounded px-3 py-2" aria-label="Save payment"><RefreshCw className="w-3.5 h-3.5" /></button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {reasonFor && (
+          <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={() => setReasonFor(null)}>
+            <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+              <h5 className="mb-1 text-lg font-bold">{reasonFor === "reject" ? "Reject this order?" : "Cancel this order?"}</h5>
+              <p className="mb-3 text-sm text-admin-gray-500">The stock goes back on the shelf. Tell the reason (the customer can see it in their order).</p>
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {["Out of stock", "Can't deliver to this address", "Customer asked to cancel", "Payment issue"].map((r) => (
+                  <button key={r} type="button" onClick={() => setReason(r)} className={cn("rounded-full border px-2.5 py-1 text-xs", reason === r ? "border-red-400 bg-red-50 text-red-700" : "border-admin-gray-200")}>{r}</button>
+                ))}
+              </div>
+              <textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason" className="w-full rounded border border-admin-gray-200 px-3 py-2 text-sm" />
+              <div className="mt-3 flex justify-end gap-2">
+                <button type="button" onClick={() => setReasonFor(null)} className="rounded bg-admin-gray-100 px-4 py-2 text-sm">Back</button>
+                <button type="button" disabled={busy || reason.trim().length < 3} onClick={async () => { await callStatusApi({ action: "update_status", orderStatus: "Canceled", note: reason.trim() }); setReasonFor(null); }}
+                  className="flex items-center gap-1.5 rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"><Send className="h-3.5 w-3.5" />{reasonFor === "reject" ? "Reject order" : "Cancel order"}</button>
               </div>
             </div>
           </div>

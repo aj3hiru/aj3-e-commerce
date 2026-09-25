@@ -9,6 +9,9 @@ import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession } from "@/lib/admin-auth";
 import { resolveDashboardRange } from "@/lib/dashboard-range";
 import { getDashboard2Stats } from "@/lib/dashboard2-stats";
+import { BadgePercent, Boxes, ClipboardList, HandCoins, LayoutTemplate, PackagePlus, Receipt, Truck } from "lucide-react";
+import { BillingDashboard, CatalogDashboard, MarketingDashboard, OrderDeskDashboard, Welcome } from "@/components/admin/dashboard/RoleDashboards";
+import { billingData, catalogData, marketingData, orderDeskData } from "@/lib/role-dashboards";
 
 interface Dashboard2PageProps {
   searchParams: Promise<{ range?: string; from?: string; to?: string }>;
@@ -31,6 +34,10 @@ export default async function Dashboard2Page({ searchParams }: Dashboard2PagePro
   if (!session || !(session.permissions as unknown as Record<string, boolean>).dashboard_access) {
     redirect("/shop/login");
   }
+
+  // Each role gets its own dashboard; admins and store managers keep the full store dashboard.
+  const roleView = await roleDashboard(session);
+  if (roleView) return roleView;
 
   const params = await searchParams;
   const range = resolveDashboardRange(params.range, params.from, params.to);
@@ -91,4 +98,52 @@ export default async function Dashboard2Page({ searchParams }: Dashboard2PagePro
       </AdminShell>
     </DashboardWidgetPrefsProvider>
   );
+}
+
+async function roleDashboard(session: NonNullable<Awaited<ReturnType<typeof getAdminSession>>>) {
+  const p = session.permissions;
+  const role = session.role;
+  if (role === "admin" || role === "manager") return null;
+  const shell = { siteName: "EduMint24", username: session.username, role: session.role, permissions: p };
+  const name = session.username;
+
+  if (role === "delivery_agent" || (p.delivery?.deliver && !p.orders?.view && !p.ecommerce?.manage_billing)) redirect("/admin/deliveries");
+
+  if (role === "order_manager" || (p.orders?.view && !p.ecommerce?.manage_billing && !p.ecommerce?.manage_products)) {
+    const d = await orderDeskData();
+    return (
+      <AdminShell {...shell} pageTitle="Order Desk" pageSubtitle="New orders, deliveries and today's numbers">
+        <Welcome name={name} role={role} actions={[{ href: "/admin/ecommerce/orders?type=Pending", label: "Pending orders", icon: ClipboardList, primary: true }, { href: "/admin/deliveries?view=all", label: "Deliveries board", icon: Truck }]} />
+        <OrderDeskDashboard d={d} canAccept={!!p.orders?.accept_reject} />
+      </AdminShell>
+    );
+  }
+  if (role === "cashier" || (p.ecommerce?.manage_billing && !p.ecommerce?.manage_products)) {
+    const d = await billingData();
+    return (
+      <AdminShell {...shell} pageTitle="Billing" pageSubtitle="Today at the counter">
+        <Welcome name={name} role={role} actions={[{ href: "/admin/ecommerce/billing", label: "New sale", icon: Receipt, primary: true }, { href: "/admin/ecommerce/due", label: "Collect due", icon: HandCoins }]} />
+        <BillingDashboard d={d} />
+      </AdminShell>
+    );
+  }
+  if (role === "catalog_manager" || (p.ecommerce?.manage_products && !p.orders?.view)) {
+    const d = await catalogData();
+    return (
+      <AdminShell {...shell} pageTitle="Products" pageSubtitle="Your catalogue at a glance">
+        <Welcome name={name} role={role} actions={[{ href: "/admin/ecommerce/products/add", label: "Add product", icon: PackagePlus, primary: true }, { href: "/admin/ecommerce/products", label: "All products", icon: Boxes }]} />
+        <CatalogDashboard d={d} />
+      </AdminShell>
+    );
+  }
+  if (role === "marketing" || p.ecommerce?.manage_homepage || p.ecommerce?.manage_coupons) {
+    const d = await marketingData();
+    return (
+      <AdminShell {...shell} pageTitle="Marketing" pageSubtitle="Offers, campaigns and customers">
+        <Welcome name={name} role={role} actions={[{ href: "/admin/customizer", label: "Store customizer", icon: LayoutTemplate, primary: true }, { href: "/admin/ecommerce/coupons", label: "Coupons", icon: BadgePercent }]} />
+        <MarketingDashboard d={d} />
+      </AdminShell>
+    );
+  }
+  return null;
 }

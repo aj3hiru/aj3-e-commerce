@@ -7,6 +7,8 @@ import { logActivity } from "@/lib/activity-log";
 import { loginSchema } from "@/lib/validators/auth";
 import { getAuthSettings } from "@/lib/auth-settings";
 import { findCustomerByPhone } from "@/lib/customer-phone";
+import { STAFF_ROLE_IDS } from "@/lib/roles";
+import { normalizePermissions } from "@/lib/permissions";
 
 /**
  * Verified 1:1 against shop/login.php's POST handler. Preserves:
@@ -46,7 +48,7 @@ export async function POST(req: NextRequest) {
 
   // ── 1) Try an admin/editor/author account first (matched by username) ──
   const adminUser = await prisma.user.findFirst({
-    where: { username: identity, role: { in: ["admin", "editor", "author"] } },
+    where: { username: identity, role: { in: STAFF_ROLE_IDS } },
   });
   const adminPassOk = await verifyPassword(password, adminUser?.passwordHash);
 
@@ -60,7 +62,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: "Your account is pending approval. Please wait for admin activation." });
     }
 
-    const permissions = (adminUser.permissions as Record<string, unknown>) ?? {};
+    const permissions = normalizePermissions(adminUser.permissions, adminUser.role) as Record<string, unknown>;
     if (!permissions.dashboard_access) {
       await logActivity(req, adminUser.id, "login_denied", `No dashboard_access: ${adminUser.username}`);
       return NextResponse.json({ success: false, message: "You do not have permission to access the admin panel." });

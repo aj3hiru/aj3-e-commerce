@@ -29,7 +29,7 @@ interface PageProps {
 
 export default async function Orders2Page({ searchParams }: PageProps) {
   const session = await getAdminSession();
-  if (!session || !hasPermission(session.permissions, "ecommerce", "manage_orders")) {
+  if (!session || !hasPermission(session.permissions, "orders", "view")) {
     redirect("/shop/login");
   }
 
@@ -62,7 +62,7 @@ export default async function Orders2Page({ searchParams }: PageProps) {
         </div>
         <Orders2Body
           data={data}
-          canEdit={hasPermission(session.permissions, "ecommerce", "manage_orders")}
+          canEdit={hasPermission(session.permissions, "orders", "update_status") || hasPermission(session.permissions, "orders", "mark_paid")}
           canBill={hasPermission(session.permissions, "ecommerce", "manage_billing")}
         />
       </AdminShell>

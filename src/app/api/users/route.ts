@@ -4,6 +4,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { hashPassword } from "@/lib/password";
 import { logActivity } from "@/lib/activity-log";
 import { getRolePermissionDefaults } from "@/lib/permissions";
+import { isStaffRole, roleLabel } from "@/lib/roles";
 
 /** Verified against the create_user action in user-manager.php. */
 export async function POST(req: NextRequest) {
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
   const username = (body.username ?? "").trim();
   const email = (body.email ?? "").trim();
   const password = body.password ?? "";
-  const requestedRole = ["admin", "editor", "author"].includes(body.role) ? body.role : "author";
+  const requestedRole = isStaffRole(body.role) ? body.role : "author";
   // Picking a non-default role needs change_roles, and only an admin can create
   // another admin — otherwise a users.create-only staffer could mint an admin.
   if (requestedRole !== "author" && !hasPermission(session.permissions, "users", "change_roles")) {
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
     data: { username, email, passwordHash, role, permissions, status: "active" },
   });
 
-  await logActivity(req, session.userId, "user_create", `Created user: ${username} (${role})`);
+  await logActivity(req, session.userId, "user_create", `Created user: ${username} (${roleLabel(role)})`);
 
   return NextResponse.json({ success: true, redirect: "/admin/user-manager?success=created", userId: created.id });
 }

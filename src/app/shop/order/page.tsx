@@ -44,7 +44,10 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
   // ── One order ──────────────────────────────────────────────────────────────
   const order = await prisma.ecomOrder.findFirst({
     where: { id: Number(id) || 0, customerId: customer.customerId },
-    include: { items: true, customer: { select: { address: true, phone: true } } },
+    include: {
+      items: true, customer: { select: { address: true, phone: true } }, deliveryAgent: { select: { username: true } },
+      events: { where: { type: "status" }, orderBy: { createdAt: "asc" }, select: { toValue: true, createdAt: true } },
+    },
   });
   if (!order) notFound();
   const [products, payment] = await Promise.all([
@@ -62,6 +65,9 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
         discount: Number(order.discountAmount), gst: Number(order.gstAmount), total: Number(order.totalAmount),
         paymentName: payment?.name ?? order.paymentMethod, paymentStatus: order.paymentStatus,
         customerName: order.customerName, customerPhone: order.customer?.phone ?? null, address: order.shippingAddress || order.customer?.address || "",
+        stepTimes: Object.fromEntries(order.events.filter((e) => e.toValue).map((e) => [e.toValue!, e.createdAt.toISOString()])),
+        agentName: order.deliveryAgent ? order.deliveryAgent.username.split(/[\s._-]/)[0] : null,
+        cancelReason: order.cancelReason,
       }} />
     </ShopLayout>
   );

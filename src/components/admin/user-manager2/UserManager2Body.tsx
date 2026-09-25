@@ -5,31 +5,32 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   Gauge, Rss, Images, Bell, Store, Users as UsersIcon, Feather, BarChart3, Megaphone, Settings, FileText, Folder, Shield,
-  UserRound, ShieldCheck, CheckCircle2, AlertCircle, X, Loader2, Pencil, Trash2, Plus, ChevronDown,
+  UserRound, ShieldCheck, CheckCircle2, AlertCircle, X, Loader2, Pencil, Trash2, Plus, ChevronDown, ClipboardList, Truck, Check,
 } from "lucide-react";
+import { STAFF_ROLES, roleLabel } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import { StatusPill, type PillOption } from "@/components/admin/ui/buttons";
 import { PERMISSION_GROUPS, getRolePermissionDefaults, countGrantedPermissions, type PermissionsShape } from "@/lib/permissions";
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  Gauge, Rss, Images, Bell, Store, Users: UsersIcon, Feather, BarChart3, Megaphone, Settings, FileText, Folder, Shield,
+  Gauge, Rss, Images, Bell, Store, Users: UsersIcon, Feather, BarChart3, Megaphone, Settings, FileText, Folder, Shield, ClipboardList, Truck,
 };
 
 export interface User2Row {
   id: number;
   username: string;
   email: string;
-  role: "admin" | "editor" | "author";
+  role: string;
   status: string; // "active" | "pending" | "suspended"
   permissions: PermissionsShape;
 }
 
-const ROLE_META: Record<string, { label: string; cls: string }> = {
-  admin: { label: "Admin", cls: "bg-violet-50 text-violet-700" },
-  editor: { label: "Editor", cls: "bg-blue-50 text-blue-700" },
-  author: { label: "Author", cls: "bg-admin-gray-100 text-admin-gray-600" },
-};
+const roleColor = (id: string) => STAFF_ROLES.find((r) => r.id === id)?.color ?? "#64748b";
+function RoleBadge({ role }: { role: string }) {
+  const c = roleColor(role);
+  return <span className="whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold" style={{ color: c, background: `color-mix(in srgb, ${c} 11%, white)` }}>{roleLabel(role)}</span>;
+}
 const STATUS_OPTIONS: readonly PillOption<"active" | "pending" | "suspended">[] = [
   { value: "active", label: "Active", variant: "success" },
   { value: "pending", label: "Pending", variant: "warning" },
@@ -129,7 +130,7 @@ export function UserManager2Body({ users: initial, currentUserId }: { users: Use
           <label className="relative flex h-10 items-center gap-2 rounded-[0.375rem] border border-[#dee2e6] bg-white pl-3 pr-8 text-sm">
             <span className="text-admin-gray-500">Role:</span>
             <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="appearance-none bg-transparent font-medium text-admin-gray-900 focus:outline-none">
-              <option value="all">All</option><option value="admin">Admin</option><option value="editor">Editor</option><option value="author">Author</option>
+              <option value="all">All</option>{STAFF_ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
             </select>
             <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-gray-500" />
           </label>
@@ -169,7 +170,7 @@ export function UserManager2Body({ users: initial, currentUserId }: { users: Use
                           </div>
                         </td>
                       )}
-                      {show("u2-c-role") && <td className={td}><span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", ROLE_META[u.role].cls)}>{ROLE_META[u.role].label}</span></td>}
+                      {show("u2-c-role") && <td className={td}><RoleBadge role={u.role} /></td>}
                       {show("u2-c-status") && (
                         <td className={td}>
                           <StatusPill label={`Change status of ${u.username}`} value={u.status === "active" ? "active" : u.status === "pending" ? "pending" : "suspended"}
@@ -250,16 +251,19 @@ function UserModal({ user, onClose, onSaved, onDelete }: {
   const [username, setUsername] = useState(user?.username ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<User2Row["role"]>(user?.role ?? "author");
-  const [permissions, setPermissions] = useState<PermissionsShape>(user?.permissions ?? getRolePermissionDefaults("author"));
+  const [role, setRole] = useState<string>(user?.role ?? "order_manager");
+  const [permissions, setPermissions] = useState<PermissionsShape>(user?.permissions ?? getRolePermissionDefaults("order_manager"));
   const [advanced, setAdvanced] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<{ text: string; field?: string } | null>(null);
 
-  function applyRole(next: User2Row["role"]) {
+  function applyRole(next: string) {
     setRole(next);
-    if (!advanced) setPermissions(getRolePermissionDefaults(next));
+    setPermissions(getRolePermissionDefaults(next)); // a new role starts from its preset; fine-tune below
   }
+  const setGroup = (groupKey: keyof PermissionsShape, fields: string[], value: boolean) => setPermissions((prev) => ({
+    ...prev, [groupKey]: Object.fromEntries(fields.map((f) => [f, value])),
+  }) as PermissionsShape);
   function toggle(groupKey: keyof PermissionsShape, field: string | null, value: boolean) {
     setPermissions((prev) => {
       const next = { ...prev };
@@ -311,14 +315,25 @@ function UserModal({ user, onClose, onSaved, onDelete }: {
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputCls(err?.field === "password")} />
           </div>
           <div>
-            <label className="mb-1.5 block text-[15px] font-medium text-admin-gray-900">Role</label>
-            <select value={role} onChange={(e) => applyRole(e.target.value as User2Row["role"])} className={inputCls(false)}>
-              <option value="author">Author</option><option value="editor">Editor</option><option value="admin">Admin</option>
-            </select>
+            <label className="mb-1.5 block text-[15px] font-medium text-admin-gray-900">Role <span className="text-sm font-normal text-admin-gray-500">— sets their dashboard and default permissions</span></label>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {STAFF_ROLES.map((r) => {
+                const on = role === r.id;
+                return (
+                  <button key={r.id} type="button" onClick={() => applyRole(r.id)} aria-pressed={on}
+                    className={cn("relative rounded-[0.5rem] border px-3 py-2.5 text-left transition", on ? "border-transparent ring-2" : "border-[#dee2e6] hover:border-admin-gray-400")}
+                    style={on ? { ["--tw-ring-color" as string]: r.color, background: `color-mix(in srgb, ${r.color} 7%, white)` } : undefined}>
+                    <span className="flex items-center gap-2 text-sm font-semibold text-admin-gray-900"><span className="h-2.5 w-2.5 rounded-full" style={{ background: r.color }} />{r.label}</span>
+                    <span className="mt-0.5 block text-xs leading-snug text-admin-gray-500">{r.description}</span>
+                    {on && <Check className="absolute right-2 top-2 h-4 w-4" style={{ color: r.color }} strokeWidth={3} />}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <label className="flex items-center gap-2.5 text-sm font-medium text-admin-gray-900">
-            <input type="checkbox" checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} className="h-4 w-4 accent-[#2563eb]" /> Advanced Access (customize individual permissions)
+            <input type="checkbox" checked={advanced} onChange={(e) => setAdvanced(e.target.checked)} className="h-4 w-4 accent-[#2563eb]" /> Advanced permissions (fine-tune what this user can do) <span className="font-normal text-admin-gray-500">· {countGrantedPermissions(permissions)} granted</span>
           </label>
 
           {advanced && (
@@ -330,6 +345,12 @@ function UserModal({ user, onClose, onSaved, onDelete }: {
                   <div key={group.key}>
                     <div className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-admin-gray-900">
                       {Icon && <Icon className="h-4 w-4 text-[#2563eb]" />} {group.label}
+                      {group.fields && (
+                        <span className="ml-auto flex gap-2 text-xs font-medium">
+                          <button type="button" onClick={() => setGroup(group.key, Object.keys(group.fields!), true)} className="text-[#2563eb] hover:underline">All</button>
+                          <button type="button" onClick={() => setGroup(group.key, Object.keys(group.fields!), false)} className="text-admin-gray-500 hover:underline">None</button>
+                        </span>
+                      )}
                       {!group.fields && <input type="checkbox" className="ml-auto h-4 w-4 accent-[#2563eb]" checked={!!groupValue} onChange={(e) => toggle(group.key, null, e.target.checked)} />}
                     </div>
                     {group.fields && (

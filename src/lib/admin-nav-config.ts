@@ -18,6 +18,9 @@ export type NavPermissionPath =
   | "ecommerce.manage_products"
   | "ecommerce.manage_categories"
   | "ecommerce.manage_orders"
+  | "orders.view"
+  | "delivery.deliver"
+  | "delivery.view_all"
   | "ecommerce.manage_customers"
   | "ecommerce.manage_coupons"
   | "ecommerce.manage_payment"
@@ -134,21 +137,31 @@ export const ADMIN_NAV: NavSection[] = [
   // 5. MANAGE ORDERS
   {
     title: "Manage Orders",
-    permission: "ecommerce.manage_orders",
+    permission: "orders.view",
     links: [
       {
         href: "/admin/ecommerce/orders",
         label: "All Orders",
         icon: faReceipt,
-        permission: "ecommerce.manage_orders",
+        permission: "orders.view",
         submenuId: "submenu-orders",
         submenu: [
-          { href: "/admin/ecommerce/orders?type=Pending", label: "Pending Orders", icon: faHourglassHalf, permission: "ecommerce.manage_orders", matchQuery: { key: "type", value: "Pending" } },
-          { href: "/admin/ecommerce/orders?type=In+Progress", label: "Progress Orders", icon: faTruckLoading, permission: "ecommerce.manage_orders", matchQuery: { key: "type", value: "In Progress" } },
-          { href: "/admin/ecommerce/orders?type=Delivered", label: "Delivered Orders", icon: faTruck, permission: "ecommerce.manage_orders", matchQuery: { key: "type", value: "Delivered" } },
-          { href: "/admin/ecommerce/orders?type=Canceled", label: "Canceled Orders", icon: faBan, permission: "ecommerce.manage_orders", matchQuery: { key: "type", value: "Canceled" } },
+          { href: "/admin/ecommerce/orders?type=Pending", label: "Pending Orders", icon: faHourglassHalf, permission: "orders.view", matchQuery: { key: "type", value: "Pending" } },
+          { href: "/admin/ecommerce/orders?type=In+Progress", label: "Progress Orders", icon: faTruckLoading, permission: "orders.view", matchQuery: { key: "type", value: "In Progress" } },
+          { href: "/admin/ecommerce/orders?type=Delivered", label: "Delivered Orders", icon: faTruck, permission: "orders.view", matchQuery: { key: "type", value: "Delivered" } },
+          { href: "/admin/ecommerce/orders?type=Canceled", label: "Canceled Orders", icon: faBan, permission: "orders.view", matchQuery: { key: "type", value: "Canceled" } },
         ],
       },
+      { href: "/admin/deliveries?view=all", label: "Deliveries Board", icon: faTruck, permission: "delivery.view_all", matchQuery: { key: "view", value: "all" } },
+    ],
+  },
+
+  // 5a. DELIVERY AGENT — only their own deliveries
+  {
+    title: "Delivery",
+    permission: "delivery.deliver",
+    links: [
+      { href: "/admin/deliveries", label: "My Deliveries", icon: faTruck, permission: "delivery.deliver" },
     ],
   },
 

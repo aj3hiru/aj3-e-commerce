@@ -45,6 +45,8 @@ export interface Order2Row {
   shippingAddress: string | null;
   /** Google Maps link to the pinned delivery location, if the customer shared one. */
   mapUrl: string | null;
+  /** Delivery agent assigned to the order. */
+  agent: string | null;
   total: number;
   paid: number;
   dueBalance: number;
@@ -113,6 +115,7 @@ export async function getOrders2Data(type: string, range: { from: string; to: st
         shippingAddress: true, shippingLat: true, shippingLng: true, totalAmount: true, paidAmount: true, paymentStatus: true, paymentMethod: true,
         orderStatus: true, createdAt: true,
         customer: { select: { phone: true } },
+        deliveryAgent: { select: { username: true } },
         items: { select: { productId: true, productName: true, qty: true, price: true } },
       },
     }),
@@ -154,6 +157,7 @@ export async function getOrders2Data(type: string, range: { from: string; to: st
       customerPhone: o.customer?.phone ?? null,
       isGuest: o.isGuest,
       shippingAddress: o.shippingAddress,
+      agent: (o as { deliveryAgent?: { username: string } | null }).deliveryAgent?.username ?? null,
       mapUrl: o.shippingLat !== null && o.shippingLng !== null ? `https://www.google.com/maps?q=${Number(o.shippingLat)},${Number(o.shippingLng)}` : null,
       total,
       paid,

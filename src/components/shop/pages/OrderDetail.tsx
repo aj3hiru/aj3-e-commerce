@@ -17,6 +17,10 @@ export interface OrderDetail {
   items: { id: number; name: string; qty: number; price: number; slug: string | null; image: string | null }[];
   discount: number; gst: number; total: number; paymentName: string; paymentStatus: string;
   customerName: string; customerPhone: string | null; address: string;
+  /** When each status was reached (from the order history). */
+  stepTimes?: Record<string, string>;
+  agentName?: string | null;
+  cancelReason?: string | null;
 }
 
 /** One order: success banner (just placed), tracking timeline, items, prices, address, help. */
@@ -50,7 +54,7 @@ export function OrderDetailView({ o }: { o: OrderDetail }) {
         <Section title="Order Status">
           {canceled ? (
             <div className="flex items-center gap-3 rounded-[6px] bg-[#fdecee] px-3.5 py-3 text-[#d0263a]">
-              <CircleX className="h-6 w-6 shrink-0" /><div><p className="text-[14px] font-semibold">Order cancelled</p><p className="text-[12.5px] opacity-90">This order was cancelled. Any payment made will be refunded.</p></div>
+              <CircleX className="h-6 w-6 shrink-0" /><div><p className="text-[14px] font-semibold">Order cancelled</p><p className="text-[12.5px] opacity-90">{o.cancelReason ? `Reason: ${o.cancelReason}. ` : ""}Any payment made will be refunded.</p></div>
             </div>
           ) : (
             <ol>
@@ -65,8 +69,8 @@ export function OrderDetailView({ o }: { o: OrderDetail }) {
                     </span>
                     <div className="pt-1">
                       <p className={cn("text-[14px]", i <= at ? "font-semibold text-[#353543]" : "text-[#8b8ba3]")}>{STEP_LABEL[s]}</p>
-                      {now && <p className="text-[12.5px] text-[#616173]">{STEP_TEXT[s]}</p>}
-                      {i === 0 && <p className="text-[12px] text-[#8b8ba3]">{fmtDate(o.createdAt, true)}</p>}
+                      {now && <p className="text-[12.5px] text-[#616173]">{s === "Out for Delivery" && o.agentName ? `${o.agentName} is on the way with your order.` : STEP_TEXT[s]}</p>}
+                      {(i === 0 ? o.createdAt : o.stepTimes?.[s]) && i <= at && <p className="text-[12px] text-[#8b8ba3]">{fmtDate(i === 0 ? o.createdAt : o.stepTimes![s], true)}</p>}
                     </div>
                   </li>
                 );

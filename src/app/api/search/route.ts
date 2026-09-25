@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json([]);
   // Results expose customer phone numbers and order totals — only staff who
   // work with orders/customers/billing/dues may search them.
-  const canSearch = ["manage_orders", "manage_customers", "manage_billing", "manage_credits"].some((k) =>
+  const canSearch = hasPermission(session.permissions, "orders", "view") || ["manage_customers", "manage_billing", "manage_credits"].some((k) =>
     hasPermission(session.permissions, "ecommerce", k)
   );
   if (!canSearch) return NextResponse.json([]);

@@ -384,6 +384,7 @@ export function Orders2Body({ data, canEdit, canBill }: { data: Orders2Data; can
                             ) : (
                               <StatusBadge variant={orderStatusVariant(r.orderStatus)}>{r.orderStatus}</StatusBadge>
                             )}
+                            {r.agent && <div className="mt-1 truncate text-xs text-admin-gray-500">🛵 {r.agent}</div>}
                           </td>
                         )}
                         {show("or2-c-actions") && (

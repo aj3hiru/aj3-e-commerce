@@ -35,6 +35,7 @@ model User {
 
   activityLogs  ActivityLog[]
   posts         Post[]
+  deliveries    EcomOrder[] @relation("OrderDeliveryAgent")
 
   @@map("users")
 }
@@ -303,6 +304,10 @@ model EcomOrder {
   shippingAddress String?  @map("shipping_address") @db.Text
   shippingLat     Decimal? @map("shipping_lat") @db.Decimal(10, 7) // pinned location from the saved address (for delivery)
   shippingLng     Decimal? @map("shipping_lng") @db.Decimal(10, 7)
+  deliveryAgentId Int?     @map("delivery_agent_id") // staff user delivering this order
+  assignedAt      DateTime? @map("assigned_at")
+  deliveredAt     DateTime? @map("delivered_at")
+  cancelReason    String?  @map("cancel_reason") @db.VarChar(255)
   totalAmount     Decimal  @map("total_amount") @db.Decimal(10, 2)
   paidAmount      Decimal  @default(0) @map("paid_amount") @db.Decimal(10, 2)
   subtotalAmount  Decimal  @map("subtotal_amount") @db.Decimal(10, 2)
@@ -314,7 +319,9 @@ model EcomOrder {
   orderType       String   @map("order_type") // "online" (storefront) | "offline" (POS)
   createdAt       DateTime @default(now()) @map("created_at")
 
-  customer EcomCustomer?      @relation(fields: [customerId], references: [id])
+  customer      EcomCustomer?      @relation(fields: [customerId], references: [id])
+  deliveryAgent User?              @relation("OrderDeliveryAgent", fields: [deliveryAgentId], references: [id], onDelete: SetNull)
+  events        EcomOrderEvent[]
   items    EcomOrderItem[]
   payments EcomOrderPayment[]
   credits  EcomCredit[]
@@ -944,4 +951,22 @@ model EcomCustomerAddress {
 
   @@index([customerId])
   @@map("ecom_customer_addresses")
+}
+
+/// Order history: every status / payment / delivery-assignment change, with who did it. See prisma/order-workflow.sql.
+model EcomOrderEvent {
+  id        Int      @id @default(autoincrement())
+  orderId   Int      @map("order_id")
+  type      String   @db.VarChar(20) // status | payment | assign | note | placed
+  fromValue String?  @map("from_value") @db.VarChar(60)
+  toValue   String?  @map("to_value") @db.VarChar(60)
+  note      String?  @db.VarChar(500)
+  userId    Int?     @map("user_id") // staff user; null = customer/system
+  actorName String   @map("actor_name") @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  order EcomOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("ecom_order_events")
 }

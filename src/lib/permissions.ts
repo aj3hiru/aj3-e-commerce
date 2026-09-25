@@ -28,6 +28,10 @@ export interface PermissionsShape {
     manage_customers: boolean; manage_coupons: boolean; manage_payment: boolean;
     manage_billing: boolean; manage_credits: boolean; manage_homepage: boolean;
   };
+  /** Online-order desk, finer than ecommerce.manage_orders (which older accounts still carry — see normalizePermissions). */
+  orders: { view: boolean; accept_reject: boolean; update_status: boolean; assign_delivery: boolean; mark_paid: boolean; edit_items: boolean; cancel: boolean };
+  /** deliver = a delivery agent (sees and completes their own deliveries); view_all = the deliveries board. */
+  delivery: { deliver: boolean; view_all: boolean };
   users: { create: boolean; edit: boolean; delete: boolean; suspend: boolean; change_roles: boolean; manage_permissions: boolean };
   authors: { create: boolean; edit: boolean; delete: boolean; approve: boolean; feature: boolean };
   analytics: { view_basic: boolean; view_advanced: boolean };
@@ -53,6 +57,8 @@ export const DEFAULT_PERMISSIONS: PermissionsShape = {
     manage_customers: false, manage_coupons: false, manage_payment: false,
     manage_billing: false, manage_credits: false, manage_homepage: false,
   },
+  orders: { view: false, accept_reject: false, update_status: false, assign_delivery: false, mark_paid: false, edit_items: false, cancel: false },
+  delivery: { deliver: false, view_all: false },
   users: { create: false, edit: false, delete: false, suspend: false, change_roles: false, manage_permissions: false },
   authors: { create: false, edit: false, delete: false, approve: false, feature: false },
   analytics: { view_basic: false, view_advanced: false },
@@ -83,8 +89,10 @@ export function countGrantedPermissions(permissions: PermissionsShape): number {
 
 /** Verified against getRolePermissionDefaults() — role-based presets used to
  *  pre-fill the permission checkboxes when creating a user with "Advance Access". */
-export function getRolePermissionDefaults(role: "admin" | "editor" | "author"): PermissionsShape {
+export function getRolePermissionDefaults(role: string): PermissionsShape {
   const all = cloneDefaults();
+  const preset = STORE_ROLE_PRESETS[role];
+  if (preset) { preset(all); return all; }
 
   if (role === "admin") {
     // Admin: everything ticked by default (array_walk_recursive($all, fn(&$v) => $v = true))
@@ -155,6 +163,11 @@ export const PERMISSION_GROUPS: {
     // feature look broken. New manage_homepage field, checked instead.
     fields: { manage_categories: "Categories", manage_products: "Products", manage_orders: "Orders", manage_customers: "Customers", manage_coupons: "Coupons", manage_payment: "Payment Settings", manage_billing: "Billing / POS", manage_credits: "Due", manage_homepage: "Homepage Settings" },
   },
+  {
+    key: "orders", label: "Online Orders", icon: "ClipboardList",
+    fields: { view: "View orders", accept_reject: "Accept / Reject", update_status: "Change status", assign_delivery: "Assign delivery agent", mark_paid: "Mark paid / unpaid", edit_items: "Edit items", cancel: "Cancel orders" },
+  },
+  { key: "delivery", label: "Delivery", icon: "Truck", fields: { deliver: "Is a delivery agent (own deliveries)", view_all: "Deliveries board (all agents)" } },
   { key: "users", label: "Users", icon: "Users", fields: { create: "Create", edit: "Edit", delete: "Delete", suspend: "Suspend", change_roles: "Change Roles", manage_permissions: "Manage Permissions" } },
   { key: "authors", label: "Authors", icon: "Feather", fields: { create: "Create", edit: "Edit", delete: "Delete", approve: "Approve", feature: "Feature" } },
   { key: "analytics", label: "Analytics", icon: "BarChart3", fields: { view_basic: "Basic Analytics", view_advanced: "Advanced Analytics" } },
@@ -164,3 +177,64 @@ export const PERMISSION_GROUPS: {
   { key: "files", label: "Files", icon: "Folder", fields: { access_file_manager: "File Manager" } },
   { key: "security", label: "Security", icon: "Shield", fields: { view_logs: "View Logs", manage_blacklist: "Blacklist", manage_recaptcha: "reCAPTCHA" } },
 ];
+
+/* ───────────────────────── store roles ───────────────────────── */
+
+type Setter = (p: PermissionsShape) => void;
+const allOf = <T extends Record<string, boolean>>(g: T) => { (Object.keys(g) as (keyof T)[]).forEach((k) => ((g[k] as boolean) = true)); };
+
+/** Permission presets for the store roles (see lib/roles.ts). Admin = everything. */
+export const STORE_ROLE_PRESETS: Record<string, Setter> = {
+  admin: (p) => {
+    const walk = (o: Record<string, unknown>) => { for (const k of Object.keys(o)) { if (o[k] && typeof o[k] === "object") walk(o[k] as Record<string, unknown>); else o[k] = true; } };
+    walk(p as unknown as Record<string, unknown>);
+  },
+  manager: (p) => {
+    p.dashboard_access = true;
+    allOf(p.ecommerce); allOf(p.orders); p.delivery.view_all = true;
+    allOf(p.analytics); allOf(p.push_notifications); p.media.upload = true; p.files.access_file_manager = true;
+  },
+  order_manager: (p) => {
+    p.dashboard_access = true;
+    allOf(p.orders); p.orders.edit_items = false;
+    p.delivery.view_all = true; p.ecommerce.manage_customers = true; p.analytics.view_basic = true;
+  },
+  delivery_agent: (p) => { p.dashboard_access = true; p.delivery.deliver = true; },
+  cashier: (p) => {
+    p.dashboard_access = true;
+    p.ecommerce.manage_billing = true; p.ecommerce.manage_credits = true; p.ecommerce.manage_customers = true;
+    p.orders.view = true; p.orders.mark_paid = true; p.analytics.view_basic = true;
+  },
+  catalog_manager: (p) => {
+    p.dashboard_access = true;
+    p.ecommerce.manage_products = true; p.ecommerce.manage_categories = true;
+    p.media.upload = true; p.media.delete = true; p.files.access_file_manager = true; p.analytics.view_basic = true;
+  },
+  marketing: (p) => {
+    p.dashboard_access = true;
+    p.ecommerce.manage_homepage = true; p.ecommerce.manage_coupons = true;
+    allOf(p.push_notifications); p.analytics.view_basic = true; p.media.upload = true; p.files.access_file_manager = true;
+  },
+};
+
+/**
+ * Fills in groups an older account doesn't have yet so every check can use
+ * the fine-grained keys: the orders group follows ecommerce.manage_orders
+ * (that permission used to cover everything about orders), delivery is off,
+ * and an admin always has everything.
+ */
+export function normalizePermissions(raw: unknown, role: string): Record<string, Record<string, boolean>> {
+  const p = (raw && typeof raw === "object" ? JSON.parse(JSON.stringify(raw)) : {}) as Record<string, unknown>;
+  const eco = (p.ecommerce ?? {}) as Record<string, boolean>;
+  if (!p.orders || typeof p.orders !== "object") {
+    const on = !!eco.manage_orders;
+    p.orders = { view: on, accept_reject: on, update_status: on, assign_delivery: on, mark_paid: on, edit_items: on, cancel: on };
+  }
+  if (!p.delivery || typeof p.delivery !== "object") p.delivery = { deliver: false, view_all: !!eco.manage_orders };
+  if (role === "admin") {
+    const full = getRolePermissionDefaults("admin") as unknown as Record<string, unknown>;
+    for (const [g, v] of Object.entries(full)) if (v && typeof v === "object") p[g] = v;
+    p.dashboard_access = true;
+  }
+  return p as Record<string, Record<string, boolean>>;
+}

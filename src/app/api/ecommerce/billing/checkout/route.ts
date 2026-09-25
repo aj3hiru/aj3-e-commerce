@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { generateOrderNumber } from "@/lib/order-number";
+import { inLine } from "@/lib/work-queue";
+import { invalidateModel } from "@/lib/cache";
+import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-log";
 import { checkoutSchema } from "@/lib/validators/checkout";
 import type { Prisma } from "@prisma/client";
@@ -49,7 +52,8 @@ async function handlePOST(req: NextRequest) {
   const liveCampaigns = await loadLiveCampaigns({ fresh: true });
 
   try {
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // Bills wait in the same orderly line as online orders instead of piling onto the database.
+    const result = await inLine("checkout", 4, 40_000, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Re-fetch authoritative product data — never trust client-sent prices.
       const lineItems: {
         product: Awaited<ReturnType<typeof tx.ecomProduct.findUnique>>;
@@ -184,10 +188,10 @@ async function handlePOST(req: NextRequest) {
       const paymentMethod = distinctMethods.length === 1 ? distinctMethods[0] : "Split";
 
       // ── Create order ──
-      const orderNumber = await generateOrderNumber(tx);
+      // The real bill number is taken at the very end, so the shared counter is locked only briefly.
       const order = await tx.ecomOrder.create({
         data: {
-          orderNumber,
+          orderNumber: `TMP-${randomUUID()}`,
           customerId: customerId ?? undefined,
           customerName,
           isGuest: input.is_guest,
@@ -217,6 +221,14 @@ async function handlePOST(req: NextRequest) {
         data: { orderId: order.id, type: "placed", toValue: "Delivered", userId: session.userId, actorName: session.username, note: input.offline ? "Billed offline, uploaded later" : null, ...(soldAt ? { createdAt: soldAt } : {}) },
       });
 
+      // Stock first (write-lock the product rows before order lines share-lock them), in product-id order,
+      // one statement each and never below 0 — no deadlocks between bills.
+      for (const li of [...lineItems].sort((a, b) => a.product!.id - b.product!.id)) {
+        if (li.product!.productType === "physical" && li.product!.stockQty !== null) {
+          await tx.$executeRaw`UPDATE ecom_products SET stock_qty = GREATEST(stock_qty - ${li.qty}, 0) WHERE id = ${li.product!.id}`;
+        }
+      }
+
       const campaignSales: CampaignSaleInput[] = [];
       for (const li of lineItems) {
         const item = await tx.ecomOrderItem.create({
@@ -237,18 +249,6 @@ async function handlePOST(req: NextRequest) {
             campaignId: li.campaign.campaignId, orderId: order.id, orderItemId: item.id, productId: li.product!.id,
             qty: li.qty, unitPrice: li.unitPrice, discountPerUnit: li.campaign.discountPerUnit,
           });
-        }
-
-        if (li.product!.productType === "physical" && li.product!.stockQty !== null) {
-          await tx.ecomProduct.update({
-            where: { id: li.product!.id },
-            data: { stockQty: { decrement: li.qty } },
-          });
-          // GREATEST(stock_qty - qty, 0) equivalent — clamp any negative result
-          const updated = await tx.ecomProduct.findUnique({ where: { id: li.product!.id } });
-          if (updated && updated.stockQty !== null && updated.stockQty < 0) {
-            await tx.ecomProduct.update({ where: { id: li.product!.id }, data: { stockQty: 0 } });
-          }
         }
       }
 
@@ -272,8 +272,13 @@ async function handlePOST(req: NextRequest) {
         throw new CheckoutError("This coupon has just reached its usage limit. Please remove it and try again.");
       }
 
-      return { order, discount, totalGst, dueAmount, grandTotal, campaignSales };
-    });
+      const orderNumber = await generateOrderNumber(tx);
+      await tx.ecomOrder.update({ where: { id: order.id }, data: { orderNumber } });
+
+      return { order: { ...order, orderNumber }, discount, totalGst, dueAmount, grandTotal, campaignSales };
+    }));
+
+    invalidateModel("EcomProduct"); // stock changed via raw SQL — refresh cached product lists
 
     // Remember which lines were sold under a campaign (after the bill is safely saved; never throws).
     await recordCampaignSales(result.campaignSales);
@@ -305,12 +310,7 @@ async function handlePOST(req: NextRequest) {
     if (err instanceof CheckoutError) {
       return NextResponse.json({ success: false, message: err.message });
     }
-    // Prisma-specific error classes are only resolvable once `prisma generate` has
-    // run against a real datasource in your environment (this sandbox's network
-    // blocks the Prisma engine download — see the README for details). Falls back
-    // to a safe generic message if the specific error class can't be checked.
-    const message = err instanceof Error ? err.message : "unexpected error";
-    return NextResponse.json({ success: false, message: `Checkout failed: ${message}` });
+    throw err; // busy / database trouble → a clear "try again" answer (lib/api-errors.ts)
   }
 }
 

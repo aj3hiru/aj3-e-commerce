@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { BusyError } from "./work-queue";
 
 /**
  * Every API route is wrapped in this (see the bottom of each route.ts), so an
@@ -20,8 +21,14 @@ export function withApiErrors<A extends unknown[]>(handler: (...args: A) => Prom
       // Next.js redirect() / notFound() travel as errors — let them through.
       const digest = (e as { digest?: unknown })?.digest;
       if (typeof digest === "string" && digest.startsWith("NEXT_")) throw e;
-      const code = (e as { code?: unknown })?.code;
       const json = (status: number, message: string) => NextResponse.json({ success: false, message }, { status });
+      if (e instanceof BusyError) return NextResponse.json({ success: false, busy: true, message: e.message }, { status: 503, headers: { "Retry-After": "5" } });
+      const code = (e as { code?: unknown })?.code;
+      if (code === "P2024" || code === "P2034" || code === "P2028") {
+        const r = args[0] as { method?: string; url?: string } | undefined;
+        console.warn(`[api busy] ${code} ${r?.method ?? ""} ${r?.url ?? ""} ${e instanceof Error ? e.message.split("\n").slice(-2).join(" ").slice(0, 200) : ""}`);
+        return json(503, "The shop is very busy right now. Please try again in a few seconds.");
+      }
       if (code === "P2025") return json(404, "This item no longer exists. Please refresh the page.");
       if (code === "P2002") return json(409, "That value is already used by another item.");
       if (code === "P2003" || code === "P2014") return json(409, "It is still used by other records, so it can't be changed that way.");

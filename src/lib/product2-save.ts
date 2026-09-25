@@ -267,10 +267,19 @@ export async function createProduct2(form: FormData): Promise<{ id: number; name
   const p = await parse(form, null);
   const image = p.image ? await saveUploadedImage(p.image, "ecommerce/products", p.data.slug) : null;
   try {
-    const created = await prisma.ecomProduct.create({
-      data: { ...p.data, image, barcode: p.barcode || null },
-      select: { id: true, name: true },
-    });
+    // Two people adding the same name at the same moment: the second gets "name-x7k2" instead of an error.
+    let created: { id: number; name: string } | null = null;
+    for (let attempt = 0; !created; attempt++) {
+      try {
+        created = await prisma.ecomProduct.create({
+          data: { ...p.data, slug: attempt ? `${p.data.slug}-${Math.random().toString(36).slice(2, 6)}` : p.data.slug, image, barcode: p.barcode || null },
+          select: { id: true, name: true },
+        });
+      } catch (e) {
+        if (attempt < 3 && isUniqueError(e) && /slug/i.test(String(e.meta?.target ?? ""))) continue;
+        throw e;
+      }
+    }
     if (!p.barcode) {
       // Same automatic barcode as the PHP: EM + id padded to 8 digits.
       await prisma.ecomProduct.update({ where: { id: created.id }, data: { barcode: `EM${String(created.id).padStart(8, "0")}` } });

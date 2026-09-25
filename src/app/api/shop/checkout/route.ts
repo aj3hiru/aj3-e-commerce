@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { getCart, setCart } from "@/lib/cart-session";
 import { generateOrderNumber } from "@/lib/order-number";
+import { inLine } from "@/lib/work-queue";
+import { randomUUID } from "crypto";
 import type { Prisma } from "@prisma/client";
 import { findRedeemableCoupon, consumeCouponUse } from "@/lib/coupon-redeem";
 import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "@/lib/campaign-pricing";
@@ -53,7 +55,8 @@ async function handlePOST(req: NextRequest) {
   const liveCampaigns = await loadLiveCampaigns({ fresh: true });
 
   try {
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // Orders wait in an orderly line (4 at a time) instead of piling onto the database.
+    const result = await inLine("checkout", 4, 40_000, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Same pricing as the cart page (sizes, sale and campaign prices), read inside the transaction.
       const lines = await loadCartLines(cart, { client: tx, campaigns: liveCampaigns });
       const lineItems: (CartLine & { lineTotal: number; gstAmount?: number })[] = [];
@@ -105,11 +108,11 @@ async function handlePOST(req: NextRequest) {
 
       await tx.ecomCustomer.update({ where: { id: customer.customerId }, data: { address } });
 
-      const orderNumber = await generateOrderNumber(tx);
       const custRow = await tx.ecomCustomer.findUnique({ where: { id: customer.customerId } });
+      // The real order number is taken at the very end (see below), so the shared counter is locked only briefly.
       const order = await tx.ecomOrder.create({
         data: {
-          orderNumber,
+          orderNumber: `TMP-${randomUUID()}`,
           customerId: customer.customerId,
           customerName: custRow!.name,
           customerEmail: custRow!.email,
@@ -127,21 +130,10 @@ async function handlePOST(req: NextRequest) {
         },
       });
 
-      const campaignSales: CampaignSaleInput[] = [];
-      for (const li of lineItems) {
-        const item = await tx.ecomOrderItem.create({
-          data: {
-            orderId: order.id, productId: li.product.id, productName: li.name, hsnCode: li.product.hsnCode,
-            qty: li.qty, price: li.unitPrice, gstRate: Number(li.product.gstRate), gstAmount: li.gstAmount!,
-          },
-          select: { id: true },
-        });
-        if (li.campaign) {
-          campaignSales.push({
-            campaignId: li.campaign.campaignId, orderId: order.id, orderItemId: item.id, productId: li.product.id,
-            qty: li.qty, unitPrice: li.unitPrice, discountPerUnit: li.campaign.discountPerUnit,
-          });
-        }
+      // Stock first: take each product row's write lock before anything else touches it (saving an
+      // order line briefly share-locks the product, and two orders holding that while waiting to
+      // write would deadlock). Always in product-id order, so orders never lock rows the other way round.
+      for (const li of [...lineItems].sort((a, b) => a.product.id - b.product.id || (a.size?.id ?? 0) - (b.size?.id ?? 0))) {
         if (li.product.productType === "physical" && li.size && li.size.stockQty !== null) {
           const took = await tx.ecomProductSize.updateMany({ where: { id: li.size.id, stockQty: { gte: li.qty } }, data: { stockQty: { decrement: li.qty } } });
           if (took.count === 0) throw new CheckoutError(`Sorry, "${li.name}" just went out of stock. Please update your cart.`);
@@ -159,14 +151,34 @@ async function handlePOST(req: NextRequest) {
         }
       }
 
-      if (coupon && !(await consumeCouponUse(tx, coupon.id))) {
-        throw new CheckoutError("This coupon has just reached its usage limit. Please remove it and try again.");
+      const campaignSales: CampaignSaleInput[] = [];
+      for (const li of lineItems) {
+        const item = await tx.ecomOrderItem.create({
+          data: {
+            orderId: order.id, productId: li.product.id, productName: li.name, hsnCode: li.product.hsnCode,
+            qty: li.qty, price: li.unitPrice, gstRate: Number(li.product.gstRate), gstAmount: li.gstAmount!,
+          },
+          select: { id: true },
+        });
+        if (li.campaign) {
+          campaignSales.push({
+            campaignId: li.campaign.campaignId, orderId: order.id, orderItemId: item.id, productId: li.product.id,
+            qty: li.qty, unitPrice: li.unitPrice, discountPerUnit: li.campaign.discountPerUnit,
+          });
+        }
       }
 
       await tx.ecomOrderEvent.create({ data: { orderId: order.id, type: "placed", toValue: "Pending", actorName: custRow!.name || "Customer" } });
 
+      if (coupon && !(await consumeCouponUse(tx, coupon.id))) {
+        throw new CheckoutError("This coupon has just reached its usage limit. Please remove it and try again.");
+      }
+
+      const orderNumber = await generateOrderNumber(tx);
+      await tx.ecomOrder.update({ where: { id: order.id }, data: { orderNumber } });
+
       return { orderId: order.id, campaignSales };
-    });
+    }));
 
     // Remember which lines were sold under a campaign (after the order is safely saved; never throws).
     await recordCampaignSales(result.campaignSales);
@@ -178,8 +190,7 @@ async function handlePOST(req: NextRequest) {
     if (err instanceof CheckoutError) {
       return NextResponse.json({ success: false, message: err.message });
     }
-    const message = err instanceof Error ? err.message : "unexpected error";
-    return NextResponse.json({ success: false, message: `Could not place order: ${message}` }, { status: 500 });
+    throw err; // busy / database trouble → a clear "try again" answer (lib/api-errors.ts)
   }
 }
 

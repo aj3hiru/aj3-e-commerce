@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { AvatarPicker } from "@/components/staff/AvatarPicker";
 import { StatusBadge, StatusPill } from "@/components/admin/ui/buttons";
 import { orderStatusVariant, paymentStatusVariant } from "@/components/admin/StatusDropdown";
+import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 
 export interface CustomerProfileData {
   id: number;
@@ -66,7 +67,11 @@ const CARD = "rounded-[10px] border border-admin-gray-200 bg-white shadow-sm";
 /** Admin → Customers → one customer: who they are, what they bought, where they live, what they owe. */
 export function CustomerProfileView({ customer, orders, credits, totalSpent, totalOrders, addresses = [], login, startEditing }: CustomerProfileViewProps) {
   const router = useRouter();
-  const [tab, setTab] = useState<"orders" | "addresses" | "due">("orders");
+  const { isVisible, loaded } = useDashboardWidgetPrefs();
+  const on = (g: string, k: string) => isVisible(g) && isVisible(k);
+  const tabs = ([["orders", "cp-t-orders"], ["addresses", "cp-t-addresses"], ["due", "cp-t-due"]] as const).filter(([, k]) => on("cp-tabs", k)).map(([t]) => t);
+  const [tabPick, setTab] = useState<"orders" | "addresses" | "due">("orders");
+  const tab = tabs.includes(tabPick) ? tabPick : tabs[0];
   const [editing, setEditing] = useState(!!startEditing);
   const [status, setStatus] = useState(customer.status);
   const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
@@ -89,9 +94,9 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
   }
 
   return (
-    <div className="space-y-5">
+    <div className={cn("space-y-5", !loaded && "invisible")}>
       {/* Header */}
-      <section className={cn(CARD, "overflow-hidden")}>
+      {isVisible("cp-header") && <section className={cn(CARD, "overflow-hidden")}>
         <div className="h-16 bg-[linear-gradient(120deg,#ede9fe,#fce7f3)]" />
         <div className="flex flex-col gap-4 px-5 pb-5 sm:flex-row sm:items-end">
           <div className="-mt-10 shrink-0">
@@ -110,12 +115,12 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
                 options={[{ value: "active", label: "Active", variant: "success" }, { value: "inactive", label: "Inactive", variant: "secondary" }]}
                 onChange={changeStatus} />
             </div>
-            <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-admin-gray-600">
+            {on("cp-header", "cp-h-contact") && <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 text-sm text-admin-gray-600">
               {customer.phone && <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-admin-gray-400" />{customer.phone}</span>}
               {customer.email && <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-admin-gray-400" />{customer.email}</span>}
               {customer.createdAt && <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-admin-gray-400" />Customer since {day(customer.createdAt)}</span>}
-            </div>
-            {login && customer.customerType === "online" && (
+            </div>}
+            {login && customer.customerType === "online" && on("cp-header", "cp-h-login") && (
               <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
                 {login.phone && <span className="inline-flex items-center gap-1 rounded-[6px] bg-emerald-50 px-2 py-1 font-semibold text-emerald-700"><Smartphone className="h-3.5 w-3.5" />Mobile OTP login</span>}
                 {login.hasPassword && <span className="inline-flex items-center gap-1 rounded-[6px] bg-sky-50 px-2 py-1 font-semibold text-sky-700"><KeyRound className="h-3.5 w-3.5" />Password login</span>}
@@ -124,27 +129,29 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setEditing(true)} className="flex h-10 items-center gap-2 rounded-[8px] bg-[#2563eb] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8]"><Pencil className="h-4 w-4" />Edit profile</button>
-            <Link href={`/admin/ecommerce/billing?customer_id=${customer.id}`} className="flex h-10 items-center gap-2 rounded-[8px] border border-admin-gray-200 bg-white px-3.5 text-sm font-medium text-admin-gray-700 hover:bg-admin-gray-50"><ShoppingCart className="h-4 w-4" />New order</Link>
-            {customer.phone && <a href={`tel:${customer.phone}`} className="grid h-10 w-10 place-items-center rounded-[8px] border border-admin-gray-200 bg-white text-admin-gray-600 hover:bg-admin-gray-50" title="Call"><Phone className="h-4 w-4" /></a>}
-            {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="grid h-10 w-10 place-items-center rounded-[8px] border border-admin-gray-200 bg-white text-emerald-600 hover:bg-emerald-50" title="WhatsApp"><MessageCircle className="h-4 w-4" /></a>}
+            {on("cp-header", "cp-h-actions") && <><button type="button" onClick={() => setEditing(true)} className="flex h-10 items-center gap-2 rounded-[8px] bg-[#2563eb] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8]"><Pencil className="h-4 w-4" />Edit profile</button>
+            <Link href={`/admin/ecommerce/billing?customer_id=${customer.id}`} className="flex h-10 items-center gap-2 rounded-[8px] border border-admin-gray-200 bg-white px-3.5 text-sm font-medium text-admin-gray-700 hover:bg-admin-gray-50"><ShoppingCart className="h-4 w-4" />New order</Link></>}
+            {on("cp-header", "cp-h-call") && customer.phone && <a href={`tel:${customer.phone}`} className="grid h-10 w-10 place-items-center rounded-[8px] border border-admin-gray-200 bg-white text-admin-gray-600 hover:bg-admin-gray-50" title="Call"><Phone className="h-4 w-4" /></a>}
+            {on("cp-header", "cp-h-call") && wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="grid h-10 w-10 place-items-center rounded-[8px] border border-admin-gray-200 bg-white text-emerald-600 hover:bg-emerald-50" title="WhatsApp"><MessageCircle className="h-4 w-4" /></a>}
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* Numbers */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <Stat icon={ShoppingBag} tone="bg-blue-50 text-blue-600" label="Orders" value={String(totalOrders)} />
-        <Stat icon={IndianRupee} tone="bg-emerald-50 text-emerald-600" label="Total spent" value={money(totalSpent)} />
-        <Stat icon={TrendingUp} tone="bg-violet-50 text-violet-600" label="Average order" value={money(avg)} />
-        <Stat icon={HandCoins} tone={totalDue > 0.004 ? "bg-red-50 text-red-600" : "bg-admin-gray-100 text-admin-gray-500"} label="Due" value={totalDue > 0.004 ? money(totalDue) : "None"} />
-        <Stat icon={CalendarDays} tone="bg-amber-50 text-amber-600" label="Last order" value={last ? day(last) : "Never"} />
-      </section>
+      {isVisible("cp-stats") && (
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          {on("cp-stats", "cp-k-orders") && <Stat icon={ShoppingBag} tone="bg-blue-50 text-blue-600" label="Orders" value={String(totalOrders)} />}
+          {on("cp-stats", "cp-k-spent") && <Stat icon={IndianRupee} tone="bg-emerald-50 text-emerald-600" label="Total spent" value={money(totalSpent)} />}
+          {on("cp-stats", "cp-k-avg") && <Stat icon={TrendingUp} tone="bg-violet-50 text-violet-600" label="Average order" value={money(avg)} />}
+          {on("cp-stats", "cp-k-due") && <Stat icon={HandCoins} tone={totalDue > 0.004 ? "bg-red-50 text-red-600" : "bg-admin-gray-100 text-admin-gray-500"} label="Due" value={totalDue > 0.004 ? money(totalDue) : "None"} />}
+          {on("cp-stats", "cp-k-last") && <Stat icon={CalendarDays} tone="bg-amber-50 text-amber-600" label="Last order" value={last ? day(last) : "Never"} />}
+        </section>
+      )}
 
       {/* Tabs */}
-      <section className={CARD}>
+      {tab && <section className={CARD}>
         <div className="flex gap-1 border-b border-admin-gray-100 px-3 pt-3">
-          {([["orders", `Orders (${orders.length})`, Receipt], ["addresses", `Addresses (${addresses.length})`, MapPin], ["due", `Due history (${credits.length})`, HandCoins]] as const).map(([k, label, Icon]) => (
+          {([["orders", `Orders (${orders.length})`, Receipt], ["addresses", `Addresses (${addresses.length})`, MapPin], ["due", `Due history (${credits.length})`, HandCoins]] as const).filter(([k]) => tabs.includes(k)).map(([k, label, Icon]) => (
             <button key={k} type="button" onClick={() => setTab(k)} aria-pressed={tab === k}
               className={cn("-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-semibold transition", tab === k ? "border-[#2563eb] text-[#2563eb]" : "border-transparent text-admin-gray-500 hover:text-admin-gray-800")}>
               <Icon className="h-4 w-4" />{label}
@@ -157,18 +164,19 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-admin-gray-200 text-left text-xs uppercase tracking-wide text-admin-gray-500 [&>th]:px-2 [&>th]:py-2.5 [&>th]:font-semibold">
-                    <th>Order</th><th>Date</th><th className="text-right">Total</th><th>Payment</th><th>Status</th><th />
+                    {on("cp-cols", "cp-c-order") && <th>Order</th>}{on("cp-cols", "cp-c-date") && <th>Date</th>}{on("cp-cols", "cp-c-total") && <th className="text-right">Total</th>}
+                    {on("cp-cols", "cp-c-payment") && <th>Payment</th>}{on("cp-cols", "cp-c-status") && <th>Status</th>}{on("cp-cols", "cp-c-view") && <th />}
                   </tr>
                 </thead>
                 <tbody>
                   {orders.map((o) => (
                     <tr key={o.id} className="border-b border-admin-gray-100 last:border-0 [&>td]:px-2 [&>td]:py-2.5">
-                      <td><Link href={`/admin/ecommerce/orders/${o.id}`} className="font-semibold text-[#2563eb] hover:underline">{o.orderNumber}</Link></td>
-                      <td className="whitespace-nowrap text-admin-gray-600">{day(o.createdAt)}</td>
-                      <td className="whitespace-nowrap text-right font-semibold text-admin-gray-900">{money(o.totalAmount)}</td>
-                      <td><StatusBadge variant={paymentStatusVariant(o.paymentStatus)}>{o.paymentStatus}</StatusBadge></td>
-                      <td><StatusBadge variant={orderStatusVariant(o.orderStatus)}>{o.orderStatus}</StatusBadge></td>
-                      <td className="text-right"><Link href={`/admin/ecommerce/orders/${o.id}`} className="inline-grid h-8 w-8 place-items-center rounded-[8px] text-admin-gray-500 hover:bg-admin-gray-100" title="Open order"><Eye className="h-4 w-4" /></Link></td>
+                      {on("cp-cols", "cp-c-order") && <td><Link href={`/admin/ecommerce/orders/${o.id}`} className="font-semibold text-[#2563eb] hover:underline">{o.orderNumber}</Link></td>}
+                      {on("cp-cols", "cp-c-date") && <td className="whitespace-nowrap text-admin-gray-600">{day(o.createdAt)}</td>}
+                      {on("cp-cols", "cp-c-total") && <td className="whitespace-nowrap text-right font-semibold text-admin-gray-900">{money(o.totalAmount)}</td>}
+                      {on("cp-cols", "cp-c-payment") && <td><StatusBadge variant={paymentStatusVariant(o.paymentStatus)}>{o.paymentStatus}</StatusBadge></td>}
+                      {on("cp-cols", "cp-c-status") && <td><StatusBadge variant={orderStatusVariant(o.orderStatus)}>{o.orderStatus}</StatusBadge></td>}
+                      {on("cp-cols", "cp-c-view") && <td className="text-right"><Link href={`/admin/ecommerce/orders/${o.id}`} className="inline-grid h-8 w-8 place-items-center rounded-[8px] text-admin-gray-500 hover:bg-admin-gray-100" title="Open order"><Eye className="h-4 w-4" /></Link></td>}
                     </tr>
                   ))}
                 </tbody>
@@ -216,9 +224,9 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
             </div>
           ))}
         </div>
-      </section>
+      </section>}
 
-      {customer.address && (
+      {customer.address && isVisible("cp-address") && (
         <section className={cn(CARD, "p-4 text-sm")}>
           <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-admin-gray-500">Address on file</p>
           <p className="whitespace-pre-line text-admin-gray-700">{customer.address}</p>

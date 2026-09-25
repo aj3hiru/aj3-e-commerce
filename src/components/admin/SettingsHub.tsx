@@ -3,7 +3,9 @@
 import {
   Barcode, Building2, Contact, CreditCard, FileSpreadsheet, FileText, Image as ImageIcon, Keyboard, Percent, Share2, Smartphone,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { SettingsMenuLayout, type SettingsMenuItem } from "./SettingsMenuLayout";
+import { hiddenBsSections } from "./business-settings-display";
 
 type Perms = Record<string, Record<string, boolean>>;
 
@@ -29,16 +31,20 @@ const PAGE_SECTIONS: (SettingsMenuItem & { perm: [string, string] })[] = [
 const can = (p: Perms, [g, k]: [string, string]) => !!p[g]?.[k];
 
 /** The Business Settings menu. On the form itself its own sections switch in place; elsewhere they link back to it. */
-export function settingsMenu(permissions: Perms, onForm: boolean): SettingsMenuItem[] {
+export function settingsMenu(permissions: Perms, onForm: boolean, hidden: Set<string> = new Set()): SettingsMenuItem[] {
   const form = can(permissions, ["ecommerce", "manage_payment"])
     ? FORM_SECTIONS.map((s) => (onForm ? s : { ...s, href: `/admin/ecommerce/business-settings?section=${s.key}` }))
     : [];
-  return [...form, ...PAGE_SECTIONS.filter((s) => can(permissions, s.perm)).map((s): SettingsMenuItem => ({ key: s.key, label: s.label, icon: s.icon, href: s.href }))];
+  return [...form, ...PAGE_SECTIONS.filter((s) => can(permissions, s.perm)).map((s): SettingsMenuItem => ({ key: s.key, label: s.label, icon: s.icon, href: s.href }))]
+    .filter((s) => !hidden.has(s.key));
 }
 
 export const FORM_SECTION_KEYS = FORM_SECTIONS.map((s) => s.key);
 
 /** Payment Methods, GST / Tax Rates and Login & OTP pages, inside the Business Settings menu. */
 export function SettingsHub({ active, permissions, children }: { active: string; permissions: Perms; children: React.ReactNode }) {
-  return <SettingsMenuLayout items={settingsMenu(permissions, false)} active={active}>{children}</SettingsMenuLayout>;
+  // Business Settings → Display Options can hide menu sections; the current page always stays listed.
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  useEffect(() => { const h = hiddenBsSections(); h.delete(active); setHidden(h); }, [active]);
+  return <SettingsMenuLayout items={settingsMenu(permissions, false, hidden)} active={active}>{children}</SettingsMenuLayout>;
 }

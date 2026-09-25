@@ -1,5 +1,6 @@
 "use client";
 
+import { useOptionalWidgetVisible } from "@/hooks/useDashboardWidgetPrefs";
 import { useMemo, useState } from "react";
 import {
   ArrowDown, ArrowUp, Award, BadgeCheck, BadgePercent, Banknote, Box, Gift, GripVertical, Headphones, Info, Leaf, Palette, Plus, RotateCcw,
@@ -53,6 +54,7 @@ function Num({ label, value, onChange, min, max, hint }: { label: string; value:
 export function ProductPageCustomizer({ initialDraft, initialLive, products, categories }: {
   initialDraft: ProductPageConfig; initialLive: ProductPageConfig; products: (PickProduct & { slug: string })[]; categories: PickCategory[];
 }) {
+  const showOpt = useOptionalWidgetVisible();
   const [device, setDevice] = useState<"mobile" | "desktop">("mobile");
   const [open, setOpen] = useState<string | null>("info");
   const [focus, setFocus] = useState<{ id: string; n: number } | null>(null);
@@ -293,7 +295,7 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
             </Card>
           </div>
         ))}
-        <p className="px-1 pb-2 pt-1 text-xs text-admin-gray-400">Edits save as a draft automatically. Shoppers see them only after you Publish.</p>
+        {showOpt("cz-draft-note") && <p className="px-1 pb-2 pt-1 text-xs text-admin-gray-400">Edits save as a draft automatically. Shoppers see them only after you Publish.</p>}
       </div>
 
       <div className="order-first flex h-[80vh] flex-col gap-3 lg:order-none lg:sticky lg:top-[100px] lg:h-[calc(100vh-206px)] lg:min-h-[520px]">

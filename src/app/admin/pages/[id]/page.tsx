@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { AdminShell } from "@/components/admin/AdminShell";
+import { DisplayOptionsShell } from "@/components/admin/DisplayOptionsShell";
+import { PAGE_EDITOR_GROUPS, PAGE_EDITOR_PREF_KEY } from "@/components/admin/pages-display";
 import { PageForm } from "@/components/admin/PageForm";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
@@ -22,7 +23,7 @@ export default async function EditPagePage({ params }: EditPagePageProps) {
   if (!page) notFound();
 
   return (
-    <AdminShell
+    <DisplayOptionsShell prefKey={PAGE_EDITOR_PREF_KEY} groups={PAGE_EDITOR_GROUPS}
       siteName="EduMint24"
       pageTitle="Edit Page"
       pageSubtitle={page.title}
@@ -37,6 +38,6 @@ export default async function EditPagePage({ params }: EditPagePageProps) {
           status: page.status as "draft" | "published",
         }}
       />
-    </AdminShell>
+    </DisplayOptionsShell>
   );
 }

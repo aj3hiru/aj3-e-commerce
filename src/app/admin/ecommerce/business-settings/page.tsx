@@ -6,6 +6,9 @@ import { prisma } from "@/lib/db";
 import { getShopHeaderSettings } from "@/lib/header-settings";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 import { getInvoiceSetup } from "@/lib/invoice-settings";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
+import { BS_GROUPS, BS_PREF_KEY, BS_STANDALONE } from "@/components/admin/business-settings-display";
 
 interface BusinessSettingsPageProps {
   searchParams: Promise<{ success?: string; header?: string; section?: string }>;
@@ -48,6 +51,7 @@ export default async function BusinessSettingsPage({ searchParams }: BusinessSet
   const invoiceNumbers = storedInvoiceNumbers.length ? storedInvoiceNumbers : contactNumbers.filter(Boolean);
 
   return (
+    <DashboardWidgetPrefsProvider prefKey={BS_PREF_KEY} groups={BS_GROUPS} standalone={BS_STANDALONE}>
     <AdminShell
       siteName="EduMint24"
       pageTitle="Business Settings"
@@ -55,7 +59,9 @@ export default async function BusinessSettingsPage({ searchParams }: BusinessSet
       username={session.username}
       role={session.role}
       permissions={session.permissions}
+      headerActions={<div className="hidden items-center gap-3 xl:flex"><DisplayOptionsPanel variant="header" /></div>}
     >
+      <div className="mb-4 flex justify-end xl:hidden"><DisplayOptionsPanel variant="toolbar" /></div>
       {params.success === "1" && params.header !== "failed" && (
         <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm text-emerald-700">
           Business profile saved successfully!
@@ -117,5 +123,6 @@ export default async function BusinessSettingsPage({ searchParams }: BusinessSet
         }}
       />
     </AdminShell>
+    </DashboardWidgetPrefsProvider>
   );
 }

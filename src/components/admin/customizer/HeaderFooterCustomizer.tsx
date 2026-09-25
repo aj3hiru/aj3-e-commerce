@@ -1,5 +1,6 @@
 "use client";
 
+import { useOptionalWidgetVisible } from "@/hooks/useDashboardWidgetPrefs";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Building2, Check, CircleAlert, ExternalLink, LayoutPanelTop, Loader2, Save } from "lucide-react";
@@ -27,6 +28,7 @@ const HEADER_PARTS = [
 export function HeaderFooterCustomizer({ part, initial, initialHeader, categories, business }: {
   part: "header" | "footer"; initial: StorefrontConfig; initialHeader: ShopHeaderSettings; categories: ShopCategoryNavItem[]; business: ShopBusinessSettings;
 }) {
+  const showOpt = useOptionalWidgetVisible();
   const [config, setConfig] = useState(initial);
   const [saved, setSaved] = useState(JSON.stringify(initial));
   const [header, setHeader] = useState(initialHeader);
@@ -105,13 +107,13 @@ export function HeaderFooterCustomizer({ part, initial, initialHeader, categorie
 
       <div className="order-first flex h-[80vh] flex-col gap-3 lg:order-none lg:sticky lg:top-[100px] lg:h-[calc(100vh-206px)] lg:min-h-[520px]">
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-admin-gray-200 bg-white px-3 py-2.5 shadow-sm">
-          <div className="min-w-0 flex-1 basis-40 text-sm font-medium">{status}</div>
+          <div className="min-w-0 flex-1 basis-40 text-sm font-medium">{showOpt("cz-toolbar") && showOpt("cz-b-status") && status}</div>
           <button type="button" onClick={save} disabled={saving || !dirty}
             className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-admin-primary px-4 text-sm font-semibold text-white shadow-sm hover:bg-admin-primary-dark disabled:cursor-not-allowed disabled:opacity-50">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save
           </button>
         </div>
-        <StorePreview state={preview} device={previewDevice} className="h-auto min-h-0 flex-1 xl:static xl:h-auto xl:min-h-0" />
+        <StorePreview state={preview} device={previewDevice} showDevice={showOpt("cz-toolbar") && showOpt("cz-b-device")} showAudience={showOpt("cz-toolbar") && showOpt("cz-b-audience")} className="h-auto min-h-0 flex-1 xl:static xl:h-auto xl:min-h-0" />
       </div>
       <Toast text={toast} />
     </div>

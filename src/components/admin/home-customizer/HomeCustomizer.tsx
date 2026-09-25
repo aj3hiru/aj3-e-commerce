@@ -1,5 +1,6 @@
 "use client";
 
+import { useOptionalWidgetVisible } from "@/hooks/useDashboardWidgetPrefs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown, ArrowUp, Check, CircleAlert, Clock, ExternalLink, Eye, EyeOff, Gift, GripVertical, ImageIcon, LayoutGrid,
@@ -226,6 +227,8 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 export function HomeCustomizer({ initialDraft, initialLive, categories, products }: {
   initialDraft: HomeConfig; initialLive: HomeConfig; categories: PickCategory[]; products: PickProduct[];
 }) {
+  const showOpt = useOptionalWidgetVisible();
+  const tb = (k: string) => showOpt("cz-toolbar") && showOpt(k);
   const [config, setConfig] = useState(initialDraft);
   const [serverDraft, setServerDraft] = useState(JSON.stringify(initialDraft));
   const [live, setLive] = useState(JSON.stringify(initialLive));
@@ -501,30 +504,30 @@ export function HomeCustomizer({ initialDraft, initialLive, categories, products
             <p className="text-xs text-admin-gray-500">Meesho-style tab bar fixed to the bottom of phone screens on the homepage.</p>
           </Card>
 
-          <p className="flex items-center gap-1.5 px-1 pb-2 pt-1 text-xs text-admin-gray-400">
+          {showOpt("cz-draft-note") && <p className="flex items-center gap-1.5 px-1 pb-2 pt-1 text-xs text-admin-gray-400">
             {unpublished ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
             Edits save as a draft automatically. Shoppers see them only after you Publish.
-          </p>
+          </p>}
         </div>
 
         {/* Preview */}
         <div className="order-first flex h-[80vh] flex-col gap-3 lg:order-none lg:sticky lg:top-[100px] lg:h-[calc(100vh-206px)] lg:min-h-[520px]">
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-admin-gray-200 bg-white px-3 py-2.5 shadow-sm">
-          <div className="min-w-0 flex-1 basis-40 text-sm font-medium">{status}</div>
-          <div className="flex rounded-lg bg-admin-gray-100 p-1">
+          <div className="min-w-0 flex-1 basis-40 text-sm font-medium">{tb("cz-b-status") && status}</div>
+          {tb("cz-b-device") && <div className="flex rounded-lg bg-admin-gray-100 p-1">
             {([["mobile", Smartphone, "Mobile"], ["desktop", Monitor, "Desktop"]] as const).map(([d, Icon, l]) => (
               <button key={d} type="button" onClick={() => setDevice(d)} aria-pressed={device === d}
                 className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold", device === d ? "bg-white text-admin-primary shadow-sm" : "text-admin-gray-500")}>
                 <Icon className="h-3.5 w-3.5" />{l}
               </button>
             ))}
-          </div>
-          <button type="button" onClick={() => setVersion((v) => v + 1)} title="Reload preview" aria-label="Reload preview"
-            className="grid h-9 w-9 place-items-center rounded-lg border border-admin-gray-200 text-admin-gray-600 hover:bg-admin-gray-50"><RefreshCw className="h-4 w-4" /></button>
-          <a href="/?hc=draft" target="_blank" rel="noreferrer" title="Open preview in a new tab" aria-label="Open preview in a new tab" className="grid h-9 w-9 place-items-center rounded-lg border border-admin-gray-200 text-admin-gray-600 hover:bg-admin-gray-50">
+          </div>}
+          {tb("cz-b-reload") && <button type="button" onClick={() => setVersion((v) => v + 1)} title="Reload preview" aria-label="Reload preview"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-admin-gray-200 text-admin-gray-600 hover:bg-admin-gray-50"><RefreshCw className="h-4 w-4" /></button>}
+          {tb("cz-b-open") && <a href="/?hc=draft" target="_blank" rel="noreferrer" title="Open preview in a new tab" aria-label="Open preview in a new tab" className="grid h-9 w-9 place-items-center rounded-lg border border-admin-gray-200 text-admin-gray-600 hover:bg-admin-gray-50">
             <ExternalLink className="h-4 w-4" />
-          </a>
+          </a>}
           {unpublished && (
             <button type="button" onClick={discard} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-admin-gray-200 px-3 text-sm font-medium text-admin-gray-700 hover:bg-admin-gray-50">
               <RotateCcw className="h-4 w-4" />Discard

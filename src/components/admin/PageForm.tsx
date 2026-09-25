@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { StorePreview } from "@/components/admin/store-preview/StorePreview";
+import { useOptionalWidgetVisible } from "@/hooks/useDashboardWidgetPrefs";
 import { useRouter } from "next/navigation";
 
 export interface PageFormValues {
@@ -20,6 +21,8 @@ export function PageForm({ initial }: { initial: PageFormValues | null }) {
   const [form, setForm] = useState<PageFormValues>(
     initial ?? { title: "", slug: "", content: "", metaTitle: "", metaDescription: "", status: "published" }
   );
+  const show = useOptionalWidgetVisible();
+  const on = (g: string, k: string) => show(g) && show(k);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -55,7 +58,7 @@ export function PageForm({ initial }: { initial: PageFormValues | null }) {
   const preview = useMemo(() => ({ view: "page" as const, page: { title: form.title, content: form.content } }), [form.title, form.content]);
 
   return (
-    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+    <div className={show("pe-preview") ? "grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_420px]" : ""}>
     <form onSubmit={handleSubmit} className="min-w-0 space-y-4">
       {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded px-3 py-2">{error}</div>}
 
@@ -64,13 +67,13 @@ export function PageForm({ initial }: { initial: PageFormValues | null }) {
           <label className="block text-xs font-medium mb-1">Title *</label>
           <input required value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className="w-full border border-admin-gray-200 rounded px-3 py-2 text-sm" />
         </div>
-        <div>
+        {on("pe-form", "pe-slug") && <div>
           <label className="block text-xs font-medium mb-1">Slug (leave blank to auto-generate)</label>
           <div className="flex items-center gap-1">
             <span className="text-admin-gray-400 text-sm">/</span>
             <input value={form.slug} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))} className="flex-1 border border-admin-gray-200 rounded px-3 py-2 text-sm" />
           </div>
-        </div>
+        </div>}
         <div>
           <label className="block text-xs font-medium mb-1">Content *</label>
           <textarea
@@ -82,16 +85,16 @@ export function PageForm({ initial }: { initial: PageFormValues | null }) {
             className="w-full border border-admin-gray-200 rounded px-3 py-2 text-sm font-mono"
           />
         </div>
-        <div>
+        {on("pe-form", "pe-status") && <div>
           <label className="block text-xs font-medium mb-1">Status</label>
           <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as "draft" | "published" }))} className="w-full border border-admin-gray-200 rounded px-3 py-2 text-sm">
             <option value="published">Published</option>
             <option value="draft">Draft</option>
           </select>
-        </div>
+        </div>}
       </div>
 
-      <div className="bg-white rounded-lg border border-admin-gray-200 p-5 space-y-3">
+      {on("pe-form", "pe-seo") && <div className="bg-white rounded-lg border border-admin-gray-200 p-5 space-y-3">
         <h5 className="font-bold text-sm">SEO (optional)</h5>
         <div>
           <label className="block text-xs font-medium mb-1">Meta Title</label>
@@ -101,14 +104,14 @@ export function PageForm({ initial }: { initial: PageFormValues | null }) {
           <label className="block text-xs font-medium mb-1">Meta Description</label>
           <textarea rows={2} value={form.metaDescription} onChange={(e) => setForm((f) => ({ ...f, metaDescription: e.target.value }))} className="w-full border border-admin-gray-200 rounded px-3 py-2 text-sm" />
         </div>
-      </div>
+      </div>}
 
       <button type="submit" disabled={submitting} className="bg-admin-primary hover:bg-admin-primary-dark text-white font-semibold rounded-lg px-6 py-2.5 disabled:opacity-60">
         {submitting ? "Saving…" : isEdit ? "Update Page" : "Create Page"}
       </button>
     </form>
     {/* The page as shoppers will see it, updated as you type. */}
-    <StorePreview state={preview} device="mobile" className="xl:h-[calc(100vh-9rem)]" />
+    {show("pe-preview") && <StorePreview state={preview} device="mobile" className="xl:h-[calc(100vh-9rem)]" showDevice={show("pe-p-device")} showAudience={show("pe-p-audience")} />}
     </div>
   );
 }

@@ -14,7 +14,9 @@ const DESKTOP_W = 1100; // wide enough for the store's desktop layout (≥ 901 p
  * and footer inside the phone / laptop, redrawn on every edit (nothing needs
  * saving first). Sticky and sized to the window.
  */
-export function StorePreview({ state, device: suggested, className }: { state: Omit<StorePreviewState, "loggedIn">; device?: Device; className?: string }) {
+export function StorePreview({ state, device: suggested, className, showDevice = true, showAudience = true }: {
+  state: Omit<StorePreviewState, "loggedIn">; device?: Device; className?: string; showDevice?: boolean; showAudience?: boolean;
+}) {
   const [device, setDevice] = useState<Device>(suggested ?? "mobile");
   const [loggedIn, setLoggedIn] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
@@ -54,15 +56,15 @@ export function StorePreview({ state, device: suggested, className }: { state: O
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f0f0f5] px-4 py-3">
         <p className="text-[15px] font-semibold text-[#353543]">Live preview</p>
         <div className="flex items-center gap-2">
-          <Toggle value={loggedIn ? "in" : "out"} onChange={(v) => setLoggedIn(v === "in")} options={[["out", "Guest"], ["in", "Logged in"]]} />
-          <div className="inline-flex rounded-[6px] bg-[#f3f3f7] p-1">
+          {showAudience && <Toggle value={loggedIn ? "in" : "out"} onChange={(v) => setLoggedIn(v === "in")} options={[["out", "Guest"], ["in", "Logged in"]]} />}
+          {showDevice && <div className="inline-flex rounded-[6px] bg-[#f3f3f7] p-1">
             {([["mobile", Smartphone, "Mobile"], ["desktop", Monitor, "Desktop"]] as const).map(([d, Icon, label]) => (
               <button key={d} type="button" onClick={() => setDevice(d)} aria-label={`${label} view`} aria-pressed={device === d}
                 className={cn("flex h-8 items-center gap-1.5 rounded-[4px] px-2.5 text-[13px] font-semibold transition", device === d ? "bg-white text-[#9f2089] shadow-sm" : "text-[#616173]")}>
                 <Icon className="h-4 w-4" />{label}
               </button>
             ))}
-          </div>
+          </div>}
         </div>
       </div>
       <div ref={box} className="relative flex min-h-0 flex-1 items-center justify-center bg-[linear-gradient(180deg,#f7f7fa,#ececf2)] p-2.5">

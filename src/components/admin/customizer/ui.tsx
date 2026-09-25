@@ -1,5 +1,6 @@
 "use client";
 
+import { useOptionalWidgetVisible } from "@/hooks/useDashboardWidgetPrefs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, CircleAlert, ExternalLink, Loader2, Monitor, RefreshCw, RotateCcw, ShoppingBag, Smartphone, Upload, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -366,6 +367,8 @@ export function useDraftEditor<T>(initialDraft: T, initialLive: T, endpoint: str
 export function EditorToolbar({ ed, device, setDevice, openUrl }: {
   ed: Pick<ReturnType<typeof useDraftEditor<unknown>>, "problem" | "save" | "error" | "unpublished" | "dirty" | "publishing" | "publish" | "discard" | "setVersion">; device: "mobile" | "desktop"; setDevice: (d: "mobile" | "desktop") => void; openUrl: string;
 }) {
+  const show = useOptionalWidgetVisible();
+  const on = (k: string) => show("cz-toolbar") && show(k);
   const problem = ed.problem;
   const status = problem
     ? <span className="inline-flex items-center gap-1.5 text-amber-600"><CircleAlert className="h-3.5 w-3.5 shrink-0" />{problem}</span>
@@ -375,19 +378,19 @@ export function EditorToolbar({ ed, device, setDevice, openUrl }: {
     : <span className="inline-flex items-center gap-1.5 text-emerald-600"><Check className="h-3.5 w-3.5" />Live — everything published</span>;
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-xl border border-admin-gray-200 bg-white px-3 py-2.5 shadow-sm">
-      <div className="min-w-0 flex-1 basis-40 text-sm font-medium">{status}</div>
-      <div className="flex rounded-lg bg-admin-gray-100 p-1">
+      <div className="min-w-0 flex-1 basis-40 text-sm font-medium">{on("cz-b-status") && status}</div>
+      {on("cz-b-device") && <div className="flex rounded-lg bg-admin-gray-100 p-1">
         {([["mobile", Smartphone, "Mobile"], ["desktop", Monitor, "Desktop"]] as const).map(([d, Icon, l]) => (
           <button key={d} type="button" onClick={() => setDevice(d)} aria-pressed={device === d}
             className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold", device === d ? "bg-white text-admin-primary shadow-sm" : "text-admin-gray-500")}>
             <Icon className="h-3.5 w-3.5" />{l}
           </button>
         ))}
-      </div>
-      <button type="button" onClick={() => ed.setVersion((v) => v + 1)} title="Reload preview" aria-label="Reload preview"
-        className="grid h-9 w-9 place-items-center rounded-lg border border-admin-gray-200 text-admin-gray-600 hover:bg-admin-gray-50"><RefreshCw className="h-4 w-4" /></button>
-      <a href={openUrl} target="_blank" rel="noreferrer" title="Open preview in a new tab" aria-label="Open preview in a new tab"
-        className="grid h-9 w-9 place-items-center rounded-lg border border-admin-gray-200 text-admin-gray-600 hover:bg-admin-gray-50"><ExternalLink className="h-4 w-4" /></a>
+      </div>}
+      {on("cz-b-reload") && <button type="button" onClick={() => ed.setVersion((v) => v + 1)} title="Reload preview" aria-label="Reload preview"
+        className="grid h-9 w-9 place-items-center rounded-lg border border-admin-gray-200 text-admin-gray-600 hover:bg-admin-gray-50"><RefreshCw className="h-4 w-4" /></button>}
+      {on("cz-b-open") && <a href={openUrl} target="_blank" rel="noreferrer" title="Open preview in a new tab" aria-label="Open preview in a new tab"
+        className="grid h-9 w-9 place-items-center rounded-lg border border-admin-gray-200 text-admin-gray-600 hover:bg-admin-gray-50"><ExternalLink className="h-4 w-4" /></a>}
       {ed.unpublished && (
         <button type="button" onClick={ed.discard} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-admin-gray-200 px-3 text-sm font-medium text-admin-gray-700 hover:bg-admin-gray-50">
           <RotateCcw className="h-4 w-4" />Discard

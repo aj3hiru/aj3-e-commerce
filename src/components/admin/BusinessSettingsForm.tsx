@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus, Trash2, ImagePlus, Building2, Contact, Share2, FileSpreadsheet,
@@ -12,6 +12,8 @@ import type { InvoiceSettings } from "@/types/invoice-settings";
 import { InvoiceSettingsPanel } from "./invoice-settings/InvoiceSettingsPanel";
 import { StorePreview } from "./store-preview/StorePreview";
 import { FORM_SECTION_KEYS, settingsMenu } from "./SettingsHub";
+import { BS_MENU_KEYS } from "./business-settings-display";
+import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { ShopCategoryNavItem, SocialPlatform } from "@/types/shop";
 import {
   SettingsMenuLayout, SettingsPanel, Field, CONTROL_CLASS,
@@ -80,7 +82,11 @@ export function BusinessSettingsForm({ initial, storefrontInitial: storefront, i
   initial: BusinessSettingsInitial; storefrontInitial: StorefrontConfig; invoiceInitial: InvoiceSettings; categories: ShopCategoryNavItem[];
   permissions: Record<string, Record<string, boolean>>; section?: string;
 }) {
-  const menu = useMemo(() => settingsMenu(permissions, true), [permissions]);
+  const { isVisible } = useDashboardWidgetPrefs();
+  const menu = useMemo(() => {
+    const hidden = new Set(BS_MENU_KEYS.map(([k]) => k).filter((k) => isVisible("bs-menu") && !isVisible(`bs-m-${k}`)));
+    return settingsMenu(permissions, true, hidden);
+  }, [permissions, isVisible]);
   const [invoice, setInvoice] = useState(invoiceInitial);
   const router = useRouter();
   const [active, setActive] = useState(section && FORM_SECTION_KEYS.includes(section) ? section : "identity");
@@ -103,7 +109,9 @@ export function BusinessSettingsForm({ initial, storefrontInitial: storefront, i
   }
 
   // Live store preview for the storefront-facing sections (unsaved edits included).
-  const withPreview = PREVIEW_SECTIONS.includes(active);
+  // A section hidden in Display Options while open → show the first visible one.
+  useEffect(() => { if (menu.length && !menu.some((m) => m.key === active && !m.href)) { const first = menu.find((m) => !m.href); if (first) setActive(first.key); } }, [menu, active]);
+  const withPreview = PREVIEW_SECTIONS.includes(active) && isVisible("bs-preview");
   const previewState = useMemo(() => ({
     business: {
       businessName: form.businessName || "Your Store", logo: logoPreview, tagline: form.tagline, email: form.email,
@@ -479,7 +487,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial: storefront, i
           </SettingsPanel>
         )}
         </div>
-        {withPreview && <StorePreview state={previewState} />}
+        {withPreview && <StorePreview state={previewState} showDevice={isVisible("bs-p-device")} showAudience={isVisible("bs-p-audience")} />}
         </div>
       </SettingsMenuLayout>
 
@@ -489,7 +497,7 @@ export function BusinessSettingsForm({ initial, storefrontInitial: storefront, i
         panels must not navigate away.
       */}
       <div className="sticky bottom-0 z-[5] mt-5 flex items-center justify-between gap-3 rounded-2xl bg-white px-5 py-3 font-storefront shadow-[0_-4px_16px_rgba(53,53,67,0.08)] ring-1 ring-[#eaeaf2]">
-        <span className="text-[13px] text-[#8b8ba3]">Changes in every section are saved together.</span>
+        <span className="text-[13px] text-[#8b8ba3]">{isVisible("bs-savenote") ? "Changes in every section are saved together." : ""}</span>
         <button
           type="submit"
           disabled={submitting}

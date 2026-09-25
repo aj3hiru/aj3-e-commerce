@@ -162,3 +162,10 @@ export function useDashboardWidgetPrefs(): WidgetPrefsValue {
   }
   return ctx;
 }
+
+const SHOW_ALL = () => true;
+
+/** For components also used outside a Display Options page (e.g. the delivery app): everything shows when there is no provider. */
+export function useOptionalWidgetVisible(): (key: string) => boolean {
+  return useContext(WidgetPrefsContext)?.isVisible ?? SHOW_ALL;
+}

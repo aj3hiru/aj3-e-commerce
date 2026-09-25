@@ -5,6 +5,7 @@ import { CheckCircle2, CircleAlert, ClipboardPaste, ExternalLink, KeyRound, Load
 import { cn } from "@/lib/utils";
 import { otpReady, type AuthSettings } from "@/types/auth-settings";
 import { StorePreview } from "@/components/admin/store-preview/StorePreview";
+import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 
 const INPUT = "w-full rounded-md border border-admin-gray-200 bg-white px-3 py-2 font-mono text-sm text-admin-gray-800 placeholder:font-sans placeholder:text-admin-gray-400 focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/15";
 
@@ -61,15 +62,18 @@ export function LoginSettingsForm({ initial, origin }: { initial: AuthSettings; 
 
   const live = otpReady(JSON.parse(saved) as AuthSettings);
   const preview = useMemo(() => ({ view: "login" as const, auth: s }), [s]);
+  const { isVisible, loaded } = useDashboardWidgetPrefs();
+  const on = (k: string) => isVisible("ls-sections") && isVisible(k);
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+    <div className={cn("grid gap-5", isVisible("ls-preview") && "xl:grid-cols-[minmax(0,1fr)_420px]", !loaded && "invisible")}>
       <div className="space-y-5">
-        <div className={cn("flex items-center gap-3 rounded-xl border px-4 py-3", live ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800")}>
+        {on("ls-status") && <div className={cn("flex items-center gap-3 rounded-xl border px-4 py-3", live ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800")}>
           {live ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <CircleAlert className="h-5 w-5 shrink-0" />}
           <p className="flex-1 text-sm font-medium">{live ? "Mobile OTP login is live on your store." : "Customers log in with email/mobile + password. Set up Firebase to turn on OTP login."}</p>
           <a href={`${origin}/login`} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold underline">Open login page<ExternalLink className="h-3.5 w-3.5" /></a>
-        </div>
+        </div>}
 
+        {on("ls-options") && (
         <section className="rounded-xl border border-admin-gray-200 bg-white p-5 shadow-sm">
           <h2 className="mb-4 flex items-center gap-2 font-semibold text-admin-gray-800"><ShieldCheck className="h-5 w-5 text-admin-primary" />Login options</h2>
           <div className="divide-y divide-admin-gray-100">
@@ -92,7 +96,9 @@ export function LoginSettingsForm({ initial, origin }: { initial: AuthSettings; 
             </div>
           </div>
         </section>
+        )}
 
+        {on("ls-firebase") && (
         <section className="rounded-xl border border-admin-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-1 flex items-center justify-between gap-3">
             <h2 className="font-semibold text-admin-gray-800">Firebase web config</h2>
@@ -112,7 +118,9 @@ export function LoginSettingsForm({ initial, origin }: { initial: AuthSettings; 
             ))}
           </div>
         </section>
+        )}
 
+        {on("ls-steps") && (
         <section className="rounded-xl border border-admin-gray-200 bg-white p-5 shadow-sm">
           <h2 className="mb-1 font-semibold text-admin-gray-800">How to set up Firebase OTP</h2>
           <p className="mb-4 text-xs text-admin-gray-500">About 10 minutes, one time.</p>
@@ -125,6 +133,7 @@ export function LoginSettingsForm({ initial, origin }: { initial: AuthSettings; 
             ))}
           </ol>
         </section>
+        )}
 
         <div className="sticky bottom-0 flex items-center justify-between gap-3 rounded-xl border border-admin-gray-200 bg-white px-5 py-3.5 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
           <span className={cn("text-sm", msg ? (msg.ok ? "text-emerald-600" : "text-red-600") : "text-admin-gray-400")}>{msg?.text ?? (dirty ? "Unsaved changes" : "All changes saved")}</span>
@@ -135,7 +144,7 @@ export function LoginSettingsForm({ initial, origin }: { initial: AuthSettings; 
       </div>
 
       {/* The customer login page as it will look — OTP or password — updated as you switch things. */}
-      <StorePreview state={preview} device="mobile" className="xl:h-[calc(100vh-9rem)]" />
+      {isVisible("ls-preview") && <StorePreview state={preview} device="mobile" className="xl:h-[calc(100vh-9rem)]" showDevice={isVisible("ls-p-device")} showAudience={isVisible("ls-p-audience")} />}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { AdminShell } from "@/components/admin/AdminShell";
+import { DisplayOptionsShell } from "@/components/admin/DisplayOptionsShell";
+import { PAGES_GROUPS, PAGES_PREF_KEY } from "@/components/admin/pages-display";
 import { PagesTable } from "@/components/admin/PagesTable";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
@@ -23,7 +24,9 @@ export default async function PagesListPage({ searchParams }: PagesListProps) {
   const pages = await prisma.page.findMany({ orderBy: { updatedAt: "desc" } });
 
   return (
-    <AdminShell
+    <DisplayOptionsShell
+      prefKey={PAGES_PREF_KEY}
+      groups={PAGES_GROUPS}
       siteName="EduMint24"
       pageTitle="Pages"
       pageSubtitle="Manage static content pages like About Us, Terms, and Privacy Policy"
@@ -41,6 +44,6 @@ export default async function PagesListPage({ searchParams }: PagesListProps) {
           id: p.id, title: p.title, slug: p.slug, status: p.status, updatedAt: p.updatedAt.toISOString(),
         }))}
       />
-    </AdminShell>
+    </DisplayOptionsShell>
   );
 }

@@ -4,6 +4,9 @@ import { CustomerProfileView } from "@/components/admin/CustomerProfileView";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { formatAddress, toAddress } from "@/lib/customer-addresses";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
+import { CUSTPROFILE_GROUPS, CUSTPROFILE_PREF_KEY, CUSTPROFILE_STANDALONE } from "@/components/admin/customers2/profileDisplayOptions";
 
 interface CustomerProfilePageProps {
   params: Promise<{ id: string }>;
@@ -41,6 +44,7 @@ export default async function CustomerProfilePage({ params, searchParams }: Cust
   const totalSpent = orders.reduce((s: number, o: (typeof orders)[number]) => s + Number(o.totalAmount), 0);
 
   return (
+    <DashboardWidgetPrefsProvider prefKey={CUSTPROFILE_PREF_KEY} groups={CUSTPROFILE_GROUPS} standalone={CUSTPROFILE_STANDALONE}>
     <AdminShell
       siteName="EduMint24"
       pageTitle={customer.name || "New customer (no name yet)"}
@@ -48,7 +52,9 @@ export default async function CustomerProfilePage({ params, searchParams }: Cust
       username={session.username}
       role={session.role}
       permissions={session.permissions}
+      headerActions={<div className="hidden items-center gap-3 xl:flex"><DisplayOptionsPanel variant="header" /></div>}
     >
+      <div className="mb-4 flex justify-end xl:hidden"><DisplayOptionsPanel variant="toolbar" /></div>
       <CustomerProfileView
         customer={{
           id: customer.id, name: customer.name, email: customer.email, phone: customer.phone,
@@ -71,5 +77,6 @@ export default async function CustomerProfilePage({ params, searchParams }: Cust
         login={{ hasPassword: !!customer.password, email: !!customer.email, phone: !!customer.phone && customer.customerType === "online" }}
       />
     </AdminShell>
+    </DashboardWidgetPrefsProvider>
   );
 }

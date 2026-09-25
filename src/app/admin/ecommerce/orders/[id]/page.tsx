@@ -5,6 +5,9 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { isOrderLocked } from "@/lib/order-recalc";
 import { prisma } from "@/lib/db";
 import { listDeliveryAgents } from "@/lib/order-workflow";
+import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
+import { ORDERVIEW_GROUPS, ORDERVIEW_PREF_KEY, ORDERVIEW_STANDALONE } from "@/components/admin/order-view/displayOptions";
 
 interface OrderDetailPageProps {
   params: Promise<{ id: string }>;
@@ -24,7 +27,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
   const order = await prisma.ecomOrder.findUnique({
     where: { id: orderId },
     include: {
-      items: true,
+      items: { include: { product: { select: { image: true, slug: true } } } },
       customer: { select: { phone: true, email: true, address: true } },
       deliveryAgent: { select: { id: true, username: true } },
       events: { orderBy: { createdAt: "asc" } },
@@ -48,14 +51,17 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
       });
 
   return (
+    <DashboardWidgetPrefsProvider prefKey={ORDERVIEW_PREF_KEY} groups={ORDERVIEW_GROUPS} standalone={ORDERVIEW_STANDALONE}>
     <AdminShell
       siteName="EduMint24"
       pageTitle={`Order ${order.orderNumber}`}
-      pageSubtitle="Order details and items"
+      pageSubtitle={order.orderType === "offline" ? "Store bill — items, payment and history" : "Online order — items, delivery, payment and history"}
       username={session.username}
       role={session.role}
       permissions={session.permissions}
+      headerActions={<div className="hidden items-center gap-3 xl:flex"><DisplayOptionsPanel variant="header" /></div>}
     >
+      <div className="mb-4 flex justify-end xl:hidden"><DisplayOptionsPanel variant="toolbar" /></div>
       <OrderDetailView
         order={{
           id: order.id,
@@ -76,6 +82,14 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           orderType: order.orderType,
           agent: order.deliveryAgent ? { id: order.deliveryAgent.id, name: order.deliveryAgent.username, assignedAt: order.assignedAt?.toISOString() ?? null } : null,
           cancelReason: order.cancelReason,
+          customerId: order.customerId,
+          createdAt: order.createdAt.toISOString(),
+          subtotal: Number(order.subtotalAmount),
+          discount: Number(order.discountAmount),
+          gst: Number(order.gstAmount),
+          paidAmount: Number(order.paidAmount),
+          lat: order.shippingLat === null ? null : Number(order.shippingLat),
+          lng: order.shippingLng === null ? null : Number(order.shippingLng),
         }}
         perms={{ accept: !!perms.accept_reject, status: !!perms.update_status, assign: !!perms.assign_delivery, pay: !!perms.mark_paid, cancel: !!perms.cancel, editItems: !!perms.edit_items }}
         agents={agents}
@@ -85,6 +99,9 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           productName: it.productName,
           qty: it.qty,
           price: Number(it.price),
+          gstRate: Number(it.gstRate),
+          image: it.product?.image ?? null,
+          slug: it.product?.slug ?? null,
         }))}
         availableProducts={availableProducts.map((p: (typeof availableProducts)[number]) => ({
           id: p.id,
@@ -94,5 +111,6 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
         }))}
       />
     </AdminShell>
+    </DashboardWidgetPrefsProvider>
   );
 }

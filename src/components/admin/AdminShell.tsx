@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminHeader } from "./AdminHeader";
+import { SelectEnhancer } from "./SelectEnhancer";
 
 interface AdminShellProps {
   siteName: string;
@@ -54,6 +55,8 @@ export function AdminShell({ siteName, pageTitle, pageSubtitle, username, role, 
           {children}
         </div>
       </main>
+      {/* Every dropdown opens the admin's own list, not the browser pop-up. */}
+      <SelectEnhancer />
     </div>
   );
 }

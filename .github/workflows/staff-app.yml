@@ -29,7 +29,8 @@ jobs:
       - run: flutter analyze
       - run: flutter test --update-goldens test/screens_test.dart   # renders every screen (crash check)
       - id: v
-        run: echo "version=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9.]+).*/\1/')" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "version=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9.]+).*/\1/')" >> "$GITHUB_OUTPUT"
 
   android:
     needs: check

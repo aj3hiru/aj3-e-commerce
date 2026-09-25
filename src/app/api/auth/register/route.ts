@@ -3,9 +3,15 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { setCustomerSessionCookie } from "@/lib/session-cookies";
 import { registerSchema } from "@/lib/validators/auth";
+import { getAuthSettings } from "@/lib/auth-settings";
+import { otpReady } from "@/types/auth-settings";
 
 /** Verified against shop/register.php. */
 export async function POST(req: NextRequest) {
+  // With mobile OTP on, new accounts are created only by verifying a mobile number.
+  if (otpReady(await getAuthSettings())) {
+    return NextResponse.json({ success: false, message: "Please sign up with your mobile number and OTP." }, { status: 400 });
+  }
   const body = await req.json().catch(() => null);
   const parsed = registerSchema.safeParse(body);
   if (!parsed.success) {

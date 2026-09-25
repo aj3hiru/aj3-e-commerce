@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Banknote, CreditCard, ImageIcon, Loader2, MapPin, TicketPercent, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AddressPicker } from "@/components/shop/address/Address";
+import type { SavedAddress } from "@/lib/customer-addresses";
 import { Notice, PriceRow, Section, Steps, StickyBottom, btnPrimary, inputCls, rupees } from "@/components/shop/ui/Meesho";
 
 export interface CheckoutItemSummary {
@@ -14,7 +16,7 @@ export interface CheckoutItemSummary {
 }
 
 interface CheckoutFormProps {
-  initialAddress: string;
+  addresses: SavedAddress[];
   customerName?: string;
   customerPhone?: string | null;
   paymentMethods: { methodKey: string; name: string }[];
@@ -26,19 +28,20 @@ interface CheckoutFormProps {
 const payIcon = (key: string) => (/cod|cash/i.test(key) ? Banknote : /upi|wallet/i.test(key) ? Wallet : CreditCard);
 
 /** Checkout (Meesho style): address, payment, coupon, order summary, and a sticky Place Order bar. */
-export function CheckoutForm({ initialAddress, customerName, customerPhone, paymentMethods, items, subtotal, estimatedGst }: CheckoutFormProps) {
+export function CheckoutForm({ addresses, customerName, customerPhone, paymentMethods, items, subtotal, estimatedGst }: CheckoutFormProps) {
   const router = useRouter();
-  const [address, setAddress] = useState(initialAddress);
+  const [addressId, setAddressId] = useState<number | null>(null);
+  const pickAddress = useCallback((id: number | null) => { setAddressId(id); setError(""); }, []);
   const [paymentMethod, setPaymentMethod] = useState(paymentMethods.length === 1 ? paymentMethods[0].methodKey : "");
   const [couponCode, setCouponCode] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const total = subtotal + estimatedGst;
-  const step = !address.trim() ? 1 : !paymentMethod ? 2 : 3;
+  const step = !addressId ? 1 : !paymentMethod ? 2 : 3;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!address.trim()) { setError("Please enter a delivery address."); document.getElementById("address")?.focus(); return; }
+    if (!addressId) { setError("Please add or choose a delivery address."); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
     if (!paymentMethod) { setError("Please select a payment method."); return; }
     setSubmitting(true);
     setError("");
@@ -46,7 +49,7 @@ export function CheckoutForm({ initialAddress, customerName, customerPhone, paym
       const res = await fetch("/api/shop/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, paymentMethod, couponCode }),
+        body: JSON.stringify({ addressId, paymentMethod, couponCode }),
       });
       const data = await res.json();
       if (!data.success) { setError(data.message || "Could not place order."); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
@@ -64,9 +67,7 @@ export function CheckoutForm({ initialAddress, customerName, customerPhone, paym
       {error && <div className="mb-2 bg-white px-4 py-3"><Notice tone="error">{error}</Notice></div>}
 
       <Section title={<span className="flex items-center gap-2"><MapPin className="h-[18px] w-[18px] text-[var(--hp-accent)]" />Delivery Address</span>}>
-        {(customerName || customerPhone) && <p className="mb-2 text-[14px] font-semibold">{customerName}{customerPhone && <span className="font-normal text-[#616173]"> · {customerPhone}</span>}</p>}
-        <textarea id="address" required rows={3} value={address} onChange={(e) => { setAddress(e.target.value); setError(""); }}
-          placeholder="House no., street, area, city, pincode" className={cn(inputCls, "py-2.5 leading-6")} />
+        <AddressPicker initial={addresses} defaults={{ name: customerName, phone: customerPhone ?? undefined }} value={addressId} onChange={pickAddress} />
       </Section>
 
       <Section title="Payment Method">

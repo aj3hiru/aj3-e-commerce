@@ -4,7 +4,7 @@ import {
   faPercent, faFileCsv, faStarHalfAlt, faBarcode, faTags, faList, faListUl, faReceipt,
   faHourglassHalf, faTruckLoading, faTruck, faBan, faUserFriends, faPercentage,
   faCreditCard, faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
-  faSignOutAlt, faChartLine, faFileAlt, faBars, faGripLines, faBox,
+  faSignOutAlt, faChartLine, faFileAlt, faBars, faGripLines, faBox, faMobileAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
 // ════════════════════════════════════════════════════════════════════════
@@ -186,6 +186,7 @@ export const ADMIN_NAV: NavSection[] = [
     links: [
       { href: "/admin/ecommerce/payment-settings", label: "Payment", icon: faCreditCard, permission: "ecommerce.manage_payment" },
       { href: "/admin/ecommerce/business-settings", label: "Business Setting", icon: faBuilding, permission: "ecommerce.manage_payment" },
+      { href: "/admin/ecommerce/login-settings", label: "Login & OTP", icon: faMobileAlt, permission: "ecommerce.manage_payment" },
       { href: "/admin/ecommerce/tax-settings", label: "GST / Tax Settings", icon: faReceipt, permission: "ecommerce.manage_products" },
     ],
   },

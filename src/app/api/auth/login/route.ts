@@ -5,6 +5,8 @@ import { setAdminSessionCookie, setCustomerSessionCookie } from "@/lib/session-c
 import { getAttemptState, isLocked, lockSecondsLeft, recordFailedAttempt, clearAttempts } from "@/lib/login-lockout";
 import { logActivity } from "@/lib/activity-log";
 import { loginSchema } from "@/lib/validators/auth";
+import { getAuthSettings } from "@/lib/auth-settings";
+import { findCustomerByPhone } from "@/lib/customer-phone";
 
 /**
  * Verified 1:1 against shop/login.php's POST handler. Preserves:
@@ -71,8 +73,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, redirect: "/admin/dashboard" });
   }
 
-  // ── 2) Not an admin match — try a customer account (matched by email) ──
-  const customer = await prisma.ecomCustomer.findFirst({ where: { email: identity } });
+  // ── 2) Not an admin match — try a customer account (matched by email, or by mobile number) ──
+  const auth = await getAuthSettings();
+  const isPhone = /^\+?[\d\s-]{10,16}$/.test(identity);
+  const customer = auth.passwordLogin
+    ? (isPhone ? await findCustomerByPhone(identity) : await prisma.ecomCustomer.findFirst({ where: { email: identity } }))
+    : null;
   const custPassOk = await verifyPassword(password, customer?.password);
 
   if (customer && custPassOk) {
@@ -91,7 +97,7 @@ export async function POST(req: NextRequest) {
   if (isLocked(updated)) {
     return NextResponse.json({ success: false, message: "Too many failed attempts. Please try again in 15 minutes." });
   }
-  return NextResponse.json({ success: false, message: "Incorrect email/username or password." });
+  return NextResponse.json({ success: false, message: isPhone ? "Incorrect mobile number or password. Try logging in with OTP." : "Incorrect email/username or password." });
 }
 
 /** Only same-site paths are allowed as a post-login destination — a full URL

@@ -12,10 +12,12 @@ import { Field, Notice, btnOutline, btnPrimary, inputCls } from "@/components/sh
 interface LoginFormProps {
   redirectTo?: string;
   storeName?: string;
+  /** Just the form (inside the mobile-OTP login screen). */
+  bare?: boolean;
 }
 
 /** Login — customers and store staff both sign in here (same two fields as shop/login.php). */
-export function LoginForm({ redirectTo, storeName = "our store" }: LoginFormProps) {
+export function LoginForm({ redirectTo, storeName = "our store", bare = false }: LoginFormProps) {
   const router = useRouter();
   const [identity, setIdentity] = useState("");
   const [password, setPassword] = useState("");
@@ -43,12 +45,11 @@ export function LoginForm({ redirectTo, storeName = "our store" }: LoginFormProp
     }
   }
 
-  return (
-    <AuthCard heading="Welcome back!" sub="Login to see your orders, wishlist and checkout faster.">
-      <h1 className="mb-4 text-[20px] font-semibold">Login</h1>
+  const form = (
+    <>
       {error && <div className="mb-4"><Notice tone="error">{error}</Notice></div>}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Field label="Email or Username">
+        <Field label="Email, Mobile or Username">
           <div className="relative">
             <UserRound className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#a7a9b6]" strokeWidth={1.8} />
             <input type="text" required autoFocus autoComplete="username" value={identity} onChange={(e) => setIdentity(e.target.value)}
@@ -62,6 +63,14 @@ export function LoginForm({ redirectTo, storeName = "our store" }: LoginFormProp
           {submitting ? <><Loader2 className="h-5 w-5 animate-spin" />Logging in…</> : "Continue"}
         </button>
       </form>
+    </>
+  );
+  if (bare) return form;
+
+  return (
+    <AuthCard heading="Welcome back!" sub="Login to see your orders, wishlist and checkout faster.">
+      <h1 className="mb-4 text-[20px] font-semibold">Login</h1>
+      {form}
       <div className="my-5 flex items-center gap-3 text-[12px] text-[#8b8ba3]"><span className="h-px flex-1 bg-[#eaeaf2]" />New to {storeName}?<span className="h-px flex-1 bg-[#eaeaf2]" /></div>
       <Link href={`/shop/register${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className={cn(btnOutline, "h-12 w-full")}>Create an account</Link>
       <p className="mt-5 text-center text-[11.5px] leading-4 text-[#a7a9b6]">Customers and store staff both sign in here.</p>

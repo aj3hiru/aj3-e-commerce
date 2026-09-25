@@ -283,9 +283,10 @@ model EcomCustomer {
   status       String   @default("active")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  orders   EcomOrder[]
-  wishlist EcomWishlist[]
-  credits  EcomCredit[]
+  orders    EcomOrder[]
+  wishlist  EcomWishlist[]
+  credits   EcomCredit[]
+  addresses EcomCustomerAddress[]
 
   @@map("ecom_customers")
 }
@@ -300,6 +301,8 @@ model EcomOrder {
   customerEmail   String?  @map("customer_email")
   isGuest         Boolean  @default(false) @map("is_guest")
   shippingAddress String?  @map("shipping_address") @db.Text
+  shippingLat     Decimal? @map("shipping_lat") @db.Decimal(10, 7) // pinned location from the saved address (for delivery)
+  shippingLng     Decimal? @map("shipping_lng") @db.Decimal(10, 7)
   totalAmount     Decimal  @map("total_amount") @db.Decimal(10, 2)
   paidAmount      Decimal  @default(0) @map("paid_amount") @db.Decimal(10, 2)
   subtotalAmount  Decimal  @map("subtotal_amount") @db.Decimal(10, 2)
@@ -916,4 +919,29 @@ model StorefrontSetting {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("storefront_settings")
+}
+
+/// Saved delivery addresses (storefront account + checkout). See prisma/customer-addresses.sql.
+model EcomCustomerAddress {
+  id         Int      @id @default(autoincrement())
+  customerId Int      @map("customer_id")
+  name       String   @db.VarChar(100)
+  phone      String   @db.VarChar(20)
+  pincode    String   @db.VarChar(10)
+  state      String   @db.VarChar(60)
+  city       String   @db.VarChar(80)
+  house      String   @db.VarChar(200) // house no. / building
+  area       String   @db.VarChar(200) // road / area / colony
+  landmark   String?  @db.VarChar(150) // nearby
+  type       String   @default("home") @db.VarChar(10) // home | work | other
+  lat        Decimal? @db.Decimal(10, 7)
+  lng        Decimal? @db.Decimal(10, 7)
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  customer EcomCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("ecom_customer_addresses")
 }

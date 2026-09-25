@@ -7,6 +7,7 @@ import type { Prisma } from "@prisma/client";
 import { findRedeemableCoupon, consumeCouponUse } from "@/lib/coupon-redeem";
 import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "@/lib/campaign-pricing";
 import { loadCartLines, type CartLine } from "@/lib/cart-lines";
+import { formatAddress, toAddress } from "@/lib/customer-addresses";
 
 /** Verified 1:1 against shop/checkout.php's POST handler: re-validates stock,
  *  re-fetches prices server-side, applies an optional coupon with proportional
@@ -24,7 +25,17 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const address = (body.address ?? "").trim();
+  let address = String(body.address ?? "").trim();
+  let pin: { lat: number; lng: number } | null = null;
+  // A saved address (with its pinned location) takes precedence over free text.
+  const addressId = Number(body.addressId) || 0;
+  if (addressId) {
+    const saved = await prisma.ecomCustomerAddress.findFirst({ where: { id: addressId, customerId: customer.customerId } });
+    if (!saved) return NextResponse.json({ success: false, message: "Please choose a delivery address." }, { status: 400 });
+    const a = toAddress(saved);
+    address = formatAddress(a);
+    if (a.lat !== null && a.lng !== null) pin = { lat: a.lat, lng: a.lng };
+  }
   const paymentMethod = (body.paymentMethod ?? "").trim();
   const couponCode = (body.couponCode ?? "").trim().toUpperCase();
 
@@ -99,6 +110,8 @@ export async function POST(req: NextRequest) {
           customerName: custRow!.name,
           customerEmail: custRow!.email,
           shippingAddress: address,
+          shippingLat: pin?.lat ?? null,
+          shippingLng: pin?.lng ?? null,
           totalAmount: grandTotal,
           subtotalAmount: subtotal,
           discountAmount: discount,

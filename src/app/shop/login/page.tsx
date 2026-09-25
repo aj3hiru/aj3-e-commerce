@@ -2,35 +2,34 @@ import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/admin-auth";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { LoginForm } from "@/components/shop/LoginForm";
+import { PhoneLogin } from "@/components/shop/auth/PhoneLogin";
 import { ShopLayout } from "@/components/shop/ShopLayout";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
+import { getAuthSettings } from "@/lib/auth-settings";
+import { otpReady } from "@/types/auth-settings";
 
 interface LoginPageProps {
   searchParams: Promise<{ redirect?: string }>;
 }
 
 /**
- * Verified against shop/login.php:
- * - Already-logged-in admin/editor/author -> redirect to /admin/dashboard
- * - Already-logged-in customer -> redirect to /shop/account
- * - Otherwise render the unified login form inside the normal shop layout
+ * Login. With mobile OTP on (Settings → Login & OTP): mobile number → OTP
+ * (sign-up included), password and staff login as alternatives. Otherwise the
+ * email / username + password form. Logged-in visitors are sent on.
  */
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const [adminSession, customerSession, resolvedParams] = await Promise.all([
-    getAdminSession(),
-    getCustomerSession(),
-    searchParams,
-  ]);
-
+  const [adminSession, customerSession, resolvedParams] = await Promise.all([getAdminSession(), getCustomerSession(), searchParams]);
   if (adminSession) redirect("/admin/dashboard");
   if (customerSession) redirect("/shop/account");
 
-  // Same header/footer/menus as every other storefront page (visitor is logged out here).
-  const layout = await getShopLayoutData();
+  const [layout, auth] = await Promise.all([getShopLayoutData(), getAuthSettings()]);
+  const storeName = layout.business.businessName;
 
   return (
     <ShopLayout {...layout}>
-      <LoginForm redirectTo={resolvedParams.redirect} storeName={layout.business.businessName} />
+      {otpReady(auth)
+        ? <PhoneLogin firebase={auth.firebase} countryCode={auth.countryCode} passwordLogin={auth.passwordLogin} redirectTo={resolvedParams.redirect} storeName={storeName} />
+        : <LoginForm redirectTo={resolvedParams.redirect} storeName={storeName} />}
     </ShopLayout>
   );
 }

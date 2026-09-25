@@ -59,6 +59,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           customerPhone: order.customer?.phone ?? null,
           customerEmail: order.customerEmail || order.customer?.email || null,
           shippingAddress: order.shippingAddress || order.customer?.address || null,
+          mapUrl: order.shippingLat !== null && order.shippingLng !== null ? `https://www.google.com/maps?q=${Number(order.shippingLat)},${Number(order.shippingLng)}` : null,
           paymentMethod: order.paymentMethod,
           paymentStatus: order.paymentStatus,
           orderStatus: order.orderStatus,

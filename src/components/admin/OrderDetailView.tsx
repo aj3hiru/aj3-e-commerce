@@ -21,6 +21,8 @@ export interface OrderDetailData {
   customerPhone: string | null;
   customerEmail: string | null;
   shippingAddress: string | null;
+  /** Google Maps link to the pinned delivery location, when the customer shared one. */
+  mapUrl?: string | null;
   paymentMethod: string;
   paymentStatus: string;
   orderStatus: string;
@@ -261,6 +263,12 @@ export function OrderDetailView({ order, items, availableProducts }: OrderDetail
           <SummaryRow icon={<Phone className="w-4 h-4" />} text={order.customerPhone || "—"} />
           <SummaryRow icon={<Mail className="w-4 h-4" />} text={order.customerEmail || "—"} />
           <SummaryRow icon={<MapPin className="w-4 h-4" />} text={order.shippingAddress || "—"} />
+          {order.mapUrl && (
+            <a href={order.mapUrl} target="_blank" rel="noopener noreferrer"
+              className="ml-[26px] inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">
+              <MapPin className="h-3.5 w-3.5" /> Open delivery location in Google Maps
+            </a>
+          )}
           <SummaryRow icon={<CreditCard className="w-4 h-4" />} text={order.paymentMethod || "—"} />
         </div>
       </div>
@@ -272,7 +280,7 @@ function SummaryRow({ icon, text }: { icon: React.ReactNode; text: string }) {
   return (
     <div className="flex items-start gap-2.5 py-2 text-sm text-admin-gray-700">
       <span className="text-admin-gray-400 mt-0.5 shrink-0">{icon}</span>
-      <span>{text}</span>
+      <span className="whitespace-pre-line">{text}</span>
     </div>
   );
 }

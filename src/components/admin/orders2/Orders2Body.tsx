@@ -244,16 +244,17 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
   const navigate = (url: string) => startNavigate(() => router.push(url, { scroll: false }));
   const goType = (t: string) => navigate(`${PAGE_PATH}?${new URLSearchParams({ ...(t ? { type: t } : {}), from: range.from, to: range.to }).toString()}`);
 
+  // The customer column takes whatever is left, so it's never squeezed out.
   const cols = [
-    { key: "or2-c-select", w: "w-[46px]" },
-    { key: "or2-c-order", w: "w-[200px]" },
+    { key: "or2-c-select", w: "w-[44px]" },
+    { key: "or2-c-order", w: "w-[160px]" },
     { key: "or2-c-customer", w: "" },
     { key: "or2-c-items", w: "w-[110px]" },
-    { key: "or2-c-total", w: "w-[150px]" },
-    { key: "or2-c-payment", w: "w-[150px]" },
-    { key: "or2-c-status", w: "w-[190px]" },
-    { key: "or2-c-agent", w: "w-[170px]" },
-    { key: "or2-c-actions", w: "w-[140px]" },
+    { key: "or2-c-total", w: "w-[120px]" },
+    { key: "or2-c-payment", w: "w-[130px]" },
+    { key: "or2-c-status", w: "w-[170px]" },
+    { key: "or2-c-agent", w: "w-[150px]" },
+    { key: "or2-c-actions", w: "w-[100px]" },
   ].filter((x) => show("or2-table") && show(x.key) && (x.key !== "or2-c-agent" || canAssign) && (x.key !== "or2-c-select" || canEdit));
 
   return (

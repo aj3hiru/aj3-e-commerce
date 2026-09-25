@@ -1,13 +1,12 @@
 import { AgentHistory, presetRange } from "@/components/agent/AgentHistory";
-import { getAdminSession } from "@/lib/admin-auth";
-import { agentHistory } from "@/lib/agent-data";
+import { agentHistory, requireAgent } from "@/lib/agent-data";
 
 export const dynamic = "force-dynamic";
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** History: everything this agent delivered or cancelled, filtered by date (India time). */
 export default async function AgentHistoryPage({ searchParams }: { searchParams: Promise<{ range?: string; from?: string; to?: string }> }) {
-  const session = (await getAdminSession())!;
+  const session = await requireAgent();
   const sp = await searchParams;
   const custom = sp.from && sp.to && DATE.test(sp.from) && DATE.test(sp.to);
   const preset = custom ? "custom" : sp.range ?? "7d";

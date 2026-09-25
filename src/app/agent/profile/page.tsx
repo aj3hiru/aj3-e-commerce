@@ -1,12 +1,12 @@
 import { redirect } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { StaffProfile } from "@/components/staff/StaffProfile";
-import { getAdminSession } from "@/lib/admin-auth";
+import { requireAgent } from "@/lib/agent-data";
 import { prisma } from "@/lib/db";
 
 /** The agent's own profile: photo, details, password, logout. */
 export default async function AgentProfilePage() {
-  const session = (await getAdminSession())!;
+  const session = await requireAgent();
   const u = await prisma.user.findUnique({ where: { id: session.userId } });
   if (!u) redirect("/staff/login");
   return (

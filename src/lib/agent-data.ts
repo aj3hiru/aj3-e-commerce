@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { redirect } from "next/navigation";
+import { getAdminSession } from "@/lib/admin-auth";
 import { istTodayStart } from "@/lib/deliveries";
 
 /** Data for the delivery agent app (/agent). Everything is limited to orders assigned to this agent. */
@@ -103,4 +105,12 @@ export async function agentHistory(agentId: number, from: Date, to: Date) {
       addresses: new Set(d.map((o) => o.address.split("\n").slice(1).join(" ").toLowerCase().replace(/\s+/g, " "))).size,
     },
   };
+}
+
+/** Every /agent page checks this itself (layouts and pages render in parallel in Next.js). */
+export async function requireAgent() {
+  const session = await getAdminSession();
+  if (!session) redirect("/staff/login?next=/agent");
+  if (!session.permissions.delivery?.deliver) redirect("/admin/dashboard");
+  return session;
 }

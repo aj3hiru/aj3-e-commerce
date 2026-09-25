@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Home, Package, PanelBottom, PanelTop } from "lucide-react";
-import { AdminShell } from "@/components/admin/AdminShell";
+import { DisplayOptionsShell } from "@/components/admin/DisplayOptionsShell";
+import { CUSTOMIZER_GROUPS, CUSTOMIZER_PREF_KEY, CUSTOMIZER_STANDALONE } from "@/components/admin/pages-display";
+import { CustomizerTabs } from "@/components/admin/customizer/CustomizerTabs";
 import { HomeCustomizer, type PickCategory, type PickProduct } from "@/components/admin/home-customizer/HomeCustomizer";
 import { ProductPageCustomizer } from "@/components/admin/customizer/ProductPageCustomizer";
 import { HeaderFooterCustomizer } from "@/components/admin/customizer/HeaderFooterCustomizer";
@@ -12,14 +12,13 @@ import { getStorefrontConfig } from "@/lib/storefront-config";
 import { getShopLayoutData } from "@/lib/shop-layout-data";
 import { getShopHeaderSettings } from "@/lib/header-settings";
 import { prisma } from "@/lib/db";
-import { cn } from "@/lib/utils";
 
 type Tab = "home" | "product" | "header" | "footer";
-const TABS: { key: Tab; label: string; hint: string; icon: typeof Home; perm: "manage_homepage" | "manage_payment" }[] = [
-  { key: "home", label: "Homepage", hint: "Offer bar, banners, sections", icon: Home, perm: "manage_homepage" },
-  { key: "product", label: "Product Page", hint: "Every section, order & labels", icon: Package, perm: "manage_homepage" },
-  { key: "header", label: "Header & Menus", hint: "Header strip, menus, sidebar, push bell", icon: PanelTop, perm: "manage_payment" },
-  { key: "footer", label: "Footer", hint: "Columns, links, design", icon: PanelBottom, perm: "manage_payment" },
+const TABS: { key: Tab; label: string; hint: string; perm: "manage_homepage" | "manage_payment" }[] = [
+  { key: "home", label: "Homepage", hint: "Offer bar, banners, sections", perm: "manage_homepage" },
+  { key: "product", label: "Product Page", hint: "Every section, order & labels", perm: "manage_homepage" },
+  { key: "header", label: "Header & Menus", hint: "Header strip, menus, sidebar, push bell", perm: "manage_payment" },
+  { key: "footer", label: "Footer", hint: "Columns, links, design", perm: "manage_payment" },
 ];
 
 /**
@@ -58,7 +57,7 @@ export default async function CustomizerPage({ searchParams }: { searchParams: P
   }
 
   return (
-    <AdminShell
+    <DisplayOptionsShell prefKey={CUSTOMIZER_PREF_KEY} groups={CUSTOMIZER_GROUPS} standalone={CUSTOMIZER_STANDALONE}
       siteName="EduMint24"
       pageTitle="Store Customizer"
       pageSubtitle="Design your storefront with a live preview — homepage, product page, header and footer"
@@ -66,20 +65,8 @@ export default async function CustomizerPage({ searchParams }: { searchParams: P
       role={session.role}
       permissions={session.permissions}
     >
-      <nav className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4" aria-label="Customizer sections">
-        {allowed.map((t) => (
-          <Link key={t.key} href={`/admin/customizer?tab=${t.key}`} aria-current={t.key === tab ? "page" : undefined}
-            className={cn("flex items-center gap-3 rounded-xl border px-3.5 py-3 transition",
-              t.key === tab ? "border-admin-primary bg-admin-primary text-white shadow-md" : "border-admin-gray-200 bg-white text-admin-gray-700 hover:border-admin-primary/50")}>
-            <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-lg", t.key === tab ? "bg-white/20" : "bg-admin-primary-lighter text-admin-primary")}><t.icon className="h-[18px] w-[18px]" /></span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold">{t.label}</span>
-              <span className={cn("block truncate text-xs", t.key === tab ? "text-white/80" : "text-admin-gray-500")}>{t.hint}</span>
-            </span>
-          </Link>
-        ))}
-      </nav>
+      <CustomizerTabs tab={tab} tabs={allowed.map(({ key, label, hint }) => ({ key, label, hint }))} />
       {body}
-    </AdminShell>
+    </DisplayOptionsShell>
   );
 }

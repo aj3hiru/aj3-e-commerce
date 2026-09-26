@@ -6,6 +6,7 @@ import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/mobile.dart';
 import '../pos/receipt.dart';
 
 /// One order: items, bill, customer, history, and the actions this role may take.
@@ -195,7 +196,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Padding(padding: EdgeInsets.only(top: 5), child: Icon(Icons.circle, size: 8, color: AppColors.primary)),
+                Padding(padding: EdgeInsets.only(top: 5), child: Icon(Icons.circle, size: 8, color: AppColors.primary)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -210,6 +211,41 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       ),
     ];
 
+    String digits(String v) => v.replaceAll(RegExp(r'\D'), '').replaceFirst(RegExp(r'^91(?=\d{10}$)'), '');
+    // Phones: delivery-app layout — black contact card, tinted info rows, actions, then the bill.
+    final phone = [
+      ContactCard(
+        name: '${o['customer']}',
+        subtitle: o['phone'] != null ? '${o['phone']}' : (online ? 'Online customer' : 'Store customer'),
+        onChat: o['phone'] == null ? null : () => launchUrl(Uri.parse('https://wa.me/91${digits('${o['phone']}')}'), mode: LaunchMode.externalApplication),
+        onCall: o['phone'] == null ? null : () => launchUrl(Uri.parse('tel:${o['phone']}')),
+      ),
+      const SizedBox(height: 14),
+      AppCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (o['address'] != null)
+            InkWell(
+              onTap: () {
+                final dest = o['lat'] != null ? '${o['lat']},${o['lng']}' : Uri.encodeComponent('${o['address']}');
+                launchUrl(Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$dest'), mode: LaunchMode.externalApplication);
+              },
+              child: TintedInfo(icon: Icons.location_on_rounded, label: 'Address  ·  tap for map', value: '${o['address']}'.replaceAll('\n', ', '), color: AppColors.red, tint: AppColors.redSoft),
+            ),
+          TintedInfo(icon: Icons.schedule_rounded, label: online ? 'Order placed' : 'Bill time', value: dateTime(o['createdAt']), color: const Color(0xFF7C5CE0), tint: AppColors.lilac),
+          TintedInfo(icon: Icons.receipt_long_rounded, label: 'Order number · $st', value: '${o['number']}', color: AppColors.primary, tint: AppColors.primarySoft),
+          TintedInfo(icon: Icons.payments_rounded, label: 'Payment · ${o['paymentMethod']}', value: toDouble(o['due']) > 0 ? '${o['paymentStatus']} · due ${money(o['due'])}' : '${o['paymentStatus']} · ${money(o['total'])}', color: const Color(0xFF12A37F), tint: AppColors.mint),
+          if (agentName != null) TintedInfo(icon: Icons.two_wheeler_rounded, label: 'Delivery agent', value: '$agentName', color: const Color(0xFF3B7BE0), tint: AppColors.sky),
+          if (o['cancelReason'] != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text('Reason: ${o['cancelReason']}', style: const TextStyle(color: AppColors.red))),
+        ]),
+      ),
+      const SizedBox(height: 14),
+      Wrap(spacing: 8, runSpacing: 8, children: actions),
+      const SizedBox(height: 14),
+      main[2],
+      const SizedBox(height: 12),
+      side[2],
+    ];
+
     return Scaffold(
       appBar: AppBar(title: Text('${o['number']}')),
       body: RefreshIndicator(
@@ -220,7 +256,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         child: PageBody(
           child: ListView(padding: const EdgeInsets.all(16), children: wide
               ? [Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(flex: 3, child: Column(children: main)), const SizedBox(width: 16), Expanded(flex: 2, child: Column(children: side))])]
-              : [...main, const SizedBox(height: 12), ...side]),
+              : phone),
         ),
       ),
     );
@@ -247,7 +283,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
               leading: Avatar('${a['name']}'),
               title: Text('${a['name']}'),
               subtitle: a['phone'] != null ? Text('${a['phone']}') : null,
-              trailing: toInt(a['id']) == toInt(o['agentId']) ? const Icon(Icons.check_rounded, color: AppColors.primary) : null,
+              trailing: toInt(a['id']) == toInt(o['agentId']) ? Icon(Icons.check_rounded, color: AppColors.primary) : null,
               onTap: () => Navigator.pop(c, toInt(a['id'])),
             ),
         ]),

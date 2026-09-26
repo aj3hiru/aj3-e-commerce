@@ -75,12 +75,14 @@ class KpiTile extends StatelessWidget {
   final String label;
   final String value;
   final String? sub;
-  final Color color;
-  final Color soft;
+  final Color? _color;
+  final Color? _soft;
+  Color get color => _color ?? AppColors.primary;
+  Color get soft => _soft ?? AppColors.primarySoft;
   final VoidCallback? onTap;
   /// Change vs a previous period, e.g. +12.5 (%). Shown as a small green / red chip.
   final double? trend;
-  const KpiTile({super.key, required this.icon, required this.label, required this.value, this.sub, this.color = AppColors.primary, this.soft = AppColors.primarySoft, this.onTap, this.trend});
+  const KpiTile({super.key, required this.icon, required this.label, required this.value, this.sub, Color? color, Color? soft, this.onTap, this.trend}) : _color = color, _soft = soft;
   @override
   Widget build(BuildContext context) => AppCard(
         onTap: onTap,
@@ -153,7 +155,7 @@ class EmptyState extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 64, height: 64, decoration: const BoxDecoration(color: AppColors.primarySoft, shape: BoxShape.circle), child: Icon(icon, color: AppColors.primary, size: 30)),
+            Container(width: 64, height: 64, decoration: BoxDecoration(color: AppColors.primarySoft, shape: BoxShape.circle), child: Icon(icon, color: AppColors.primary, size: 30)),
             const SizedBox(height: 14),
             Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             if (message != null) ...[const SizedBox(height: 6), Text(message!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.muted))],
@@ -382,10 +384,12 @@ class HeroHeader extends StatelessWidget {
 class QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color color;
-  final Color soft;
+  final Color? _color;
+  final Color? _soft;
+  Color get color => _color ?? AppColors.primary;
+  Color get soft => _soft ?? AppColors.primarySoft;
   final VoidCallback onTap;
-  const QuickAction({super.key, required this.icon, required this.label, required this.onTap, this.color = AppColors.primary, this.soft = AppColors.primarySoft});
+  const QuickAction({super.key, required this.icon, required this.label, required this.onTap, Color? color, Color? soft}) : _color = color, _soft = soft;
   @override
   Widget build(BuildContext context) => InkWell(
         borderRadius: BorderRadius.circular(14),

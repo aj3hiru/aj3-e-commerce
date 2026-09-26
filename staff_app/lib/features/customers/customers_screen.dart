@@ -6,6 +6,7 @@ import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/mobile.dart';
 import '../dues/collect_sheet.dart';
 import '../orders/orders_screen.dart';
 
@@ -26,7 +27,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
     final q = _q.trim().toLowerCase();
     final list = s.list('customers').where((c) => (!_withDue || toDouble(c['due']) > 0) && (q.isEmpty || '${c['name']} ${c['phone'] ?? ''} ${c['email'] ?? ''}'.toLowerCase().contains(q))).toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Customers'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
+      appBar: AppBar(leading: menuButton(context), title: const Text('Customers'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
       floatingActionButton: s.perms.customers ? FloatingActionButton.extended(onPressed: () => editCustomer(context, null), icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('Add customer')) : null,
       body: PageBody(
         maxWidth: 1000,

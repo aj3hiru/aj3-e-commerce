@@ -6,6 +6,7 @@ import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/mobile.dart';
 
 const staffRoles = [
   ('admin', 'Admin'),
@@ -35,7 +36,7 @@ class _StaffScreenState extends State<StaffScreen> {
     final q = _q.trim().toLowerCase();
     final list = s.list('staff').where((u) => q.isEmpty || '${u['name']} ${u['username']} ${u['phone'] ?? ''} ${u['roleLabel']}'.toLowerCase().contains(q)).toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Staff'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
+      appBar: AppBar(leading: menuButton(context), title: const Text('Staff'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
       floatingActionButton: FloatingActionButton.extended(onPressed: () => editStaff(context, null), icon: const Icon(Icons.person_add_alt_1_rounded), label: const Text('Add staff')),
       body: PageBody(
         maxWidth: 1000,

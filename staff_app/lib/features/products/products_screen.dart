@@ -6,6 +6,7 @@ import '../../core/nav.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/mobile.dart';
 import 'product_edit_screen.dart';
 
 /// Products & stock: search, filter (low / out / inactive), quick stock update, edit.
@@ -57,7 +58,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Products'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
+      appBar: AppBar(leading: menuButton(context), title: const Text('Products'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductEditScreen())),
         icon: const Icon(Icons.add_rounded),
@@ -112,7 +113,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                                 Text([if (p['sku'] != null) 'SKU ${p['sku']}', if (p['barcode'] != null) '${p['barcode']}'].join(' · '), style: const TextStyle(color: AppColors.muted, fontSize: 12)),
                                 const SizedBox(height: 4),
                                 Row(children: [
-                                  Text(money(toDouble(p['salePrice']) > 0 ? p['salePrice'] : p['price']), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
+                                  Text(money(toDouble(p['salePrice']) > 0 ? p['salePrice'] : p['price']), style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
                                   if (toDouble(p['salePrice']) > 0) ...[const SizedBox(width: 6), Text(money(p['price']), style: const TextStyle(color: AppColors.faint, decoration: TextDecoration.lineThrough, fontSize: 12))],
                                 ]),
                               ]),

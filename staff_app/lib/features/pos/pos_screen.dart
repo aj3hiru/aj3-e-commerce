@@ -9,6 +9,7 @@ import '../../core/format.dart';
 import '../../core/local_store.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/mobile.dart';
 import 'cart.dart';
 import 'receipt.dart';
 import 'scanner.dart';
@@ -206,7 +207,7 @@ class _PosScreenState extends State<PosScreen> {
           _ClearIntent: CallbackAction<_ClearIntent>(onInvoke: (_) => cart.clear()),
         },
         child: Scaffold(
-          appBar: AppBar(
+          appBar: AppBar(leading: menuButton(context), 
             title: const Text('Billing'),
             actions: [
               TextButton.icon(onPressed: _recentBills, icon: const Icon(Icons.history_rounded, size: 19), label: const Text('Recent bills')),
@@ -228,7 +229,7 @@ class _PosScreenState extends State<PosScreen> {
         focusNode: _searchFocus,
         onChanged: (v) => setState(() => _q = v),
         onSubmitted: (_) => _enter(products),
-        trailing: Platform.isAndroid ? IconButton(icon: const Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary), onPressed: () => _scan(products)) : null,
+        trailing: Platform.isAndroid ? IconButton(icon: Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary), onPressed: () => _scan(products)) : null,
       );
 
   Widget _wideBody(List<Map<String, dynamic>> products) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -266,7 +267,7 @@ class _PosScreenState extends State<PosScreen> {
           const SizedBox(height: 6),
           Text(p['name'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           Row(children: [
-            Expanded(child: Text(money(CartLine.shelfPrice(p)), style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary))),
+            Expanded(child: Text(money(CartLine.shelfPrice(p)), style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary))),
             if (stock != null) Text(out ? 'Out' : '$stock', style: TextStyle(fontSize: 12, color: out ? AppColors.red : AppColors.muted, fontWeight: FontWeight.w600)),
           ]),
         ]),
@@ -415,7 +416,7 @@ class _PosScreenState extends State<PosScreen> {
           const Divider(height: 18),
           Row(children: [
             const Expanded(child: Text('Total', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-            Text(money(cart.grandTotal), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary)),
+            Text(money(cart.grandTotal), style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary)),
           ]),
         ]),
       ),

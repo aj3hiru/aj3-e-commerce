@@ -7,6 +7,7 @@ import '../../core/format.dart';
 import '../../core/local_store.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/mobile.dart';
 import 'sync_center.dart';
 import 'update.dart';
 
@@ -17,8 +18,79 @@ class AccountScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final u = s.user ?? {};
+    Future<void> logout() async {
+      final msg = s.pending > 0
+          ? '${s.pending} change(s) have not reached the server yet. If you log out now they will be LOST. Connect to the internet first to send them.'
+          : 'You can log in again any time.';
+      if (await confirm(context, 'Log out?', msg, ok: 'Log out', danger: s.pending > 0)) s.logout();
+    }
+
+    if (!isWide(context)) {
+      // Phones: orange curved header, centred photo, a menu of coloured round icons.
+      Widget item(IconData icon, Color ink, Color tint, String title, String? sub, VoidCallback? onTap, {Widget? trailing}) => ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+            leading: Container(width: 42, height: 42, decoration: BoxDecoration(color: tint, shape: BoxShape.circle), child: Icon(icon, color: ink, size: 21)),
+            title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: sub == null ? null : Text(sub, style: const TextStyle(fontSize: 12.5)),
+            trailing: trailing ?? const Icon(Icons.chevron_right_rounded, color: AppColors.faint),
+            onTap: onTap,
+          );
+      return Scaffold(
+        body: ListView(padding: EdgeInsets.zero, children: [
+          Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
+            Container(
+              height: 190,
+              decoration: BoxDecoration(gradient: AppColors.heroGradient, borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36))),
+              child: SafeArea(
+                bottom: false,
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  IconButton(icon: const Icon(Icons.menu_rounded, color: Colors.white, size: 26), onPressed: () => shellScaffoldKey.currentState?.openDrawer()),
+                  const Expanded(child: Padding(padding: EdgeInsets.only(top: 12), child: Text('My profile', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700)))),
+                  IconButton(icon: const Icon(Icons.sync_rounded, color: Colors.white), onPressed: () => _sync(context)),
+                ]),
+              ),
+            ),
+            Positioned(
+              top: 128,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => _changePhoto(context),
+                child: Stack(children: [
+                  Container(padding: const EdgeInsets.all(4), decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Color(0x22000000), blurRadius: 14, offset: Offset(0, 4))]), child: Avatar(u['name'] ?? '', photo: u['avatar'], size: 96)),
+                  Positioned(right: 4, bottom: 4, child: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)), child: const Icon(Icons.photo_camera_rounded, color: Colors.white, size: 15))),
+                ]),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 90),
+          Text(u['name'] ?? '', textAlign: TextAlign.center, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text([u['roleLabel'], u['phone']].where((x) => x != null && '$x'.isNotEmpty).join(' · '), textAlign: TextAlign.center, style: const TextStyle(color: AppColors.muted)),
+          if (u['since'] != null) Text('Staff since ${dateShort(u['since'])}', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.faint, fontSize: 12.5)),
+          const SizedBox(height: 18),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: AppCard(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Column(children: [
+                item(Icons.person_rounded, AppColors.primary, AppColors.primarySoft, 'Edit my details', u['email'] as String?, () => _editDetails(context)),
+                item(Icons.lock_rounded, const Color(0xFF7C5CE0), AppColors.lilac, 'Change password', null, () => _changePassword(context)),
+                item(Icons.print_rounded, const Color(0xFF3B7BE0), AppColors.sky, 'Printing', 'Paper size and automatic receipt', () => _printing(context)),
+                item(Icons.sync_rounded, const Color(0xFF12A37F), AppColors.mint, 'Sync', s.pending > 0 ? '${s.pending} change(s) waiting' : 'All saved', () => _sync(context)),
+                item(Icons.system_update_rounded, const Color(0xFFE09A00), AppColors.cream, 'App version',
+                    s.appVersion.isEmpty ? '—' : 'v${s.appVersion}${s.release?['version'] != null ? ' · latest v${s.release!['version']}' : ''}', s.release != null ? () => openUpdate(context, s.release!) : null,
+                    trailing: s.release != null ? null : const SizedBox.shrink()),
+                item(Icons.logout_rounded, AppColors.red, AppColors.blush, 'Log out', null, logout, trailing: const SizedBox.shrink()),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 24),
+        ]),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => _sync(context)))]),
+      appBar: AppBar(leading: menuButton(context), title: const Text('Profile'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => _sync(context)))]),
       body: PageBody(
         maxWidth: 820,
         child: ListView(padding: const EdgeInsets.all(16), children: [
@@ -30,7 +102,7 @@ class AccountScreen extends StatelessWidget {
               onTap: () => _changePhoto(context),
               child: Stack(children: [
                 Container(padding: const EdgeInsets.all(3), decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: Avatar(u['name'] ?? '', photo: u['avatar'], size: 64)),
-                Positioned(right: 0, bottom: 0, child: Container(padding: const EdgeInsets.all(5), decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle), child: const Icon(Icons.photo_camera_rounded, color: Colors.white, size: 14))),
+                Positioned(right: 0, bottom: 0, child: Container(padding: const EdgeInsets.all(5), decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle), child: const Icon(Icons.photo_camera_rounded, color: Colors.white, size: 14))),
               ]),
             ),
             bottom: u['since'] != null ? Text('Staff since ${dateShort(u['since'])}', style: TextStyle(color: Colors.white.withValues(alpha: .85), fontSize: 12.5)) : null,
@@ -60,12 +132,7 @@ class AccountScreen extends StatelessWidget {
             style: OutlinedButton.styleFrom(foregroundColor: AppColors.red),
             icon: const Icon(Icons.logout_rounded),
             label: const Text('Log out'),
-            onPressed: () async {
-              final msg = s.pending > 0
-                  ? '${s.pending} change(s) have not reached the server yet. If you log out now they will be LOST. Connect to the internet first to send them.'
-                  : 'You can log in again any time.';
-              if (await confirm(context, 'Log out?', msg, ok: 'Log out', danger: s.pending > 0)) s.logout();
-            },
+            onPressed: logout,
           ),
         ]),
       ),

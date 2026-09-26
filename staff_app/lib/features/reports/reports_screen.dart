@@ -8,6 +8,7 @@ import '../../core/format.dart';
 import '../../core/local_store.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/mobile.dart';
 import 'report_export.dart';
 
 /// Report Builder — same numbers as the website: any day / month / range,
@@ -108,7 +109,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     Widget chip(String label, String range) => Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(label: Text(label), selected: preset == range, onSelected: (_) => _set({'range': range})));
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppBar(leading: menuButton(context), 
         title: const Text('Reports'),
         actions: [
           if (r != null) IconButton(tooltip: 'PDF', icon: const Icon(Icons.picture_as_pdf_outlined), onPressed: () => exportReportPdf(context, r)),

@@ -46,18 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (err == null && widget.again && Navigator.canPop(context)) Navigator.pop(context);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final wide = isWide(context);
-    final form = ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 400),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          Container(width: 48, height: 48, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.storefront_rounded, color: Colors.white)),
-          const SizedBox(width: 12),
-          const Expanded(child: Text(AppConfig.appName, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
-        ]),
-        const SizedBox(height: 28),
+  Widget _fields() => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text(widget.again ? 'Log in again' : 'Welcome back', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
         Text(widget.again ? 'Your login has ended. Nothing you did offline is lost.' : 'Sign in with your staff account.', style: const TextStyle(color: AppColors.muted)),
@@ -83,15 +72,52 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 10),
         TextButton(onPressed: () => setState(() => _advanced = !_advanced), child: Text(_advanced ? 'Hide server address' : 'Server address')),
         if (_advanced) TextField(controller: _server, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'Server', prefixIcon: Icon(Icons.dns_outlined))),
+      ]);
+
+  @override
+  Widget build(BuildContext context) {
+    final wide = isWide(context);
+    final form = ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 400),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(width: 48, height: 48, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.storefront_rounded, color: Colors.white)),
+          const SizedBox(width: 12),
+          const Expanded(child: Text(AppConfig.appName, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
+        ]),
+        const SizedBox(height: 28),
+        _fields(),
       ]),
     );
+    if (!wide) {
+      // Phones: brand-coloured header with a curved bottom, the form below.
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: SingleChildScrollView(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Container(
+              padding: EdgeInsets.fromLTRB(24, MediaQuery.paddingOf(context).top + 36, 24, 36),
+              decoration: BoxDecoration(gradient: AppColors.heroGradient, borderRadius: const BorderRadius.vertical(bottom: Radius.circular(36))),
+              child: Column(children: [
+                Container(width: 76, height: 76, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)), child: Icon(Icons.storefront_rounded, color: AppColors.primary, size: 40)),
+                const SizedBox(height: 14),
+                const Text(AppConfig.appName, textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text('Staff app', style: TextStyle(color: Colors.white.withValues(alpha: .85))),
+              ]),
+            ),
+            Padding(padding: const EdgeInsets.fromLTRB(24, 28, 24, 24), child: _fields()),
+          ]),
+        ),
+      );
+    }
     return Scaffold(
-      backgroundColor: wide ? AppColors.bg : Colors.white,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: wide ? Card(child: Padding(padding: const EdgeInsets.all(36), child: form)) : form,
+            child: Card(child: Padding(padding: const EdgeInsets.all(36), child: form)),
           ),
         ),
       ),

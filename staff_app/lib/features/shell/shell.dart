@@ -9,6 +9,7 @@ import '../../core/nav.dart';
 import '../../core/perms.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/mobile.dart';
 import '../account/account_screen.dart';
 import '../account/sync_center.dart';
 import '../account/update.dart';
@@ -163,92 +164,100 @@ class _ShellState extends State<Shell> {
 
   Widget _phone(BuildContext context, AppState s, List<Section> sections, String current, Map<String, int> badges, Widget body) {
     final nav = context.read<NavController>();
-    final primary = sections.where((x) => x.id != 'account').take(4).toList();
-    final rest = sections.where((x) => !primary.contains(x)).toList();
-    final inPrimary = primary.any((x) => x.id == current);
-    final restBadge = rest.fold<int>(0, (t, x) => t + (badges[x.id] ?? 0));
+    final p = s.perms;
+    // Bottom bar: Home, the two sections this role uses most, Profile. Everything else is in the ☰ menu.
+    final priority = p.seesMyDeliveries && !p.seesOrders ? ['deliveries', 'history'] : ['pos', 'orders', 'board', 'products', 'dues', 'customers', 'reports'];
+    final ids = sections.map((x) => x.id).toSet();
+    final middle = <(String, IconData, IconData, String)>[];
+    for (final id in priority) {
+      if (middle.length == 2) break;
+      if (id == 'history' && ids.contains('deliveries')) {
+        middle.add(('history', Icons.history_rounded, Icons.history_rounded, 'History'));
+      } else if (ids.contains(id)) {
+        final x = sections.firstWhere((x) => x.id == id);
+        middle.add((x.id, x.icon, x.activeIcon, const {'deliveries': 'Deliveries', 'pos': 'Billing', 'board': 'Board'}[x.id] ?? x.label));
+      }
+    }
+    final items = [('home', Icons.home_outlined, Icons.home_rounded, 'Home'), ...middle, ('account', Icons.person_outline_rounded, Icons.person_rounded, 'Profile')];
+    final shown = current == 'deliveries' && nav.args.isEmpty && _historyTab ? 'history' : current;
     return Scaffold(
+      key: shellScaffoldKey,
+      drawer: _drawer(context, s, sections, current, badges),
       body: body,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: inPrimary ? primary.indexWhere((x) => x.id == current) : primary.length,
-        onDestinationSelected: (i) => i < primary.length ? nav.go(primary[i].id) : _openMore(context, rest, badges),
-        destinations: [
-          for (final x in primary)
-            NavigationDestination(
-              icon: Badge(isLabelVisible: (badges[x.id] ?? 0) > 0, label: Text('${badges[x.id]}'), child: Icon(x.icon)),
-              selectedIcon: Badge(isLabelVisible: (badges[x.id] ?? 0) > 0, label: Text('${badges[x.id]}'), child: Icon(x.activeIcon, color: AppColors.primary)),
-              label: const {'home': 'Home', 'deliveries': 'Deliveries', 'board': 'Board', 'customers': 'Customers'}[x.id] ?? x.label,
-            ),
-          NavigationDestination(
-            icon: Badge(isLabelVisible: restBadge > 0, label: Text('$restBadge'), child: const Icon(Icons.grid_view_rounded)),
-            selectedIcon: const Icon(Icons.grid_view_rounded, color: AppColors.primary),
-            label: 'More',
-          ),
-        ],
+      bottomNavigationBar: FloatingNavBar(
+        items: items,
+        current: items.any((i) => i.$1 == shown) ? shown : '',
+        badges: {...badges, 'history': 0},
+        onTap: (id) {
+          if (id == 'history') {
+            _historyTab = true;
+            nav.go('deliveries', {'done': true});
+          } else {
+            _historyTab = false;
+            nav.go(id, id == 'deliveries' ? {'done': false} : const {});
+          }
+        },
       ),
     );
   }
 
-  void _openMore(BuildContext context, List<Section> rest, Map<String, int> badges) {
+  bool _historyTab = false;
+
+  Widget _drawer(BuildContext context, AppState s, List<Section> sections, String current, Map<String, int> badges) {
     final nav = context.read<NavController>();
-    final s = context.read<AppState>();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (c) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Row(children: [
-              Avatar(s.user?['name'] ?? '', photo: s.user?['avatar'], size: 44),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(s.user?['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                  Text(s.user?['roleLabel'] ?? '', style: const TextStyle(color: AppColors.muted)),
-                ]),
-              ),
-              IconButton.filledTonal(onPressed: () {
-                Navigator.pop(c);
-                openSearch(context);
-              }, icon: const Icon(Icons.search_rounded)),
-            ]),
-            const SizedBox(height: 14),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 3, mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 1.1,
-              children: [
-                for (final x in rest) _moreTile(x.activeIcon, x.label, badges[x.id] ?? 0, () {
-                  Navigator.pop(c);
-                  nav.go(x.id);
-                }),
-                _moreTile(Icons.sync_rounded, 'Sync', s.pending + s.failed, () {
-                  Navigator.pop(c);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncCenter()));
-                }),
-              ],
+    void go(String id) {
+      Navigator.pop(context);
+      _historyTab = false;
+      nav.go(id);
+    }
+    return Drawer(
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.horizontal(right: Radius.circular(24))),
+      child: Column(children: [
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 22, 20, 22),
+          decoration: BoxDecoration(gradient: AppColors.heroGradient, borderRadius: const BorderRadius.only(bottomRight: Radius.circular(28))),
+          child: Row(children: [
+            Container(padding: const EdgeInsets.all(2), decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: Avatar(s.user?['name'] ?? '', photo: s.user?['avatar'], size: 54)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(s.user?['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
+                Text(s.user?['roleLabel'] ?? '', style: TextStyle(color: Colors.white.withValues(alpha: .88))),
+                Text('${s.settings['businessName'] ?? AppConfig.appName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: .75), fontSize: 12)),
+              ]),
             ),
           ]),
         ),
-      ),
+        Expanded(
+          child: ListView(padding: const EdgeInsets.fromLTRB(12, 12, 12, 12), children: [
+            for (final x in sections)
+              ListTile(
+                selected: x.id == current,
+                selectedTileColor: AppColors.primarySoft,
+                selectedColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                leading: Icon(x.id == current ? x.activeIcon : x.icon),
+                title: Text(x.label, style: TextStyle(fontWeight: x.id == current ? FontWeight.w700 : FontWeight.w500)),
+                trailing: CountBadge(badges[x.id] ?? 0),
+                onTap: () => go(x.id),
+              ),
+            const Divider(height: 20),
+            ListTile(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), leading: const Icon(Icons.search_rounded), title: const Text('Search'), onTap: () {
+              Navigator.pop(context);
+              openSearch(context);
+            }),
+            ListTile(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), leading: const Icon(Icons.sync_rounded), title: const Text('Sync'), trailing: CountBadge(s.pending + s.failed, color: AppColors.amber), onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncCenter()));
+            }),
+          ]),
+        ),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 18), child: SyncBadge(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncCenter())))),
+      ]),
     );
   }
-
-  Widget _moreTile(IconData icon, String label, int badge, VoidCallback onTap) => AppCard(
-        padding: const EdgeInsets.all(10),
-        onTap: onTap,
-        child: Stack(children: [
-          Center(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Container(width: 44, height: 44, decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(13)), child: Icon(icon, color: AppColors.primary)),
-              const SizedBox(height: 8),
-              Text(label, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5)),
-            ]),
-          ),
-          Positioned(right: 0, top: 0, child: CountBadge(badge)),
-        ]),
-      );
 }
 
 bool isNewer(dynamic latest, String current) {

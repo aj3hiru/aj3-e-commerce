@@ -9,6 +9,7 @@ import '../../core/format.dart';
 import '../../core/nav.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/mobile.dart';
 
 /// Categories: product counts, add / rename / hide, change the picture.
 class CategoriesScreen extends StatelessWidget {
@@ -22,7 +23,7 @@ class CategoriesScreen extends StatelessWidget {
     int count(Map c) => products.where((p) => toInt(p['categoryId']) == toInt(c['id']) && p['status'] == 'active').length;
     final wide = isWide(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Categories'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
+      appBar: AppBar(leading: menuButton(context), title: const Text('Categories'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
       floatingActionButton: FloatingActionButton.extended(onPressed: () => editCategory(context, null), icon: const Icon(Icons.add_rounded), label: const Text('Add category')),
       body: RefreshIndicator(
         onRefresh: () => s.syncNow(only: const ['categories', 'products']),
@@ -46,7 +47,7 @@ class CategoriesScreen extends StatelessWidget {
                       Row(children: [
                         InkWell(
                           onTap: () => context.read<NavController>().go('products', {'category': toInt(cat['id'])}),
-                          child: Text('$n product${n == 1 ? '' : 's'} ›', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 12.5)),
+                          child: Text('$n product${n == 1 ? '' : 's'} ›', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 12.5)),
                         ),
                         const Spacer(),
                         if (cat['status'] != 'active') const StatusChip('Inactive'),

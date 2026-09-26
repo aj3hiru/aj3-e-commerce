@@ -6,6 +6,7 @@ import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/mobile.dart';
 import 'collect_sheet.dart';
 
 /// Every open due, grouped by customer, with the total outstanding. Tap to collect.
@@ -33,7 +34,7 @@ class _DuesScreenState extends State<DuesScreen> {
     final overdue = dues.where((d) => d['promised'] != null && (parseDate(d['promised'])?.isBefore(DateTime.now().toUtc()) ?? false)).length;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Dues'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
+      appBar: AppBar(leading: menuButton(context), title: const Text('Dues'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
       body: RefreshIndicator(
         onRefresh: () => s.syncNow(only: const ['dues', 'customers']),
         child: PageBody(
@@ -63,7 +64,7 @@ class _DuesScreenState extends State<DuesScreen> {
                   ),
                   Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                     Text(money(g.fold<double>(0, (t, d) => t + toDouble(d['balance']))), style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.red, fontSize: 16)),
-                    const Text('Collect ›', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 12.5)),
+                    Text('Collect ›', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 12.5)),
                   ]),
                   if (g.first['phone'] != null) IconButton(icon: const Icon(Icons.call_outlined), onPressed: () => launchUrl(Uri.parse('tel:${g.first['phone']}'))),
                 ]),

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +13,8 @@ import 'features/shell/shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Phones get the orange delivery-app look; Windows keeps the website's violet admin look.
+  AppColors.useMobileStyle(Platform.isAndroid || Platform.isIOS);
   final state = AppState();
   await state.init();
   runApp(MultiProvider(providers: [ChangeNotifierProvider.value(value: state), ChangeNotifierProvider(create: (_) => NavController())], child: const StaffApp()));

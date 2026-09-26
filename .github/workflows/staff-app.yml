@@ -67,6 +67,14 @@ jobs:
       - uses: subosito/flutter-action@v2
         with: { flutter-version: "${{ env.FLUTTER_VERSION }}", channel: stable, cache: true }
       - run: flutter build windows --release --build-number=${{ github.run_number }}
+      - name: Bundle the Visual C++ runtime (so the app opens on PCs without it)
+        shell: pwsh
+        run: |
+          $rel = "build\windows\x64\runner\Release"
+          foreach ($dll in @("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll", "msvcp140_1.dll", "msvcp140_2.dll")) {
+            $src = Join-Path $env:WINDIR "System32\$dll"
+            if (Test-Path $src) { Copy-Item $src $rel -Force; Write-Host "bundled $dll" } else { Write-Host "::warning::$dll not found" }
+          }
       - name: Installer
         shell: pwsh
         run: |

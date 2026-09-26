@@ -2,12 +2,38 @@ import 'package:flutter/material.dart';
 
 /// Colours and type — the same violet as the admin panel, Inter everywhere.
 class AppColors {
-  static const primary = Color(0xFF7C3AED);
-  static const primaryDark = Color(0xFF6D28D9);
-  static const primarySoft = Color(0xFFF3EEFF);
-  static const bg = Color(0xFFF4F5FB);
+  /// Phone app: warm orange (delivery-app style). Windows app: the website admin's violet.
+  static bool mobile = false;
+  static Color primary = const Color(0xFF7C3AED);
+  static Color primaryDark = const Color(0xFF6D28D9);
+  static Color primarySoft = const Color(0xFFF3EEFF);
+  static Color bg = const Color(0xFFF4F5FB);
+  static LinearGradient heroGradient = const LinearGradient(colors: [Color(0xFF6D28D9), Color(0xFF4F46E5)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+
+  static void useMobileStyle(bool on) {
+    mobile = on;
+    if (on) {
+      primary = const Color(0xFFFF7A1A);
+      primaryDark = const Color(0xFFE8650A);
+      primarySoft = const Color(0xFFFFF1E6);
+      bg = const Color(0xFFF7F7FA);
+      heroGradient = const LinearGradient(colors: [Color(0xFFFF8A2B), Color(0xFFFF6A00)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+    } else {
+      primary = const Color(0xFF7C3AED);
+      primaryDark = const Color(0xFF6D28D9);
+      primarySoft = const Color(0xFFF3EEFF);
+      bg = const Color(0xFFF4F5FB);
+      heroGradient = const LinearGradient(colors: [Color(0xFF6D28D9), Color(0xFF4F46E5)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+    }
+  }
+
+  // Soft tile colours (mobile dashboard).
+  static const mint = Color(0xFFE7F7F1);
+  static const cream = Color(0xFFFFF7E3);
+  static const blush = Color(0xFFFDEBEF);
+  static const sky = Color(0xFFEAF2FD);
+  static const lilac = Color(0xFFF1EEFD);
   static const indigo = Color(0xFF4F46E5);
-  static const heroGradient = LinearGradient(colors: [Color(0xFF6D28D9), Color(0xFF4F46E5)], begin: Alignment.topLeft, end: Alignment.bottomRight);
   static const pink = Color(0xFFDB2777);
   static const pinkSoft = Color(0xFFFDEBF4);
   static const shadow = [BoxShadow(color: Color(0x0A1B1B3A), blurRadius: 12, offset: Offset(0, 4)), BoxShadow(color: Color(0x05000000), blurRadius: 2, offset: Offset(0, 1))];
@@ -42,7 +68,7 @@ ThemeData buildTheme() {
       filled: true, fillColor: Colors.white, isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       border: const OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: AppColors.border)),
       enabledBorder: const OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: AppColors.border)),
-      focusedBorder: const OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: AppColors.primary, width: 1.6)),
+      focusedBorder: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: AppColors.primary, width: 1.6)),
       errorBorder: const OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: AppColors.red)),
       labelStyle: const TextStyle(color: AppColors.muted), hintStyle: const TextStyle(color: AppColors.faint),
     ),
@@ -56,7 +82,7 @@ ThemeData buildTheme() {
     navigationBarTheme: NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: AppColors.primarySoft, height: 66,
         labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(fontFamily: 'Inter', fontSize: 11.5, fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
             color: s.contains(WidgetState.selected) ? AppColors.primary : AppColors.muted))),
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: AppColors.primary, foregroundColor: Colors.white, elevation: 3, focusElevation: 3, hoverElevation: 5, highlightElevation: 4,
       shape: StadiumBorder(), extendedTextStyle: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontSize: 14.5),
     ),

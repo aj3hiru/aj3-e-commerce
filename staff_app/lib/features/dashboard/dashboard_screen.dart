@@ -12,6 +12,8 @@ import '../../widgets/common.dart';
 import '../account/sync_center.dart';
 import '../customers/customers_screen.dart';
 import '../dues/collect_sheet.dart';
+import '../../widgets/mobile.dart';
+import '../orders/order_actions.dart';
 import '../orders/order_detail_screen.dart';
 import '../products/product_edit_screen.dart';
 import '../shell/shell.dart' show openSearch;
@@ -85,62 +87,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
 
     // ── number cards, each opening its screen ──
-    final tiles = <Widget>[
+    final stats = <_Stat>[
       if (sales != null)
-        KpiTile(icon: Icons.currency_rupee_rounded, label: "Today's sales", value: money(sales['today']), sub: '${sales['count']} bills', trend: trend(sales['today'], sales['yesterday']),
-            onTap: p.seesReports ? () => nav.go('reports', {'range': 'today'}) : null),
+        _Stat(Icons.currency_rupee_rounded, "Today's sales", money(sales['today']), '${sales['count']} bills', AppColors.primary, AppColors.primarySoft,
+            p.seesReports ? () => nav.go('reports', {'range': 'today'}) : null, trend(sales['today'], sales['yesterday'])),
       if (orders != null) ...[
-        KpiTile(icon: Icons.notifications_active_outlined, label: 'New orders', value: '${orders['pending']}', sub: '${orders['placedToday']} placed today', color: AppColors.amber, soft: AppColors.amberSoft, onTap: () => nav.go('orders', {'tab': 'Pending'})),
-        KpiTile(icon: Icons.inventory_rounded, label: 'Being prepared', value: '${orders['inProgress']}', sub: 'Accepted, not sent yet', color: AppColors.blue, soft: AppColors.blueSoft, onTap: () => nav.go('orders', {'tab': 'In Progress'})),
-        KpiTile(icon: Icons.local_shipping_outlined, label: 'On the way', value: '${orders['outForDelivery']}', sub: 'With delivery agents', color: AppColors.cyan, soft: AppColors.cyanSoft,
-            onTap: () => p.deliveryBoard ? nav.go('board') : nav.go('orders', {'tab': 'Out for Delivery'})),
+        _Stat(Icons.notifications_active_outlined, 'New orders', '${orders['pending']}', '${orders['placedToday']} placed today', AppColors.amber, AppColors.amberSoft, () => nav.go('orders', {'tab': 'Pending'})),
+        _Stat(Icons.inventory_rounded, 'Being prepared', '${orders['inProgress']}', 'Accepted, not sent yet', AppColors.blue, AppColors.blueSoft, () => nav.go('orders', {'tab': 'In Progress'})),
+        _Stat(Icons.local_shipping_outlined, 'On the way', '${orders['outForDelivery']}', 'With delivery agents', AppColors.cyan, AppColors.cyanSoft,
+            () => p.deliveryBoard ? nav.go('board') : nav.go('orders', {'tab': 'Out for Delivery'})),
       ],
       if (dues != null) ...[
-        KpiTile(icon: Icons.account_balance_wallet_outlined, label: 'Dues outstanding', value: money(dues['outstanding']), sub: '${dues['open']} open bills', color: AppColors.red, soft: AppColors.redSoft, onTap: () => nav.go('dues')),
-        KpiTile(icon: Icons.savings_outlined, label: 'Collected today', value: money(dues['collectedToday']), sub: '${dues['collections']} payments', color: AppColors.green, soft: AppColors.greenSoft,
-            onTap: p.seesReports ? () => nav.go('reports', {'range': 'today'}) : () => nav.go('dues')),
+        _Stat(Icons.account_balance_wallet_outlined, 'Dues outstanding', money(dues['outstanding']), '${dues['open']} open bills', AppColors.red, AppColors.redSoft, () => nav.go('dues')),
+        _Stat(Icons.savings_outlined, 'Collected today', money(dues['collectedToday']), '${dues['collections']} payments', AppColors.green, AppColors.greenSoft,
+            p.seesReports ? () => nav.go('reports', {'range': 'today'}) : () => nav.go('dues')),
       ],
       if (stock != null) ...[
-        KpiTile(icon: Icons.warning_amber_rounded, label: 'Low stock', value: '${stock['low']}', sub: '5 or fewer left', color: AppColors.amber, soft: AppColors.amberSoft, onTap: () => nav.go('products', {'filter': 'low'})),
-        KpiTile(icon: Icons.remove_shopping_cart_outlined, label: 'Out of stock', value: '${stock['out']}', sub: 'of ${stock['products']} products', color: AppColors.pink, soft: AppColors.pinkSoft, onTap: () => nav.go('products', {'filter': 'out'})),
+        _Stat(Icons.warning_amber_rounded, 'Low stock', '${stock['low']}', '5 or fewer left', AppColors.amber, AppColors.amberSoft, () => nav.go('products', {'filter': 'low'})),
+        _Stat(Icons.remove_shopping_cart_outlined, 'Out of stock', '${stock['out']}', 'of ${stock['products']} products', AppColors.pink, AppColors.pinkSoft, () => nav.go('products', {'filter': 'out'})),
       ],
       if (agent != null) ...[
-        KpiTile(icon: Icons.two_wheeler_rounded, label: 'To deliver', value: '${agent['active']}', sub: '${agent['onTheWay']} on the way', color: AppColors.cyan, soft: AppColors.cyanSoft, onTap: () => nav.go('deliveries')),
-        KpiTile(icon: Icons.task_alt_rounded, label: 'Delivered today', value: '${agent['deliveredToday']}', color: AppColors.green, soft: AppColors.greenSoft, onTap: () => nav.go('deliveries', {'done': true})),
-        KpiTile(icon: Icons.payments_outlined, label: 'Cash to collect', value: money(agent['toCollect']), sub: 'From your customers', color: AppColors.amber, soft: AppColors.amberSoft, onTap: () => nav.go('deliveries')),
+        _Stat(Icons.two_wheeler_rounded, 'To deliver', '${agent['active']}', '${agent['onTheWay']} on the way', AppColors.cyan, AppColors.cyanSoft, () => nav.go('deliveries')),
+        _Stat(Icons.task_alt_rounded, 'Delivered today', '${agent['deliveredToday']}', null, AppColors.green, AppColors.greenSoft, () => nav.go('deliveries', {'done': true})),
+        _Stat(Icons.payments_outlined, 'Cash to collect', money(agent['toCollect']), 'From your customers', AppColors.amber, AppColors.amberSoft, () => nav.go('deliveries')),
       ],
     ];
-
-    final hero = HeroHeader(
-      title: '$greet, $name',
-      subtitle: '${DateFormat('EEEE, d MMMM').format(ist(DateTime.now().toUtc()))} · ${s.user?['roleLabel'] ?? ''}',
-      trailing: _HeroSync(online: s.online, pending: s.pending, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncCenter()))),
-      bottom: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(children: [
-          for (final (icon, label, onTap) in actions)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: Material(
-                color: Colors.white.withValues(alpha: .14),
-                borderRadius: BorderRadius.circular(14),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: onTap,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(icon, color: Colors.white, size: 19),
-                      const SizedBox(width: 8),
-                      Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13.5)),
-                    ]),
-                  ),
-                ),
-              ),
-            ),
-        ]),
-      ),
-    );
+    final tiles = [for (final t in stats) KpiTile(icon: t.icon, label: t.label, value: t.value, sub: t.sub, color: t.color, soft: t.soft, onTap: t.onTap, trend: t.trend)];
 
     final cols = wide ? (MediaQuery.sizeOf(context).width > 1350 ? 4 : 3) : 2;
     final grid = tiles.isEmpty
@@ -168,6 +140,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Expanded(flex: fa, child: a), const SizedBox(width: 14), Expanded(flex: fb, child: b)]));
     }
 
+    final banners = <Widget>[
+      if (!s.online) _Banner(icon: Icons.cloud_off_rounded, text: "You're offline — keep working. Everything is saved on this device and sent when you're back online.", color: AppColors.red, soft: AppColors.redSoft),
+      if (offlineBills > 0) _Banner(icon: Icons.cloud_upload_outlined, text: '$offlineBills bill(s) made offline are waiting to upload.', color: AppColors.amber, soft: AppColors.amberSoft),
+      if (_d == null && _loading) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
+    ];
+    final footer = Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: Text(_d == null ? '' : _at == null ? 'Showing saved numbers${s.online ? ' — updating…' : ' (offline)'}' : 'Updated ${ago(_at)} · pull down to refresh',
+          textAlign: TextAlign.center, style: const TextStyle(color: AppColors.faint, fontSize: 12)),
+    );
+
+    if (!wide) {
+      return _PhoneHome(
+        name: name,
+        greet: greet,
+        stats: stats,
+        actions: actions,
+        banners: banners,
+        panels: [?chart, ?pipeline, ...panels],
+        footer: footer,
+        onRefresh: () async => Future.wait([_load(), s.syncNow()]),
+      );
+    }
+
+    // Windows / tablets: a header like the website's admin pages.
+    final header = Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Dashboard', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, letterSpacing: -.4)),
+            const SizedBox(height: 3),
+            Text('$greet, $name · ${DateFormat('EEEE, d MMMM').format(ist(DateTime.now().toUtc()))} · ${s.user?['roleLabel'] ?? ''}', style: const TextStyle(color: AppColors.muted, fontSize: 13.5)),
+          ]),
+        ),
+        _HeroSync(online: s.online, pending: s.pending, light: true, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncCenter()))),
+        const SizedBox(width: 10),
+        for (final (icon, label, onTap) in actions.take(4)) ...[
+          const SizedBox(width: 8),
+          label == actions.first.$2
+              ? FilledButton.icon(onPressed: onTap, icon: Icon(icon, size: 18), label: Text(label))
+              : OutlinedButton.icon(onPressed: onTap, icon: Icon(icon, size: 18), label: Text(label)),
+        ],
+      ]),
+    );
+
     return Scaffold(
       body: SafeArea(
         child: RefreshIndicator(
@@ -175,11 +193,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: PageBody(
             maxWidth: 1400,
             child: ListView(padding: EdgeInsets.all(wide ? 22 : 14), children: [
-              hero,
-              const SizedBox(height: 16),
-              if (!s.online) _Banner(icon: Icons.cloud_off_rounded, text: "You're offline — keep working. Everything is saved on this device and sent when you're back online.", color: AppColors.red, soft: AppColors.redSoft),
-              if (offlineBills > 0) _Banner(icon: Icons.cloud_upload_outlined, text: '$offlineBills bill(s) made offline are waiting to upload.', color: AppColors.amber, soft: AppColors.amberSoft),
-              if (_d == null && _loading) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
+              header,
+              ...banners,
               grid,
               if (chart != null || pipeline != null) ...[const SizedBox(height: 14), pair(chart, pipeline, fa: 3, fb: 2)],
               if (panels.isNotEmpty) ...[
@@ -189,11 +204,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 else
                   for (final w in panels) ...[w, const SizedBox(height: 14)],
               ],
-              Padding(
-                padding: const EdgeInsets.only(top: 4, bottom: 8),
-                child: Text(_d == null ? '' : _at == null ? 'Showing saved numbers${s.online ? ' — updating…' : ' (offline)'}' : 'Updated ${ago(_at)} · pull down to refresh',
-                    textAlign: TextAlign.center, style: const TextStyle(color: AppColors.faint, fontSize: 12)),
-              ),
+              footer,
             ]),
           ),
         ),
@@ -205,21 +216,212 @@ class _DashboardScreenState extends State<DashboardScreen> {
 class _HeroSync extends StatelessWidget {
   final bool online;
   final int pending;
+  final bool light; // on a white page (desktop) instead of the gradient
   final VoidCallback onTap;
-  const _HeroSync({required this.online, required this.pending, required this.onTap});
+  const _HeroSync({required this.online, required this.pending, required this.onTap, this.light = false});
   @override
   Widget build(BuildContext context) => InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-          decoration: BoxDecoration(color: Colors.white.withValues(alpha: .16), borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(
+            color: light ? (online ? AppColors.greenSoft : AppColors.redSoft) : Colors.white.withValues(alpha: .16),
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: online ? const Color(0xFF4ADE80) : const Color(0xFFFCA5A5))),
+            Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: online ? (light ? AppColors.green : const Color(0xFF4ADE80)) : (light ? AppColors.red : const Color(0xFFFCA5A5)))),
             const SizedBox(width: 7),
-            Text(online ? (pending > 0 ? 'Sending $pending' : 'Live') : 'Offline', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12.5)),
+            Text(online ? (pending > 0 ? 'Sending $pending' : 'Live') : 'Offline',
+                style: TextStyle(color: light ? (online ? AppColors.green : AppColors.red) : Colors.white, fontWeight: FontWeight.w600, fontSize: 12.5)),
           ]),
         ),
+      );
+}
+
+/// One number on the dashboard (a KpiTile on desktop, a pastel tile on phones).
+class _Stat {
+  final IconData icon;
+  final String label, value;
+  final String? sub;
+  final Color color, soft;
+  final VoidCallback? onTap;
+  final double? trend;
+  const _Stat(this.icon, this.label, this.value, this.sub, this.color, this.soft, this.onTap, [this.trend]);
+}
+
+/// Phone home, delivery-app style: greeting bar with a bell, pastel number tiles,
+/// quick actions, new orders (or my deliveries) as photo cards with actions.
+class _PhoneHome extends StatelessWidget {
+  final String name, greet;
+  final List<_Stat> stats;
+  final List<(IconData, String, VoidCallback)> actions;
+  final List<Widget> banners, panels;
+  final Widget footer;
+  final Future<void> Function() onRefresh;
+  const _PhoneHome({required this.name, required this.greet, required this.stats, required this.actions, required this.banners, required this.panels, required this.footer, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+    final nav = context.read<NavController>();
+    final p = s.perms;
+    final online = s.list('orders').where((o) => o['type'] == 'online').toList();
+    final pending = online.where((o) => o['status'] == 'Pending').toList();
+    final myRuns = p.seesMyDeliveries ? s.list('deliveries').where((o) => o['status'] == 'In Progress' || o['status'] == 'Out for Delivery').toList() : <Map<String, dynamic>>[];
+    final canAccept = p.acceptReject || p.updateStatus;
+    final canReject = p.acceptReject || p.cancelOrders;
+
+    Widget heading(String title, {VoidCallback? onAll}) => Padding(
+          padding: const EdgeInsets.fromLTRB(2, 20, 2, 10),
+          child: Row(children: [
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700))),
+            if (onAll != null) InkWell(onTap: onAll, child: Text('View all', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600))),
+          ]),
+        );
+
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: onRefresh,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
+            // ── top bar ──
+            Row(children: [
+              InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => shellScaffoldKey.currentState?.openDrawer(),
+                child: Avatar('${s.user?['name'] ?? ''}', photo: s.user?['avatar'] as String?, size: 46),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('$greet,', style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+                  Text(name.isEmpty ? 'Welcome' : name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                ]),
+              ),
+              _HeroSync(online: s.online, pending: s.pending, light: true, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncCenter()))),
+              const SizedBox(width: 6),
+              _RoundIcon(
+                icon: Icons.notifications_none_rounded,
+                badge: p.seesOrders ? pending.length : myRuns.length,
+                onTap: () => p.seesOrders ? nav.go('orders', {'tab': 'Pending'}) : nav.go('deliveries'),
+              ),
+            ]),
+            const SizedBox(height: 16),
+            ...banners,
+            // ── pastel number tiles ──
+            if (stats.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 18, offset: Offset(0, 6))]),
+                child: GridView(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, mainAxisExtent: 132),
+                  children: [
+                    for (var i = 0; i < stats.length; i++)
+                      PastelTile(icon: stats[i].icon, label: stats[i].label, value: stats[i].value, tint: pastel[i % pastel.length].$1, ink: pastel[i % pastel.length].$2, onTap: stats[i].onTap),
+                  ],
+                ),
+              ),
+            // ── quick actions ──
+            if (actions.isNotEmpty) ...[
+              heading('Quick actions'),
+              SizedBox(
+                height: 92,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: actions.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 6),
+                  itemBuilder: (c, i) {
+                    final (icon, label, onTap) = actions[i];
+                    return SizedBox(
+                      width: 76,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: onTap,
+                        child: Column(children: [
+                          Container(width: 54, height: 54, decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(16)), child: Icon(icon, color: AppColors.primary, size: 26)),
+                          const SizedBox(height: 7),
+                          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                        ]),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+            // ── my deliveries (agents) ──
+            if (p.seesMyDeliveries) ...[
+              heading('My deliveries', onAll: () => nav.go('deliveries')),
+              if (myRuns.isEmpty) const _EmptyLine('Nothing to deliver right now.'),
+              for (final o in myRuns.take(5)) ...[
+                PhotoOrderCard(
+                  order: o,
+                  badge: StatusChip('${o['status']}'),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: toInt(o['id']), agentView: true))),
+                  actions: [
+                    if (o['status'] == 'In Progress') TinyButton('Start', color: AppColors.primary, onTap: () => orderAction(context, o, 'Start delivery ${o['number']}', {'action': 'start'}, {'status': 'Out for Delivery'}, delivery: true)),
+                    if (o['status'] == 'Out for Delivery') TinyButton('Open', color: AppColors.primary, onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: toInt(o['id']), agentView: true)))),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+            ],
+            // ── new orders ──
+            if (p.seesOrders) ...[
+              heading('New orders${pending.isEmpty ? '' : ' (${pending.length})'}', onAll: () => nav.go('orders', {'tab': 'Pending'})),
+              if (pending.isEmpty) const _EmptyLine('No new orders — all caught up.'),
+              for (final o in pending.take(5)) ...[
+                PhotoOrderCard(
+                  order: o,
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: toInt(o['id'])))),
+                  actions: [
+                    if (canAccept) TinyButton('Accept', color: AppColors.green, onTap: () => acceptOrder(context, o)),
+                    if (canReject) TinyButton('Reject', color: AppColors.red, onTap: () => rejectOrder(context, o)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+            ],
+            for (final w in panels) ...[const SizedBox(height: 14), w],
+            const SizedBox(height: 8),
+            footer,
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _RoundIcon extends StatelessWidget {
+  final IconData icon;
+  final int badge;
+  final VoidCallback onTap;
+  const _RoundIcon({required this.icon, required this.badge, required this.onTap});
+  @override
+  Widget build(BuildContext context) => Material(
+        color: Colors.white,
+        shape: const CircleBorder(side: BorderSide(color: AppColors.border)),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: Padding(padding: const EdgeInsets.all(10), child: Badge(isLabelVisible: badge > 0, label: Text('$badge'), backgroundColor: AppColors.primary, child: Icon(icon, size: 24))),
+        ),
+      );
+}
+
+class _EmptyLine extends StatelessWidget {
+  final String text;
+  const _EmptyLine(this.text);
+  @override
+  Widget build(BuildContext context) => AppCard(
+        child: Row(children: [
+          const Icon(Icons.check_circle_outline_rounded, color: AppColors.green),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: const TextStyle(color: AppColors.muted))),
+        ]),
       );
 }
 
@@ -467,7 +669,7 @@ class _BestSellers extends StatelessWidget {
   Widget build(BuildContext context) {
     final maxQty = top.fold<int>(1, (m, x) => toInt(x['qty']) > m ? toInt(x['qty']) : m);
     final payTotal = methods.fold<double>(0, (t, x) => t + toDouble(x['amount']));
-    const colors = [AppColors.primary, AppColors.cyan, AppColors.amber, AppColors.green, AppColors.pink];
+    final colors = [AppColors.primary, AppColors.cyan, AppColors.amber, AppColors.green, AppColors.pink];
     return SectionCard(
       title: 'Today at a glance',
       icon: Icons.local_fire_department_rounded,

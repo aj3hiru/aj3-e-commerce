@@ -6,6 +6,8 @@ import '../../core/nav.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/mobile.dart';
+import 'order_actions.dart';
 import 'order_detail_screen.dart';
 
 const orderTabs = [
@@ -48,11 +50,35 @@ class _OrdersScreenState extends State<OrdersScreen> {
     final q = _q.trim().toLowerCase();
     final list = all.where((o) => (_tab == 'all' || o['status'] == _tab) && (q.isEmpty || '${o['number']} ${o['customer']} ${o['phone'] ?? ''}'.toLowerCase().contains(q))).toList();
 
+    final wide = isWide(context);
+    final p = s.perms;
+    Widget card(Map<String, dynamic> o) {
+      if (wide || o['localRef'] != null) return OrderCard(order: o, agentName: agents[toInt(o['agentId'])]);
+      final pending = o['type'] == 'online' && o['status'] == 'Pending';
+      return PhotoOrderCard(
+        order: o,
+        badge: pending ? null : StatusChip('${o['status']}'),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: toInt(o['id'])))),
+        actions: [
+          if (pending && (p.acceptReject || p.updateStatus)) TinyButton('Accept', color: AppColors.green, onTap: () => acceptOrder(context, o)),
+          if (pending && (p.acceptReject || p.cancelOrders)) TinyButton('Reject', color: AppColors.red, onTap: () => rejectOrder(context, o)),
+        ],
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
+      appBar: AppBar(leading: menuButton(context), 
         title: const Text('Orders'),
         actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))],
-        bottom: PreferredSize(
+        bottom: !wide
+            ? PreferredSize(
+                preferredSize: const Size.fromHeight(54),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: PillTabs(tabs: orderTabs, selected: _tab, onSelect: (k) => setState(() => _tab = k), counts: {for (final (k, _) in orderTabs) k: count(k)}),
+                ),
+              )
+            : PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: SizedBox(
             height: 48,
@@ -97,7 +123,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                       itemCount: list.length + 1,
                       separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (c, i) => i == list.length ? const FreshnessNote() : OrderCard(order: list[i], agentName: agents[toInt(list[i]['agentId'])]),
+                      itemBuilder: (c, i) => i == list.length ? const FreshnessNote() : card(list[i]),
                     ),
             ),
           ),

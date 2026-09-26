@@ -94,6 +94,7 @@ Future<void> _shot(WidgetTester t, String name, Widget screen, {Size size = cons
   debugDisableShadows = false; // real soft shadows, as on a device
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
+  AppColors.useMobileStyle(size.width < 900); // as main.dart does on Android
   await t.pumpWidget(MultiProvider(providers: [ChangeNotifierProvider.value(value: state ?? _state()), ChangeNotifierProvider(create: (_) => NavController())], child: MaterialApp(debugShowCheckedModeBanner: false, theme: buildTheme(), home: screen)));
   for (var i = 0; i < 5; i++) {
     await t.pump(const Duration(milliseconds: 200));

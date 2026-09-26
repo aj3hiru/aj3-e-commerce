@@ -59,8 +59,9 @@ class Api {
         final req = http.MultipartRequest(method, _uri(path))
           ..headers.addAll(_headers(idem: idem, json: false))
           ..fields.addAll(fields);
+        // "gallery_images#2" → several files under one form field name.
         for (final e in files.entries) {
-          if (File(e.value).existsSync()) req.files.add(await http.MultipartFile.fromPath(e.key, e.value));
+          if (File(e.value).existsSync()) req.files.add(await http.MultipartFile.fromPath(e.key.split('#').first, e.value));
         }
         return http.Response.fromStream(await req.send());
       }, timeout: const Duration(seconds: 90));

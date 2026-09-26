@@ -73,3 +73,38 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export const PATCH = withApiErrors(handlePATCH);
+
+/** Everything the website's product form shows, so the app can edit all of it. */
+async function handleGET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const s = await appSession();
+  if (s instanceof NextResponse) return s;
+  if (!hasPermission(s.permissions, "ecommerce", "manage_products")) return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
+  const id = Number((await params).id);
+  const p = Number.isInteger(id)
+    ? await prisma.ecomProduct.findUnique({
+        where: { id },
+        include: {
+          images: { orderBy: { sortOrder: "asc" }, select: { id: true, image: true } },
+          sizes: { orderBy: { sortOrder: "asc" }, select: { label: true, mrp: true, price: true, stockQty: true, isDefault: true } },
+          specs: { orderBy: { sortOrder: "asc" }, select: { name: true, value: true } },
+        },
+      })
+    : null;
+  if (!p) return NextResponse.json({ success: false, message: "This product no longer exists." }, { status: 404 });
+  const n = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  return NextResponse.json({
+    success: true,
+    product: {
+      id: p.id, name: p.name, slug: p.slug, sku: p.sku, hsn: p.hsnCode, barcode: p.barcode, description: p.description,
+      categoryId: p.categoryId, brandId: p.brandId, unit: p.unit, type: p.productType, price: n(p.price), salePrice: n(p.salePrice),
+      gstRate: n(p.gstRate), stock: p.stockQty, status: p.status, badgeTag: p.badgeTag, itemType: p.itemType,
+      showOnHome: p.showOnHome, isCampaign: p.isCampaign, campaignPrice: n(p.campaignPrice), image: p.image,
+      downloadLink: p.downloadLink, licenseKey: p.licenseKey, affiliateUrl: p.affiliateUrl,
+      gallery: p.images.map((g) => ({ id: g.id, image: g.image })),
+      sizes: p.sizes.map((z) => ({ label: z.label, mrp: n(z.mrp), price: n(z.price), stock: z.stockQty, isDefault: z.isDefault })),
+      specs: p.specs.map((x) => ({ name: x.name, value: x.value })),
+    },
+  });
+}
+
+export const GET = withApiErrors(handleGET);

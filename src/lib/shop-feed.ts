@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { cached } from "@/lib/cache";
 import { loadLiveCampaigns, priceRows } from "@/lib/campaign-pricing";
+import { priceLine, type CartProduct, type CartSize } from "@/lib/cart-lines";
 import { LOW_STOCK_LIMIT } from "@/components/admin/products2/filters";
 import { FEED_PAGE_SIZE, type FeedFilters, type FeedProduct, type FeedResult, type FeedSort } from "@/lib/shop-feed-shared";
 
@@ -24,23 +25,35 @@ export type FeedRow = { id: number; slug: string; name: string; image: string | 
 
 /** Product rows → what a product tile needs: live price/discount, rating, stock, deal countdown. */
 export async function enrichProducts(rows: FeedRow[]): Promise<(FeedProduct & { _created: number })[]> {
-  const [campaigns, ratingRows] = await Promise.all([
+  const ids = rows.map((r) => r.id);
+  const [campaigns, ratingRows, sizeRows] = await Promise.all([
     loadLiveCampaigns().catch(() => []),
     rows.length
       ? prisma.ecomProductReview.groupBy({ by: ["productId"], where: { status: "approved", productId: { in: rows.map((r) => r.id) } }, _avg: { rating: true }, _count: { _all: true } })
       : Promise.resolve([]),
+    // Products sold in sizes are priced from their default size — same as the product page and the cart.
+    ids.length
+      ? prisma.ecomProductSize.findMany({ where: { productId: { in: ids } }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, productId: true, label: true, mrp: true, price: true, stockQty: true, isDefault: true } })
+      : Promise.resolve([]),
   ]);
   const now = new Date();
   const campaignPrice = priceRows(rows, campaigns, now);
+  // The size marked default, else the first one (same rule as the product page).
+  const defaultSize = new Map<number, CartSize>();
+  const all = sizeRows as (CartSize & { isDefault: boolean })[];
+  for (const z of all) if (z.isDefault && !defaultSize.has(z.productId)) defaultSize.set(z.productId, z);
+  for (const z of all) if (!defaultSize.has(z.productId)) defaultSize.set(z.productId, z);
   const endsById = new Map(campaigns.map((c) => [c.id, c.endsAt]));
   const ratings = new Map((ratingRows as { productId: number; _avg: { rating: number | null }; _count: { _all: number } }[])
     .map((r) => [r.productId, { avg: r._avg.rating, count: r._count._all }]));
 
   return rows.map((r) => {
-    const price = Number(r.price);
+    const size = defaultSize.get(r.id);
+    const sized = size ? priceLine(r as unknown as CartProduct, size, campaigns, now) : null;
+    const price = sized ? sized.mrp : Number(r.price);
     const sale = r.salePrice === null || r.salePrice === undefined ? 0 : Number(r.salePrice);
-    const camp = campaignPrice.get(r.id);
-    const finalPrice = camp ? camp.unitPrice : sale > 0 && sale < price ? sale : price;
+    const camp = sized ? sized.campaign : campaignPrice.get(r.id);
+    const finalPrice = sized ? sized.unitPrice : camp ? camp.unitPrice : sale > 0 && sale < price ? sale : price;
     const tracked = r.productType === "physical" && r.stockQty !== null;
     const ends = camp ? endsById.get(camp.campaignId) : null;
     const rt = ratings.get(r.id);
@@ -61,7 +74,7 @@ export async function enrichProducts(rows: FeedRow[]): Promise<(FeedProduct & { 
 export const publicProducts = (list: (FeedProduct & { _created: number })[]): FeedProduct[] =>
   list.map((p) => { const out: Partial<typeof p> = { ...p }; delete out._created; return out as FeedProduct; });
 
-const FEED_DEPS = ["EcomProduct", "EcomProductReview", "EcomCampaign", "EcomCampaignTarget", "EcomCategory", "EcomBrand", "EcomSubcategory"] as const;
+const FEED_DEPS = ["EcomProduct", "EcomProductSize", "EcomProductReview", "EcomCampaign", "EcomCampaignTarget", "EcomCategory", "EcomBrand", "EcomSubcategory"] as const;
 
 /** Browsing (not searching) results are shared by every shopper, so they're cached until a product / review / campaign changes. */
 export function getShopFeed(f: FeedFilters): Promise<FeedResult> {

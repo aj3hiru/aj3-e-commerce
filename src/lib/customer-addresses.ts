@@ -33,7 +33,7 @@ export function parseAddress(b: Record<string, unknown>): { error: string } | { 
   if (!name) return { error: "Please enter the full name." };
   if (phone.replace(/\D/g, "").length < 10) return { error: "Please enter a valid 10-digit mobile number." };
   if (!/^\d{6}$/.test(pincode)) return { error: "Please enter a valid 6-digit pincode." };
-  if (!house) return { error: "Please enter the house no. / building name." };
+  // House no. / building name is no longer asked (older saved addresses keep theirs).
   if (!area) return { error: "Please enter the road name / area / colony." };
   if (!city) return { error: "Please enter the city / district." };
   const type = (["home", "work", "other"].includes(String(b.type)) ? b.type : "home") as AddressType;

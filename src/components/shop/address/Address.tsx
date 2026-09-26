@@ -84,7 +84,6 @@ export function AddressForm({ initial, defaults, onSaved, onClose }: {
           city: d.city || d.town || d.city_district || d.county || d.state_district || x.city,
           state: d.state ? matchState(d.state) : x.state,
           pincode: /^\d{6}$/.test(pin) ? pin : x.pincode,
-          house: x.house || [d.house_number, d.building].filter(Boolean).join(", "),
         }));
       } catch { /* the pin is saved even if the lookup fails */ }
     }, (e) => {
@@ -171,9 +170,8 @@ export function AddressForm({ initial, defaults, onSaved, onClose }: {
             </Field>
             <Field label="City / District"><input required value={a.city} onChange={(e) => set({ city: e.target.value })} autoComplete="address-level2" className={cn(inputCls, "h-11")} /></Field>
           </div>
-          <Field label="House No., Building Name"><input required value={a.house} onChange={(e) => set({ house: e.target.value })} autoComplete="address-line1" placeholder="e.g. 12B, Sai Residency" className={cn(inputCls, "h-11")} /></Field>
           <Field label="Road Name, Area, Colony">
-            <input required list="area-list" value={a.area} onChange={(e) => set({ area: e.target.value })} autoComplete="address-line2" placeholder="e.g. MG Road, Lajpat Nagar" className={cn(inputCls, "h-11")} />
+            <input required list="area-list" value={a.area} onChange={(e) => set({ area: e.target.value })} autoComplete="address-line1" placeholder="e.g. MG Road, Lajpat Nagar" className={cn(inputCls, "h-11")} />
             <datalist id="area-list">{areas.map((x) => <option key={x} value={x} />)}</datalist>
           </Field>
           <Field label="Nearby Landmark" hint="Optional"><input value={a.landmark} onChange={(e) => set({ landmark: e.target.value })} placeholder="e.g. Near City Hospital" className={cn(inputCls, "h-11")} /></Field>
@@ -224,7 +222,7 @@ export function AddressCard({ a, selected, children }: { a: SavedAddress; select
         {a.isDefault && <span className="rounded-full bg-[color-mix(in_srgb,var(--hp-accent)_10%,white)] px-2 py-0.5 text-[11px] font-semibold text-[var(--hp-accent)]">Default</span>}
       </div>
       <p className={cn("mt-1 text-[13.5px] leading-5", selected ? "text-[#353543]" : "text-[#616173]")}>
-        {a.house}, {a.area}{a.landmark && `, ${nearText(a.landmark)}`}, {a.city} - <b className="font-semibold">{a.pincode}</b>
+        {[a.house, a.area].filter(Boolean).join(", ")}{a.landmark && `, ${nearText(a.landmark)}`}, {a.city} - <b className="font-semibold">{a.pincode}</b>
       </p>
       <p className="mt-0.5 text-[13px] text-[#616173]">Mobile: {a.phone}</p>
       {a.lat !== null && <p className="mt-1 flex items-center gap-1 text-[12px] font-medium text-[#038d63]"><MapPinned className="h-3.5 w-3.5" />Location pinned</p>}

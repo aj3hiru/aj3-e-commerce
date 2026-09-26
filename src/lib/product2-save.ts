@@ -163,7 +163,8 @@ async function parse(form: FormData, editId: number | null) {
     sizes,
     specs,
     removeImage: form.get("remove_image") === "1",
-    removedGalleryIds: form.getAll("removed_gallery_ids").map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0),
+    // One value per id (website form) or a comma list (staff app).
+    removedGalleryIds: form.getAll("removed_gallery_ids").flatMap((v) => String(v).split(",")).map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0),
   };
 }
 

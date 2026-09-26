@@ -174,6 +174,25 @@ void main() {
     testWidgets('$x web', (t) => _shot(t, '${x}_web', const Shell(), size: desktop, section: x));
   }
   testWidgets('customer profile desktop', (t) => _shot(t, 'customer_profile_desktop', const CustomerProfile(id: 2), size: desktop));
+  testWidgets('desktop sidebar opens every page', (t) async {
+    debugDisableShadows = false;
+    t.view.physicalSize = desktop;
+    t.view.devicePixelRatio = 1;
+    AppColors.useMobileStyle(false);
+    await t.pumpWidget(MultiProvider(providers: [ChangeNotifierProvider.value(value: _state()), ChangeNotifierProvider(create: (_) => NavController())], child: MaterialApp(theme: buildTheme(), home: const Shell())));
+    await t.pump(const Duration(milliseconds: 300));
+    expect(find.text('E-commerce Dashboard'), findsOneWidget);
+    for (final (menu, title) in [('Orders', 'All Orders'), ('Products', 'All Products'), ('Due Payments', 'Due'), ('Customers', 'Customers'), ('Staff & Roles', 'Users Manager'), ('Dashboard', 'E-commerce Dashboard')]) {
+      await t.tap(find.text(menu).first);
+      for (var i = 0; i < 4; i++) {
+        await t.pump(const Duration(milliseconds: 150));
+      }
+      expect(find.text(title), findsWidgets, reason: 'sidebar "$menu" should open "$title"');
+    }
+    debugDisableShadows = true;
+  });
+  testWidgets('product add phone', (t) => _shot(t, 'product_add_phone', const ProductEditScreen(), size: const Size(412, 2600)));
+  testWidgets('product add desktop', (t) => _shot(t, 'product_add_desktop', const ProductEditScreen(), size: const Size(1440, 1500)));
   testWidgets('orders desktop', (t) => _shot(t, 'orders_desktop', const Shell(), size: desktop, section: 'orders'));
   testWidgets('categories phone', (t) => _shot(t, 'categories_phone', const CategoriesScreen()));
   testWidgets('account phone', (t) => _shot(t, 'account_phone', const AccountScreen()));

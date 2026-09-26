@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Award, Banknote, BadgeCheck, BadgePercent, Box, Check, ChevronDown, ChevronRight, FastForward, Gift, Headphones, Heart, ImageIcon, Leaf, Loader2, Minus, Plus,
+  Award, Banknote, BadgeCheck, BadgePercent, Box, Check, ChevronRight, FastForward, Gift, Headphones, Heart, ImageIcon, Leaf, Loader2, Minus, Plus,
   PackageCheck, RotateCcw, Share2, ShieldCheck, ShoppingCart, Star, Store, Tag, Timer, Truck, User, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -272,7 +272,6 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
   const [wished, setWished] = useState(initialWished);
   const [wish, setWish] = useState<Set<number>>(() => new Set(wishlisted));
   const onWish = useCallback((id: number, next: boolean) => setWish((s) => { const n = new Set(s); if (next) n.add(id); else n.delete(id); return n; }), []);
-  const [detailsOpen, setDetailsOpen] = useState(cfg.highlights.detailsOpen);
   const [offerOpen, setOfferOpen] = useState(false);
   const [buying, setBuying] = useState(false);
   const slot = useRef<HTMLDivElement>(null);
@@ -349,14 +348,13 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
     if (res && !res.success) setToast(res.message || "Couldn't update the cart");
   }
 
-  const highlights = useMemo(() => {
-    const h = cfg.highlights, rows: { name: string; value: string }[] = [];
-    if (h.showBrand && d.product.brand) rows.push({ name: "Brand", value: d.product.brand });
-    if (h.showCategory && d.product.category) rows.push({ name: "Category", value: d.product.category.name });
-    if (h.showUnit && d.product.unit) rows.push({ name: "Sold by", value: d.product.unit });
-    if (h.showSku && d.product.sku) rows.push({ name: "SKU", value: d.product.sku });
-    return [...d.specs, ...rows];
-  }, [cfg.highlights, d]);
+  // Specifications as on the old product page: Brand first, then the rows added with the product.
+  const specs = useMemo(() => [...(d.product.brand ? [{ name: "Brand", value: d.product.brand }] : []), ...d.specs], [d]);
+  // Description as one flowing paragraph (points typed on separate lines / with bullets are joined).
+  const description = useMemo(() => {
+    const t = (d.product.description ?? "").trim();
+    return t.replace(/\s*\n+\s*/g, " ").replace(/^[•\-*]\s*/, "").replace(/\s*•\s*/g, " ").replace(/\s{2,}/g, " ").trim();
+  }, [d.product.description]);
 
   const buttons = (
     <div className="flex gap-2 px-4 py-3">
@@ -446,7 +444,8 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
                 </button>
               )}
             </div>
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-2">
+            {description && <p className="mt-1.5 break-words text-[14px] leading-[21px] text-[#616173]">{description}</p>}
+            <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
               <span className="text-[24px] font-bold leading-8">{rupees(final)}</span>
               {discountPct > 0 && <><s className="text-[14px] text-[#8b8ba3]">{rupees(mrp)}</s><span className="text-[14px]">{discountPct}% off</span></>}
             </div>
@@ -472,6 +471,22 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
                 </span>
                 <span className="text-[12px] text-[#8b8ba3]">{d.rating.count} Ratings, {d.rating.withText} Reviews</span>
               </a>
+            )}
+            {d.product.unit && d.sizes.length === 0 && (
+              <p className="mt-2.5 text-[14px] text-[#616173]">Unit: <b className="font-semibold text-[#353543]">{d.product.unit}</b></p>
+            )}
+            {specs.length > 0 && (
+              <div className="mt-4 rounded-[10px] border border-[#eaeaf2] px-3.5 pb-0.5 pt-3.5">
+                <h3 className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.4px] text-[var(--hp-accent)]">Specifications</h3>
+                <ul>
+                  {specs.map((x, n) => (
+                    <li key={n} className="flex gap-3.5 border-b border-[#eaeaf2] py-[7px] text-[13px] leading-[1.5] last:border-b-0">
+                      <span className="w-[108px] shrink-0 font-semibold text-[#8b8ba3] shop:w-[140px]">{x.name}</span>
+                      <span className="min-w-0 flex-1 break-words text-[#353543]">{x.value}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         );
@@ -531,37 +546,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
           </div>
         );
       }
-      case "highlights": {
-        const h = cfg.highlights;
-        if (highlights.length === 0 && !d.product.description) return null;
-        return (
-          <div className="px-4 pt-5">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[18px] font-semibold leading-6">{h.title}</h2>
-              {h.showCopy && highlights.length > 0 && (
-                <button type="button" onClick={async () => { try { await navigator.clipboard.writeText([d.product.name, ...highlights.map((x) => `${x.name}: ${x.value}`)].join("\n")); setToast("Copied"); } catch { /* blocked */ } }}
-                  className="flex items-center gap-1 text-[14px] font-bold uppercase text-[var(--hp-accent)]">Copy</button>
-              )}
-            </div>
-            {highlights.length > 0 && (
-              <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4 pb-2">
-                {highlights.map((x, i) => (
-                  <div key={i} className="min-w-0"><dt className="text-[12px] text-[#8b8ba3]">{x.name}</dt><dd className="break-words text-[14px] leading-5">{x.value}</dd></div>
-                ))}
-              </dl>
-            )}
-            {d.product.description && (
-              <>
-                <button type="button" onClick={() => setDetailsOpen((v) => !v)} aria-expanded={detailsOpen} className="flex w-full items-center justify-between py-4 text-[16px] font-semibold">
-                  {h.detailsTitle}<ChevronDown className={cn("h-5 w-5 transition-transform", detailsOpen && "rotate-180")} strokeWidth={2.2} />
-                </button>
-                {detailsOpen && <p className="whitespace-pre-line break-words pb-5 text-[14px] leading-[22px] text-[#616173]">{d.product.description}</p>}
-              </>
-            )}
-            {!d.product.description && <div className="h-3" />}
-          </div>
-        );
-      }
+      case "highlights": return null; // replaced by Specifications under the price
       case "reviews": return <Reviews d={d} cfg={cfg.reviews} loggedIn={loggedIn} />;
       case "assurance": {
         const items = cfg.assurance.items;

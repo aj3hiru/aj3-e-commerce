@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,8 +7,10 @@ import '../../core/app_state.dart';
 import '../../core/nav.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
+import '../../core/barcode.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
+import '../pos/scanner.dart';
 import 'product_edit_screen.dart';
 
 /// Products & stock: search, filter (low / out / inactive), quick stock update, edit.
@@ -58,7 +62,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(leading: menuButton(context), title: const Text('Products'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
+      appBar: AppBar(leading: menuButton(context), title: const Text('Products'), actions: [
+        if (Platform.isAndroid) IconButton(tooltip: 'Scan products', icon: const Icon(Icons.qr_code_scanner_rounded), onPressed: () => scanProducts(context)),
+        Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductEditScreen())),
         icon: const Icon(Icons.add_rounded),
@@ -188,4 +194,114 @@ Future<void> adjustStock(BuildContext context, Map<String, dynamic> p) async {
     effect: received != null ? {'kind': 'stock_add', 'id': p['id'], 'qty': received} : {'kind': 'product', 'id': p['id'], 'fields': {'stock': newStock}}, refresh: const ['products'],
   ));
   if (context.mounted) toast(context, 'Stock is now $newStock.');
+}
+
+/// Scan many items one after another (camera stays open). Afterwards: add the
+/// counted quantities to stock in one go, and create products for new barcodes.
+Future<void> scanProducts(BuildContext context) async {
+  final s = context.read<AppState>();
+  final counts = <int, int>{}; // product id → times scanned
+  final unknown = <String>[]; // barcodes not in the shop yet
+  var synced = false;
+  await Navigator.push(context, MaterialPageRoute(builder: (_) => ScannerScreen(
+        title: 'Scan products',
+        onCode: (code) async {
+          var p = findByCode(s.list('products'), code);
+          if (p == null && !synced && s.online) {
+            synced = true;
+            await s.syncNow(only: const ['products']);
+            p = findByCode(s.list('products'), code);
+          }
+          if (p == null) {
+            if (!unknown.contains(code)) unknown.add(code);
+            return ScanResult(true, 'New barcode $code — you can add it as a product');
+          }
+          final id = toInt(p['id']);
+          counts[id] = (counts[id] ?? 0) + 1;
+          return ScanResult(true, '${p['name']}  ×${counts[id]}');
+        },
+      )));
+  if (!context.mounted || (counts.isEmpty && unknown.isEmpty)) return;
+  await showModalBottomSheet(context: context, isScrollControlled: true, builder: (_) => _ScanReview(counts: counts, unknown: unknown));
+}
+
+class _ScanReview extends StatefulWidget {
+  final Map<int, int> counts;
+  final List<String> unknown;
+  const _ScanReview({required this.counts, required this.unknown});
+  @override
+  State<_ScanReview> createState() => _ScanReviewState();
+}
+
+class _ScanReviewState extends State<_ScanReview> {
+  late final Map<int, TextEditingController> _qty = {for (final e in widget.counts.entries) e.key: TextEditingController(text: '${e.value}')};
+  late final List<String> _unknown = [...widget.unknown];
+  bool _added = false;
+
+  Future<void> _addStock() async {
+    final s = context.read<AppState>();
+    var n = 0;
+    for (final e in _qty.entries) {
+      final q = int.tryParse(e.value.text.trim()) ?? 0;
+      final p = s.list('products').where((x) => toInt(x['id']) == e.key).firstOrNull;
+      if (q <= 0 || p == null || p['stock'] == null) continue;
+      await s.enqueue(OutboxItem(
+        id: newId(), method: 'PATCH', path: '/api/app/v1/products/${p['id']}', body: {'stockAdd': q}, label: 'Received $q × ${p['name']}',
+        effect: {'kind': 'stock_add', 'id': p['id'], 'qty': q}, refresh: const ['products'],
+      ));
+      n++;
+    }
+    if (!mounted) return;
+    setState(() => _added = true);
+    toast(context, n == 0 ? 'Nothing to add.' : 'Stock updated for $n product${n == 1 ? '' : 's'}.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.watch<AppState>();
+    final products = {for (final p in s.list('products')) toInt(p['id']): p};
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .8),
+          child: ListView(shrinkWrap: true, children: [
+            const Text('Scanned products', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 10),
+            if (_qty.isNotEmpty) ...[
+              const Text('Already in the shop — add the received quantity to stock:', style: TextStyle(color: AppColors.muted)),
+              for (final e in _qty.entries)
+                if (products[e.key] != null)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: NetImage(products[e.key]!['image'], size: 44),
+                    title: Text('${products[e.key]!['name']}', maxLines: 2, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(products[e.key]!['stock'] == null ? 'Stock not tracked' : 'Now in stock: ${products[e.key]!['stock']}'),
+                    trailing: SizedBox(width: 74, child: TextField(controller: e.value, enabled: !_added, keyboardType: TextInputType.number, textAlign: TextAlign.center, decoration: const InputDecoration(prefixText: '+'))),
+                  ),
+              FilledButton.icon(onPressed: _added ? null : _addStock, icon: const Icon(Icons.add_box_outlined), label: Text(_added ? 'Stock added' : 'Add to stock')),
+              const SizedBox(height: 16),
+            ],
+            if (_unknown.isNotEmpty) ...[
+              const Text('New barcodes — create a product for each:', style: TextStyle(color: AppColors.muted)),
+              for (final code in [..._unknown])
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.qr_code_2_rounded, size: 32),
+                  title: Text(code),
+                  trailing: FilledButton.tonal(
+                    onPressed: () async {
+                      final s = context.read<AppState>();
+                      await Navigator.push(context, MaterialPageRoute(builder: (_) => ProductEditScreen(barcode: code)));
+                      if (mounted && findByCode(s.list('products'), code) != null) setState(() => _unknown.remove(code));
+                    },
+                    child: const Text('Add product'),
+                  ),
+                ),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
 }

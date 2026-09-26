@@ -12,6 +12,7 @@ import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
 import '../../widgets/web.dart';
+import '../../core/barcode.dart';
 import 'cart.dart';
 import 'receipt.dart';
 import 'scanner.dart';
@@ -91,7 +92,8 @@ class _PosScreenState extends State<PosScreen> {
   void _enter(List<Map<String, dynamic>> products) {
     final q = _search.text.trim();
     if (q.isEmpty) return;
-    final exact = products.where((p) => p['status'] == 'active' && (('${p['barcode'] ?? ''}' == q) || ('${p['sku'] ?? ''}'.toLowerCase() == q.toLowerCase()))).toList();
+    final hit = findByCode(products, q);
+    final exact = hit != null && hit['status'] == 'active' ? [hit] : <Map<String, dynamic>>[];
     final m = exact.isNotEmpty ? exact : _matches(products);
     if (m.length == 1 || exact.isNotEmpty) {
       _add(m.first);
@@ -103,15 +105,28 @@ class _PosScreenState extends State<PosScreen> {
     _searchFocus.requestFocus();
   }
 
+  /// Camera stays open: every item scanned goes straight into the bill (scan the same item again for 2, 3…).
   Future<void> _scan(List<Map<String, dynamic>> products) async {
-    final code = await Navigator.push<String>(context, MaterialPageRoute(builder: (_) => const ScannerScreen()));
-    if (code == null || !mounted) return;
-    final hit = products.where((p) => '${p['barcode'] ?? ''}' == code || '${p['sku'] ?? ''}' == code).toList();
-    if (hit.isEmpty) {
-      toast(context, 'No product with barcode $code.', error: true);
-    } else {
-      _add(hit.first);
-    }
+    final s = context.read<AppState>();
+    var synced = false;
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => ScannerScreen(
+          title: 'Scan items for the bill',
+          onCode: (code) async {
+            var p = findByCode(s.list('products'), code);
+            // Added on the website a moment ago? Fetch the latest products once and look again.
+            if (p == null && !synced && s.online) {
+              synced = true;
+              await s.syncNow(only: const ['products']);
+              p = findByCode(s.list('products'), code);
+            }
+            if (p == null) return ScanResult(false, 'No product with barcode $code');
+            final msg = cart.add(p);
+            if (msg != null) return ScanResult(false, msg);
+            final line = cart.lines.firstWhere((l) => l.productId == toInt(p!['id']));
+            return ScanResult(true, '${p['name']}  ×${line.qty}  ·  ${money(cart.grandTotal)}');
+          },
+        )));
+    if (mounted) setState(() {});
   }
 
   // ───────────────────────── complete sale ─────────────────────────

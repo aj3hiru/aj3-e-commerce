@@ -187,14 +187,7 @@ class _ShellState extends State<Shell> {
       });
     }
 
-    final pages = IndexedStack(
-      index: sections.indexWhere((x) => x.id == current),
-      children: [for (final x in sections) x.id == current || _built.containsKey(x.id) ? (_built[x.id] ??= x.page()) : const SizedBox()],
-    );
-    final body = Column(children: [
-      if (s.release != null && isNewer(s.release!['version'], s.appVersion)) _UpdateBar(release: s.release!),
-      Expanded(child: pages),
-    ]);
+    final body = _pages(context);
 
     return CallbackShortcuts(
       bindings: {
@@ -209,12 +202,31 @@ class _ShellState extends State<Shell> {
                 body: Row(children: [
                   _Sidebar(sections: sections, current: current, badges: badges, onGo: (id) => _goWeb(nav, id), onLogout: () => _logout(context)),
                   // Details (an order, a customer…) open inside this area, so the sidebar stays — as on the website.
-                  Expanded(child: Navigator(key: _content, onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => body))),
+                  // The route is built once, so its Builder watches the app state itself and
+                  // shows whichever section is current (not the section of the first build).
+                  Expanded(child: Navigator(key: _content, onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => Builder(builder: _pages)))),
                 ]),
               )
             : _phone(context, s, sections, current, badges, body),
       ),
     );
+  }
+
+  /// The current section (others stay alive in an IndexedStack) under the update bar.
+  Widget _pages(BuildContext context) {
+    final s = context.watch<AppState>();
+    final nav = context.watch<NavController>();
+    final sections = sectionsFor(s.perms);
+    final current = sections.any((x) => x.id == nav.section) ? nav.section : 'home';
+    return Column(children: [
+      if (s.release != null && isNewer(s.release!['version'], s.appVersion)) _UpdateBar(release: s.release!),
+      Expanded(
+        child: IndexedStack(
+          index: sections.indexWhere((x) => x.id == current),
+          children: [for (final x in sections) x.id == current || _built.containsKey(x.id) ? (_built[x.id] ??= x.page()) : const SizedBox()],
+        ),
+      ),
+    ]);
   }
 
   Widget _phone(BuildContext context, AppState s, List<Section> sections, String current, Map<String, int> badges, Widget body) {

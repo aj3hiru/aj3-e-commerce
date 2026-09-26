@@ -31,7 +31,7 @@ export const PP_SECTION_HINT: Record<PPSectionKey, string> = {
   info: "Name, price, offer, deal timer, delivery, rating",
   sizes: "Size chips — only for products sold in sizes",
   soldBy: "Your store card with rating and View Shop",
-  highlights: "Specifications grid and full description",
+  highlights: "Replaced by the Specifications list under the price (nothing shows here)",
   reviews: "Rating summary, bars and customer reviews",
   assurance: "Lowest Price · Cash on Delivery · Returns",
   actions: "Buttons stay stuck to the bottom until they reach this spot",

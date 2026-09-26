@@ -83,7 +83,7 @@ async function buildCustomers() {
 
 const ORDER_SELECT = {
   id: true, orderNumber: true, orderType: true, orderStatus: true, paymentStatus: true, paymentMethod: true, customerId: true, customerName: true,
-  totalAmount: true, subtotalAmount: true, discountAmount: true, gstAmount: true, paidAmount: true, shippingAddress: true, shippingLat: true, shippingLng: true,
+  totalAmount: true, subtotalAmount: true, discountAmount: true, gstAmount: true, deliveryCharge: true, paidAmount: true, shippingAddress: true, shippingLat: true, shippingLng: true,
   deliveryAgentId: true, assignedAt: true, deliveredAt: true, cancelReason: true, createdAt: true,
   customer: { select: { phone: true } },
   items: { select: { productId: true, productName: true, qty: true, price: true, gstRate: true, gstAmount: true } },
@@ -97,7 +97,7 @@ function orderOut(o: OrderRow) {
   return {
     id: o.id, number: o.orderNumber, type: o.orderType, status: o.orderStatus, paymentStatus: o.paymentStatus, paymentMethod: o.paymentMethod,
     customerId: o.customerId, customer: o.customerName, phone: o.customer?.phone ?? null, total: Number(o.totalAmount), subtotal: Number(o.subtotalAmount),
-    discount: Number(o.discountAmount), gst: Number(o.gstAmount), paid: Number(o.paidAmount), due: Math.round(due * 100) / 100,
+    discount: Number(o.discountAmount), gst: Number(o.gstAmount), delivery: Number(o.deliveryCharge), paid: Number(o.paidAmount), due: Math.round(due * 100) / 100,
     address: o.shippingAddress, lat: num(o.shippingLat), lng: num(o.shippingLng), agentId: o.deliveryAgentId, assignedAt: iso(o.assignedAt),
     deliveredAt: iso(o.deliveredAt), cancelReason: o.cancelReason, createdAt: o.createdAt.toISOString(), rev: o.events[0]?.id ?? 0,
     items: o.items.map((i) => ({ productId: i.productId, name: i.productName, qty: i.qty, price: Number(i.price), gstRate: Number(i.gstRate), gst: Number(i.gstAmount) })),

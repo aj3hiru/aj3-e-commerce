@@ -11,6 +11,7 @@ import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "
 import { loadCartLines, type CartLine } from "@/lib/cart-lines";
 import { formatAddress, toAddress } from "@/lib/customer-addresses";
 import { withApiErrors } from "@/lib/api-errors";
+import { deliveryChargeFor, getDeliverySettings } from "@/lib/delivery-charge";
 
 /** Verified 1:1 against shop/checkout.php's POST handler: re-validates stock,
  *  re-fetches prices server-side, applies an optional coupon with proportional
@@ -52,7 +53,7 @@ async function handlePOST(req: NextRequest) {
   // This is read before the order is opened; if it can't be read the order simply
   // goes ahead at normal prices.
   const now = new Date();
-  const liveCampaigns = await loadLiveCampaigns({ fresh: true });
+  const [liveCampaigns, deliveryRule] = await Promise.all([loadLiveCampaigns({ fresh: true }), getDeliverySettings()]);
 
   try {
     // Orders wait in an orderly line (4 at a time) instead of piling onto the database.
@@ -105,6 +106,9 @@ async function handlePOST(req: NextRequest) {
         totalGst += lineGst;
       }
       grandTotal += totalGst;
+      // Business Settings → Delivery Charge (online orders only), decided on the items total.
+      const deliveryCharge = deliveryChargeFor(subtotal, deliveryRule);
+      grandTotal += deliveryCharge;
 
       await tx.ecomCustomer.update({ where: { id: customer.customerId }, data: { address } });
 
@@ -123,6 +127,7 @@ async function handlePOST(req: NextRequest) {
           subtotalAmount: subtotal,
           discountAmount: discount,
           gstAmount: totalGst,
+          deliveryCharge,
           paymentStatus: "Unpaid",
           paymentMethod,
           orderStatus: "Pending",

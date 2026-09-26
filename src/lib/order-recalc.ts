@@ -9,8 +9,10 @@ import { adjustOrderStock } from "./order-stock";
  *  around whatever discount is already on the order. */
 export async function recalcOrderTotals(tx: Prisma.TransactionClient | typeof prisma, orderId: number): Promise<void> {
   const items = await tx.ecomOrderItem.findMany({ where: { orderId } });
-  const order = await tx.ecomOrder.findUnique({ where: { id: orderId }, select: { discountAmount: true } });
+  const order = await tx.ecomOrder.findUnique({ where: { id: orderId }, select: { discountAmount: true, deliveryCharge: true } });
   const discount = Number(order?.discountAmount ?? 0);
+  // The delivery charge the customer was quoted at checkout stays as it was.
+  const delivery = Number(order?.deliveryCharge ?? 0);
 
   const subtotal = items.reduce((s, it) => s + Number(it.price) * it.qty, 0);
   let totalGst = 0;
@@ -29,7 +31,7 @@ export async function recalcOrderTotals(tx: Prisma.TransactionClient | typeof pr
     await tx.ecomOrderItem.update({ where: { id: it.id }, data: { gstAmount: lineGst } });
   }
 
-  const grandTotal = Math.max(0, subtotal - discount + totalGst);
+  const grandTotal = Math.max(0, subtotal - discount + totalGst) + delivery;
 
   await tx.ecomOrder.update({
     where: { id: orderId },

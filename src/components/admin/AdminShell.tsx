@@ -34,6 +34,8 @@ export function AdminShell({ siteName, pageTitle, pageSubtitle, username, role, 
 
   return (
     <div className="admin-ui grid grid-cols-1 lg:grid-cols-[280px_1fr] min-h-screen bg-admin-gray-50">
+      {/* Opened inside the staff app (it has its own menu): hide this sidebar before it paints. */}
+      <script dangerouslySetInnerHTML={{ __html: "try{if(document.cookie.indexOf('app_embed=1')>-1)document.documentElement.classList.add('app-embed')}catch(e){}" }} />
       <AdminSidebar
         siteName={siteName}
         permissions={permissions}

@@ -9,7 +9,7 @@ import { Barcode } from "./Barcode";
  * and, with sample data, by the live preview in Business Settings.
  */
 export function A4InvoiceSheet({ data, s, seller }: { data: InvoiceData; s: InvoiceSettings; seller: ResolvedSeller }) {
-  const { order, customer, items, subtotal, discount, totalGst, cgst, sgst, grandTotal, paidAmount, dueAmount, isFullyPaid, paymentBreakdown, duePaymentHistory, linkedCreditAmount } = data;
+  const { order, customer, items, subtotal, discount, deliveryCharge, totalGst, cgst, sgst, grandTotal, paidAmount, dueAmount, isFullyPaid, paymentBreakdown, duePaymentHistory, linkedCreditAmount } = data;
   const showHsn = s.showHsn && items.some((i) => i.hsnCode);
   const cols = 5 + (showHsn ? 1 : 0);
   const summary = s.showTaxBreakup && totalGst > 0 ? taxSummary(data) : [];
@@ -147,6 +147,7 @@ export function A4InvoiceSheet({ data, s, seller }: { data: InvoiceData; s: Invo
               <Line k="Subtotal" v={`₹${money(subtotal)}`} />
               {discount > 0 && <Line k="Discount" v={`− ₹${money(discount)}`} />}
               {totalGst > 0 && (seller.gstin ? <><Line k="CGST" v={`₹${money(cgst)}`} /><Line k="SGST" v={`₹${money(sgst)}`} /></> : <Line k="GST" v={`₹${money(totalGst)}`} />)}
+              {deliveryCharge > 0 && <Line k="Delivery Charge" v={`₹${money(deliveryCharge)}`} />}
             </div>
             <div className="flex items-center justify-between bg-[var(--inv)] px-3 py-2 text-[14px] font-extrabold text-white">
               <span>Grand Total</span><span>₹{money(grandTotal)}</span>

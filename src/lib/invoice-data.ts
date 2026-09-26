@@ -21,6 +21,8 @@ export interface InvoiceData {
   totalQty: number;
   subtotal: number;
   discount: number;
+  /** Business Settings → Delivery Charge paid on this (online) order. */
+  deliveryCharge: number;
   totalGst: number;
   cgst: number;
   sgst: number;
@@ -69,6 +71,7 @@ export async function getInvoiceData(orderId: number): Promise<InvoiceData | nul
   const subtotal = Number(order.subtotalAmount) > 0 ? Number(order.subtotalAmount) : computedSubtotal;
   const discount = Number(order.discountAmount) > 0 ? Number(order.discountAmount) : Math.max(0, subtotal - grandTotal);
   const totalGst = Number(order.gstAmount);
+  const deliveryCharge = Number(order.deliveryCharge ?? 0);
   const cgst = totalGst / 2;
   const sgst = totalGst / 2;
 
@@ -126,6 +129,7 @@ export async function getInvoiceData(orderId: number): Promise<InvoiceData | nul
     totalQty,
     subtotal,
     discount,
+    deliveryCharge,
     totalGst,
     cgst,
     sgst,

@@ -85,3 +85,9 @@ body {
 .admin-ui a[class*="rounded-full"],
 .admin-ui button[class*="rounded-[2"],
 .admin-ui button[class*="rounded-[1."] { border-radius: var(--ui-radius-sm); }
+
+/* Website page opened inside the staff app: the app shows the menu, so the page shows only its content. */
+html.app-embed .admin-ui { grid-template-columns: minmax(0, 1fr) !important; }
+html.app-embed .admin-ui > aside, html.app-embed .admin-ui aside.fixed { display: none !important; }
+html.app-embed .admin-ui > main { grid-column: auto !important; }
+html.app-embed .admin-ui [aria-label="Open menu"] { display: none !important; }

@@ -15,7 +15,7 @@ const STEP_TEXT: Record<string, string> = {
 export interface OrderDetail {
   number: string; createdAt: string; status: string; placed: boolean; storeName: string; helpPhone: string | null;
   items: { id: number; name: string; qty: number; price: number; slug: string | null; image: string | null }[];
-  discount: number; gst: number; total: number; paymentName: string; paymentStatus: string;
+  discount: number; gst: number; deliveryCharge?: number; total: number; paymentName: string; paymentStatus: string;
   customerName: string; customerPhone: string | null; address: string;
   /** When each status was reached (from the order history). */
   stepTimes?: Record<string, string>;
@@ -106,6 +106,7 @@ export function OrderDetailView({ o }: { o: OrderDetail }) {
           <PriceRow label="Items total" value={rupees(itemsTotal)} />
           {o.discount > 0 && <PriceRow label="Coupon discount" value={`- ${rupees(o.discount)}`} tone="green" />}
           {o.gst > 0 && <PriceRow label="GST" value={`+ ${rupees(o.gst)}`} />}
+          {(o.deliveryCharge ?? 0) > 0 && <PriceRow label="Delivery charge" value={`+ ${rupees(o.deliveryCharge ?? 0)}`} />}
           <div className="my-1.5 border-t border-dashed border-[#dcdce6]" />
           <PriceRow label="Order Total" value={rupees(o.total)} bold />
           <div className="mt-3 flex items-center justify-between rounded-[6px] bg-[#f5f5f8] px-3 py-2.5 text-[13.5px]">

@@ -86,6 +86,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           subtotal: Number(order.subtotalAmount),
           discount: Number(order.discountAmount),
           gst: Number(order.gstAmount),
+          deliveryCharge: Number(order.deliveryCharge),
           paidAmount: Number(order.paidAmount),
           lat: order.shippingLat === null ? null : Number(order.shippingLat),
           lng: order.shippingLng === null ? null : Number(order.shippingLng),

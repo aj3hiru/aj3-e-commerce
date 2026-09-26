@@ -32,7 +32,7 @@ const SAMPLE: InvoiceData = (() => {
     },
     customer: { name: "Priya Sharma", email: "priya@example.com", phone: "98765 43210", address: null },
     items, itemCount: items.length, totalQty: items.reduce((n, i) => n + i.qty, 0),
-    subtotal, discount, totalGst, cgst: totalGst / 2, sgst: totalGst / 2, grandTotal, paidAmount: grandTotal, dueAmount: 0, isFullyPaid: true,
+    subtotal, discount, deliveryCharge: 0, totalGst, cgst: totalGst / 2, sgst: totalGst / 2, grandTotal, paidAmount: grandTotal, dueAmount: 0, isFullyPaid: true,
     paymentBreakdown: [{ paymentMethod: "Cash", total: grandTotal }], duePaymentHistory: [], linkedCreditAmount: null,
   };
 })();

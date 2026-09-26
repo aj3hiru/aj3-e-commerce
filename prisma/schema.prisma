@@ -318,6 +318,7 @@ model EcomOrder {
   subtotalAmount  Decimal  @map("subtotal_amount") @db.Decimal(10, 2)
   discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
   gstAmount       Decimal  @map("gst_amount") @db.Decimal(10, 2)
+  deliveryCharge  Decimal  @default(0) @map("delivery_charge") @db.Decimal(10, 2) // online orders only — Business Settings → Delivery Charge
   paymentStatus   String   @map("payment_status") // "Paid" | "Unpaid"
   paymentMethod   String   @map("payment_method")  // "Cash" | "Card" | "UPI" | "Other" | "Split"
   orderStatus     String   @default("Pending") @map("order_status") // "Pending" | "In Progress" | "Delivered" | "Canceled"

@@ -48,6 +48,7 @@ export interface OrderDetailData {
   createdAt?: string;
   subtotal?: number;
   discount?: number;
+  deliveryCharge?: number;
   gst?: number;
   paidAmount?: number;
   lat?: number | null;
@@ -301,6 +302,7 @@ export function OrderDetailView({ order, items, availableProducts, perms = ALL, 
                     {show("ov-bill", "ov-b-subtotal") && <BillRow k="Subtotal" v={money(subtotal)} />}
                     {show("ov-bill", "ov-b-discount") && (order.discount ?? 0) > 0 && <BillRow k="Discount" v={`− ${money(order.discount ?? 0)}`} tone="text-emerald-700" />}
                     {show("ov-bill", "ov-b-gst") && (order.gst ?? 0) > 0 && <BillRow k="GST" v={money(order.gst ?? 0)} />}
+                    {(order.deliveryCharge ?? 0) > 0 && <BillRow k="Delivery charge" v={money(order.deliveryCharge ?? 0)} />}
                     <div className="flex justify-between border-t border-admin-gray-200 pt-2 text-base font-bold text-admin-gray-900"><dt>Total</dt><dd>{money(order.totalAmount)}</dd></div>
                     {show("ov-bill", "ov-b-paid") && <BillRow k="Paid" v={money(paidAmount)} />}
                     {show("ov-bill", "ov-b-due") && (due > 0.004 ? <BillRow k="Due" v={money(due)} tone="font-bold text-red-600" /> : <p className="text-right text-xs font-bold uppercase tracking-wide text-emerald-600">✓ Fully paid</p>)}

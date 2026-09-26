@@ -19,7 +19,7 @@ export function ThermalReceipt({ data, s, seller }: { data: InvoiceData; s: Invo
   const fs = BASE[s.thermalFont] - (narrow ? 1 : 0);
   const mono = t === "classic" || t === "gst";
   const Hr = ({ solid }: { solid?: boolean }) => <div style={{ borderTop: `1px ${solid || !mono ? "solid" : "dashed"} #000`, margin: "5px 0" }} />;
-  const { order, customer, items, subtotal, discount, totalGst, cgst, sgst, grandTotal, paidAmount, dueAmount, isFullyPaid, paymentBreakdown, itemCount, totalQty } = data;
+  const { order, customer, items, subtotal, discount, deliveryCharge, totalGst, cgst, sgst, grandTotal, paidAmount, dueAmount, isFullyPaid, paymentBreakdown, itemCount, totalQty } = data;
   const when = [s.showDate && invDate(order.createdAt), s.showTime && invTime(order.createdAt)].filter(Boolean).join(" ");
   const customerName = order.customerName || customer?.name || "";
   const pays = paymentBreakdown.length > 1 ? paymentBreakdown.map((p) => ({ k: `${p.paymentMethod} Paid`, v: p.total })) : [{ k: `${paymentBreakdown[0]?.paymentMethod || order.paymentMethod || "Cash"} Paid`, v: paidAmount }];
@@ -106,6 +106,7 @@ export function ThermalReceipt({ data, s, seller }: { data: InvoiceData; s: Invo
       <Pair k="Sub Total" v={money(subtotal)} />
       {discount > 0 && <Pair k="Discount" v={`-${money(discount)}`} />}
       {totalGst > 0 && (seller.gstin ? <><Pair k="CGST" v={money(cgst)} /><Pair k="SGST" v={money(sgst)} /></> : <Pair k="GST" v={money(totalGst)} />)}
+      {deliveryCharge > 0 && <Pair k="Delivery Charge" v={money(deliveryCharge)} />}
       {t === "modern"
         ? <div style={{ display: "flex", justifyContent: "space-between", background: "#000", color: "#fff", fontWeight: 800, fontSize: fs + 3, padding: "4px 6px", margin: "5px 0", borderRadius: 3 }}><span>TOTAL</span><span>₹{money(grandTotal)}</span></div>
         : <><Hr solid /><Pair k="TOTAL" v={`₹${money(grandTotal)}`} bold big={fs + 2} /><Hr solid /></>}

@@ -432,7 +432,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
         return (
           <div className="px-4 pb-5 pt-5">
             <div className="flex items-start gap-3">
-              <h1 className="line-clamp-2 flex-1 text-[16px] font-medium leading-[22px] text-[#8b8ba3]">{d.product.name}</h1>
+              <h1 className="line-clamp-3 flex-1 text-[18px] font-bold leading-[24px] text-[#353543]">{d.product.name}</h1>
               {i.showWishlist && (
                 <button type="button" onClick={toggleWish} aria-pressed={wished} className="flex shrink-0 flex-col items-center gap-1 text-[12px]">
                   <Heart className={cn("h-[22px] w-[22px]", wished ? "fill-[#ef4444] text-[#ef4444]" : "text-[#353543]")} strokeWidth={1.5} />Wishlist
@@ -475,27 +475,31 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
             {d.product.unit && d.sizes.length === 0 && (
               <p className="mt-2.5 text-[14px] text-[#616173]">Unit: <b className="font-semibold text-[#353543]">{d.product.unit}</b></p>
             )}
-            {specs.length > 0 && (
-              <div className="mt-4 rounded-[10px] border border-[#eaeaf2] px-3.5 pb-0.5 pt-3.5">
-                <h3 className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.4px] text-[var(--hp-accent)]">Specifications</h3>
-                <ul>
-                  {specs.map((x, n) => (
-                    <li key={n} className="flex gap-3.5 border-b border-[#eaeaf2] py-[7px] text-[13px] leading-[1.5] last:border-b-0">
-                      <span className="w-[108px] shrink-0 font-semibold text-[#8b8ba3] shop:w-[140px]">{x.name}</span>
-                      <span className="min-w-0 flex-1 break-words text-[#353543]">{x.value}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         );
       }
       case "sizes": {
-        if (d.sizes.length === 0) return null;
+        // Select Size / Unit first, then the Specifications list under it.
+        const specsCard = specs.length > 0 ? (
+          <div className="px-4 pb-5 pt-1">
+            <div className="rounded-[10px] border border-[#eaeaf2] px-3.5 pb-0.5 pt-3.5">
+              <h3 className="mb-2.5 text-[12px] font-bold uppercase tracking-[0.4px] text-[var(--hp-accent)]">Specifications</h3>
+              <ul>
+                {specs.map((x, n) => (
+                  <li key={n} className="flex gap-3.5 border-b border-[#eaeaf2] py-[7px] text-[13px] leading-[1.5] last:border-b-0">
+                    <span className="w-[108px] shrink-0 font-semibold text-[#8b8ba3] shop:w-[140px]">{x.name}</span>
+                    <span className="min-w-0 flex-1 break-words text-[#353543]">{x.value}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : null;
+        if (d.sizes.length === 0) return specsCard;
         // Cards with price when sizes cost differently; simple pills when they don't.
         const priced = cfg.sizes.showPrice && d.sizes.some((x) => x.final !== d.sizes[0].final || x.mrp !== d.sizes[0].mrp);
         return (
+          <>
           <div className="px-4 pb-5 pt-5">
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="text-[18px] font-semibold leading-6">{cfg.sizes.title}</h2>
@@ -523,6 +527,8 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
               })}
             </div>
           </div>
+          {specsCard}
+          </>
         );
       }
       case "soldBy": {

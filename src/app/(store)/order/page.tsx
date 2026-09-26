@@ -62,7 +62,7 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
         number: order.orderNumber, createdAt: order.createdAt.toISOString(), status: order.orderStatus, placed: !!placed,
         storeName: layoutData.business.businessName, helpPhone: layoutData.business.contactNumbers?.find(Boolean) ?? null,
         items: order.items.map((it) => { const p = prod.get(it.productId); return { id: it.id, name: it.productName, qty: it.qty, price: Number(it.price), slug: p?.slug ?? null, image: p?.image ?? null }; }),
-        discount: Number(order.discountAmount), gst: Number(order.gstAmount), total: Number(order.totalAmount),
+        discount: Number(order.discountAmount), gst: Number(order.gstAmount), deliveryCharge: Number(order.deliveryCharge), total: Number(order.totalAmount),
         paymentName: payment?.name ?? order.paymentMethod, paymentStatus: order.paymentStatus,
         customerName: order.customerName, customerPhone: order.customer?.phone ?? null, address: order.shippingAddress || order.customer?.address || "",
         stepTimes: Object.fromEntries(order.events.filter((e) => e.toValue).map((e) => [e.toValue!, e.createdAt.toISOString()])),

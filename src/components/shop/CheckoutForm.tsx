@@ -23,12 +23,14 @@ interface CheckoutFormProps {
   items: CheckoutItemSummary[];
   subtotal: number;
   estimatedGst: number;
+  /** Business Settings → Delivery Charge for this order (0 = free), and the free-delivery amount. */
+  delivery: { charge: number; freeAbove: number | null; enabled: boolean; note: string };
 }
 
 const payIcon = (key: string) => (/cod|cash/i.test(key) ? Banknote : /upi|wallet/i.test(key) ? Wallet : CreditCard);
 
 /** Checkout (Meesho style): address, payment, coupon, order summary, and a sticky Place Order bar. */
-export function CheckoutForm({ addresses, customerName, customerPhone, paymentMethods, items, subtotal, estimatedGst }: CheckoutFormProps) {
+export function CheckoutForm({ addresses, customerName, customerPhone, paymentMethods, items, subtotal, estimatedGst, delivery }: CheckoutFormProps) {
   const router = useRouter();
   const [addressId, setAddressId] = useState<number | null>(null);
   const pickAddress = useCallback((id: number | null) => { setAddressId(id); setError(""); }, []);
@@ -36,7 +38,7 @@ export function CheckoutForm({ addresses, customerName, customerPhone, paymentMe
   const [couponCode, setCouponCode] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const total = subtotal + estimatedGst;
+  const total = subtotal + estimatedGst + delivery.charge;
   const step = !addressId ? 1 : !paymentMethod ? 2 : 3;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -119,6 +121,13 @@ export function CheckoutForm({ addresses, customerName, customerPhone, paymentMe
       <Section title="Price Details" id="price-details">
         <PriceRow label="Items total" value={rupees(subtotal)} />
         <PriceRow label="Estimated GST" value={`+ ${rupees(estimatedGst)}`} />
+        {delivery.enabled && (
+          <PriceRow label="Delivery charge" value={delivery.charge > 0 ? `+ ${rupees(delivery.charge)}` : "FREE"} tone={delivery.charge > 0 ? undefined : "green"} />
+        )}
+        {delivery.enabled && delivery.charge > 0 && delivery.freeAbove !== null && delivery.freeAbove > subtotal && (
+          <p className="mb-1 rounded-[4px] bg-[#fff6e5] px-2.5 py-1.5 text-[12.5px] text-[#9a5b00]">Add items worth {rupees(delivery.freeAbove - subtotal)} more for FREE delivery.</p>
+        )}
+        {delivery.enabled && delivery.note && <p className="mb-1 text-[12px] text-[#8b8ba3]">{delivery.note}</p>}
         <div className="my-1.5 border-t border-dashed border-[#dcdce6]" />
         <PriceRow label="Order Total" value={rupees(total)} bold />
       </Section>

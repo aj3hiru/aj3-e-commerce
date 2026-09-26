@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Barcode, Building2, Contact, CreditCard, FileSpreadsheet, FileText, Image as ImageIcon, Keyboard, Percent, Share2, Smartphone,
+  Barcode, Building2, Contact, CreditCard, FileSpreadsheet, FileText, Image as ImageIcon, Keyboard, Percent, Share2, Smartphone, Truck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SettingsMenuLayout, type SettingsMenuItem } from "./SettingsMenuLayout";
@@ -24,6 +24,7 @@ const FORM_SECTIONS: SettingsMenuItem[] = [
 /** Settings that are pages of their own, listed in the same menu. */
 const PAGE_SECTIONS: (SettingsMenuItem & { perm: [string, string] })[] = [
   { key: "payment", label: "Payment Methods", icon: CreditCard, href: "/admin/ecommerce/payment-settings", perm: ["ecommerce", "manage_payment"] },
+  { key: "delivery", label: "Delivery Charge", icon: Truck, href: "/admin/ecommerce/delivery-settings", perm: ["ecommerce", "manage_payment"] },
   { key: "gst", label: "GST / Tax Rates", icon: Percent, href: "/admin/ecommerce/tax-settings", perm: ["ecommerce", "manage_products"] },
   { key: "login", label: "Login & OTP", icon: Smartphone, href: "/admin/ecommerce/login-settings", perm: ["ecommerce", "manage_payment"] },
 ];

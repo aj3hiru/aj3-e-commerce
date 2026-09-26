@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'core/app_state.dart';
 import 'core/config.dart';
+import 'core/nav.dart';
 import 'core/theme.dart';
 import 'features/login/login_screen.dart';
 import 'features/shell/shell.dart';
@@ -12,7 +13,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final state = AppState();
   await state.init();
-  runApp(ChangeNotifierProvider.value(value: state, child: const StaffApp()));
+  runApp(MultiProvider(providers: [ChangeNotifierProvider.value(value: state), ChangeNotifierProvider(create: (_) => NavController())], child: const StaffApp()));
 }
 
 class StaffApp extends StatefulWidget {

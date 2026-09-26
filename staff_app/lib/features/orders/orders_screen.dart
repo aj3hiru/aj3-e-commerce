@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
+import '../../core/nav.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
@@ -24,12 +25,22 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
+  int _navSeq = -1;
   String _tab = 'Pending';
   String _channel = 'online';
   String _q = '';
 
   @override
   Widget build(BuildContext context) {
+    final nav = context.watch<NavController>();
+    if (nav.seq != _navSeq) {
+      _navSeq = nav.seq;
+      final a = nav.take('orders');
+      if (a['tab'] is String) {
+        _tab = a['tab'];
+        _channel = 'online';
+      }
+    }
     final s = context.watch<AppState>();
     final agents = {for (final a in s.list('agents')) toInt(a['id']): a['name']};
     final all = s.list('orders').where((o) => _channel == 'all' || o['type'] == _channel).toList();
@@ -64,16 +75,18 @@ class _OrdersScreenState extends State<OrdersScreen> {
         child: Column(children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Row(children: [
-              Expanded(child: SearchBox(hint: 'Order no., name or mobile', onChanged: (v) => setState(() => _q = v))),
-              const SizedBox(width: 10),
-              SegmentedButton<String>(
+            child: Builder(builder: (context) {
+              final search = SearchBox(hint: 'Order no., name or mobile', onChanged: (v) => setState(() => _q = v));
+              final channel = SegmentedButton<String>(
                 showSelectedIcon: false,
                 segments: const [ButtonSegment(value: 'online', label: Text('Online')), ButtonSegment(value: 'offline', label: Text('Store')), ButtonSegment(value: 'all', label: Text('All'))],
                 selected: {_channel},
                 onSelectionChanged: (v) => setState(() => _channel = v.first),
-              ),
-            ]),
+              );
+              return isWide(context)
+                  ? Row(children: [Expanded(child: search), const SizedBox(width: 10), channel])
+                  : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [search, const SizedBox(height: 10), channel]);
+            }),
           ),
           Expanded(
             child: RefreshIndicator(
@@ -117,7 +130,7 @@ class OrderCard extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${o['customer']}', style: const TextStyle(fontWeight: FontWeight.w600)),
-              Text('${items.length} item${items.length == 1 ? '' : 's'} · ${ago(o['createdAt'])}${agentName != null ? ' · 🛵 $agentName' : ''}', style: const TextStyle(color: AppColors.muted, fontSize: 12.5)),
+              Text('${items.length} item${items.length == 1 ? '' : 's'} · ${ago(o['createdAt'])}${agentName != null ? ' · Agent: $agentName' : ''}', style: const TextStyle(color: AppColors.muted, fontSize: 12.5)),
             ]),
           ),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [

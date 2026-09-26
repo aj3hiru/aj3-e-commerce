@@ -39,11 +39,11 @@ class _DuesScreenState extends State<DuesScreen> {
         child: PageBody(
           maxWidth: 1000,
           child: ListView(padding: const EdgeInsets.all(16), children: [
-            Row(children: [
-              Expanded(child: KpiTile(icon: Icons.account_balance_wallet_outlined, label: 'Total outstanding', value: money(total), sub: '${dues.length} bills · ${groups.length} customers', color: AppColors.red, soft: AppColors.redSoft)),
+            SizedBox(height: 150, child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Expanded(child: KpiTile(icon: Icons.account_balance_wallet_outlined, label: 'Total outstanding', value: money(total), sub: '${dues.length} bill${dues.length == 1 ? '' : 's'} · ${groups.length} customer${groups.length == 1 ? '' : 's'}', color: AppColors.red, soft: AppColors.redSoft)),
               const SizedBox(width: 10),
-              Expanded(child: KpiTile(icon: Icons.event_busy_outlined, label: 'Promise date passed', value: '$overdue', color: AppColors.amber, soft: AppColors.amberSoft)),
-            ]),
+              Expanded(child: KpiTile(icon: Icons.event_busy_outlined, label: 'Promise date passed', value: '$overdue', sub: 'Follow up today', color: AppColors.amber, soft: AppColors.amberSoft)),
+            ])),
             const SizedBox(height: 12),
             SearchBox(hint: 'Customer name or mobile', onChanged: (v) => setState(() => _q = v)),
             const SizedBox(height: 12),

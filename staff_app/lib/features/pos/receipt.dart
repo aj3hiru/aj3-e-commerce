@@ -98,3 +98,18 @@ Future<void> printReceipt(ReceiptData r, String size) async {
   final bytes = await buildReceipt(r, size);
   await Printing.layoutPdf(name: 'Bill ${r.number}', format: pageFor(size), onLayout: (_) async => bytes);
 }
+
+/// Prints a saved order / bill (from the synced orders) again.
+Future<void> reprintOrder(Map<String, dynamic> shop, Map<String, dynamic> o, String size, {List<Map>? payments}) {
+  final items = ((o['items'] as List?) ?? const []).cast<Map>();
+  return printReceipt(
+    ReceiptData(
+      shop: shop, number: o['localRef'] != null ? 'Offline' : '${o['number']}', at: parseDate(o['createdAt']) ?? DateTime.now().toUtc(), customer: '${o['customer']}', phone: o['phone'] as String?,
+      lines: [for (final it in items) ReceiptLine('${it['name']}', toInt(it['qty']), toDouble(it['price']))],
+      subtotal: toDouble(o['subtotal']), discount: toDouble(o['discount']), gst: toDouble(o['gst']), total: toDouble(o['total']), due: toDouble(o['due']),
+      payments: payments != null && payments.isNotEmpty ? [for (final p in payments) ('${p['method']}', toDouble(p['amount']))] : [('${o['paymentMethod']}', toDouble(o['total']) - toDouble(o['due']))],
+      offline: o['localRef'] != null,
+    ),
+    size,
+  );
+}

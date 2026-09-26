@@ -152,7 +152,7 @@ async function buildFresh(name: SetName, session: AdminSession): Promise<unknown
   switch (name) {
     case "settings": return buildSettings();
     case "products": return buildProducts();
-    case "categories": return prisma.ecomCategory.findMany({ orderBy: [{ serial: "asc" }, { name: "asc" }], select: { id: true, name: true, slug: true, image: true, status: true } });
+    case "categories": return prisma.ecomCategory.findMany({ orderBy: [{ serial: "asc" }, { name: "asc" }], select: { id: true, name: true, slug: true, image: true, status: true, serial: true, metaKeywords: true, metaDescription: true } });
     case "brands": return prisma.ecomBrand.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, logo: true, status: true } });
     case "customers": return buildCustomers();
     case "coupons": return (await prisma.ecomCoupon.findMany({ where: { status: "active", isPaused: false }, select: { id: true, code: true, title: true, discountType: true, discountValue: true, appliesTo: true, productId: true, categoryId: true, numberOfTimes: true, usedCount: true, startsAt: true, endsAt: true } }))

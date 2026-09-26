@@ -33,7 +33,17 @@ export async function appDashboard(s: AdminSession) {
       if (row) { row.sales += t; row.orders++; }
       if (d === today) { todaySales += t; todayCount++; if (o.orderType === "offline") todayStore += t; else todayOnline += t; }
     }
-    out.sales = { today: round(todaySales), count: todayCount, store: round(todayStore), online: round(todayOnline), week: series.map((x) => ({ ...x, sales: round(x.sales) })) };
+    const yesterday = series[series.length - 2];
+    const [top, pays] = await Promise.all([
+      prisma.ecomOrderItem.groupBy({ by: ["productId", "productName"], where: { order: { AND: [saleWhere, { createdAt: { gte: start } }] } }, _sum: { qty: true }, orderBy: { _sum: { qty: "desc" } }, take: 5 }),
+      prisma.ecomOrderPayment.groupBy({ by: ["paymentMethod"], where: { order: { createdAt: { gte: start } } }, _sum: { amount: true } }),
+    ]);
+    out.sales = {
+      today: round(todaySales), count: todayCount, store: round(todayStore), online: round(todayOnline), yesterday: round(yesterday?.sales ?? 0),
+      week: series.map((x) => ({ ...x, sales: round(x.sales) })),
+      top: top.map((t) => ({ productId: t.productId, name: t.productName, qty: t._sum.qty ?? 0 })),
+      methods: pays.map((x) => ({ method: x.paymentMethod, amount: round(Number(x._sum.amount ?? 0)) })).filter((x) => x.amount > 0),
+    };
   })());
 
   if (seesOrders) jobs.push((async () => {
@@ -52,7 +62,8 @@ export async function appDashboard(s: AdminSession) {
       prisma.ecomCredit.aggregate({ where: { status: { not: "paid" } }, _sum: { amount: true, amountPaid: true }, _count: { _all: true } }),
       prisma.ecomCreditPayment.aggregate({ where: { createdAt: { gte: start } }, _sum: { amount: true }, _count: { _all: true } }),
     ]);
-    out.dues = { outstanding: round(Number(open._sum.amount ?? 0) - Number(open._sum.amountPaid ?? 0)), open: open._count._all, collectedToday: round(Number(collected._sum.amount ?? 0)), collections: collected._count._all };
+    const topDue = await prisma.ecomCredit.groupBy({ by: ["customerId", "customerName"], where: { status: { not: "paid" } }, _sum: { amount: true, amountPaid: true }, orderBy: { _sum: { amount: "desc" } }, take: 5 });
+    out.dues = { top: topDue.map((d) => ({ customerId: d.customerId, customer: d.customerName, balance: round(Number(d._sum.amount ?? 0) - Number(d._sum.amountPaid ?? 0)) })).filter((d) => d.balance > 0), outstanding: round(Number(open._sum.amount ?? 0) - Number(open._sum.amountPaid ?? 0)), open: open._count._all, collectedToday: round(Number(collected._sum.amount ?? 0)), collections: collected._count._all };
   })());
 
   if (seesStock) jobs.push((async () => {
@@ -61,7 +72,8 @@ export async function appDashboard(s: AdminSession) {
       prisma.ecomProduct.count({ where: { status: "active", productType: "physical", stockQty: 0 } }),
       prisma.ecomProduct.count({ where: { status: "active" } }),
     ]);
-    out.stock = { low, out: out0, products: total };
+    const lowList = await prisma.ecomProduct.findMany({ where: { status: "active", productType: "physical", stockQty: { lte: 5 } }, orderBy: { stockQty: "asc" }, take: 6, select: { id: true, name: true, stockQty: true, image: true, unit: true } });
+    out.stock = { low, out: out0, products: total, lowList: lowList.map((p) => ({ id: p.id, name: p.name, stock: p.stockQty, image: p.image, unit: p.unit })) };
   })());
 
   if (agent) jobs.push((async () => {

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
+import '../../core/nav.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
@@ -16,10 +17,17 @@ class MyDeliveriesScreen extends StatefulWidget {
 }
 
 class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
+  int _navSeq = -1;
   bool _done = false;
 
   @override
   Widget build(BuildContext context) {
+    final nav = context.watch<NavController>();
+    if (nav.seq != _navSeq) {
+      _navSeq = nav.seq;
+      final a = nav.take('deliveries');
+      if (a['done'] == true) _done = true;
+    }
     final s = context.watch<AppState>();
     final all = s.list('deliveries');
     final active = all.where((o) => o['status'] != 'Delivered' && o['status'] != 'Canceled').toList()
@@ -36,11 +44,11 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
         child: PageBody(
           maxWidth: 900,
           child: ListView(padding: const EdgeInsets.all(16), children: [
-            Row(children: [
+            SizedBox(height: 150, child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Expanded(child: KpiTile(icon: Icons.two_wheeler_rounded, label: 'To deliver', value: '${active.length}', color: AppColors.cyan, soft: AppColors.cyanSoft)),
               const SizedBox(width: 10),
               Expanded(child: KpiTile(icon: Icons.task_alt_rounded, label: 'Done today', value: '$doneToday', color: AppColors.green, soft: AppColors.greenSoft)),
-            ]),
+            ])),
             const SizedBox(height: 10),
             KpiTile(icon: Icons.payments_outlined, label: 'Cash to collect', value: money(toCollect), sub: 'from customers on your list', color: AppColors.amber, soft: AppColors.amberSoft),
             const SizedBox(height: 14),

@@ -5,9 +5,14 @@ class AppColors {
   static const primary = Color(0xFF7C3AED);
   static const primaryDark = Color(0xFF6D28D9);
   static const primarySoft = Color(0xFFF3EEFF);
-  static const bg = Color(0xFFF5F6FA);
+  static const bg = Color(0xFFF4F5FB);
+  static const indigo = Color(0xFF4F46E5);
+  static const heroGradient = LinearGradient(colors: [Color(0xFF6D28D9), Color(0xFF4F46E5)], begin: Alignment.topLeft, end: Alignment.bottomRight);
+  static const pink = Color(0xFFDB2777);
+  static const pinkSoft = Color(0xFFFDEBF4);
+  static const shadow = [BoxShadow(color: Color(0x0A1B1B3A), blurRadius: 12, offset: Offset(0, 4)), BoxShadow(color: Color(0x05000000), blurRadius: 2, offset: Offset(0, 1))];
   static const card = Colors.white;
-  static const border = Color(0xFFE7E8EF);
+  static const border = Color(0xFFE9EAF2);
   static const text = Color(0xFF111827);
   static const muted = Color(0xFF6B7280);
   static const faint = Color(0xFF9CA3AF);
@@ -51,6 +56,10 @@ ThemeData buildTheme() {
     navigationBarTheme: NavigationBarThemeData(backgroundColor: Colors.white, indicatorColor: AppColors.primarySoft, height: 66,
         labelTextStyle: WidgetStateProperty.resolveWith((s) => TextStyle(fontFamily: 'Inter', fontSize: 11.5, fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
             color: s.contains(WidgetState.selected) ? AppColors.primary : AppColors.muted))),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: AppColors.primary, foregroundColor: Colors.white, elevation: 3, focusElevation: 3, hoverElevation: 5, highlightElevation: 4,
+      shape: StadiumBorder(), extendedTextStyle: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontSize: 14.5),
+    ),
     snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating, shape: RoundedRectangleBorder(borderRadius: radius)),
     bottomSheetTheme: const BottomSheetThemeData(backgroundColor: Colors.white, showDragHandle: true, shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(18)))),
     dialogTheme: const DialogThemeData(backgroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(14)))),

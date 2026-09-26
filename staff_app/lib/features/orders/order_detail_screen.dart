@@ -275,18 +275,11 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Future<void> _print(AppState s, Map<String, dynamic> o) async {
-    final items = ((o['items'] as List?) ?? const []).cast<Map>();
-    final pays = ((_extra?['payments'] as List?) ?? const []).cast<Map>();
-    final data = ReceiptData(
-      shop: s.settings, number: '${o['number']}', at: parseDate(o['createdAt']) ?? DateTime.now().toUtc(), customer: '${o['customer']}', phone: o['phone'],
-      lines: [for (final it in items) ReceiptLine('${it['name']}', toInt(it['qty']), toDouble(it['price']))],
-      subtotal: toDouble(o['subtotal']), discount: toDouble(o['discount']), gst: toDouble(o['gst']), total: toDouble(o['total']), due: toDouble(o['due']),
-      payments: pays.isNotEmpty ? [for (final p in pays) ('${p['method']}', toDouble(p['amount']))] : [('${o['paymentMethod']}', toDouble(o['paid']))],
-    );
     try {
-      await printReceipt(data, s.settings['printerFormat'] as String? ?? 'thermal_80');
+      await reprintOrder(s.settings, o, s.settings['printerFormat'] as String? ?? 'thermal_80', payments: ((_extra?['payments'] as List?) ?? const []).cast<Map>());
     } catch (_) {
       if (mounted) toast(context, 'Printer not available.', error: true);
     }
   }
+
 }

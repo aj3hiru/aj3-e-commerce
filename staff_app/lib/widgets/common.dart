@@ -34,16 +34,22 @@ Future<bool> confirm(BuildContext context, String title, String message, {String
   return r == true;
 }
 
-/// White card with the app's border.
+/// White card: soft border, gentle shadow, 16 px corners; tappable when [onTap] is set.
 class AppCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
-  const AppCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap});
+  final Color? color;
+  const AppCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap, this.color});
   @override
-  Widget build(BuildContext context) => Card(
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(onTap: onTap, child: Padding(padding: padding, child: child)),
+  Widget build(BuildContext context) => DecoratedBox(
+        decoration: BoxDecoration(color: color ?? Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border), boxShadow: AppColors.shadow),
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(onTap: onTap, hoverColor: AppColors.primarySoft.withValues(alpha: .35), child: Padding(padding: padding, child: child)),
+        ),
       );
 }
 
@@ -72,7 +78,9 @@ class KpiTile extends StatelessWidget {
   final Color color;
   final Color soft;
   final VoidCallback? onTap;
-  const KpiTile({super.key, required this.icon, required this.label, required this.value, this.sub, this.color = AppColors.primary, this.soft = AppColors.primarySoft, this.onTap});
+  /// Change vs a previous period, e.g. +12.5 (%). Shown as a small green / red chip.
+  final double? trend;
+  const KpiTile({super.key, required this.icon, required this.label, required this.value, this.sub, this.color = AppColors.primary, this.soft = AppColors.primarySoft, this.onTap, this.trend});
   @override
   Widget build(BuildContext context) => AppCard(
         onTap: onTap,
@@ -80,15 +88,32 @@ class KpiTile extends StatelessWidget {
         child: LayoutBuilder(builder: (c, box) {
           final narrow = box.maxWidth < 200; // phone grid: icon above the text so labels show in full
           final icon = Container(width: narrow ? 34 : 44, height: narrow ? 34 : 44, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(narrow ? 10 : 12)), child: Icon(this.icon, color: color, size: narrow ? 18 : 22));
+          final t = trend;
+          final trendChip = t == null || t.isNaN || t.isInfinite
+              ? null
+              : Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: t >= 0 ? AppColors.greenSoft : AppColors.redSoft, borderRadius: BorderRadius.circular(20)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(t >= 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded, size: 13, color: t >= 0 ? AppColors.green : AppColors.red),
+                    const SizedBox(width: 3),
+                    Text('${t.abs().toStringAsFixed(t.abs() >= 100 ? 0 : 1)}%', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: t >= 0 ? AppColors.green : AppColors.red)),
+                  ]),
+                );
           final text = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(label, maxLines: narrow ? 2 : 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: AppColors.muted, height: 1.25)),
-            const SizedBox(height: 2),
-            FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700))),
-            if (sub != null) Text(sub!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.muted)),
+            Text(label, maxLines: narrow ? 2 : 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: AppColors.muted, height: 1.25, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 3),
+            FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800, letterSpacing: -.3))),
+            if (sub != null) ...[const SizedBox(height: 1), Text(sub!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: AppColors.muted))],
           ]);
+          final go = onTap == null ? null : const Icon(Icons.arrow_forward_ios_rounded, size: 13, color: AppColors.faint);
           return narrow
-              ? Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [icon, const SizedBox(height: 10), text])
-              : Row(children: [icon, const SizedBox(width: 12), Expanded(child: text)]);
+              ? Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Row(children: [icon, const Spacer(), ?trendChip, if (trendChip == null) ?go]),
+                  const SizedBox(height: 10),
+                  text,
+                ])
+              : Row(children: [icon, const SizedBox(width: 12), Expanded(child: text), if (trendChip != null) ...[const SizedBox(width: 6), trendChip], if (go != null) ...[const SizedBox(width: 6), go]]);
         }),
       );
 }
@@ -97,7 +122,7 @@ class KpiTile extends StatelessWidget {
 class StatusChip extends StatelessWidget {
   final String text;
   const StatusChip(this.text, {super.key});
-  static (Color, Color) colors(String s) => switch (s.toLowerCase()) {
+  static (Color, Color) colors(String s) => s.toLowerCase().startsWith('due') ? (AppColors.red, AppColors.redSoft) : s.toLowerCase().startsWith('collect') ? (AppColors.amber, AppColors.amberSoft) : switch (s.toLowerCase()) {
         'pending' || 'unpaid' || 'partial' => (AppColors.amber, AppColors.amberSoft),
         'in progress' || 'accepted' => (AppColors.blue, AppColors.blueSoft),
         'out for delivery' || 'on the way' => (AppColors.cyan, AppColors.cyanSoft),
@@ -316,4 +341,102 @@ class PageBody extends StatelessWidget {
         alignment: Alignment.topCenter,
         child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: child),
       );
+}
+
+
+/// Big gradient header for the home screen.
+class HeroHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+  final Widget? bottom;
+  const HeroHeader({super.key, required this.title, required this.subtitle, this.trailing, this.bottom});
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(gradient: AppColors.heroGradient, borderRadius: BorderRadius.circular(20), boxShadow: const [BoxShadow(color: Color(0x1F4F46E5), blurRadius: 16, offset: Offset(0, 6))]),
+        child: Stack(children: [
+          // soft circles for depth
+          Positioned(right: -30, top: -40, child: Container(width: 160, height: 160, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .08)))),
+          Positioned(right: 70, bottom: -60, child: Container(width: 120, height: 120, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .06)))),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(title, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -.3)),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: .82), fontSize: 13.5)),
+                  ]),
+                ),
+                ?trailing,
+              ]),
+              if (bottom != null) ...[const SizedBox(height: 18), bottom!],
+            ]),
+          ),
+        ]),
+      );
+}
+
+/// Round quick-action button (icon in a tinted circle + label).
+class QuickAction extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color soft;
+  final VoidCallback onTap;
+  const QuickAction({super.key, required this.icon, required this.label, required this.onTap, this.color = AppColors.primary, this.soft = AppColors.primarySoft});
+  @override
+  Widget build(BuildContext context) => InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 52, height: 52, decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(16)), child: Icon(icon, color: color, size: 24)),
+            const SizedBox(height: 7),
+            Text(label, textAlign: TextAlign.center, maxLines: 2, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.2)),
+          ]),
+        ),
+      );
+}
+
+/// Card with a title row and an optional "View all" link.
+class SectionCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback? onViewAll;
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  const SectionCard({super.key, required this.title, required this.icon, required this.child, this.onViewAll, this.padding = const EdgeInsets.fromLTRB(16, 14, 16, 12)});
+  @override
+  Widget build(BuildContext context) => AppCard(
+        padding: padding,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(width: 30, height: 30, decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(9)), child: Icon(icon, size: 17, color: AppColors.primary)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700))),
+            if (onViewAll != null) TextButton(onPressed: onViewAll, style: TextButton.styleFrom(visualDensity: VisualDensity.compact), child: const Text('View all')),
+          ]),
+          const SizedBox(height: 10),
+          child,
+        ]),
+      );
+}
+
+/// Small numbered badge (e.g. new orders on a menu item).
+class CountBadge extends StatelessWidget {
+  final int count;
+  final Color color;
+  const CountBadge(this.count, {super.key, this.color = AppColors.red});
+  @override
+  Widget build(BuildContext context) => count <= 0
+      ? const SizedBox.shrink()
+      : Container(
+          constraints: const BoxConstraints(minWidth: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+          child: Text(count > 99 ? '99+' : '$count', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+        );
 }

@@ -9,6 +9,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:sri_staff/core/app_state.dart';
 import 'package:sri_staff/core/local_store.dart';
+import 'package:sri_staff/core/nav.dart';
+import 'package:sri_staff/features/categories/categories_screen.dart';
+import 'package:sri_staff/features/deliveries/delivery_board_screen.dart';
+import 'package:sri_staff/features/account/account_screen.dart';
 import 'package:sri_staff/core/perms.dart';
 import 'package:sri_staff/core/theme.dart';
 import 'package:sri_staff/features/customers/customers_screen.dart';
@@ -87,13 +91,15 @@ AppState _state({String role = 'admin', Map<String, dynamic>? perms}) {
 }
 
 Future<void> _shot(WidgetTester t, String name, Widget screen, {Size size = const Size(412, 900), AppState? state}) async {
+  debugDisableShadows = false; // real soft shadows, as on a device
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
-  await t.pumpWidget(ChangeNotifierProvider.value(value: state ?? _state(), child: MaterialApp(debugShowCheckedModeBanner: false, theme: buildTheme(), home: screen)));
+  await t.pumpWidget(MultiProvider(providers: [ChangeNotifierProvider.value(value: state ?? _state()), ChangeNotifierProvider(create: (_) => NavController())], child: MaterialApp(debugShowCheckedModeBanner: false, theme: buildTheme(), home: screen)));
   for (var i = 0; i < 5; i++) {
     await t.pump(const Duration(milliseconds: 200));
   }
   await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$name.png'));
+  debugDisableShadows = true;
 }
 
 void main() {
@@ -102,15 +108,20 @@ void main() {
     await _fonts();
     await LocalStore.instance.write('dashboard', {
       'today': '2026-09-26',
-      'sales': {'today': 18450.5, 'count': 23, 'store': 12950.5, 'online': 5500, 'week': [
+      'sales': {'today': 18450.5, 'count': 23, 'store': 12950.5, 'online': 5500, 'yesterday': 16100,
+        'top': [{'productId': 1, 'name': 'Hawan Samagri 500g', 'qty': 34}, {'productId': 4, 'name': 'Camphor Tablets 100g', 'qty': 21}, {'productId': 2, 'name': 'Pure Cow Ghee 1L', 'qty': 9}],
+        'methods': [{'method': 'Cash', 'amount': 9800}, {'method': 'UPI', 'amount': 6650.5}, {'method': 'Card', 'amount': 2000}],
+        'week': [
         for (final (i, v) in [9800, 14200, 11050, 16400, 12900, 21500, 18450.5].indexed) {'day': '2026-09-${20 + i}', 'sales': v, 'orders': 10 + i}
       ]},
       'orders': {'pending': 4, 'inProgress': 2, 'outForDelivery': 3, 'placedToday': 9, 'recent': [
         {'id': 17, 'number': 'ORD0000010', 'customer': 'Sujata Kumari', 'total': 1049, 'status': 'Pending', 'createdAt': DateTime.now().toUtc().toIso8601String()},
         {'id': 16, 'number': 'ORD0000009', 'customer': 'Sujata Kumari', 'total': 500, 'status': 'Out for Delivery', 'createdAt': DateTime.now().toUtc().toIso8601String()},
       ]},
-      'dues': {'outstanding': 12900.01, 'open': 7, 'collectedToday': 2100, 'collections': 3},
-      'stock': {'low': 5, 'out': 2, 'products': 148},
+      'dues': {'outstanding': 12900.01, 'open': 7, 'collectedToday': 2100, 'collections': 3, 'top': [
+        {'customerId': 2, 'customer': 'Nitu Devi', 'balance': 900.01}, {'customerId': 5, 'customer': 'Ramesh Prasad', 'balance': 4200}, {'customerId': 6, 'customer': 'Geeta Store', 'balance': 2750.5}]},
+      'stock': {'low': 5, 'out': 2, 'products': 148, 'lowList': [
+        {'id': 3, 'name': 'Cotton T-shirt (Saffron)', 'stock': 0}, {'id': 2, 'name': 'Pure Cow Ghee 1L', 'stock': 3, 'unit': 'Litre'}, {'id': 7, 'name': 'Diya (pack of 12)', 'stock': 4}]},
     });
   });
   tearDown(() {});
@@ -134,5 +145,8 @@ void main() {
   testWidgets('dues phone', (t) => _shot(t, 'dues_phone', const DuesScreen()));
   testWidgets('staff desktop', (t) => _shot(t, 'staff_desktop', const StaffScreen(), size: desktop));
   testWidgets('agent phone', (t) => _shot(t, 'agent_home_phone', const Shell(), state: _state(role: 'delivery_agent', perms: {'delivery': {'deliver': true}, 'dashboard_access': true})));
+  testWidgets('board desktop', (t) => _shot(t, 'board_desktop', const DeliveryBoardScreen(), size: desktop));
+  testWidgets('categories phone', (t) => _shot(t, 'categories_phone', const CategoriesScreen()));
+  testWidgets('account phone', (t) => _shot(t, 'account_phone', const AccountScreen()));
   testWidgets('my deliveries phone', (t) => _shot(t, 'my_deliveries_phone', const MyDeliveriesScreen(), state: _state(role: 'delivery_agent', perms: {'delivery': {'deliver': true}, 'dashboard_access': true})));
 }

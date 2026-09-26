@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
+import '../../core/nav.dart';
 import '../../core/format.dart';
 import '../../core/local_store.dart';
 import '../../core/theme.dart';
@@ -18,6 +19,7 @@ class ReportsScreen extends StatefulWidget {
 }
 
 class _ReportsScreenState extends State<ReportsScreen> {
+  int _navSeq = -1;
   Map<String, String> _params = {'range': 'today'};
   Map<String, dynamic>? _r;
   bool _loading = false;
@@ -89,6 +91,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final nav = context.watch<NavController>();
+    if (nav.seq != _navSeq) {
+      _navSeq = nav.seq;
+      final a = nav.take('reports');
+      if (a['range'] is String && a['range'] != _params['range']) {
+        final r = a['range'] as String;
+        WidgetsBinding.instance.addPostFrameCallback((_) => _set({'range': r}));
+      }
+    }
     final r = _r;
     final k = (r?['kpis'] as Map?) ?? {};
     final wide = isWide(context);

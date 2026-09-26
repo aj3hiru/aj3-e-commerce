@@ -59,7 +59,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
                             Expanded(
                               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                                 Text('${x['name']}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                                Text([x['phone'], x['type'] == 'offline' ? 'Store' : 'Online'].whereType<String>().join(' · '), style: const TextStyle(color: AppColors.muted, fontSize: 12.5)),
+                                Text([x['phone'], if (isWide(context)) x['email'], x['type'] == 'offline' ? 'Store' : 'Online', if (isWide(context) && x['since'] != null) 'since ${dateShort(x['since'])}'].whereType<String>().join(' · '), style: const TextStyle(color: AppColors.muted, fontSize: 12.5)),
                               ]),
                             ),
                             if (toDouble(x['due']) > 0) StatusChip('Due ${moneyShort(x['due'])}'),
@@ -115,11 +115,11 @@ class CustomerProfile extends StatelessWidget {
               FilledButton.icon(icon: const Icon(Icons.savings_outlined, size: 18), label: Text('Collect ${money(c['due'])}'), onPressed: () => collectDues(context, dues)),
           ]),
           const SizedBox(height: 12),
-          Row(children: [
+          SizedBox(height: 150, child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Expanded(child: KpiTile(icon: Icons.shopping_bag_outlined, label: 'Orders (60 days)', value: '${orders.length}', sub: money(spent))),
             const SizedBox(width: 10),
             Expanded(child: KpiTile(icon: Icons.account_balance_wallet_outlined, label: 'Due', value: money(c['due']), color: AppColors.red, soft: AppColors.redSoft)),
-          ]),
+          ])),
           if (dues.isNotEmpty) ...[
             const SizedBox(height: 16),
             const SectionTitle('Open dues', icon: Icons.receipt_outlined),

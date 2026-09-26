@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
+import '../../core/nav.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
@@ -15,12 +16,23 @@ class ProductsScreen extends StatefulWidget {
 }
 
 class _ProductsScreenState extends State<ProductsScreen> {
+  int _navSeq = -1;
   String _q = '';
   String _filter = 'all';
   int? _category;
 
   @override
   Widget build(BuildContext context) {
+    final nav = context.watch<NavController>();
+    if (nav.seq != _navSeq) {
+      _navSeq = nav.seq;
+      final a = nav.take('products');
+      if (a['filter'] is String) _filter = a['filter'];
+      if (a.containsKey('category')) {
+        _category = a['category'] as int?;
+        _filter = 'all';
+      }
+    }
     final s = context.watch<AppState>();
     final cats = s.list('categories');
     final all = s.list('products');

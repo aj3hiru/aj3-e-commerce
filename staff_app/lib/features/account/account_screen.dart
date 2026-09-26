@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
 import '../../core/format.dart';
+import '../../core/local_store.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import 'sync_center.dart';
@@ -20,21 +22,18 @@ class AccountScreen extends StatelessWidget {
       body: PageBody(
         maxWidth: 820,
         child: ListView(padding: const EdgeInsets.all(16), children: [
-          AppCard(
-            child: Row(children: [
-              Avatar(u['name'] ?? '', photo: u['avatar'], size: 60),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(u['name'] ?? '', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 4),
-                  StatusChip(u['roleLabel'] ?? ''),
-                  const SizedBox(height: 6),
-                  Text([u['phone'], u['email']].where((x) => x != null && '$x'.isNotEmpty).join(' · '), style: const TextStyle(color: AppColors.muted)),
-                  if (u['since'] != null) Text('Staff since ${dateShort(u['since'])}', style: const TextStyle(color: AppColors.faint, fontSize: 12.5)),
-                ]),
-              ),
-            ]),
+          HeroHeader(
+            title: u['name'] ?? '',
+            subtitle: [u['roleLabel'], u['phone'], u['email']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
+            trailing: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: () => _changePhoto(context),
+              child: Stack(children: [
+                Container(padding: const EdgeInsets.all(3), decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: Avatar(u['name'] ?? '', photo: u['avatar'], size: 64)),
+                Positioned(right: 0, bottom: 0, child: Container(padding: const EdgeInsets.all(5), decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle), child: const Icon(Icons.photo_camera_rounded, color: Colors.white, size: 14))),
+              ]),
+            ),
+            bottom: u['since'] != null ? Text('Staff since ${dateShort(u['since'])}', style: TextStyle(color: Colors.white.withValues(alpha: .85), fontSize: 12.5)) : null,
           ),
           const SizedBox(height: 14),
           AppCard(
@@ -43,6 +42,8 @@ class AccountScreen extends StatelessWidget {
               ListTile(leading: const Icon(Icons.edit_outlined), title: const Text('Edit my details'), trailing: const Icon(Icons.chevron_right), onTap: () => _editDetails(context)),
               const Divider(),
               ListTile(leading: const Icon(Icons.lock_reset_rounded), title: const Text('Change password'), trailing: const Icon(Icons.chevron_right), onTap: () => _changePassword(context)),
+              const Divider(),
+              ListTile(leading: const Icon(Icons.print_outlined), title: const Text('Printing'), subtitle: const Text('Paper size and automatic receipt'), trailing: const Icon(Icons.chevron_right), onTap: () => _printing(context)),
               const Divider(),
               ListTile(leading: const Icon(Icons.sync_rounded), title: const Text('Sync'), subtitle: Text(s.pending > 0 ? '${s.pending} change(s) waiting' : 'All saved'), trailing: const Icon(Icons.chevron_right), onTap: () => _sync(context)),
               const Divider(),
@@ -67,6 +68,66 @@ class AccountScreen extends StatelessWidget {
             },
           ),
         ]),
+      ),
+    );
+  }
+
+  Future<void> _changePhoto(BuildContext context) async {
+    final s = context.read<AppState>();
+    XFile? x;
+    try {
+      x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 800, imageQuality: 88);
+    } catch (_) {}
+    if (x == null || !context.mounted) return;
+    final up = await s.api.multipart('POST', '/api/users/avatar', files: {'file': x.path});
+    if (!context.mounted) return;
+    if (!up.ok) return toast(context, up.outcome == ApiOutcome.offline ? 'Changing the photo needs the internet.' : up.message, error: true);
+    final u = s.user ?? {};
+    final names = '${u['name'] ?? ''}'.split(' ');
+    final r = await s.api.send('POST', '/api/users/me', idem: newId(), body: {
+      'username': u['username'], 'email': u['email'], 'firstName': names.first, 'lastName': names.skip(1).join(' '), 'phone': u['phone'] ?? '', 'avatar': up.data['path'],
+    });
+    if (!context.mounted) return;
+    if (r.ok) {
+      await s.refreshMe();
+      if (context.mounted) toast(context, 'Photo updated.');
+    } else {
+      toast(context, r.message, error: true);
+    }
+  }
+
+  Future<void> _printing(BuildContext context) async {
+    final saved = await LocalStore.instance.read('pos_prefs');
+    if (!context.mounted) return;
+    var auto = saved is Map ? saved['autoPrint'] != false : true;
+    var paper = saved is Map && saved['paper'] is String ? saved['paper'] as String : (context.read<AppState>().settings['printerFormat'] as String? ?? 'thermal_80');
+    await showModalBottomSheet(
+      context: context,
+      builder: (c) => StatefulBuilder(
+        builder: (c, set) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Printing', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              const Text('Used by Billing and every “Print” button on this device.', style: TextStyle(color: AppColors.muted)),
+              SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Print receipt after every sale'), value: auto, onChanged: (v) {
+                set(() => auto = v);
+                LocalStore.instance.write('pos_prefs', {'autoPrint': auto, 'paper': paper});
+              }),
+              const Text('Paper', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              SegmentedButton<String>(
+                segments: const [ButtonSegment(value: 'thermal_58', label: Text('58 mm')), ButtonSegment(value: 'thermal_80', label: Text('80 mm')), ButtonSegment(value: 'a4', label: Text('A4'))],
+                selected: {paper},
+                onSelectionChanged: (v) {
+                  set(() => paper = v.first);
+                  LocalStore.instance.write('pos_prefs', {'autoPrint': auto, 'paper': paper});
+                },
+              ),
+            ]),
+          ),
+        ),
       ),
     );
   }

@@ -209,6 +209,7 @@ class _PosScreenState extends State<PosScreen> {
           appBar: AppBar(
             title: const Text('Billing'),
             actions: [
+              TextButton.icon(onPressed: _recentBills, icon: const Icon(Icons.history_rounded, size: 19), label: const Text('Recent bills')),
               if (_last != null) IconButton(tooltip: 'Print last bill', icon: const Icon(Icons.print_outlined), onPressed: () => printReceipt(_last!, _paper)),
               IconButton(tooltip: 'Print settings', icon: const Icon(Icons.tune_rounded), onPressed: _printSettings),
               Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow())),
@@ -510,6 +511,43 @@ class _PosScreenState extends State<PosScreen> {
           ]),
         ),
       );
+
+  /// Today's and recent store bills (including ones waiting to upload), with reprint.
+  Future<void> _recentBills() async {
+    final s = context.read<AppState>();
+    final bills = s.list('orders').where((o) => o['type'] == 'offline').take(40).toList();
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (c) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.sizeOf(c).height * .75,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 8), child: Text('Recent bills', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+            Expanded(
+              child: bills.isEmpty
+                  ? const EmptyState(icon: Icons.receipt_long_outlined, title: 'No bills yet')
+                  : ListView.separated(
+                      itemCount: bills.length,
+                      separatorBuilder: (_, _) => const Divider(),
+                      itemBuilder: (c, i) {
+                        final o = bills[i];
+                        return ListTile(
+                          title: Text('${o['localRef'] != null ? 'Offline bill' : o['number']} · ${o['customer']}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text('${dateTime(o['createdAt'])} · ${((o['items'] as List?) ?? const []).length} items${toDouble(o['due']) > 0 ? ' · due ${money(o['due'])}' : ''}'),
+                          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text(money(o['total']), style: const TextStyle(fontWeight: FontWeight.w800)),
+                            IconButton(tooltip: 'Print', icon: const Icon(Icons.print_outlined), onPressed: () => reprintOrder(s.settings, o, _paper)),
+                          ]),
+                        );
+                      },
+                    ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
 
   Future<void> _printSettings() async {
     await showModalBottomSheet(

@@ -11,6 +11,7 @@ import '../../core/barcode.dart';
 import '../../core/format.dart';
 import '../../core/local_store.dart';
 import '../../core/theme.dart';
+import '../../ds/ds.dart';
 import '../../widgets/common.dart';
 import '../../widgets/web.dart';
 import '../pos/scanner.dart';
@@ -385,22 +386,48 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     String? amount(String? v) => v == null || v.trim().isEmpty ? null : ((double.tryParse(v.trim()) ?? -1) < 0 ? 'Enter a valid amount' : null);
     final hasSizes = _sizes.any((z) => !z.empty);
 
-    InputDecoration dec(String label, {String? hint, String? prefix, Widget? suffix, String? helper}) =>
-        InputDecoration(labelText: label, hintText: hint, prefixText: prefix, suffixIcon: suffix, helperText: helper, helperMaxLines: 2);
+    _Dec dec(String label, {String? hint, String? prefix, Widget? suffix, String? helper}) => _Dec(label, hint, prefix, suffix, helper);
+    // Windows: label above a compact field; phones: the floating-label field.
+    Widget tf({
+      required TextEditingController controller,
+      required _Dec label,
+      FormFieldValidator<String>? validator,
+      TextInputType? keyboardType,
+      bool enabled = true,
+      int? minLines,
+      int maxLines = 1,
+      TextCapitalization textCapitalization = TextCapitalization.none,
+      VoidCallback? onEditingComplete,
+    }) {
+      final required = label.label.endsWith(' *');
+      final text = required ? label.label.substring(0, label.label.length - 2) : label.label;
+      if (wide) {
+        return DTextField(
+          controller: controller, label: text, required: required, labelHint: label.helper, hint: label.hint, prefixText: label.prefix, suffix: label.suffix,
+          validator: validator, keyboardType: keyboardType, enabled: enabled, minLines: minLines, maxLines: maxLines, textCapitalization: textCapitalization,
+          onSubmitted: onEditingComplete == null ? null : (_) => onEditingComplete(),
+        );
+      }
+      return TextFormField(
+        controller: controller, validator: validator, keyboardType: keyboardType, enabled: enabled, minLines: minLines, maxLines: maxLines,
+        textCapitalization: textCapitalization, onEditingComplete: onEditingComplete,
+        decoration: InputDecoration(labelText: label.label, hintText: label.hint, prefixText: label.prefix, suffixIcon: label.suffix, helperText: label.helper, helperMaxLines: 2),
+      );
+    }
 
     Widget two(Widget a, Widget b) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: a), const SizedBox(width: 10), Expanded(child: b)]);
 
     final basic = _Section(icon: LucideIcons.info, title: 'Basic Info', children: [
-      TextFormField(controller: _name, validator: req, textCapitalization: TextCapitalization.words, decoration: dec('Product Name *', hint: 'e.g. Aashirvaad Atta 5kg')),
-      TextFormField(controller: _slug, enabled: !lockExtra, decoration: dec('Slug', hint: 'auto-generated', helper: 'Made from the name automatically')),
-      two(TextFormField(controller: _sku, decoration: dec('SKU', hint: 'e.g. SKU-00123')), TextFormField(controller: _hsn, decoration: dec('HSN Code', helper: 'For GST'))),
-      TextFormField(
+      tf(controller: _name, validator: req, textCapitalization: TextCapitalization.words, label: dec('Product Name *', hint: 'e.g. Aashirvaad Atta 5kg')),
+      tf(controller: _slug, enabled: !lockExtra, label: dec('Slug', hint: 'auto-generated', helper: 'Made from the name automatically')),
+      two(tf(controller: _sku, label: dec('SKU', hint: 'e.g. SKU-00123')), tf(controller: _hsn, label: dec('HSN Code', helper: 'For GST'))),
+      tf(
         controller: _barcode,
         onEditingComplete: _checkBarcode,
-        decoration: dec('Barcode / QR Code', hint: 'Scan or leave blank', helper: _isNew ? 'Blank = automatic barcode (EM00000123)' : null,
+        label: dec('Barcode / QR Code', hint: 'Scan or leave blank', helper: _isNew ? 'Blank = automatic barcode (EM00000123)' : null,
             suffix: Platform.isAndroid ? IconButton(tooltip: 'Scan', icon: Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary), onPressed: _scanBarcode) : null),
       ),
-      TextFormField(controller: _desc, enabled: !lockExtra, minLines: 3, maxLines: 8, decoration: dec('Description', hint: 'What should customers know about this product?')),
+      tf(controller: _desc, enabled: !lockExtra, minLines: 3, maxLines: 8, label: dec('Description', hint: 'What should customers know about this product?')),
     ]);
 
     Widget thumb(Widget img, VoidCallback onRemove) => Stack(clipBehavior: Clip.none, children: [
@@ -479,16 +506,16 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
 
     final pricing = _Section(icon: LucideIcons.indianRupee, title: 'Pricing & Stock', children: [
       two(
-        TextFormField(
+        tf(
           controller: _price,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           validator: (v) => hasSizes && (v ?? '').trim().isEmpty ? null : (req(v) ?? amount(v)),
-          decoration: dec(hasSizes ? 'Price (₹)' : 'Price (₹) *', prefix: '₹ ', helper: hasSizes ? 'Blank = default size price' : null),
+          label: dec(hasSizes ? 'Price (₹)' : 'Price (₹) *', prefix: '₹ ', helper: hasSizes ? 'Blank = default size price' : null),
         ),
-        TextFormField(
+        tf(
           controller: _sale,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: dec('Sale Price (₹)', prefix: '₹ ', helper: 'Optional'),
+          label: dec('Sale Price (₹)', prefix: '₹ ', helper: 'Optional'),
           validator: (v) {
             final e = amount(v);
             if (e != null) return e;
@@ -498,41 +525,23 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
         ),
       ),
       two(
-        TextFormField(
+        tf(
           controller: _stock,
           enabled: _type == 'physical',
           keyboardType: TextInputType.number,
           validator: (v) => v != null && v.trim().isNotEmpty && (int.tryParse(v.trim()) ?? -1) < 0 ? 'Whole number' : null,
-          decoration: dec('Stock Quantity'),
+          label: dec('Stock Quantity'),
         ),
-        DropdownButtonFormField<String>(initialValue: _gst, isExpanded: true, decoration: dec('GST Rate', helper: 'Auto in bills'), items: gstItems, onChanged: (v) => setState(() => _gst = v ?? '0')),
+        AppSelect<String>(label: 'GST Rate', helper: 'Auto in bills', value: _gst, options: [for (final i in gstItems) (i.value!, (i.child as Text).data!)], onChanged: (v) => setState(() => _gst = v)),
       ),
     ]);
 
     final categorization = _Section(icon: LucideIcons.listTree, title: 'Categorization', children: [
-      DropdownButtonFormField<int?>(
-        initialValue: _category,
-        isExpanded: true,
-        decoration: dec('Category'),
-        items: [const DropdownMenuItem<int?>(value: null, child: Text('Select category…')), for (final c in cats) DropdownMenuItem<int?>(value: toInt(c['id']), child: Text('${c['name']}'))],
-        onChanged: (v) => setState(() => _category = v),
-      ),
-      DropdownButtonFormField<int?>(
-        initialValue: _brand,
-        isExpanded: true,
-        decoration: dec('Brand'),
-        items: [const DropdownMenuItem<int?>(value: null, child: Text('Select brand…')), for (final b in brands) DropdownMenuItem<int?>(value: toInt(b['id']), child: Text('${b['name']}'))],
-        onChanged: (v) => setState(() => _brand = v),
-      ),
+      AppSelect<int?>(label: 'Category', value: _category, options: [(null, 'Select category…'), for (final c in cats) (toInt(c['id']), '${c['name']}')], onChanged: (v) => setState(() => _category = v)),
+      AppSelect<int?>(label: 'Brand', value: _brand, options: [(null, 'Select brand…'), for (final b in brands) (toInt(b['id']), '${b['name']}')], onChanged: (v) => setState(() => _brand = v)),
       two(
-        DropdownButtonFormField<String>(
-          initialValue: _unit,
-          isExpanded: true,
-          decoration: dec('Unit', helper: 'How it is sold'),
-          items: [const DropdownMenuItem(value: '', child: Text('No unit')), for (final u in _units) DropdownMenuItem(value: u, child: Text(u)), const DropdownMenuItem(value: 'custom', child: Text('Custom…'))],
-          onChanged: (v) => setState(() => _unit = v ?? ''),
-        ),
-        _unit == 'custom' ? TextFormField(controller: _unitCustom, validator: req, decoration: dec('Custom unit', hint: 'e.g. Dozen')) : const SizedBox(),
+        AppSelect<String>(label: 'Unit', helper: 'How it is sold', value: _unit, options: [('', 'No unit'), for (final u in _units) (u, u), ('custom', 'Custom…')], onChanged: (v) => setState(() => _unit = v)),
+        _unit == 'custom' ? tf(controller: _unitCustom, validator: req, label: dec('Custom unit', hint: 'e.g. Dozen')) : const SizedBox(),
       ),
     ]);
 
@@ -559,7 +568,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
                     _sizes[i].isDefault = true;
                   }),
                 ),
-                Expanded(child: TextFormField(controller: _sizes[i].label, decoration: dec('Size / Unit', hint: 'e.g. 500 g'), validator: (v) => _sizes[i].empty ? null : req(v))),
+                Expanded(child: tf(controller: _sizes[i].label, label: dec('Size / Unit', hint: 'e.g. 500 g'), validator: (v) => _sizes[i].empty ? null : req(v))),
                 IconButton(
                   onPressed: () => setState(() => _sizes.length == 1 ? _sizes = [_SizeRow()..isDefault = true] : _sizes.removeAt(i)),
                   icon: const Icon(Icons.close_rounded, color: AppColors.red),
@@ -569,13 +578,13 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Row(children: [
-                  Expanded(child: TextFormField(controller: _sizes[i].mrp, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: dec('MRP ₹'), validator: (v) => _sizes[i].empty ? null : (req(v) ?? amount(v)))),
+                  Expanded(child: tf(controller: _sizes[i].mrp, keyboardType: const TextInputType.numberWithOptions(decimal: true), label: dec('MRP ₹'), validator: (v) => _sizes[i].empty ? null : (req(v) ?? amount(v)))),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: TextFormField(
+                    child: tf(
                       controller: _sizes[i].price,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: dec('Selling ₹'),
+                      label: dec('Selling ₹'),
                       validator: (v) {
                         final e = amount(v);
                         if (e != null) return e;
@@ -585,7 +594,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(child: TextFormField(controller: _sizes[i].stock, keyboardType: TextInputType.number, decoration: dec('Stock'))),
+                  Expanded(child: tf(controller: _sizes[i].stock, keyboardType: TextInputType.number, label: dec('Stock'))),
                 ]),
               ),
             ]),
@@ -603,9 +612,9 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
         const Text('Shown as a list on the product page, e.g. Material: Cotton. Only filled rows are saved.', style: TextStyle(color: AppColors.muted, fontSize: 13)),
         for (var i = 0; i < _specs.length; i++)
           Row(children: [
-            Expanded(child: TextFormField(controller: _specs[i].name, textCapitalization: TextCapitalization.sentences, decoration: dec('Name', hint: 'e.g. Material'))),
+            Expanded(child: tf(controller: _specs[i].name, textCapitalization: TextCapitalization.sentences, label: dec('Name', hint: 'e.g. Material'))),
             const SizedBox(width: 8),
-            Expanded(flex: 2, child: TextFormField(controller: _specs[i].value, textCapitalization: TextCapitalization.sentences, decoration: dec('Value', hint: 'e.g. Cotton'))),
+            Expanded(flex: 2, child: tf(controller: _specs[i].value, textCapitalization: TextCapitalization.sentences, label: dec('Value', hint: 'e.g. Cotton'))),
             IconButton(onPressed: () => setState(() => _specs.length == 1 ? _specs = [_SpecRow()] : _specs.removeAt(i)), icon: const Icon(Icons.close_rounded, color: AppColors.red)),
           ]),
         Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(onPressed: () => setState(() => _specs.add(_SpecRow())), icon: const Icon(Icons.add_rounded, size: 18), label: const Text('Add Specification'))),
@@ -619,18 +628,17 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
         ];
 
     final organization = _Section(icon: LucideIcons.slidersHorizontal, title: 'Organization', children: [
-      SegmentedButton<String>(
-        showSelectedIcon: false,
-        segments: const [ButtonSegment(value: 'active', label: Text('Published')), ButtonSegment(value: 'inactive', label: Text('Unpublished'))],
-        selected: {_status},
-        onSelectionChanged: (v) => setState(() => _status = v.first),
-      ),
+      AppSegmented<String>(options: const [('active', 'Published'), ('inactive', 'Unpublished')], value: _status, onChanged: (v) => setState(() => _status = v)),
       if (!lockExtra) ...[
-        DropdownButtonFormField<String>(initialValue: _badge, isExpanded: true, decoration: dec('Badge Tag', helper: 'Optional'), items: tagItems(badges, 'none', 'None', _badge), onChanged: (v) => setState(() => _badge = v ?? 'none')),
-        DropdownButtonFormField<String>(initialValue: _itemType, isExpanded: true, decoration: dec('Item Type', helper: 'Optional'), items: tagItems(itemTypes, 'normal', 'Normal', _itemType), onChanged: (v) => setState(() => _itemType = v ?? 'normal')),
-        SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Show on home page'), subtitle: const Text("Feature this product on the shop's home page."), value: _home, onChanged: (v) => setState(() => _home = v)),
-        SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Campaign product'), subtitle: const Text('Include in the current campaign offer.'), value: _campaign, onChanged: (v) => setState(() => _campaign = v)),
-        if (_campaign) TextFormField(controller: _campaignPrice, keyboardType: const TextInputType.numberWithOptions(decimal: true), validator: amount, decoration: dec('Campaign price (₹)', prefix: '₹ ', helper: 'Optional')),
+        AppSelect<String>(label: 'Badge Tag', helper: 'Optional', value: _badge, options: [for (final i in tagItems(badges, 'none', 'None', _badge)) (i.value!, (i.child as Text).data!)], onChanged: (v) => setState(() => _badge = v)),
+        AppSelect<String>(label: 'Item Type', helper: 'Optional', value: _itemType, options: [for (final i in tagItems(itemTypes, 'normal', 'Normal', _itemType)) (i.value!, (i.child as Text).data!)], onChanged: (v) => setState(() => _itemType = v)),
+        wide
+            ? DSwitchRow(label: 'Show on home page', hint: "Feature this product on the shop's home page.", value: _home, onChanged: (v) => setState(() => _home = v))
+            : SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Show on home page'), subtitle: const Text("Feature this product on the shop's home page."), value: _home, onChanged: (v) => setState(() => _home = v)),
+        wide
+            ? DSwitchRow(label: 'Campaign product', hint: 'Include in the current campaign offer.', value: _campaign, onChanged: (v) => setState(() => _campaign = v))
+            : SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Campaign product'), subtitle: const Text('Include in the current campaign offer.'), value: _campaign, onChanged: (v) => setState(() => _campaign = v)),
+        if (_campaign) tf(controller: _campaignPrice, keyboardType: const TextInputType.numberWithOptions(decimal: true), validator: amount, label: dec('Campaign price (₹)', prefix: '₹ ', helper: 'Optional')),
       ],
     ]);
 
@@ -711,22 +719,37 @@ class _Section extends StatelessWidget {
   final List<Widget> children;
   const _Section({required this.icon, required this.title, required this.children, this.optional = false, this.locked = false});
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: AppCard(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Row(children: [
-              Container(width: 32, height: 32, decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(8)), child: Icon(icon, size: 16, color: AppColors.primary)),
-              const SizedBox(width: 10),
-              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-              if (optional) const Text('  (optional)', style: TextStyle(color: AppColors.muted, fontSize: 13)),
-            ]),
-            const SizedBox(height: 14),
-            if (locked)
-              const Text('Connect to the internet to see and change this.', style: TextStyle(color: AppColors.muted))
-            else
-              for (var i = 0; i < children.length; i++) ...[if (i > 0) const SizedBox(height: 12), children[i]],
-          ]),
-        ),
+  Widget build(BuildContext context) {
+    final body = locked
+        ? const Text('Connect to the internet to see and change this.', style: TextStyle(color: AppColors.muted))
+        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (var i = 0; i < children.length; i++) ...[if (i > 0) const SizedBox(height: 12), children[i]]]);
+    if (desktop(context)) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: DCard(title: optional ? '$title  (optional)' : title, icon: icon, child: body),
       );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: AppCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Container(width: 32, height: 32, decoration: BoxDecoration(color: AppColors.primarySoft, borderRadius: BorderRadius.circular(8)), child: Icon(icon, size: 16, color: AppColors.primary)),
+            const SizedBox(width: 10),
+            Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            if (optional) const Text('  (optional)', style: TextStyle(color: AppColors.muted, fontSize: 13)),
+          ]),
+          const SizedBox(height: 14),
+          body,
+        ]),
+      ),
+    );
+  }
+}
+
+class _Dec {
+  final String label;
+  final String? hint, prefix, helper;
+  final Widget? suffix;
+  const _Dec(this.label, this.hint, this.prefix, this.suffix, this.helper);
 }

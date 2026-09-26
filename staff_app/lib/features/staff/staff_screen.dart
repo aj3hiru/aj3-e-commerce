@@ -7,6 +7,7 @@ import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
+import '../../ds/ds.dart';
 
 const staffRoles = [
   ('admin', 'Admin'),
@@ -91,50 +92,43 @@ Future<void> editStaff(BuildContext context, Map<String, dynamic>? u) async {
   final password = TextEditingController();
   var role = (u?['role'] as String?) ?? 'cashier';
   final canRole = s.perms.changeRoles;
-  final result = await showDialog<String>(
-    context: context,
+  final result = await showAppDialog<String>(
+    context,
+    title: u == null ? 'Add staff member' : 'Edit ${u['name']}',
+    icon: Icons.badge_outlined,
+    width: 520,
     builder: (d) => StatefulBuilder(
-      builder: (d, set) => AlertDialog(
-        title: Text(u == null ? 'Add staff member' : 'Edit ${u['name']}'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Row(children: [
-                Expanded(child: TextField(controller: first, decoration: const InputDecoration(labelText: 'First name'))),
-                const SizedBox(width: 10),
-                Expanded(child: TextField(controller: last, decoration: const InputDecoration(labelText: 'Last name'))),
-              ]),
-              const SizedBox(height: 10),
-              TextField(controller: username, decoration: const InputDecoration(labelText: 'Username *')),
-              const SizedBox(height: 10),
-              TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email *')),
-              const SizedBox(height: 10),
-              TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile (can log in with it)')),
-              const SizedBox(height: 10),
-              TextField(controller: password, obscureText: true, decoration: InputDecoration(labelText: u == null ? 'Password * (min 6)' : 'New password (leave blank to keep)')),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                initialValue: role,
-                decoration: InputDecoration(labelText: 'Role', helperText: canRole ? null : "You can't change roles"),
-                items: [for (final (id, label) in staffRoles) if (id != 'admin' || s.perms.isAdmin || role == 'admin') DropdownMenuItem(value: id, child: Text(label))],
-                onChanged: canRole ? (v) => set(() => role = v ?? role) : null,
-              ),
-            ]),
-          ),
+      builder: (d, set) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: AppField(controller: first, label: 'First name', autofocus: true)),
+          const SizedBox(width: 10),
+          Expanded(child: AppField(controller: last, label: 'Last name')),
+        ]),
+        const AppGap(),
+        AppField(controller: username, label: 'Username', required: true),
+        const AppGap(),
+        AppField(controller: email, label: 'Email', required: true, keyboardType: TextInputType.emailAddress),
+        const AppGap(),
+        AppField(controller: phone, label: 'Mobile', helper: 'Can log in with it', keyboardType: TextInputType.phone),
+        const AppGap(),
+        AppField(controller: password, obscure: true, label: u == null ? 'Password' : 'New password', required: u == null, helper: u == null ? 'Min 6 characters' : 'Leave blank to keep'),
+        const AppGap(),
+        AppSelect<String>(
+          label: 'Role',
+          helper: canRole ? null : "You can't change roles",
+          value: role,
+          options: [for (final (id, label) in staffRoles) if (id != 'admin' || s.perms.isAdmin || role == 'admin') (id, label)],
+          onChanged: canRole ? (v) => set(() => role = v) : null,
         ),
-        actions: [
-          if (u != null && s.perms.has('users', 'suspend'))
-            TextButton(
-              style: TextButton.styleFrom(foregroundColor: u['status'] == 'active' ? AppColors.red : AppColors.green),
-              onPressed: () => Navigator.pop(d, u['status'] == 'active' ? 'suspend' : 'activate'),
-              child: Text(u['status'] == 'active' ? 'Suspend' : 'Activate'),
-            ),
-          TextButton(onPressed: () => Navigator.pop(d), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(d, 'save'), child: const Text('Save')),
-        ],
-      ),
+      ]),
     ),
+    actions: [
+      if (u != null && s.perms.has('users', 'suspend'))
+        DAction(u['status'] == 'active' ? 'Suspend' : 'Activate', variant: u['status'] == 'active' ? DVariant.danger : DVariant.success,
+            onPressed: () async => popDialog(context, u['status'] == 'active' ? 'suspend' : 'activate')),
+      const DAction.cancel(),
+      DAction('Save', primary: true, onPressed: () async => popDialog(context, 'save')),
+    ],
   );
   if (result == null || !context.mounted) return;
 

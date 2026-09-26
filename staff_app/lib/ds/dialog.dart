@@ -106,15 +106,15 @@ class _DDialogState extends State<_DDialog> {
       child: FocusScope(
         autofocus: true,
         child: Center(
-          child: Material(
-            color: DS.surface,
-            elevation: 0,
-            borderRadius: DS.rCard,
-            clipBehavior: Clip.antiAlias,
-            child: Container(
-              width: widget.width.clamp(280.0, size.width - 32),
-              constraints: BoxConstraints(maxHeight: (widget.maxHeight ?? size.height - 48).clamp(200.0, size.height - 32)),
-              decoration: BoxDecoration(borderRadius: DS.rCard, border: Border.all(color: const Color(0x26000000)), boxShadow: DS.dialogShadow),
+          // Shadow outside, white window inside (the shadow must not tint the body).
+          child: Container(
+            width: widget.width.clamp(280.0, size.width - 32),
+            constraints: BoxConstraints(maxHeight: (widget.maxHeight ?? size.height - 48).clamp(200.0, size.height - 32)),
+            decoration: BoxDecoration(color: DS.surface, borderRadius: DS.rCard, border: Border.all(color: const Color(0x26000000)), boxShadow: DS.dialogShadow),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: DS.rCard,
+              clipBehavior: Clip.antiAlias,
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 // title bar
                 Container(

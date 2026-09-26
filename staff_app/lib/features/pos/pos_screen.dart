@@ -9,11 +9,12 @@ import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/local_store.dart';
 import '../../core/theme.dart';
+import '../../ds/ds.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
 import '../../widgets/web.dart';
 import '../../core/barcode.dart';
-import '../orders/order_actions.dart' show printInvoice;
+import '../orders/order_actions.dart' show printInvoice, printOrder;
 import '../products/product_edit_screen.dart';
 import 'cart.dart';
 import 'receipt.dart';
@@ -153,34 +154,31 @@ class _PosScreenState extends State<PosScreen> {
     setState(() {});
     if (unknown.isEmpty) return;
     // Codes the shop doesn't know yet: show exactly what was read, and let staff add them.
-    await showDialog(
-      context: context,
-      builder: (d) => AlertDialog(
-        title: const Text('Not found'),
-        content: SizedBox(
-          width: 420,
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('These barcodes are not on any product. Check the barcode saved on the product, or add it now:', style: TextStyle(color: AppColors.muted)),
-            const SizedBox(height: 8),
-            for (final code in unknown)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.qr_code_2_rounded),
-                title: SelectableText(code, style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: .5)),
-                trailing: s.perms.products
-                    ? TextButton(
-                        onPressed: () {
-                          Navigator.pop(d);
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => ProductEditScreen(barcode: code)));
-                        },
-                        child: const Text('Add product'),
-                      )
-                    : null,
-              ),
-          ]),
-        ),
-        actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Close'))],
-      ),
+    await showAppDialog(
+      context,
+      title: 'Barcodes not found',
+      icon: Icons.qr_code_2_rounded,
+      width: 460,
+      builder: (d) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text('These barcodes are not on any product. Check the barcode saved on the product, or add it now:', style: TextStyle(color: AppColors.muted)),
+        const SizedBox(height: 8),
+        for (final code in unknown)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.qr_code_2_rounded),
+            title: SelectableText(code, style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: .5)),
+            trailing: s.perms.products
+                ? TextButton(
+                    onPressed: () {
+                      popDialog(context);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => ProductEditScreen(barcode: code)));
+                    },
+                    child: const Text('Add product'),
+                  )
+                : null,
+          ),
+      ]),
+      actions: const [DAction.cancel('Close')],
     );
   }
 
@@ -396,17 +394,17 @@ class _PosScreenState extends State<PosScreen> {
   Future<void> _editPrice(CartLine l) async {
     final c = TextEditingController(text: l.unitPrice.toStringAsFixed(2));
     final u = TextEditingController(text: l.unit ?? '');
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (d) => AlertDialog(
-        title: Text(l.name, maxLines: 2),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: c, autofocus: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Price for this bill', prefixText: '₹ ')),
-          const SizedBox(height: 10),
-          TextField(controller: u, decoration: const InputDecoration(labelText: 'Unit (optional)', hintText: 'KG, Litre, Piece…')),
-        ]),
-        actions: [TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Apply'))],
-      ),
+    final ok = await showAppDialog<bool>(
+      context,
+      title: 'Price for this bill — ${l.name}',
+      icon: Icons.sell_outlined,
+      width: 400,
+      builder: (d) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppField(controller: c, autofocus: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), label: 'Price', prefixText: '₹ '),
+        const AppGap(),
+        AppField(controller: u, label: 'Unit', helper: 'Optional', hint: 'KG, Litre, Piece…'),
+      ]),
+      actions: [const DAction.cancel(), DAction('Apply', primary: true, onPressed: () async => popDialog(context, true))],
     );
     if (ok == true) {
       final v = double.tryParse(c.text);
@@ -588,67 +586,67 @@ class _PosScreenState extends State<PosScreen> {
   Future<void> _recentBills() async {
     final s = context.read<AppState>();
     final bills = s.list('orders').where((o) => o['type'] == 'offline').take(40).toList();
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (c) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.sizeOf(c).height * .75,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 8), child: Text('Recent bills', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-            Expanded(
-              child: bills.isEmpty
-                  ? const EmptyState(icon: Icons.receipt_long_outlined, title: 'No bills yet')
-                  : ListView.separated(
-                      itemCount: bills.length,
-                      separatorBuilder: (_, _) => const Divider(),
-                      itemBuilder: (c, i) {
-                        final o = bills[i];
-                        return ListTile(
-                          title: Text('${o['localRef'] != null ? 'Offline bill' : o['number']} · ${o['customer']}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text('${dateTime(o['createdAt'])} · ${((o['items'] as List?) ?? const []).length} items${toDouble(o['due']) > 0 ? ' · due ${money(o['due'])}' : ''}'),
-                          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Text(money(o['total']), style: const TextStyle(fontWeight: FontWeight.w800)),
-                            IconButton(tooltip: 'Print', icon: const Icon(Icons.print_outlined), onPressed: () => reprintOrder(s.settings, o, _paper)),
-                          ]),
-                        );
-                      },
-                    ),
-            ),
-          ]),
-        ),
+    await showAppSheet(
+      context,
+      title: 'Recent bills',
+      width: 620,
+      scrollControlled: true,
+      builder: (c) => SizedBox(
+        height: MediaQuery.sizeOf(c).height * .62,
+        child: bills.isEmpty
+            ? const EmptyState(icon: Icons.receipt_long_outlined, title: 'No bills yet')
+            : ListView.separated(
+                itemCount: bills.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (c, i) {
+                  final o = bills[i];
+                  return ListTile(
+                    title: Text('${o['localRef'] != null ? 'Offline bill' : o['number']} · ${o['customer']}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text('${dateTime(o['createdAt'])} · ${((o['items'] as List?) ?? const []).length} items${toDouble(o['due']) > 0 ? ' · due ${money(o['due'])}' : ''}'),
+                    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text(money(o['total']), style: const TextStyle(fontWeight: FontWeight.w700)),
+                      IconButton(tooltip: 'Print', icon: const Icon(Icons.print_outlined), onPressed: () => printOrder(context, o)),
+                    ]),
+                  );
+                },
+              ),
       ),
     );
   }
 
   Future<void> _printSettings() async {
-    await showModalBottomSheet(
-      context: context,
+    await showAppSheet(
+      context,
+      title: 'Printing',
+      width: 420,
       builder: (c) => StatefulBuilder(
-        builder: (c, set) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Printing', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Print receipt after every sale'), value: _autoPrint, onChanged: (v) {
-                set(() => _autoPrint = v);
-                setState(() {});
-                _savePrefs();
-              }),
-              const Text('Paper', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              SegmentedButton<String>(
-                segments: const [ButtonSegment(value: 'thermal_58', label: Text('58 mm')), ButtonSegment(value: 'thermal_80', label: Text('80 mm')), ButtonSegment(value: 'a4', label: Text('A4'))],
-                selected: {_paper},
-                onSelectionChanged: (v) {
-                  set(() => _paper = v.first);
+        builder: (c, set) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Text('Online bills print the website invoice (Business Settings → Invoice Settings). The paper size below is for bills made offline.', style: TextStyle(color: AppColors.muted, fontSize: 12.5)),
+          const AppGap(),
+          desktop(c)
+              ? DSwitchRow(value: _autoPrint, label: 'Print after every sale', onChanged: (v) {
+                  set(() => _autoPrint = v);
                   setState(() {});
                   _savePrefs();
-                },
-              ),
-            ]),
+                })
+              : SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Print receipt after every sale'), value: _autoPrint, onChanged: (v) {
+                  set(() => _autoPrint = v);
+                  setState(() {});
+                  _savePrefs();
+                }),
+          const AppGap(),
+          const Text('Paper (offline bills)', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          AppSegmented<String>(
+            options: const [('thermal_58', '58 mm'), ('thermal_80', '80 mm'), ('a4', 'A4')],
+            value: _paper,
+            onChanged: (v) {
+              set(() => _paper = v);
+              setState(() {});
+              _savePrefs();
+            },
           ),
-        ),
+        ]),
       ),
     );
   }

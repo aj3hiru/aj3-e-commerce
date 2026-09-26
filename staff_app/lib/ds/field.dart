@@ -13,13 +13,13 @@ class DLabel extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 5),
         child: Row(children: [
-          Flexible(
+          Expanded(
             child: Text.rich(TextSpan(children: [
               TextSpan(text: text, style: DS.label),
               if (required) const TextSpan(text: ' *', style: TextStyle(color: DS.danger, fontSize: DS.fLabel)),
             ])),
           ),
-          if (hint != null) ...[const Spacer(), Text(hint!, style: DS.small)],
+          if (hint != null) Text(hint!, style: DS.small),
         ]),
       );
 }

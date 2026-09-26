@@ -11,6 +11,7 @@ import '../../widgets/web.dart';
 import '../../widgets/mobile.dart';
 import '../dues/collect_sheet.dart';
 import '../orders/orders_screen.dart';
+import '../../ds/ds.dart';
 
 /// Customers: search, who owes money, profile with dues and orders.
 class CustomersScreen extends StatefulWidget {
@@ -166,34 +167,31 @@ Future<void> editCustomer(BuildContext context, Map<String, dynamic>? c) async {
   final email = TextEditingController(text: c?['email'] ?? '');
   final address = TextEditingController(text: c?['address'] ?? '');
   var type = (c?['type'] as String?) ?? 'offline';
-  final ok = await showDialog<bool>(
-    context: context,
+  final ok = await showAppDialog<bool>(
+    context,
+    title: c == null ? 'Add customer' : 'Edit customer',
+    icon: Icons.person_outline_rounded,
+    width: 460,
     builder: (d) => StatefulBuilder(
-      builder: (d, set) => AlertDialog(
-        title: Text(c == null ? 'Add customer' : 'Edit customer'),
-        content: SizedBox(
-          width: 440,
-          child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Name *')),
-              const SizedBox(height: 10),
-              TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile')),
-              const SizedBox(height: 10),
-              TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email')),
-              const SizedBox(height: 10),
-              TextField(controller: address, maxLines: 2, decoration: const InputDecoration(labelText: 'Address')),
-              const SizedBox(height: 10),
-              SegmentedButton<String>(
-                segments: const [ButtonSegment(value: 'offline', label: Text('Store customer')), ButtonSegment(value: 'online', label: Text('Online'))],
-                selected: {type},
-                onSelectionChanged: (v) => set(() => type = v.first),
-              ),
-            ]),
-          ),
-        ),
-        actions: [TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Save'))],
-      ),
+      builder: (d, set) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppField(controller: name, label: 'Name', required: true, autofocus: true, textCapitalization: TextCapitalization.words),
+        const AppGap(),
+        AppField(controller: phone, label: 'Mobile', keyboardType: TextInputType.phone),
+        const AppGap(),
+        AppField(controller: email, label: 'Email', keyboardType: TextInputType.emailAddress),
+        const AppGap(),
+        AppField(controller: address, label: 'Address', maxLines: 2),
+        const AppGap(),
+        AppSegmented<String>(options: const [('offline', 'Store customer'), ('online', 'Online')], value: type, onChanged: (v) => set(() => type = v)),
+      ]),
     ),
+    actions: [
+      const DAction.cancel(),
+      DAction('Save', primary: true, onPressed: () async {
+        if (name.text.trim().isEmpty) return toast(context, 'Enter the customer name.', error: true);
+        popDialog(context, true);
+      }),
+    ],
   );
   if (ok != true || !context.mounted) return;
   final body = {'name': name.text.trim(), 'phone': phone.text.trim(), 'email': email.text.trim(), 'address': address.text.trim(), 'customerType': type};

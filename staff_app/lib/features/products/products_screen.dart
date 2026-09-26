@@ -12,6 +12,7 @@ import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
 import '../pos/scanner.dart';
 import 'product_edit_screen.dart';
+import '../../ds/ds.dart';
 
 /// Products & stock: search, filter (low / out / inactive), quick stock update, edit.
 class ProductsScreen extends StatefulWidget {
@@ -155,35 +156,32 @@ Future<void> adjustStock(BuildContext context, Map<String, dynamic> p) async {
   final current = toInt(p['stock']);
   final ctl = TextEditingController();
   var mode = 'add';
-  final result = await showDialog<int>(
-    context: context,
+  int? read() {
+    final n = int.tryParse(ctl.text.trim());
+    return n == null || n < 0 ? null : (mode == 'add' ? -1 - n : n); // negative = "received n"
+  }
+  final result = await showAppDialog<int>(
+    context,
+    title: 'Update stock — ${p['name']}',
+    icon: Icons.inventory_2_outlined,
+    width: 400,
     builder: (d) => StatefulBuilder(
-      builder: (d, set) => AlertDialog(
-        title: Text('${p['name']}', maxLines: 2),
-        content: SizedBox(
-          width: 380,
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text('Now in stock: $current', style: const TextStyle(color: AppColors.muted)),
-            const SizedBox(height: 12),
-            SegmentedButton<String>(
-              segments: const [ButtonSegment(value: 'add', label: Text('Add received')), ButtonSegment(value: 'set', label: Text('Set exact'))],
-              selected: {mode},
-              onSelectionChanged: (v) => set(() => mode = v.first),
-            ),
-            const SizedBox(height: 12),
-            TextField(controller: ctl, autofocus: true, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: mode == 'add' ? 'Quantity received' : 'New stock')),
-          ]),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(d), child: const Text('Cancel')),
-          FilledButton(onPressed: () {
-            final n = int.tryParse(ctl.text.trim());
-            if (n == null || n < 0) return;
-            Navigator.pop(d, mode == 'add' ? -1 - n : n); // negative = "received n"
-          }, child: const Text('Save')),
-        ],
-      ),
+      builder: (d, set) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text('Now in stock: $current${p['unit'] != null ? ' ${p['unit']}' : ''}', style: const TextStyle(color: AppColors.muted)),
+        const AppGap(),
+        AppSegmented<String>(options: const [('add', 'Add received'), ('set', 'Set exact')], value: mode, onChanged: (v) => set(() => mode = v)),
+        const AppGap(),
+        AppField(controller: ctl, autofocus: true, keyboardType: TextInputType.number, label: mode == 'add' ? 'Quantity received' : 'New stock'),
+      ]),
     ),
+    actions: [
+      const DAction.cancel(),
+      DAction('Save', primary: true, onPressed: () async {
+        final v = read();
+        if (v == null) return toast(context, 'Enter a whole number, 0 or more.', error: true);
+        popDialog(context, v);
+      }),
+    ],
   );
   if (result == null) return;
   final received = result < 0 ? -1 - result : null;

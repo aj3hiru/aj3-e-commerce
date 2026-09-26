@@ -9,6 +9,7 @@ import '../../core/nav.dart';
 import '../../core/format.dart';
 import '../../core/local_store.dart';
 import '../../core/theme.dart';
+import '../../ds/ds.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
 import 'report_export.dart';
@@ -75,27 +76,29 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Future<void> _pickMonth() async {
     final now = DateTime.now();
     var year = now.year;
-    final m = await showDialog<String>(
-      context: context,
+    final m = await showAppDialog<String>(
+      context,
+      title: 'Choose a month',
+      icon: Icons.calendar_month_outlined,
+      width: 360,
       builder: (d) => StatefulBuilder(
-        builder: (d, set) => AlertDialog(
-          title: Row(children: [
-            IconButton(onPressed: () => set(() => year--), icon: const Icon(Icons.chevron_left)),
-            Expanded(child: Text('$year', textAlign: TextAlign.center)),
-            IconButton(onPressed: year >= now.year ? null : () => set(() => year++), icon: const Icon(Icons.chevron_right)),
+        builder: (d, set) => Column(mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            IconButton(tooltip: 'Previous year', onPressed: () => set(() => year--), icon: const Icon(Icons.chevron_left)),
+            Expanded(child: Text('$year', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700))),
+            IconButton(tooltip: 'Next year', onPressed: year >= now.year ? null : () => set(() => year++), icon: const Icon(Icons.chevron_right)),
           ]),
-          content: SizedBox(
-            width: 320,
-            child: GridView.count(shrinkWrap: true, crossAxisCount: 3, childAspectRatio: 2.2, mainAxisSpacing: 6, crossAxisSpacing: 6, children: [
-              for (var i = 1; i <= 12; i++)
-                OutlinedButton(
-                  onPressed: year == now.year && i > now.month ? null : () => Navigator.pop(d, '$year-${i.toString().padLeft(2, '0')}'),
-                  child: Text(DateFormat.MMM().format(DateTime(2000, i))),
-                ),
-            ]),
-          ),
-        ),
+          const SizedBox(height: 6),
+          GridView.count(shrinkWrap: true, crossAxisCount: 3, childAspectRatio: 2.6, mainAxisSpacing: 6, crossAxisSpacing: 6, children: [
+            for (var i = 1; i <= 12; i++)
+              OutlinedButton(
+                onPressed: year == now.year && i > now.month ? null : () => popDialog(context, '$year-${i.toString().padLeft(2, '0')}'),
+                child: Text(DateFormat.MMM().format(DateTime(2000, i))),
+              ),
+          ]),
+        ]),
       ),
+      actions: const [DAction.cancel()],
     );
     if (m != null) _set({'range': 'month', 'm': m});
   }

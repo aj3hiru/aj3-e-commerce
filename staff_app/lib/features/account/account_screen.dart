@@ -6,6 +6,7 @@ import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/local_store.dart';
 import '../../core/theme.dart';
+import '../../ds/ds.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
 import 'sync_center.dart';
@@ -168,33 +169,32 @@ class AccountScreen extends StatelessWidget {
     if (!context.mounted) return;
     var auto = saved is Map ? saved['autoPrint'] != false : true;
     var paper = saved is Map && saved['paper'] is String ? saved['paper'] as String : (context.read<AppState>().settings['printerFormat'] as String? ?? 'thermal_80');
-    await showModalBottomSheet(
-      context: context,
+    void save() => LocalStore.instance.write('pos_prefs', {'autoPrint': auto, 'paper': paper});
+    await showAppSheet(
+      context,
+      title: 'Printing',
+      width: 420,
       builder: (c) => StatefulBuilder(
-        builder: (c, set) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Printing', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 4),
-              const Text('Used by Billing and every “Print” button on this device.', style: TextStyle(color: AppColors.muted)),
-              SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Print receipt after every sale'), value: auto, onChanged: (v) {
-                set(() => auto = v);
-                LocalStore.instance.write('pos_prefs', {'autoPrint': auto, 'paper': paper});
-              }),
-              const Text('Paper', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              SegmentedButton<String>(
-                segments: const [ButtonSegment(value: 'thermal_58', label: Text('58 mm')), ButtonSegment(value: 'thermal_80', label: Text('80 mm')), ButtonSegment(value: 'a4', label: Text('A4'))],
-                selected: {paper},
-                onSelectionChanged: (v) {
-                  set(() => paper = v.first);
-                  LocalStore.instance.write('pos_prefs', {'autoPrint': auto, 'paper': paper});
-                },
-              ),
-            ]),
-          ),
-        ),
+        builder: (c, set) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Text('Online bills print the website invoice (Business Settings → Invoice Settings). These settings are for bills made offline.', style: TextStyle(color: AppColors.muted, fontSize: 12.5)),
+          const AppGap(),
+          desktop(c)
+              ? DSwitchRow(value: auto, label: 'Print after every sale', onChanged: (v) {
+                  set(() => auto = v);
+                  save();
+                })
+              : SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Print receipt after every sale'), value: auto, onChanged: (v) {
+                  set(() => auto = v);
+                  save();
+                }),
+          const AppGap(),
+          const Text('Paper (offline bills)', style: TextStyle(fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          AppSegmented<String>(options: const [('thermal_58', '58 mm'), ('thermal_80', '80 mm'), ('a4', 'A4')], value: paper, onChanged: (v) {
+            set(() => paper = v);
+            save();
+          }),
+        ]),
       ),
     );
   }
@@ -208,24 +208,20 @@ class AccountScreen extends StatelessWidget {
     final last = TextEditingController(text: (u['name'] as String? ?? '').split(' ').skip(1).join(' '));
     final phone = TextEditingController(text: u['phone'] ?? '');
     final email = TextEditingController(text: u['email'] ?? '');
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('My details'),
-        content: SizedBox(
-          width: 420,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: first, decoration: const InputDecoration(labelText: 'First name')),
-            const SizedBox(height: 10),
-            TextField(controller: last, decoration: const InputDecoration(labelText: 'Last name')),
-            const SizedBox(height: 10),
-            TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile')),
-            const SizedBox(height: 10),
-            TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email')),
-          ]),
-        ),
-        actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Save'))],
-      ),
+    final ok = await showAppDialog<bool>(
+      context,
+      title: 'My details',
+      icon: Icons.person_outline_rounded,
+      builder: (c) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppField(controller: first, label: 'First name', autofocus: true),
+        const AppGap(),
+        AppField(controller: last, label: 'Last name'),
+        const AppGap(),
+        AppField(controller: phone, label: 'Mobile', keyboardType: TextInputType.phone),
+        const AppGap(),
+        AppField(controller: email, label: 'Email', keyboardType: TextInputType.emailAddress),
+      ]),
+      actions: [const DAction.cancel(), DAction('Save', primary: true, onPressed: () async => popDialog(context, true))],
     );
     if (ok != true || !context.mounted) return;
     final r = await s.sendNow(OutboxItem(id: newId(), method: 'POST', path: '/api/users/me', label: 'Update my details', body: {
@@ -243,22 +239,18 @@ class AccountScreen extends StatelessWidget {
   Future<void> _changePassword(BuildContext context) async {
     final s = context.read<AppState>();
     final cur = TextEditingController(), next = TextEditingController(), again = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (c) => AlertDialog(
-        title: const Text('Change password'),
-        content: SizedBox(
-          width: 420,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: cur, obscureText: true, decoration: const InputDecoration(labelText: 'Current password')),
-            const SizedBox(height: 10),
-            TextField(controller: next, obscureText: true, decoration: const InputDecoration(labelText: 'New password (min 6)')),
-            const SizedBox(height: 10),
-            TextField(controller: again, obscureText: true, decoration: const InputDecoration(labelText: 'Confirm new password')),
-          ]),
-        ),
-        actions: [TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Update'))],
-      ),
+    final ok = await showAppDialog<bool>(
+      context,
+      title: 'Change password',
+      icon: Icons.lock_reset_rounded,
+      builder: (c) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppField(controller: cur, label: 'Current password', obscure: true, autofocus: true),
+        const AppGap(),
+        AppField(controller: next, label: 'New password', helper: 'Min 6 characters', obscure: true),
+        const AppGap(),
+        AppField(controller: again, label: 'Confirm new password', obscure: true),
+      ]),
+      actions: [const DAction.cancel(), DAction('Update', primary: true, onPressed: () async => popDialog(context, true))],
     );
     if (ok != true || !context.mounted) return;
     if (next.text.length < 6 || next.text != again.text) {

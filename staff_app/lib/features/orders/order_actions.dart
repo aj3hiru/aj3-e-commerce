@@ -5,11 +5,11 @@ import 'package:provider/provider.dart';
 import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/perms.dart';
-import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/window.dart';
 import '../pos/receipt.dart';
 import '../web/web_page.dart';
+import '../../ds/ds.dart';
 
 /// Order actions usable from any card (dashboard, lists): they show at once and sync.
 Future<void> orderAction(BuildContext context, Map<String, dynamic> o, String label, Map<String, dynamic> body, Map<String, dynamic> fields, {bool delivery = false}) async {
@@ -28,23 +28,23 @@ Future<void> orderAction(BuildContext context, Map<String, dynamic> o, String la
 
 Future<String?> askReason(BuildContext context, String title, List<String> presets) {
   final c = TextEditingController();
-  return showDialog<String>(
-    context: context,
-    builder: (d) => AlertDialog(
-      title: Text(title),
-      content: SizedBox(
-        width: 420,
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Wrap(spacing: 8, runSpacing: 8, children: [for (final p in presets) ActionChip(label: Text(p), onPressed: () => c.text = p)]),
-          const SizedBox(height: 12),
-          TextField(controller: c, maxLines: 2, decoration: const InputDecoration(labelText: 'Reason')),
-        ]),
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(d), child: const Text('Back')),
-        FilledButton(style: FilledButton.styleFrom(backgroundColor: AppColors.red), onPressed: () => Navigator.pop(d, c.text.trim().length >= 3 ? c.text.trim() : null), child: const Text('Confirm')),
-      ],
-    ),
+  return showAppDialog<String>(
+    context,
+    title: title,
+    icon: Icons.report_problem_outlined,
+    width: 440,
+    builder: (d) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Wrap(spacing: 6, runSpacing: 6, children: [for (final p in presets) ActionChip(label: Text(p), onPressed: () => c.text = p)]),
+      const AppGap(),
+      AppField(controller: c, label: 'Reason', autofocus: true, maxLines: 2),
+    ]),
+    actions: [
+      const DAction.cancel('Back'),
+      DAction('Confirm', primary: true, variant: DVariant.danger, onPressed: () async {
+        if (c.text.trim().length < 3) return toast(context, 'Write a short reason (or pick one).', error: true);
+        popDialog(context, c.text.trim());
+      }),
+    ],
   );
 }
 
@@ -64,13 +64,7 @@ Future<void> assignOrder(BuildContext context, Map<String, dynamic> o, Map<Strin
 
 /// Mark an order paid, asking how the money came in.
 Future<void> markOrderPaid(BuildContext context, Map<String, dynamic> o) async {
-  final method = await showDialog<String>(
-    context: context,
-    builder: (d) => SimpleDialog(
-      title: Text('Received ${money(o['total'])} by'),
-      children: [for (final m in const ['Cash', 'UPI', 'Card', 'Other']) SimpleDialogOption(onPressed: () => Navigator.pop(d, m), child: Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Text(m)))],
-    ),
-  );
+  final method = await pickPaymentMethod(context, 'Received ${money(o['total'])} by');
   if (method == null || !context.mounted) return;
   await orderAction(context, o, 'Paid ${o['number']}', {'action': 'update_payment', 'paymentStatus': 'Paid', 'method': method}, {'paymentStatus': 'Paid', 'paymentMethod': method});
 }
@@ -168,3 +162,14 @@ class _InvoiceViewState extends State<_InvoiceView> {
     ]);
   }
 }
+
+/// Cash / UPI / Card / Other — a small window on Windows, a sheet on phones.
+Future<String?> pickPaymentMethod(BuildContext context, String title) => showAppSheet<String>(
+      context,
+      title: title,
+      width: 360,
+      builder: (c) => Column(mainAxisSize: MainAxisSize.min, children: [
+        for (final (m, icon) in const [('Cash', Icons.payments_outlined), ('UPI', Icons.qr_code_2_rounded), ('Card', Icons.credit_card_rounded), ('Other', Icons.more_horiz_rounded)])
+          AppChoice(leading: Icon(icon), title: m, onTap: () => popDialog(context, m)),
+      ]),
+    );

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
+import '../../ds/ds.dart';
 import '../../widgets/common.dart';
 import '../pos/receipt.dart';
 
@@ -11,6 +13,10 @@ import '../pos/receipt.dart';
 /// Works offline: it shows as paid here and is recorded when the device is online.
 Future<void> collectDues(BuildContext context, List<Map<String, dynamic>> dues) async {
   if (dues.isEmpty) return;
+  if (desktop(context)) {
+    await showDDialog(context, title: 'Collect due · ${dues.first['customer']}', icon: Icons.savings_outlined, width: 520, builder: (c) => _Collect(dues: dues));
+    return;
+  }
   await showModalBottomSheet(context: context, isScrollControlled: true, builder: (c) => _Collect(dues: dues));
 }
 
@@ -53,7 +59,7 @@ class _CollectState extends State<_Collect> {
     setState(() => _busy = false);
     if (r.outcome == ApiOutcome.rejected || r.outcome == ApiOutcome.forbidden) return toast(context, r.message, error: true);
     final receiptNo = r.ok ? RegExp(r'RCPT\d+').firstMatch('${r.data['redirect'] ?? ''}')?.group(0) ?? 'Receipt' : 'Pending';
-    Navigator.pop(context);
+    popDialog(context);
     toast(context, r.ok ? 'Payment recorded ($receiptNo).' : 'Saved offline — will be recorded when online.');
     if (_print) {
       try {
@@ -70,14 +76,11 @@ class _CollectState extends State<_Collect> {
   }
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('Collect due · ${widget.dues.first['customer']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 12),
+  Widget build(BuildContext context) {
+    final wide = desktop(context);
+    final form = Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (!wide) Text('Collect due · ${widget.dues.first['customer']}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              if (!wide) const SizedBox(height: 12),
               for (final d in widget.dues)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
@@ -89,19 +92,39 @@ class _CollectState extends State<_Collect> {
                         Text('Balance ${money(d['balance'])} · ${dateShort(d['createdAt'])}', style: const TextStyle(color: AppColors.muted, fontSize: 12.5)),
                       ]),
                     ),
-                    SizedBox(width: 130, child: TextField(controller: _amt[toInt(d['id'])], onChanged: (_) => setState(() {}), keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(prefixText: '₹ '))),
+                    SizedBox(
+                      width: 130,
+                      child: TextField(
+                        controller: _amt[toInt(d['id'])],
+                        onChanged: (_) => setState(() {}),
+                        textAlign: TextAlign.right,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: wide ? dInputDecoration(prefixText: '₹ ') : const InputDecoration(prefixText: '₹ '),
+                      ),
+                    ),
                   ]),
                 ),
               const SizedBox(height: 6),
-              SegmentedButton<String>(
-                segments: [for (final m in const ['Cash', 'UPI', 'Card', 'Other']) ButtonSegment(value: m, label: Text(m))],
-                selected: {_method},
-                onSelectionChanged: (v) => setState(() => _method = v.first),
-              ),
-              CheckboxListTile(contentPadding: EdgeInsets.zero, value: _print, onChanged: (v) => setState(() => _print = v == true), title: const Text('Print receipt')),
-              FilledButton(onPressed: _busy ? null : _save, child: Text(_busy ? 'Saving…' : 'Receive ${money(_total)}')),
-            ]),
-          ),
-        ),
-      );
+              AppSegmented<String>(options: const [('Cash', 'Cash'), ('UPI', 'UPI'), ('Card', 'Card'), ('Other', 'Other')], value: _method, onChanged: (v) => setState(() => _method = v)),
+              wide
+                  ? DCheck(value: _print, onChanged: (v) => setState(() => _print = v), label: 'Print receipt')
+                  : CheckboxListTile(contentPadding: EdgeInsets.zero, value: _print, onChanged: (v) => setState(() => _print = v == true), title: const Text('Print receipt')),
+              const SizedBox(height: 8),
+              wide
+                  ? Row(children: [
+                      const Spacer(),
+                      DButton('Cancel', onPressed: () => popDialog(context)),
+                      const SizedBox(width: 8),
+                      DButton.primary('Receive ${money(_total)}', icon: Icons.savings_outlined, loading: _busy, onPressed: _save),
+                    ])
+                  : FilledButton(onPressed: _busy ? null : _save, child: Text(_busy ? 'Saving…' : 'Receive ${money(_total)}')),
+            ]);
+    if (wide) {
+      return CallbackShortcuts(bindings: {const SingleActivator(LogicalKeyboardKey.enter): () => _busy ? null : _save()}, child: form);
+    }
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(20, 0, 20, 20), child: form)),
+    );
+  }
 }

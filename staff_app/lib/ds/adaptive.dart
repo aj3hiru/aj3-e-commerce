@@ -195,3 +195,6 @@ class AppGap extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SizedBox(height: desktop(context) ? DS.s3 : 10);
 }
+
+/// Closes the dialog / sheet on top (both kinds live on the root navigator).
+void popDialog<T>(BuildContext context, [T? value]) => Navigator.of(context, rootNavigator: true).pop(value);

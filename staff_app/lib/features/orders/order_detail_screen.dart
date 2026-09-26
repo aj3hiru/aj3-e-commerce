@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
+import '../../ds/ds.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
 import '../../widgets/web.dart';
@@ -61,27 +62,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     _loadExtra();
   }
 
-  Future<String?> _reason(String title, List<String> presets) async {
-    final c = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (d) => AlertDialog(
-        title: Text(title),
-        content: SizedBox(
-          width: 420,
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Wrap(spacing: 8, runSpacing: 8, children: [for (final p in presets) ActionChip(label: Text(p), onPressed: () => c.text = p)]),
-            const SizedBox(height: 12),
-            TextField(controller: c, maxLines: 2, decoration: const InputDecoration(labelText: 'Reason')),
-          ]),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(d), child: const Text('Back')),
-          FilledButton(style: FilledButton.styleFrom(backgroundColor: AppColors.red), onPressed: () => Navigator.pop(d, c.text.trim().length >= 3 ? c.text.trim() : null), child: const Text('Confirm')),
-        ],
-      ),
-    );
-  }
+  Future<String?> _reason(String title, List<String> presets) => askReason(context, title, presets);
+
 
   @override
   Widget build(BuildContext context) {
@@ -280,21 +262,20 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Future<void> _assign(Map<String, dynamic> o, List<Map<String, dynamic>> agents) async {
     if (agents.isEmpty) return toast(context, 'No delivery agents yet — add one in Staff.', error: true);
-    final id = await showModalBottomSheet<int>(
-      context: context,
-      builder: (c) => SafeArea(
-        child: ListView(shrinkWrap: true, children: [
-          const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 8), child: Text('Assign delivery agent', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-          for (final a in agents)
-            ListTile(
-              leading: Avatar('${a['name']}'),
-              title: Text('${a['name']}'),
-              subtitle: a['phone'] != null ? Text('${a['phone']}') : null,
-              trailing: toInt(a['id']) == toInt(o['agentId']) ? Icon(Icons.check_rounded, color: AppColors.primary) : null,
-              onTap: () => Navigator.pop(c, toInt(a['id'])),
-            ),
-        ]),
-      ),
+    final id = await showAppSheet<int>(
+      context,
+      title: 'Assign delivery agent',
+      width: 380,
+      builder: (c) => Column(mainAxisSize: MainAxisSize.min, children: [
+        for (final a in agents)
+          AppChoice(
+            leading: Avatar('${a['name']}'),
+            title: '${a['name']}',
+            subtitle: a['phone'] != null ? '${a['phone']}' : null,
+            selected: toInt(a['id']) == toInt(o['agentId']),
+            onTap: () => popDialog(context, toInt(a['id'])),
+          ),
+      ]),
     );
     if (id == null) return;
     final name = agents.firstWhere((a) => toInt(a['id']) == id)['name'];
@@ -302,15 +283,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Future<void> _collect(Map<String, dynamic> o) async {
-    final method = await showModalBottomSheet<String>(
-      context: context,
-      builder: (c) => SafeArea(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 8), child: Text('Received ${money(o['total'])} by', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
-          for (final m in const ['Cash', 'UPI', 'Card', 'Other']) ListTile(leading: const Icon(Icons.payments_outlined), title: Text(m), onTap: () => Navigator.pop(c, m)),
-        ]),
-      ),
-    );
+    final method = await pickPaymentMethod(context, 'Received ${money(o['total'])} by');
     if (method == null) return;
     widget.agentView
         ? _act('Collected ${money(o['total'])} (${o['number']})', {'action': 'collect', 'method': method}, {'paymentStatus': 'Paid', 'paymentMethod': method}, delivery: true)

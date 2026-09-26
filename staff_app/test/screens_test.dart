@@ -97,7 +97,7 @@ AppState _state({String role = 'admin', Map<String, dynamic>? perms}) {
   return s;
 }
 
-Future<void> _shot(WidgetTester t, String name, Widget screen, {Size size = const Size(412, 900), AppState? state, String? section}) async {
+Future<void> _shot(WidgetTester t, String name, Widget screen, {Size size = const Size(412, 900), AppState? state, String? section, Future<void> Function(WidgetTester)? after}) async {
   debugDisableShadows = false; // real soft shadows, as on a device
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
@@ -106,6 +106,7 @@ Future<void> _shot(WidgetTester t, String name, Widget screen, {Size size = cons
   for (var i = 0; i < 5; i++) {
     await t.pump(const Duration(milliseconds: 200));
   }
+  if (after != null) await after(t);
   await expectLater(find.byType(MaterialApp), matchesGoldenFile('goldens/$name.png'));
   debugDisableShadows = true;
 }
@@ -193,6 +194,14 @@ void main() {
   });
   testWidgets('product add phone', (t) => _shot(t, 'product_add_phone', const ProductEditScreen(), size: const Size(412, 2600)));
   testWidgets('product add desktop', (t) => _shot(t, 'product_add_desktop', const ProductEditScreen(), size: const Size(1440, 1500)));
+  testWidgets('dialog desktop', (t) async {
+    await _shot(t, 'dialog_desktop', Builder(builder: (c) => Scaffold(body: Center(child: FilledButton(onPressed: () => editCustomer(c, null), child: const Text('open'))))), size: const Size(1100, 700), after: (t) async {
+      await t.tap(find.text('open'));
+      for (var i = 0; i < 4; i++) {
+        await t.pump(const Duration(milliseconds: 100));
+      }
+    });
+  });
   testWidgets('orders desktop', (t) => _shot(t, 'orders_desktop', const Shell(), size: desktop, section: 'orders'));
   testWidgets('categories phone', (t) => _shot(t, 'categories_phone', const CategoriesScreen()));
   testWidgets('account phone', (t) => _shot(t, 'account_phone', const AccountScreen()));

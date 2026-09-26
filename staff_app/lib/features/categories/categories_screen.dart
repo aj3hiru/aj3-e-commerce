@@ -10,6 +10,7 @@ import '../../core/nav.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
+import '../../ds/ds.dart';
 
 /// Categories: product counts, add / rename / hide, change the picture.
 class CategoriesScreen extends StatelessWidget {
@@ -68,37 +69,39 @@ Future<void> editCategory(BuildContext context, Map<String, dynamic>? cat) async
   final name = TextEditingController(text: cat?['name'] ?? '');
   var active = (cat?['status'] ?? 'active') == 'active';
   String? photo;
-  final ok = await showDialog<bool>(
-    context: context,
+  final ok = await showAppDialog<bool>(
+    context,
+    title: cat == null ? 'Add category' : 'Edit category',
+    icon: Icons.category_outlined,
+    width: 420,
     builder: (d) => StatefulBuilder(
-      builder: (d, set) => AlertDialog(
-        title: Text(cat == null ? 'Add category' : 'Edit category'),
-        content: SizedBox(
-          width: 400,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () async {
-                try {
-                  final x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1200, imageQuality: 88);
-                  if (x != null) set(() => photo = x.path);
-                } catch (_) {}
-              },
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: SizedBox(width: 110, height: 110, child: photo != null ? Image.file(File(photo!), fit: BoxFit.cover) : NetImage(cat?['image'], size: 110, radius: 16, placeholder: Icons.add_photo_alternate_outlined)),
-              ),
+      builder: (d, set) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Center(
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: () async {
+              try {
+                final x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1200, imageQuality: 88);
+                if (x != null) set(() => photo = x.path);
+              } catch (_) {}
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(width: 96, height: 96, child: photo != null ? Image.file(File(photo!), fit: BoxFit.cover) : NetImage(cat?['image'], size: 96, radius: 8, placeholder: Icons.add_photo_alternate_outlined)),
             ),
-            const SizedBox(height: 6),
-            const Text('Tap to choose a picture', style: TextStyle(color: AppColors.muted, fontSize: 12)),
-            const SizedBox(height: 14),
-            TextField(controller: name, autofocus: cat == null, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Category name *')),
-            SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Active (shown in the shop)'), value: active, onChanged: (v) => set(() => active = v)),
-          ]),
+          ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Save'))],
-      ),
+        const SizedBox(height: 6),
+        const Center(child: Text('Click to choose a picture', style: TextStyle(color: AppColors.muted, fontSize: 12))),
+        const AppGap(),
+        AppField(controller: name, label: 'Category name', required: true, autofocus: true, textCapitalization: TextCapitalization.words),
+        const AppGap(),
+        desktop(d)
+            ? DSwitchRow(value: active, onChanged: (v) => set(() => active = v), label: 'Active', hint: 'Shown in the shop')
+            : SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Active (shown in the shop)'), value: active, onChanged: (v) => set(() => active = v)),
+      ]),
     ),
+    actions: [const DAction.cancel(), DAction('Save', primary: true, onPressed: () async => popDialog(context, true))],
   );
   if (ok != true || !context.mounted) return;
   if (name.text.trim().isEmpty) return toast(context, 'Enter the category name.', error: true);

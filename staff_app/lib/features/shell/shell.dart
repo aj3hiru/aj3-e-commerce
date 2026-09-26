@@ -22,6 +22,7 @@ import '../../desktop/orders_web.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
 import '../../widgets/web.dart';
+import '../../widgets/window.dart';
 import '../account/account_screen.dart';
 import '../account/sync_center.dart';
 import '../account/update.dart';
@@ -38,7 +39,10 @@ import '../pos/pos_screen.dart';
 import '../products/products_screen.dart';
 import '../reports/reports_screen.dart';
 import '../search/global_search.dart';
+import '../products/product_edit_screen.dart';
 import '../staff/staff_screen.dart';
+import '../web/web_page.dart';
+import 'menu.dart';
 
 class Section {
   final String id;
@@ -51,7 +55,7 @@ class Section {
 }
 
 /// The sections this person may use — built from their role's permissions.
-List<Section> sectionsFor(Perms p) => [
+List<Section> sectionsFor(Perms p, [List<Map<String, dynamic>> menu = const []]) => [
       Section('home', 'Dashboard', 'Overview', Icons.space_dashboard_outlined, Icons.space_dashboard_rounded, () => const Responsive(phone: DashboardScreen(), desktop: DashboardWeb())),
       if (p.seesPos) Section('pos', 'Billing', 'Sales', Icons.point_of_sale_outlined, Icons.point_of_sale_rounded, () => const PosScreen()),
       if (p.seesOrders) Section('orders', 'Orders', 'Sales', Icons.receipt_long_outlined, Icons.receipt_long_rounded, () => const Responsive(phone: OrdersScreen(), desktop: OrdersWeb())),
@@ -64,6 +68,8 @@ List<Section> sectionsFor(Perms p) => [
       if (p.seesStaff) Section('staff', 'Staff', 'People', Icons.badge_outlined, Icons.badge_rounded, () => const Responsive(phone: StaffScreen(), desktop: StaffWeb())),
       if (p.seesReports) Section('reports', 'Reports', 'Insights', Icons.insert_chart_outlined_rounded, Icons.insert_chart_rounded, () => const ReportsScreen()),
       Section('account', 'Profile', 'Account', Icons.person_outline_rounded, Icons.person_rounded, () => const Responsive(phone: AccountScreen(), desktop: ProfileWeb())),
+      // Every other website menu item opens that website page inside the app.
+      for (final l in webLinks(parseMenu(menu))) Section('web:${l.href}', l.label, 'Website', faIcon(l.icon).data, faIcon(l.icon).data, () => WebPageScreen(path: l.href, title: l.label, section: true)),
     ];
 
 /// Badge counts shown on menu items (new orders, deliveries to do, low stock…).
@@ -157,7 +163,7 @@ class _ShellState extends State<Shell> {
         case 'profile':
           _goWeb(context.read<NavController>(), 'account');
         case 'sync':
-          Navigator.of(ctx).push(MaterialPageRoute(builder: (_) => const SyncCenter()));
+          showAppWindow(ctx, title: 'Sync', width: 760, height: 640, child: const SyncCenter());
         case 'logout':
           _logout(context);
       }
@@ -174,7 +180,7 @@ class _ShellState extends State<Shell> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _content.currentState?.popUntil((r) => r.isFirst));
     }
     _lastSection = nav.section;
-    final sections = sectionsFor(s.perms);
+    final sections = sectionsFor(s.perms, s.menu);
     final current = sections.any((x) => x.id == nav.section) ? nav.section : 'home';
     final wide = isWide(context);
     final badges = badgesFor(s);
@@ -200,7 +206,10 @@ class _ShellState extends State<Shell> {
             ? Scaffold(
                 backgroundColor: W.g50,
                 body: Row(children: [
-                  _Sidebar(sections: sections, current: current, badges: badges, onGo: (id) => _goWeb(nav, id), onLogout: () => _logout(context)),
+                  _Sidebar(
+                    sections: sections, current: current, badges: badges, onGo: (id) => _goWeb(nav, id), onLogout: () => _logout(context),
+                    onAddProduct: () => _content.currentState?.push(MaterialPageRoute(builder: (_) => const ProductEditScreen())),
+                  ),
                   // Details (an order, a customer…) open inside this area, so the sidebar stays — as on the website.
                   // The route is built once, so its Builder watches the app state itself and
                   // shows whichever section is current (not the section of the first build).
@@ -216,7 +225,7 @@ class _ShellState extends State<Shell> {
   Widget _pages(BuildContext context) {
     final s = context.watch<AppState>();
     final nav = context.watch<NavController>();
-    final sections = sectionsFor(s.perms);
+    final sections = sectionsFor(s.perms, s.menu);
     final current = sections.any((x) => x.id == nav.section) ? nav.section : 'home';
     return Column(children: [
       if (s.release != null && isNewer(s.release!['version'], s.appVersion)) _UpdateBar(release: s.release!),
@@ -270,6 +279,66 @@ class _ShellState extends State<Shell> {
 
   bool _historyTab = false;
 
+  /// The website menu in the phone drawer (submenus open and close).
+  List<Widget> _drawerMenu(BuildContext context, List<Section> sections, String current, Map<String, int> badges) {
+    final s = context.read<AppState>();
+    final nav = context.read<NavController>();
+    final have = {for (final x in sections) x.id};
+    final menu = withAppLinks(parseMenu(s.menu), have);
+    void tap(MenuLink l) {
+      Navigator.pop(context);
+      if (l.logout) {
+        _logout(context);
+      } else if (l.href == addProductHref) {
+        Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductEditScreen()));
+      } else if (have.contains(l.sectionId)) {
+        _historyTab = false;
+        nav.go(l.sectionId);
+      }
+    }
+
+    bool on(MenuLink l) => l.sectionId == current || l.submenu.any(on);
+    Widget tile(MenuLink l, {bool sub = false}) => ListTile(
+          dense: sub,
+          selected: l.sectionId == current,
+          selectedTileColor: AppColors.primarySoft,
+          selectedColor: AppColors.primary,
+          contentPadding: EdgeInsets.only(left: sub ? 36 : 16, right: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          leading: SizedBox(width: 24, child: Center(child: FaIcon(faIcon(l.icon), size: sub ? 15 : 17))),
+          title: Text(l.label, style: TextStyle(fontWeight: l.sectionId == current ? FontWeight.w700 : FontWeight.w500)),
+          trailing: CountBadge(badges[l.sectionId] ?? 0),
+          onTap: () => tap(l),
+        );
+    return [
+      for (final sec in menu) ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+          child: Text(sec.title.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.faint, letterSpacing: 1)),
+        ),
+        for (final l in sec.links)
+          if (l.submenu.isEmpty)
+            tile(l)
+          else
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                initiallyExpanded: on(l),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                leading: SizedBox(width: 24, child: Center(child: FaIcon(faIcon(l.icon), size: 17))),
+                title: Text(l.label, style: const TextStyle(fontWeight: FontWeight.w500)),
+                childrenPadding: EdgeInsets.zero,
+                children: [
+                  if (!l.toggleOnly) tile(MenuLink(l.href, 'All ${l.label}', l.icon), sub: true),
+                  for (final x in l.submenu) tile(x, sub: true),
+                ],
+              ),
+            ),
+      ],
+      const Divider(height: 20),
+    ];
+  }
+
   Widget _drawer(BuildContext context, AppState s, List<Section> sections, String current, Map<String, int> badges) {
     final nav = context.read<NavController>();
     void go(String id) {
@@ -299,6 +368,8 @@ class _ShellState extends State<Shell> {
         ),
         Expanded(
           child: ListView(padding: const EdgeInsets.fromLTRB(12, 12, 12, 12), children: [
+            if (s.menu.isNotEmpty) ..._drawerMenu(context, sections, current, badges),
+            if (s.menu.isEmpty)
             for (final x in sections)
               ListTile(
                 selected: x.id == current,
@@ -384,7 +455,8 @@ class _Sidebar extends StatefulWidget {
   final Map<String, int> badges;
   final ValueChanged<String> onGo;
   final VoidCallback onLogout;
-  const _Sidebar({required this.sections, required this.current, required this.badges, required this.onGo, required this.onLogout});
+  final VoidCallback onAddProduct;
+  const _Sidebar({required this.sections, required this.current, required this.badges, required this.onGo, required this.onLogout, required this.onAddProduct});
   @override
   State<_Sidebar> createState() => _SidebarState();
 }
@@ -405,10 +477,80 @@ class _SidebarState extends State<_Sidebar> {
     LocalStore.instance.write('sidebar_hidden', _hidden.toList());
   }
 
+  final Set<String> _open = {}, _closed = {};
+
+  /// A submenu is open when you opened it, or when you're on one of its pages (until you close it).
+  bool _expanded(MenuLink l, bool here) => _open.contains(l.href) || (!_closed.contains(l.href) && here);
+  void _toggleSub(MenuLink l, bool here) => setState(() {
+        if (_expanded(l, here)) {
+          _open.remove(l.href);
+          _closed.add(l.href);
+        } else {
+          _closed.remove(l.href);
+          _open.add(l.href);
+        }
+      });
+
+  /// The website's own menu: same sections, links, submenus and icons.
+  List<Widget> _menuItems(List<MenuSection> menu) {
+    final have = {for (final x in widget.sections) x.id};
+    void tap(MenuLink l) {
+      if (l.logout) return widget.onLogout();
+      if (l.href == addProductHref) return widget.onAddProduct();
+      if (have.contains(l.sectionId)) widget.onGo(l.sectionId);
+    }
+
+    bool on(MenuLink l) => l.sectionId == widget.current || l.submenu.any(on);
+    return [
+      for (final sec in menu)
+        if (sec.links.any((l) => !_hidden.contains(l.href) || on(l)))
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 0, 10, 14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+                child: Text(sec.title.toUpperCase(), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: W.g400, letterSpacing: 1)),
+              ),
+              for (final l in sec.links)
+                if (!_hidden.contains(l.href) || on(l)) ...[
+                  if (l.submenu.isEmpty)
+                    _link(l.sectionId, l.label, faIcon(l.icon), () => tap(l), badge: widget.badges[l.sectionId] ?? 0)
+                  else ...[
+                    Row(children: [
+                      Expanded(
+                        child: _link(on(l) && l.sectionId == widget.current ? l.sectionId : '-', l.label, faIcon(l.icon),
+                            () => l.toggleOnly ? _toggleSub(l, on(l)) : tap(l),
+                            badge: widget.badges[l.sectionId] ?? 0),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                        padding: EdgeInsets.zero,
+                        tooltip: _expanded(l, on(l)) ? 'Collapse' : 'Expand',
+                        onPressed: () => _toggleSub(l, on(l)),
+                        icon: AnimatedRotation(
+                          turns: _expanded(l, on(l)) ? .5 : 0,
+                          duration: const Duration(milliseconds: 200),
+                          child: const FaIcon(FontAwesomeIcons.chevronDown, size: 12, color: W.g400),
+                        ),
+                      ),
+                    ]),
+                    if (_expanded(l, on(l)))
+                      for (final sub in l.submenu)
+                        if (!_hidden.contains(sub.href) || on(sub))
+                          Padding(padding: const EdgeInsets.only(left: 20), child: _link(sub.sectionId, sub.label, faIcon(sub.icon), () => tap(sub), small: true)),
+                  ],
+                ],
+            ]),
+          ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final name = (s.settings['businessName'] as String?)?.trim().isNotEmpty == true ? s.settings['businessName'] as String : AppConfig.appName;
+    final menu = withAppLinks(parseMenu(s.menu), {for (final x in widget.sections) x.id});
     final groups = <String, List<String>>{};
     for (final x in widget.sections) {
       final w = _webNav[x.id];
@@ -416,20 +558,20 @@ class _SidebarState extends State<_Sidebar> {
       groups.putIfAbsent(w.$1, () => []).add(x.id);
     }
     return Container(
-      width: 280,
+      width: 236,
       decoration: const BoxDecoration(color: Colors.white, border: Border(right: BorderSide(color: W.g200))),
       child: Column(children: [
         Container(
-          constraints: const BoxConstraints(minHeight: 89),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: W.g100))),
+          constraints: const BoxConstraints(minHeight: 58),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: W.g200))),
           child: Row(children: [
             Expanded(
               child: InkWell(
                 onTap: () => widget.onGo('home'),
                 child: s.settings['logo'] != null
-                    ? Align(alignment: Alignment.centerLeft, child: NetImage(s.settings['logo'], size: 44, width: 170, radius: 0, fit: BoxFit.contain, placeholder: Icons.storefront_rounded))
-                    : Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18.4, fontWeight: FontWeight.w800, color: W.primary)),
+                    ? Align(alignment: Alignment.centerLeft, child: NetImage(s.settings['logo'], size: 36, width: 160, radius: 0, fit: BoxFit.contain, placeholder: Icons.storefront_rounded))
+                    : Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: W.primary)),
               ),
             ),
             // Display options: show / hide menu items (the website's sliders icon).
@@ -438,23 +580,29 @@ class _SidebarState extends State<_Sidebar> {
               position: PopupMenuPosition.under,
               icon: const FaIcon(FontAwesomeIcons.sliders, size: 16, color: W.g500),
               onSelected: _toggle,
-              itemBuilder: (_) => [
-                for (final x in widget.sections)
-                  if (_webNav[x.id] != null && x.id != 'home')
-                    CheckedPopupMenuItem(value: x.id, checked: !_hidden.contains(x.id), child: Text(_webNav[x.id]!.$2)),
-              ],
+              itemBuilder: (_) => menu.isNotEmpty
+                  ? [
+                      for (final sec in menu)
+                        for (final l in sec.links)
+                          if (l.href != '/admin/dashboard' && !l.logout) CheckedPopupMenuItem(value: l.href, checked: !_hidden.contains(l.href), child: Text(l.label)),
+                    ]
+                  : [
+                      for (final x in widget.sections)
+                        if (_webNav[x.id] != null && x.id != 'home')
+                          CheckedPopupMenuItem(value: x.id, checked: !_hidden.contains(x.id), child: Text(_webNav[x.id]!.$2)),
+                    ],
             ),
           ]),
         ),
         Expanded(
-          child: ListView(padding: const EdgeInsets.symmetric(vertical: 16), children: [
+          child: ListView(padding: const EdgeInsets.symmetric(vertical: 10), children: menu.isNotEmpty ? _menuItems(menu) : [
             for (final g in groups.entries)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 14),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: Text(g.key.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: W.g400, letterSpacing: 1.1)),
+                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+                    child: Text(g.key.toUpperCase(), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: W.g400, letterSpacing: 1)),
                   ),
                   for (final id in g.value) _link(id, _webNav[id]!.$2, _webNav[id]!.$3, () => widget.onGo(id), badge: widget.badges[id] ?? 0),
                   if (g.key == 'Account') _link('logout', 'Logout', FontAwesomeIcons.rightFromBracket, widget.onLogout),
@@ -466,23 +614,23 @@ class _SidebarState extends State<_Sidebar> {
     );
   }
 
-  Widget _link(String id, String label, FaIconData icon, VoidCallback onTap, {int badge = 0}) {
+  Widget _link(String id, String label, FaIconData icon, VoidCallback onTap, {int badge = 0, bool small = false}) {
     final active = id == widget.current;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 1),
       child: Material(
         color: active ? W.primaryLighter : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(5),
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(5),
           hoverColor: W.g50,
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+            padding: EdgeInsets.fromLTRB(10, small ? 6 : 8, 8, small ? 6 : 8),
             child: Row(children: [
-              SizedBox(width: 24, child: Center(child: FaIcon(icon, size: 17, color: active ? W.primary : W.g600))),
-              const SizedBox(width: 14),
-              Expanded(child: Text(label, style: TextStyle(fontSize: 15, fontWeight: active ? FontWeight.w600 : FontWeight.w500, color: active ? W.primary : W.g600))),
+              SizedBox(width: 20, child: Center(child: FaIcon(icon, size: small ? 12.5 : 14, color: active ? W.primary : W.g500))),
+              const SizedBox(width: 10),
+              Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: small ? 12.5 : 13.5, fontWeight: active ? FontWeight.w600 : FontWeight.w500, color: active ? W.primary : W.g700))),
               if (badge > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),

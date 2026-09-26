@@ -10,7 +10,6 @@ import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
 import '../../widgets/web.dart';
 import '../customers/customers_screen.dart' show CustomerProfile;
-import '../pos/receipt.dart';
 import 'order_actions.dart';
 
 part 'order_detail_web.dart';
@@ -167,6 +166,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           InfoRow('Subtotal', money(o['subtotal'])),
           if (toDouble(o['discount']) > 0) InfoRow('Discount', '-${money(o['discount'])}', color: AppColors.green),
           InfoRow('GST', money(o['gst'])),
+          if (toDouble(o['delivery']) > 0) InfoRow('Delivery charge', money(o['delivery'])),
           InfoRow('Total', money(o['total']), bold: true),
           InfoRow('Payment', '${o['paymentStatus']} · ${o['paymentMethod']}'),
           if (toDouble(o['due']) > 0) InfoRow('Due', money(o['due']), bold: true, color: AppColors.red),
@@ -317,12 +317,8 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         : _act('Paid ${o['number']}', {'action': 'update_payment', 'paymentStatus': 'Paid', 'method': method}, {'paymentStatus': 'Paid', 'paymentMethod': method});
   }
 
-  Future<void> _print(AppState s, Map<String, dynamic> o) async {
-    try {
-      await reprintOrder(s.settings, o, s.settings['printerFormat'] as String? ?? 'thermal_80', payments: ((_extra?['payments'] as List?) ?? const []).cast<Map>());
-    } catch (_) {
-      if (mounted) toast(context, 'Printer not available.', error: true);
-    }
-  }
+  // Same invoice as the website (Invoice Settings decide A4 / thermal); offline bills use the app receipt.
+  Future<void> _print(AppState s, Map<String, dynamic> o) => printOrder(context, o);
+
 
 }

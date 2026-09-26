@@ -74,7 +74,7 @@ class _CustomersWebState extends State<CustomersWeb> {
       ],
       children: [
         WebCard(child: _Growth(customers: all, range: _range)),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const WebCardTitle('Key Metrics', icon: LucideIcons.chartNoAxesColumn, iconColor: Color(0xFF16A34A)),
@@ -89,9 +89,9 @@ class _CustomersWebState extends State<CustomersWeb> {
             ]),
           ]),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebRangeBar(range: _range, presets: const ['today', '7d', 'this_month', 'prev_month', 'this_year'], onChanged: (r) => _set(() => _range = r)),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebCard(
           padding: const EdgeInsets.all(14),
           child: WebGrid(columns: 5, gap: 12, minWidth: 170, children: [
@@ -102,17 +102,17 @@ class _CustomersWebState extends State<CustomersWeb> {
             WebSelect<String>(icon: LucideIcons.calendar, label: 'Date range applies to', value: _applies, options: const [('ignore', 'Ignore date range'), ('joined', 'Joined in range')], onChanged: (v) => _set(() => _applies = v)),
           ]),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebCard(
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
               const Spacer(),
-              const Text('Search:', style: TextStyle(fontSize: 15, color: W.g800)),
+              const Text('Search:', style: TextStyle(fontSize: 13, color: W.g800)),
               const SizedBox(width: 8),
               WebSearch(width: 260, hint: 'Name, phone, email...', onChanged: (v) => _set(() => _q = v)),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             WebTable(
               bordered: true,
               rowHeight: 76,
@@ -124,22 +124,22 @@ class _CustomersWebState extends State<CustomersWeb> {
                     Row(children: [
                       Avatar('${c['name']}', photo: c['avatar'], size: 34),
                       const SizedBox(width: 10),
-                      Expanded(child: Text('${c['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: W.g900))),
+                      Expanded(child: Text('${c['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: W.g900))),
                     ]),
                     Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [const Icon(LucideIcons.phone, size: 13, color: W.g500), const SizedBox(width: 6), Flexible(child: Text('${c['phone'] ?? '—'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, color: W.g900)))]),
+                      Row(children: [const Icon(LucideIcons.phone, size: 13, color: W.g500), const SizedBox(width: 6), Flexible(child: Text('${c['phone'] ?? '—'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: W.g900)))]),
                       Row(children: [
                         const Icon(LucideIcons.mail, size: 13, color: W.g500),
                         const SizedBox(width: 6),
-                        Flexible(child: Text('${c['email'] ?? 'No email'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: W.g500))),
+                        Flexible(child: Text('${c['email'] ?? 'No email'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: W.g500))),
                       ]),
                     ]),
                     walkIn(c)
                         ? const WebBadge('Walk-in', color: Color(0xFFB45309), bg: Color(0xFFFEF3C7))
                         : const WebBadge('Online', color: W.primary, bg: W.primaryLighter),
-                    Text('${orders(c)}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                    Text(money(spent(c)), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                    toDouble(c['due']) > 0 ? Text(money(c['due']), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFFDC2626))) : webDash,
+                    Text('${orders(c)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text(money(spent(c)), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    toDouble(c['due']) > 0 ? Text(money(c['due']), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFDC2626))) : webDash,
                     WebPill(c['status'] == 'active' ? 'Active' : 'Inactive', color: c['status'] == 'active' ? W.green : W.grey),
                     Row(children: [
                       WebIconAction(LucideIcons.eye, color: W.grey, tooltip: 'View', onTap: () => open(c)),
@@ -175,11 +175,11 @@ class _KeyMetric extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(label, style: const TextStyle(fontSize: 13, color: W.g800)),
+                Text(label, style: const TextStyle(fontSize: 12, color: W.g800)),
                 const SizedBox(height: 4),
-                Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: color)),
+                Text(value, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: color)),
                 const SizedBox(height: 4),
-                Text(sub, style: const TextStyle(fontSize: 13, color: W.g500)),
+                Text(sub, style: const TextStyle(fontSize: 12, color: W.g500)),
               ]),
             ),
           ]),
@@ -224,11 +224,11 @@ class _Growth extends StatelessWidget {
       Row(children: [
         const Icon(LucideIcons.trendingUp, size: 19, color: Color(0xFF16A34A)),
         const SizedBox(width: 10),
-        const Expanded(child: Text('Customer Growth', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: W.g900))),
+        const Expanded(child: Text('Customer Growth', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: W.g900))),
         for (final (c, l) in const [(Color(0xFF16A34A), 'This Period'), (W.blue, 'Previous Period')]) ...[
           Container(width: 8, height: 8, decoration: BoxDecoration(color: c, shape: BoxShape.circle)),
           const SizedBox(width: 6),
-          Text(l, style: const TextStyle(fontSize: 14, color: W.g700)),
+          Text(l, style: const TextStyle(fontSize: 13, color: W.g700)),
           const SizedBox(width: 18),
         ],
       ]),
@@ -236,7 +236,7 @@ class _Growth extends StatelessWidget {
       Text.rich(TextSpan(children: [
         TextSpan(text: '${now.fold<double>(0, (t, v) => t + v).toInt()}', style: const TextStyle(fontWeight: FontWeight.w700)),
         const TextSpan(text: ' joined by day'),
-      ]), style: const TextStyle(fontSize: 14, color: W.g600)),
+      ]), style: const TextStyle(fontSize: 13, color: W.g600)),
       const SizedBox(height: 14),
       SizedBox(
         height: 180,
@@ -266,7 +266,7 @@ class _Growth extends StatelessWidget {
       ),
       const SizedBox(height: 8),
       Text('This period ${DateFormat('dd/MM/yyyy').format(r.from)} – ${DateFormat('dd/MM/yyyy').format(r.to)} · previous ${DateFormat('dd/MM/yyyy').format(prev.from)} – ${DateFormat('dd/MM/yyyy').format(prev.to)}',
-          style: const TextStyle(fontSize: 12.5, color: W.g500)),
+          style: const TextStyle(fontSize: 12, color: W.g500)),
     ]);
   }
 }

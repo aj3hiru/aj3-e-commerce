@@ -33,8 +33,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
     detectionSpeed: DetectionSpeed.normal,
     detectionTimeoutMs: 150,
     formats: const [
+      // Product barcodes (EAN / UPC), the website's labels (Code 128), Code 39 and QR.
+      // ITF / Codabar are left out: they often "read" a wrong number from part of an EAN barcode.
       BarcodeFormat.ean13, BarcodeFormat.ean8, BarcodeFormat.upcA, BarcodeFormat.upcE, BarcodeFormat.code128, BarcodeFormat.code39,
-      BarcodeFormat.code93, BarcodeFormat.itf14, BarcodeFormat.codabar, BarcodeFormat.qrCode, BarcodeFormat.dataMatrix,
+      BarcodeFormat.qrCode, BarcodeFormat.dataMatrix,
     ],
     autoZoom: true,
   );

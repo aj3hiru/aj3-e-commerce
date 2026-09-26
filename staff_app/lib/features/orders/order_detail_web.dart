@@ -35,21 +35,21 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Flexible(child: Text('${o['number']}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: W.g900))),
+              Flexible(child: Text('${o['number']}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: W.g900))),
               const SizedBox(width: 10),
               online ? const WebBadge('Online order', color: W.primary, bg: W.primaryLighter) : const WebBadge('In-store bill', color: Color(0xFFB45309), bg: Color(0xFFFEF3C7)),
             ]),
             const SizedBox(height: 4),
-            Row(children: [const Icon(LucideIcons.calendar, size: 14, color: W.g500), const SizedBox(width: 6), Text(dateTime(o['createdAt']), style: const TextStyle(fontSize: 14.5, color: W.g600))]),
+            Row(children: [const Icon(LucideIcons.calendar, size: 14, color: W.g500), const SizedBox(width: 6), Text(dateTime(o['createdAt']), style: const TextStyle(fontSize: 13, color: W.g600))]),
           ]),
         ),
         WebPillMenu(value: st, options: widget.agentView ? [st] : statusChoices(p, o), onSelected: (v) => setOrderStatus(context, o, v).then((_) => _loadExtra())),
         const SizedBox(width: 8),
         WebPillMenu(value: paid ? 'Paid' : 'Unpaid', options: const ['Unpaid', 'Paid'], onSelected: canMarkPaid ? (_) => _collect(o) : null),
-        const SizedBox(width: 20),
+        const SizedBox(width: 12),
         Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          const Text('Total', style: TextStyle(fontSize: 12.5, color: W.g500)),
-          Text(money(o['total']), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: W.g900)),
+          const Text('Total', style: TextStyle(fontSize: 12, color: W.g500)),
+          Text(money(o['total']), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: W.g900)),
         ]),
         const SizedBox(width: 12),
         WebButton('Print', icon: LucideIcons.printer, onPressed: () => _print(s, o)),
@@ -67,7 +67,7 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
           ? Row(children: [
               const Icon(LucideIcons.circleX, color: Color(0xFFDC2626), size: 20),
               const SizedBox(width: 10),
-              Expanded(child: Text('This order was cancelled${o['cancelReason'] != null ? ' — ${o['cancelReason']}' : ''}.', style: const TextStyle(fontSize: 15, color: Color(0xFFB91C1C), fontWeight: FontWeight.w500))),
+              Expanded(child: Text('This order was cancelled${o['cancelReason'] != null ? ' — ${o['cancelReason']}' : ''}.', style: const TextStyle(fontSize: 13, color: Color(0xFFB91C1C), fontWeight: FontWeight.w500))),
             ])
           : Row(children: [
               for (var i = 0; i < steps.length; i++) ...[
@@ -79,14 +79,14 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
                     child: Icon(i < reached || (i == reached && i == 3) ? LucideIcons.check : [LucideIcons.check, LucideIcons.check, LucideIcons.truck, LucideIcons.package][i], size: 17, color: i <= reached ? Colors.white : W.g400),
                   ),
                   const SizedBox(height: 8),
-                  Text(steps[i], style: TextStyle(fontSize: 13.5, fontWeight: i <= reached ? FontWeight.w600 : FontWeight.w400, color: i <= reached ? W.g900 : W.g400)),
+                  Text(steps[i], style: TextStyle(fontSize: 12.5, fontWeight: i <= reached ? FontWeight.w600 : FontWeight.w400, color: i <= reached ? W.g900 : W.g400)),
                 ]),
                 if (i < steps.length - 1) Expanded(child: Container(height: 2, margin: const EdgeInsets.only(bottom: 26, left: 8, right: 8), color: i < reached ? W.blue : W.g200)),
               ],
             ]),
     );
 
-    const head = TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: W.g500, letterSpacing: .6);
+    const head = TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: W.g500, letterSpacing: .6);
     Widget total(String a, String b, {bool bold = false, Color? color}) => Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(children: [
@@ -103,9 +103,9 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
           child: Row(children: [
             const Icon(LucideIcons.package, size: 17, color: W.blue),
             const SizedBox(width: 10),
-            const Text('Items', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: W.g900)),
+            const Text('Items', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: W.g900)),
             const SizedBox(width: 8),
-            Text('(${items.length})', style: const TextStyle(fontSize: 15, color: W.g500)),
+            Text('(${items.length})', style: const TextStyle(fontSize: 13, color: W.g500)),
           ]),
         ),
         Container(
@@ -131,13 +131,13 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
                 child: Row(children: [
                   NetImage(s.list('products').where((x) => toInt(x['id']) == toInt(items[i]['productId'])).firstOrNull?['image'], size: 40, radius: 6),
                   const SizedBox(width: 10),
-                  Expanded(child: Text('${items[i]['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, color: W.g900))),
+                  Expanded(child: Text('${items[i]['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: W.g900))),
                 ]),
               ),
-              Expanded(flex: 1, child: Text('${items[i]['qty']}', style: const TextStyle(fontSize: 15))),
-              Expanded(flex: 2, child: Text(money(items[i]['price']), textAlign: TextAlign.right, style: const TextStyle(fontSize: 15))),
-              Expanded(flex: 1, child: Text('${toDouble(items[i]['gstRate']).toStringAsFixed(0)}%', textAlign: TextAlign.right, style: const TextStyle(fontSize: 15, color: W.g600))),
-              Expanded(flex: 2, child: Text(money(toDouble(items[i]['qty']) * toDouble(items[i]['price'])), textAlign: TextAlign.right, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+              Expanded(flex: 1, child: Text('${items[i]['qty']}', style: const TextStyle(fontSize: 13))),
+              Expanded(flex: 2, child: Text(money(items[i]['price']), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13))),
+              Expanded(flex: 1, child: Text('${toDouble(items[i]['gstRate']).toStringAsFixed(0)}%', textAlign: TextAlign.right, style: const TextStyle(fontSize: 13, color: W.g600))),
+              Expanded(flex: 2, child: Text(money(toDouble(items[i]['qty']) * toDouble(items[i]['price'])), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
             ]),
           ),
         Padding(
@@ -146,6 +146,7 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
             total('Subtotal', money(o['subtotal'])),
             if (toDouble(o['discount']) > 0) total('Discount', '-${money(o['discount'])}', color: const Color(0xFF16A34A)),
             total('GST', money(o['gst'])),
+            if (toDouble(o['delivery']) > 0) total('Delivery charge', money(o['delivery'])),
             const Row(children: [Spacer(flex: 3), Expanded(flex: 2, child: Divider(height: 14, color: W.g200))]),
             total('Total', money(o['total']), bold: true),
             total('Paid', money(paid ? o['total'] : toDouble(o['paid']))),
@@ -166,9 +167,9 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
               Padding(padding: const EdgeInsets.only(top: 5, right: 14), child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: W.blue, shape: BoxShape.circle))),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(_eventText(e), style: const TextStyle(fontSize: 15, color: W.g900)),
-                  Text('${dateTime(e['createdAt'])} · ${e['actorName'] ?? ''}', style: const TextStyle(fontSize: 13, color: W.g500)),
-                  if (e['note'] != null) Text('${e['note']}', style: const TextStyle(fontSize: 13.5, color: W.g700)),
+                  Text(_eventText(e), style: const TextStyle(fontSize: 13, color: W.g900)),
+                  Text('${dateTime(e['createdAt'])} · ${e['actorName'] ?? ''}', style: const TextStyle(fontSize: 12, color: W.g500)),
+                  if (e['note'] != null) Text('${e['note']}', style: const TextStyle(fontSize: 12.5, color: W.g700)),
                 ]),
               ),
             ]),
@@ -185,7 +186,7 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
               padding: const EdgeInsets.only(bottom: 10),
               child: Text.rich(TextSpan(children: [
                 TextSpan(text: agentName, style: const TextStyle(fontWeight: FontWeight.w700, color: W.g900)),
-                if (o['assignedAt'] != null) TextSpan(text: '  · since ${dateTime(o['assignedAt'])}', style: const TextStyle(color: W.g500, fontSize: 13)),
+                if (o['assignedAt'] != null) TextSpan(text: '  · since ${dateTime(o['assignedAt'])}', style: const TextStyle(color: W.g500, fontSize: 12)),
               ])),
             ),
           WebSelect<int>(
@@ -240,42 +241,42 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
       if (next.isNotEmpty)
         WebCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('Next step', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: W.g900)),
+            const Text('Next step', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: W.g900)),
             const SizedBox(height: 14),
             for (final w in next) Padding(padding: const EdgeInsets.only(bottom: 12), child: w),
           ]),
         ),
-      if (next.isNotEmpty) const SizedBox(height: 16),
+      if (next.isNotEmpty) const SizedBox(height: 12),
       WebCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('Customer', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: W.g900)),
+          const Text('Customer', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: W.g900)),
           const SizedBox(height: 14),
           Row(children: [
             Container(width: 40, height: 40, alignment: Alignment.center, decoration: const BoxDecoration(color: W.primaryLighter, shape: BoxShape.circle),
-                child: Text('${o['customer']}'.isEmpty ? '?' : '${o['customer']}'[0].toUpperCase(), style: const TextStyle(color: W.primary, fontWeight: FontWeight.w700, fontSize: 16))),
+                child: Text('${o['customer']}'.isEmpty ? '?' : '${o['customer']}'[0].toUpperCase(), style: const TextStyle(color: W.primary, fontWeight: FontWeight.w700, fontSize: 14))),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${o['customer']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: W.g900)),
+                Text('${o['customer']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: W.g900)),
                 if (customer != null)
                   InkWell(
                     onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CustomerProfile(id: toInt(customer['id'])))),
-                    child: const Text('View profile', style: TextStyle(fontSize: 13.5, color: W.blue)),
+                    child: const Text('View profile', style: TextStyle(fontSize: 12.5, color: W.blue)),
                   ),
               ]),
             ),
           ]),
-          if (phone != null) ...[const SizedBox(height: 12), Row(children: [const Icon(LucideIcons.phone, size: 15, color: W.g500), const SizedBox(width: 10), Text(phone, style: const TextStyle(fontSize: 15))])],
-          if (customer?['email'] != null) ...[const SizedBox(height: 8), Row(children: [const Icon(LucideIcons.mail, size: 15, color: W.g500), const SizedBox(width: 10), Expanded(child: Text('${customer!['email']}', style: const TextStyle(fontSize: 15)))])],
+          if (phone != null) ...[const SizedBox(height: 12), Row(children: [const Icon(LucideIcons.phone, size: 15, color: W.g500), const SizedBox(width: 10), Text(phone, style: const TextStyle(fontSize: 13))])],
+          if (customer?['email'] != null) ...[const SizedBox(height: 8), Row(children: [const Icon(LucideIcons.mail, size: 15, color: W.g500), const SizedBox(width: 10), Expanded(child: Text('${customer!['email']}', style: const TextStyle(fontSize: 13)))])],
         ]),
       ),
       if (o['address'] != null) ...[
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         WebCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            const Text('Delivery address', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: W.g900)),
+            const Text('Delivery address', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: W.g900)),
             const SizedBox(height: 10),
-            Text('${o['address']}', style: const TextStyle(fontSize: 15, height: 1.45, color: W.g800)),
+            Text('${o['address']}', style: const TextStyle(fontSize: 13, height: 1.45, color: W.g800)),
             const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerLeft,
@@ -298,11 +299,11 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
       },
       children: [
         header,
-        const SizedBox(height: 16),
-        if (online) ...[progress, const SizedBox(height: 16)],
+        const SizedBox(height: 12),
+        if (online) ...[progress, const SizedBox(height: 12)],
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(flex: 7, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [itemsCard, const SizedBox(height: 16), history])),
-          const SizedBox(width: 16),
+          Expanded(flex: 7, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [itemsCard, const SizedBox(height: 12), history])),
+          const SizedBox(width: 12),
           Expanded(flex: 4, child: side),
         ]),
       ],
@@ -313,7 +314,7 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: W.g200)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [Icon(icon, size: 16, color: iconColor), const SizedBox(width: 8), Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: W.g900))]),
+          Row(children: [Icon(icon, size: 16, color: iconColor), const SizedBox(width: 8), Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: W.g900))]),
           const SizedBox(height: 10),
           ...children,
         ]),

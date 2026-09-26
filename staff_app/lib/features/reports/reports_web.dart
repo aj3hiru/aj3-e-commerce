@@ -17,7 +17,7 @@ extension _ReportsWeb on _ReportsScreenState {
               foregroundColor: on ? W.primary : W.g800,
               padding: const EdgeInsets.symmetric(horizontal: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide(color: on ? W.primary : W.g200, width: on ? 1.5 : 1)),
-              textStyle: const TextStyle(fontFamily: 'Inter', fontSize: 14.5, fontWeight: FontWeight.w500),
+              textStyle: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w500),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               if (icon != null) ...[Icon(icon, size: 15), const SizedBox(width: 8)],
@@ -40,7 +40,7 @@ extension _ReportsWeb on _ReportsScreenState {
 
     final top = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Wrap(crossAxisAlignment: WrapCrossAlignment.center, runSpacing: 10, children: [
-        const Padding(padding: EdgeInsets.only(right: 14), child: Text('Date Presets', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: W.g900))),
+        const Padding(padding: EdgeInsets.only(right: 14), child: Text('Date Presets', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: W.g900))),
         presetBtn('Today', 'today'),
         presetBtn('Yesterday', 'yesterday'),
         presetBtn('This Month', 'this_month'),
@@ -68,15 +68,15 @@ extension _ReportsWeb on _ReportsScreenState {
       top,
       if (_loading) const Padding(padding: EdgeInsets.only(top: 12), child: LinearProgressIndicator(minHeight: 3)),
       if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: const TextStyle(color: Color(0xFFDC2626)))),
-      const SizedBox(height: 20),
+      const SizedBox(height: 12),
       if (r == null && !_loading) const WebCard(child: Text('Connect to the internet to build a report.', style: TextStyle(color: W.g600))),
       if (r != null)
         LayoutBuilder(
           builder: (c, box) {
             final left = _webReport(r, k);
             final right = _webSide(r);
-            if (box.maxWidth < 1000) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [left, const SizedBox(height: 20), right]);
-            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(flex: 64, child: left), const SizedBox(width: 20), Expanded(flex: 36, child: right)]);
+            if (box.maxWidth < 1000) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [left, const SizedBox(height: 12), right]);
+            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(flex: 64, child: left), const SizedBox(width: 12), Expanded(flex: 36, child: right)]);
           },
         ),
     ];
@@ -97,9 +97,9 @@ extension _ReportsWeb on _ReportsScreenState {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(label, style: const TextStyle(fontSize: 13.5, color: W.g700)),
-                FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700, color: W.g900))),
-                Text(sub, style: const TextStyle(fontSize: 12.5, color: W.g500)),
+                Text(label, style: const TextStyle(fontSize: 12.5, color: W.g700)),
+                FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: W.g900))),
+                Text(sub, style: const TextStyle(fontSize: 12, color: W.g500)),
               ]),
             ),
           ])),
@@ -111,9 +111,9 @@ extension _ReportsWeb on _ReportsScreenState {
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Icon(icon, size: 14, color: W.primary),
             const SizedBox(width: 8),
-            Text(label, style: const TextStyle(fontSize: 13.5, color: W.g600)),
+            Text(label, style: const TextStyle(fontSize: 12.5, color: W.g600)),
             const SizedBox(width: 6),
-            Text(value, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: W.g900)),
+            Text(value, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: W.g900)),
           ]),
         );
     Widget heading(IconData icon, String title, [String? right]) => Padding(
@@ -121,8 +121,8 @@ extension _ReportsWeb on _ReportsScreenState {
           child: Row(children: [
             Icon(icon, size: 17, color: W.primary),
             const SizedBox(width: 8),
-            Expanded(child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: W.primary))),
-            if (right != null) Text(right, style: const TextStyle(fontSize: 13, color: W.g500)),
+            Expanded(child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: W.primary))),
+            if (right != null) Text(right, style: const TextStyle(fontSize: 12, color: W.g500)),
           ]),
         );
     Widget table(List<WebCol> cols, List<List<String>> rows, {int? highlight}) => WebTable(
@@ -134,7 +134,7 @@ extension _ReportsWeb on _ReportsScreenState {
               [
                 for (var i = 0; i < row.length; i++)
                   Text(row[i], maxLines: i == highlight ? 1 : 2, overflow: TextOverflow.ellipsis, textAlign: cols[i].right ? TextAlign.right : TextAlign.left,
-                      style: TextStyle(fontSize: 13.5, color: i == highlight ? W.primary : W.g800, fontWeight: i == highlight ? FontWeight.w500 : FontWeight.w400)),
+                      style: TextStyle(fontSize: 12.5, color: i == highlight ? W.primary : W.g800, fontWeight: i == highlight ? FontWeight.w500 : FontWeight.w400)),
               ],
           ],
           empty: const Center(child: Text('Nothing in this period.', style: TextStyle(color: W.g500))),
@@ -150,16 +150,16 @@ extension _ReportsWeb on _ReportsScreenState {
     final activity = ((r['activity'] as List?) ?? const []).cast<Map>();
 
     return WebCard(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: Text('${biz['name'] ?? ''}', style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w700, color: W.primary))),
+          Expanded(child: Text('${biz['name'] ?? ''}', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: W.primary))),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(r['selectedUser'] != null ? 'Staff Report · ${r['selectedUser']['name']}' : 'Sales Report', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: W.g900)),
+            Text(r['selectedUser'] != null ? 'Staff Report · ${r['selectedUser']['name']}' : 'Sales Report', style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: W.g900)),
             const SizedBox(height: 4),
-            Text('${r['rangeLabel']}', style: const TextStyle(fontSize: 16, color: W.g700)),
+            Text('${r['rangeLabel']}', style: const TextStyle(fontSize: 14, color: W.g700)),
             const SizedBox(height: 4),
-            Text('Generated on ${dateTime(r['generatedAt'])}', style: const TextStyle(fontSize: 13.5, color: W.g500)),
+            Text('Generated on ${dateTime(r['generatedAt'])}', style: const TextStyle(fontSize: 12.5, color: W.g500)),
           ]),
         ]),
         const SizedBox(height: 18),
@@ -248,10 +248,10 @@ extension _ReportsWeb on _ReportsScreenState {
               const SizedBox(width: 10),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(label, style: const TextStyle(fontSize: 13.5, color: W.g700)),
-                  FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(money(x?['amount']), style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: W.g900))),
-                  Text('${chTotal > 0 ? (toDouble(x?['amount']) / chTotal * 100).toStringAsFixed(1) : '0.0'}%', style: const TextStyle(fontSize: 12.5, color: W.g500)),
-                  Text('${x?['orders'] ?? 0} Orders', style: const TextStyle(fontSize: 12.5, color: W.g500)),
+                  Text(label, style: const TextStyle(fontSize: 12.5, color: W.g700)),
+                  FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text(money(x?['amount']), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: W.g900))),
+                  Text('${chTotal > 0 ? (toDouble(x?['amount']) / chTotal * 100).toStringAsFixed(1) : '0.0'}%', style: const TextStyle(fontSize: 12, color: W.g500)),
+                  Text('${x?['orders'] ?? 0} Orders', style: const TextStyle(fontSize: 12, color: W.g500)),
                 ]),
               ),
             ]),
@@ -276,7 +276,7 @@ extension _ReportsWeb on _ReportsScreenState {
                       : [for (var i = 0; i < pays.length; i++) PieChartSectionData(value: toDouble(pays[i]['amount']), color: palette[i % palette.length], radius: 14, showTitle: false)],
                 )),
                 Column(mainAxisSize: MainAxisSize.min, children: [
-                  FittedBox(child: Text(money(total), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: W.g900))),
+                  FittedBox(child: Text(money(total), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: W.g900))),
                   const Text('Total Sales', style: TextStyle(fontSize: 12, color: W.g500)),
                 ]),
               ]),
@@ -291,10 +291,10 @@ extension _ReportsWeb on _ReportsScreenState {
                     child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Padding(padding: const EdgeInsets.only(top: 4), child: Container(width: 11, height: 11, decoration: BoxDecoration(color: palette[i % palette.length], borderRadius: BorderRadius.circular(2)))),
                       const SizedBox(width: 8),
-                      Expanded(child: Text('${pays[i]['method']}', style: const TextStyle(fontSize: 14, color: W.g800))),
+                      Expanded(child: Text('${pays[i]['method']}', style: const TextStyle(fontSize: 13, color: W.g800))),
                       Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                        Text(money(pays[i]['amount']), style: const TextStyle(fontSize: 14, color: W.g900)),
-                        Text('(${total > 0 ? (toDouble(pays[i]['amount']) / total * 100).toStringAsFixed(1) : 0}%)', style: const TextStyle(fontSize: 13, color: W.g500)),
+                        Text(money(pays[i]['amount']), style: const TextStyle(fontSize: 13, color: W.g900)),
+                        Text('(${total > 0 ? (toDouble(pays[i]['amount']) / total * 100).toStringAsFixed(1) : 0}%)', style: const TextStyle(fontSize: 12, color: W.g500)),
                       ]),
                     ]),
                   ),
@@ -303,7 +303,7 @@ extension _ReportsWeb on _ReportsScreenState {
           ]),
         ]),
       ),
-      const SizedBox(height: 20),
+      const SizedBox(height: 12),
       WebCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const WebCardTitle('Sales Channel Summary', icon: LucideIcons.chartNoAxesColumn, iconColor: W.primary),
@@ -311,7 +311,7 @@ extension _ReportsWeb on _ReportsScreenState {
         ]),
       ),
       if (status.isNotEmpty) ...[
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const WebCardTitle('Online Orders by Status', icon: LucideIcons.truck, iconColor: W.primary),
@@ -323,8 +323,8 @@ extension _ReportsWeb on _ReportsScreenState {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(borderRadius: BorderRadius.circular(6), border: Border.all(color: W.g200)),
                     child: Row(children: [
-                      Expanded(child: Text('${x['status']}', style: const TextStyle(fontSize: 14, color: W.g700))),
-                      Text('${x['count']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: W.g900)),
+                      Expanded(child: Text('${x['status']}', style: const TextStyle(fontSize: 13, color: W.g700))),
+                      Text('${x['count']}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: W.g900)),
                     ]),
                   ),
                 ),
@@ -333,7 +333,7 @@ extension _ReportsWeb on _ReportsScreenState {
         ),
       ],
       if (aging.isNotEmpty) ...[
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const WebCardTitle('Due Aging Summary', icon: LucideIcons.clock, iconColor: W.primary),
@@ -345,21 +345,21 @@ extension _ReportsWeb on _ReportsScreenState {
                 child: Row(children: [
                   Icon(LucideIcons.clock, size: 15, color: agingColors[i % 4].$1),
                   const SizedBox(width: 10),
-                  Expanded(child: Text('${aging[i]['bucket']}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: agingColors[i % 4].$1))),
-                  Text(money(aging[i]['amount']), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: W.g900)),
+                  Expanded(child: Text('${aging[i]['bucket']}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: agingColors[i % 4].$1))),
+                  Text(money(aging[i]['amount']), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: W.g900)),
                   const SizedBox(width: 18),
-                  SizedBox(width: 70, child: Text('${aging[i]['orders']} Orders', textAlign: TextAlign.right, style: const TextStyle(fontSize: 14, color: W.g700))),
+                  SizedBox(width: 70, child: Text('${aging[i]['orders']} Orders', textAlign: TextAlign.right, style: const TextStyle(fontSize: 13, color: W.g700))),
                 ]),
               ),
             const Divider(height: 18, thickness: 2, color: W.g900),
             Row(children: [
-              const Expanded(child: Text('Total Dues', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: W.g900))),
-              Text(money(aging.fold<double>(0, (t, a) => t + toDouble(a['amount']))), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
+              const Expanded(child: Text('Total Dues', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: W.g900))),
+              Text(money(aging.fold<double>(0, (t, a) => t + toDouble(a['amount']))), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
             ]),
           ]),
         ),
       ],
-      const SizedBox(height: 20),
+      const SizedBox(height: 12),
       WebCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const WebCardTitle('Export Report', icon: LucideIcons.fileText, iconColor: W.primary),

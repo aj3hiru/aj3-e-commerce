@@ -48,22 +48,22 @@ class _StaffWebState extends State<StaffWeb> {
       onRefresh: () => s.syncNow(only: const ['staff', 'agents']),
       actions: [WebButton('Add Staff', icon: LucideIcons.plus, color: const Color(0xFFA21C87), onPressed: () => editStaff(context, null))],
       children: [
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebGrid(children: [
           WebMetric(icon: LucideIcons.users, color: W.blue, value: '${all.length}', label: 'Total Users', selected: _card == 'all', onTap: () => setState(() => _card = 'all')),
           WebMetric(icon: LucideIcons.shieldCheck, color: W.primary, value: '${all.where((u) => u['role'] == 'admin').length}', label: 'Admins', selected: _card == 'admins', onTap: () => setState(() => _card = 'admins')),
           WebMetric(icon: LucideIcons.circleCheck, color: const Color(0xFF16A34A), value: '${all.where((u) => u['status'] == 'active').length}', label: 'Active', selected: _card == 'active', onTap: () => setState(() => _card = 'active')),
           WebMetric(icon: LucideIcons.user, color: const Color(0xFFD97706), value: '${all.where((u) => u['status'] != 'active').length}', label: 'Suspended / Pending', selected: _card == 'off', onTap: () => setState(() => _card = 'off')),
         ]),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebCard(
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Wrap(spacing: 12, runSpacing: 10, children: [
               WebSearch(width: 240, hint: 'Search name or email...', onChanged: (v) => setState(() => _q = v)),
               WebSelect<String>(width: 200, value: _role, options: [('all', 'Role:  All'), for (final (id, l) in staffRoles) (id, 'Role:  $l')], onChanged: (v) => setState(() => _role = v)),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             WebTable(
               bordered: true,
               rowHeight: 62,
@@ -88,16 +88,16 @@ class _StaffWebState extends State<StaffWeb> {
                         Expanded(
                           child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text.rich(TextSpan(children: [
-                              TextSpan(text: name, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w500, color: W.g900)),
-                              if (me) const TextSpan(text: '  (you)', style: TextStyle(fontSize: 13, color: W.g500)),
+                              TextSpan(text: name, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: W.g900)),
+                              if (me) const TextSpan(text: '  (you)', style: TextStyle(fontSize: 12, color: W.g500)),
                             ])),
-                            Text('@${u['username']}${u['phone'] != null ? ' · ${u['phone']}' : ''}${u['email'] != null ? ' · ${u['email']}' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: W.g500)),
+                            Text('@${u['username']}${u['phone'] != null ? ' · ${u['phone']}' : ''}${u['email'] != null ? ' · ${u['email']}' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: W.g500)),
                           ]),
                         ),
                       ]),
                       Align(alignment: Alignment.centerLeft, child: roleBadge(u)),
                       WebPill(u['status'] == 'active' ? 'Active' : (u['status'] == 'suspended' ? 'Suspended' : '${u['status']}'), color: u['status'] == 'active' ? W.green : W.grey),
-                      Text('${u['phone'] ?? '—'}', style: const TextStyle(fontSize: 15, color: W.g700)),
+                      Text('${u['phone'] ?? '—'}', style: const TextStyle(fontSize: 13, color: W.g700)),
                       Row(children: [
                         if (!me && (s.perms.staffEdit || s.perms.staff)) WebIconAction(LucideIcons.pencil, color: W.blue, soft: true, tooltip: 'Edit', onTap: () => editStaff(context, u)),
                       ]),

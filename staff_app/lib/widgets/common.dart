@@ -9,17 +9,28 @@ import 'package:provider/provider.dart';
 import '../core/app_state.dart';
 import '../core/format.dart';
 import '../core/theme.dart';
+import '../ds/dialog.dart' show dConfirm;
 
 /// Wide screens (Windows, tablets) get the sidebar layout and multi-column pages.
 bool isWide(BuildContext c) => MediaQuery.sizeOf(c).width >= 900;
 
 void toast(BuildContext context, String msg, {bool error = false}) {
+  final wide = isWide(context);
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(msg), backgroundColor: error ? AppColors.red : AppColors.text, duration: const Duration(seconds: 3)));
+    ..showSnackBar(SnackBar(
+      content: Text(msg, style: wide ? const TextStyle(fontSize: 13) : null),
+      backgroundColor: error ? AppColors.red : AppColors.text,
+      duration: const Duration(seconds: 3),
+      // Windows: a small notification, not a full-width bar.
+      width: wide ? 420 : null,
+      shape: wide ? RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)) : null,
+      padding: wide ? const EdgeInsets.symmetric(horizontal: 14, vertical: 10) : null,
+    ));
 }
 
 Future<bool> confirm(BuildContext context, String title, String message, {String ok = 'Yes', bool danger = false}) async {
+  if (isWide(context)) return dConfirm(context, title, message, ok: ok, danger: danger);
   final r = await showDialog<bool>(
     context: context,
     builder: (c) => AlertDialog(

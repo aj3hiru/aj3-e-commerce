@@ -40,7 +40,7 @@ class BoardWeb extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
               child: Column(children: [
-                Text(v, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: fg)),
+                Text(v, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: fg)),
                 Text(l, style: TextStyle(fontSize: 12, color: fg)),
               ]),
             ),
@@ -55,8 +55,8 @@ class BoardWeb extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('${a['name']}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: W.g900)),
-                  Text('${active.length} active · ${done.length} delivered today', style: const TextStyle(fontSize: 13, color: W.g500)),
+                  Text('${a['name']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: W.g900)),
+                  Text('${active.length} active · ${done.length} delivered today', style: const TextStyle(fontSize: 12, color: W.g500)),
                 ]),
               ),
               if (a['phone'] != null) WebIconAction(LucideIcons.phone, color: W.green, soft: true, tooltip: 'Call ${a['phone']}', onTap: () => launchUrl(Uri.parse('tel:${a['phone']}'))),
@@ -77,7 +77,7 @@ class BoardWeb extends StatelessWidget {
                   onTap: () => open(o),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      Expanded(child: Text('#${o['number']}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: W.blue))),
+                      Expanded(child: Text('#${o['number']}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: W.blue))),
                       o['status'] == 'Out for Delivery'
                           ? const WebBadge('On the way', color: Color(0xFF0369A1), bg: Color(0xFFE0F2FE))
                           : const WebBadge('Preparing', color: W.g700, bg: W.g100),
@@ -89,7 +89,7 @@ class BoardWeb extends StatelessWidget {
                         if (o['paymentStatus'] != 'Paid') const TextSpan(text: '(collect)', style: TextStyle(color: Color(0xFFD97706))),
                         TextSpan(text: ' · assigned ${ago(o['assignedAt'] ?? o['createdAt'])}'),
                       ]),
-                      style: const TextStyle(fontSize: 13, color: W.g500),
+                      style: const TextStyle(fontSize: 12, color: W.g500),
                     ),
                   ]),
                 ),
@@ -113,7 +113,7 @@ class BoardWeb extends StatelessWidget {
           WebMiniMetric(icon: LucideIcons.indianRupee, color: W.primary, value: money(cashToday), label: '', sub: 'Collected today'),
           WebMiniMetric(icon: LucideIcons.users, color: W.g700, tinted: false, value: '$busy / ${agents.length}', label: '', sub: 'Agents busy'),
         ]),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         WebCard(
           padding: EdgeInsets.zero,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -123,14 +123,14 @@ class BoardWeb extends StatelessWidget {
               child: Row(children: [
                 const Icon(LucideIcons.clock, size: 16, color: Color(0xFF92400E)),
                 const SizedBox(width: 8),
-                const Text('Waiting for a delivery agent', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF92400E))),
+                const Text('Waiting for a delivery agent', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF92400E))),
                 const SizedBox(width: 10),
-                Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)), child: Text('${waiting.length}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600))),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(999)), child: Text('${waiting.length}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600))),
               ]),
             ),
             const Divider(height: 1, color: W.g200),
             if (waiting.isEmpty)
-              const Padding(padding: EdgeInsets.all(16), child: Text('All accepted orders have an agent.', style: TextStyle(fontSize: 15, color: W.g600)))
+              const Padding(padding: EdgeInsets.all(16), child: Text('All accepted orders have an agent.', style: TextStyle(fontSize: 13, color: W.g600)))
             else
               for (final o in waiting)
                 Container(
@@ -138,7 +138,7 @@ class BoardWeb extends StatelessWidget {
                   decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: W.g100))),
                   child: Row(children: [
                     Expanded(flex: 2, child: Cell2('#${o['number']}', b: '${o['customer']} · ${money(o['total'])}${o['paymentStatus'] != 'Paid' ? ' (collect)' : ''} · ${ago(o['createdAt'])}', aColor: W.blue, onTap: () => open(o))),
-                    Expanded(flex: 2, child: Text('${o['address'] ?? ''}'.replaceAll('\n', ', '), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: W.g600))),
+                    Expanded(flex: 2, child: Text('${o['address'] ?? ''}'.replaceAll('\n', ', '), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: W.g600))),
                     const SizedBox(width: 12),
                     if (p.assignDelivery && agents.isNotEmpty)
                       WebSelect<int>(
@@ -154,7 +154,7 @@ class BoardWeb extends StatelessWidget {
                 ),
           ]),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         if (agents.isEmpty)
           const WebCard(child: Text('No delivery agents yet — add staff with the Delivery Agent role.', style: TextStyle(color: W.g600)))
         else

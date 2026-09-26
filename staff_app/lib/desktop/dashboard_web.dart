@@ -121,10 +121,10 @@ class _DashboardWebState extends State<DashboardWeb> {
             Row(children: [
               Container(width: 30, height: 30, decoration: BoxDecoration(color: c.withValues(alpha: .1), borderRadius: BorderRadius.circular(6)), child: Icon(icon, size: 14, color: c)),
               const SizedBox(width: 10),
-              Expanded(child: Text(label, style: const TextStyle(fontSize: 13.5, color: W.g600))),
+              Expanded(child: Text(label, style: const TextStyle(fontSize: 12.5, color: W.g600))),
             ]),
             const SizedBox(height: 12),
-            Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: W.g900)),
+            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: W.g900)),
           ]),
         );
 
@@ -137,8 +137,8 @@ class _DashboardWebState extends State<DashboardWeb> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(width: 48, height: 48, decoration: BoxDecoration(color: c.withValues(alpha: .1), borderRadius: BorderRadius.circular(8)), child: Icon(icon, size: 20, color: c)),
               const SizedBox(height: 14),
-              Text(label, style: const TextStyle(fontSize: 14, color: W.g600)),
-              Text('$n', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: c)),
+              Text(label, style: const TextStyle(fontSize: 13, color: W.g600)),
+              Text('$n', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: c)),
             ]),
           ),
         );
@@ -179,13 +179,13 @@ class _DashboardWebState extends State<DashboardWeb> {
           rows: [
             for (final o in recentList)
               [
-                Text('${o['number']}', style: const TextStyle(color: W.primary, fontWeight: FontWeight.w600, fontSize: 14)),
-                Text('${o['customer']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14)),
-                Text(money(o['total']), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                Text('${o['number']}', style: const TextStyle(color: W.primary, fontWeight: FontWeight.w600, fontSize: 13)),
+                Text('${o['customer']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+                Text(money(o['total']), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                 WebPillMenu(value: o['paymentStatus'] == 'Paid' ? 'Paid' : 'Unpaid', options: const ['Unpaid', 'Paid'],
                     onSelected: o['paymentStatus'] != 'Paid' && o['status'] != 'Canceled' && p.markPaid ? (_) => markOrderPaid(context, o) : null),
                 WebPillMenu(value: '${o['status']}', options: statusChoices(p, o), onSelected: (v) => setOrderStatus(context, o, v)),
-                Text(DateFormat('d MMM').format(ist(DateTime.parse('${o['createdAt']}'))), style: const TextStyle(fontSize: 14, color: W.g600)),
+                Text(DateFormat('d MMM').format(ist(DateTime.parse('${o['createdAt']}'))), style: const TextStyle(fontSize: 13, color: W.g600)),
               ],
           ],
           empty: const Center(child: Text('No orders yet.', style: TextStyle(color: W.g500))),
@@ -206,8 +206,8 @@ class _DashboardWebState extends State<DashboardWeb> {
     Widget pair(Widget a, Widget? b, int fa, int fb) => b == null
         ? a
         : LayoutBuilder(builder: (c, box) => box.maxWidth < 900
-            ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [a, const SizedBox(height: 24), b])
-            : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(flex: fa, child: a), const SizedBox(width: 24), Expanded(flex: fb, child: b)]));
+            ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [a, const SizedBox(height: 14), b])
+            : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(flex: fa, child: a), const SizedBox(width: 14), Expanded(flex: fb, child: b)]));
 
     return WebPage(
       title: 'E-commerce Dashboard',
@@ -238,7 +238,7 @@ class _DashboardWebState extends State<DashboardWeb> {
             child: const Row(children: [
               Icon(LucideIcons.search, size: 16, color: W.g400),
               SizedBox(width: 8),
-              Expanded(child: Text('Order ID, receipt no., name…', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: W.g400, fontSize: 14))),
+              Expanded(child: Text('Order ID, receipt no., name…', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: W.g400, fontSize: 13))),
             ]),
           ),
         ),
@@ -257,11 +257,11 @@ class _DashboardWebState extends State<DashboardWeb> {
           ),
         if (cards.isNotEmpty) WebGrid(gap: 20, minWidth: 220, children: cards),
         if (showMoney || p.seesProducts) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: 14),
           pair(showMoney ? earnings : overview, showMoney ? overview : null, 3, 2),
         ],
         if (p.seesOrders || chart != null) ...[
-          const SizedBox(height: 24),
+          const SizedBox(height: 14),
           pair(p.seesOrders ? recent : chart!, p.seesOrders ? chart : null, 3, 2),
         ],
       ],

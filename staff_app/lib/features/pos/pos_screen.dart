@@ -13,6 +13,8 @@ import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
 import '../../widgets/web.dart';
 import '../../core/barcode.dart';
+import '../orders/order_actions.dart' show printInvoice;
+import '../products/product_edit_screen.dart';
 import 'cart.dart';
 import 'receipt.dart';
 import 'scanner.dart';
@@ -37,6 +39,7 @@ class _PosScreenState extends State<PosScreen> {
   bool _autoPrint = true;
   String _paper = 'thermal_80';
   ReceiptData? _last;
+  int? _lastOrderId;
 
   @override
   void initState() {
@@ -65,6 +68,22 @@ class _PosScreenState extends State<PosScreen> {
   }
 
   void _setQ(String v) => setState(() => _q = v);
+
+  /// The last bill: the website invoice when it's saved online (same A4 / thermal settings
+  /// as the website), else the app's receipt.
+  Future<void> _printLast() async {
+    final id = _lastOrderId;
+    if (id != null && context.read<AppState>().online) {
+      await printInvoice(context, id, _last?.number ?? '');
+      return;
+    }
+    if (_last == null) return;
+    try {
+      await printReceipt(_last!, _paper);
+    } catch (_) {
+      if (mounted) toast(context, 'Printer not available — you can print again from the last bill.', error: true);
+    }
+  }
 
   void _savePrefs() => LocalStore.instance.write('pos_prefs', {'autoPrint': _autoPrint, 'paper': _paper});
 
@@ -109,6 +128,7 @@ class _PosScreenState extends State<PosScreen> {
   Future<void> _scan(List<Map<String, dynamic>> products) async {
     final s = context.read<AppState>();
     var synced = false;
+    final unknown = <String>[];
     await Navigator.push(context, MaterialPageRoute(builder: (_) => ScannerScreen(
           title: 'Scan items for the bill',
           onCode: (code) async {
@@ -119,14 +139,49 @@ class _PosScreenState extends State<PosScreen> {
               await s.syncNow(only: const ['products']);
               p = findByCode(s.list('products'), code);
             }
-            if (p == null) return ScanResult(false, 'No product with barcode $code');
+            if (p == null) {
+              if (!unknown.contains(code)) unknown.add(code);
+              return ScanResult(false, 'No product with barcode $code');
+            }
             final msg = cart.add(p);
             if (msg != null) return ScanResult(false, msg);
             final line = cart.lines.firstWhere((l) => l.productId == toInt(p!['id']));
             return ScanResult(true, '${p['name']}  ×${line.qty}  ·  ${money(cart.grandTotal)}');
           },
         )));
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    if (unknown.isEmpty) return;
+    // Codes the shop doesn't know yet: show exactly what was read, and let staff add them.
+    await showDialog(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('Not found'),
+        content: SizedBox(
+          width: 420,
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const Text('These barcodes are not on any product. Check the barcode saved on the product, or add it now:', style: TextStyle(color: AppColors.muted)),
+            const SizedBox(height: 8),
+            for (final code in unknown)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.qr_code_2_rounded),
+                title: SelectableText(code, style: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: .5)),
+                trailing: s.perms.products
+                    ? TextButton(
+                        onPressed: () {
+                          Navigator.pop(d);
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => ProductEditScreen(barcode: code)));
+                        },
+                        child: const Text('Add product'),
+                      )
+                    : null,
+              ),
+          ]),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Close'))],
+      ),
+    );
   }
 
   // ───────────────────────── complete sale ─────────────────────────
@@ -183,10 +238,12 @@ class _PosScreenState extends State<PosScreen> {
 
     var number = 'Offline';
     var offline = true;
+    int? orderId;
     if (s.online) {
       final r = await s.api.send('POST', '/api/ecommerce/billing/checkout', body: body, idem: ref);
       if (r.ok) {
         number = '${r.data['order_number'] ?? ''}';
+        orderId = r.data['order_id'] is int ? r.data['order_id'] as int : int.tryParse('${r.data['order_id']}');
         offline = false;
         s.syncNow(only: const ['orders', 'products', 'customers', 'dues']);
       } else if (r.outcome == ApiOutcome.rejected || r.outcome == ApiOutcome.forbidden) {
@@ -200,18 +257,13 @@ class _PosScreenState extends State<PosScreen> {
     final done = ReceiptData(shop: receipt.shop, number: number, at: receipt.at, customer: receipt.customer, phone: receipt.phone, lines: receipt.lines,
         subtotal: receipt.subtotal, discount: receipt.discount, gst: receipt.gst, total: receipt.total, payments: receipt.payments, due: receipt.due, offline: offline);
     _last = done;
+    _lastOrderId = orderId;
     cart.clear();
     _coupon.clear();
     setState(() => _busy = false);
     if (!mounted) return;
     toast(context, offline ? 'Saved on this device — it will upload automatically.' : 'Bill $number saved.');
-    if (_autoPrint) {
-      try {
-        await printReceipt(done, _paper);
-      } catch (_) {
-        if (mounted) toast(context, 'Printer not available — you can print again from the last bill.', error: true);
-      }
-    }
+    if (_autoPrint) await _printLast();
     _searchFocus.requestFocus();
   }
 
@@ -232,7 +284,7 @@ class _PosScreenState extends State<PosScreen> {
             title: const Text('Billing'),
             actions: [
               TextButton.icon(onPressed: _recentBills, icon: const Icon(Icons.history_rounded, size: 19), label: const Text('Recent bills')),
-              if (_last != null) IconButton(tooltip: 'Print last bill', icon: const Icon(Icons.print_outlined), onPressed: () => printReceipt(_last!, _paper)),
+              if (_last != null) IconButton(tooltip: 'Print last bill', icon: const Icon(Icons.print_outlined), onPressed: _printLast),
               IconButton(tooltip: 'Print settings', icon: const Icon(Icons.tune_rounded), onPressed: _printSettings),
               Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow())),
             ],
@@ -260,8 +312,7 @@ class _PosScreenState extends State<PosScreen> {
             child: Column(children: [
               _searchField(products),
               const SizedBox(height: 12),
-              SizedBox(height: 230, child: _productGrid(products, horizontal: true)),
-              const SizedBox(height: 12),
+              if (_q.trim().length >= 2) ...[SizedBox(height: 260, child: AppCard(padding: EdgeInsets.zero, child: _productGrid(products))), const SizedBox(height: 12)],
               Expanded(child: _cartCard()),
             ]),
           ),
@@ -274,36 +325,35 @@ class _PosScreenState extends State<PosScreen> {
         if (_q.isNotEmpty) Expanded(child: _productGrid(products)) else Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: _cartCard())),
       ]);
 
-  Widget _productGrid(List<Map<String, dynamic>> products, {bool horizontal = false}) {
+/// Search results as on the website's billing page: name, SKU · unit · stock, price — no photos.
+  Widget _productGrid(List<Map<String, dynamic>> products) {
     final list = _matches(products);
     if (list.isEmpty) return const EmptyState(icon: Icons.search_off_rounded, title: 'No products found');
-    Widget tile(Map<String, dynamic> p) {
-      final stock = p['stock'];
-      final out = p['type'] == 'physical' && stock != null && toInt(stock) <= 0;
-      return AppCard(
-        padding: const EdgeInsets.all(8),
-        onTap: out ? null : () => _add(p),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: Center(child: NetImage(p['image'], size: 84))),
-          const SizedBox(height: 6),
-          Text(p['name'] ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-          Row(children: [
-            Expanded(child: Text(money(CartLine.shelfPrice(p)), style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary))),
-            if (stock != null) Text(out ? 'Out' : '$stock', style: TextStyle(fontSize: 12, color: out ? AppColors.red : AppColors.muted, fontWeight: FontWeight.w600)),
-          ]),
-        ]),
-      );
-    }
-
-    if (horizontal) {
-      return ListView.separated(scrollDirection: Axis.horizontal, itemCount: list.length, separatorBuilder: (_, _) => const SizedBox(width: 10),
-          itemBuilder: (c, i) => SizedBox(width: 150, child: tile(list[i])));
-    }
-    return GridView.builder(
+    return ListView.separated(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(maxCrossAxisExtent: 180, mainAxisExtent: 190, crossAxisSpacing: 10, mainAxisSpacing: 10),
       itemCount: list.length,
-      itemBuilder: (c, i) => tile(list[i]),
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (c, i) {
+        final p = list[i];
+        final stock = p['stock'];
+        final out = p['type'] == 'physical' && stock != null && toInt(stock) <= 0;
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          enabled: !out,
+          onTap: () {
+            _add(p);
+            _search.clear();
+            _setQ('');
+            _searchFocus.requestFocus();
+          },
+          title: Text('${p['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5)),
+          subtitle: Text(
+            [p['sku'] != null && '${p['sku']}'.isNotEmpty ? 'SKU: ${p['sku']}' : 'No SKU', if (p['unit'] != null && '${p['unit']}'.isNotEmpty) '${p['unit']}', if (stock != null) out ? 'Out of stock' : 'Stock: $stock'].join(' · '),
+            style: TextStyle(fontSize: 12.5, color: out ? AppColors.red : AppColors.muted),
+          ),
+          trailing: Text(money(CartLine.shelfPrice(p)), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+        );
+      },
     );
   }
 

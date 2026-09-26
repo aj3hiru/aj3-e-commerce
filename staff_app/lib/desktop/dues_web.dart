@@ -83,17 +83,17 @@ class _DuesWebState extends State<DuesWeb> {
           }),
           below: const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text('→  To filter the table by these dates, set "Date range applies to" (created or promise date).', style: TextStyle(fontSize: 12.5, color: W.g600)),
+            child: Text('→  To filter the table by these dates, set "Date range applies to" (created or promise date).', style: TextStyle(fontSize: 12, color: W.g600)),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebGrid(children: [
           WebMetric(icon: LucideIcons.indianRupee, color: const Color(0xFFDC2626), value: money(total), label: 'Total Due', sub: '${dues.length} unpaid due${dues.length == 1 ? '' : 's'}', selected: _card == 'all', onTap: () => _set(() => _card = 'all')),
           WebMetric(icon: LucideIcons.triangleAlert, color: const Color(0xFFEA580C), value: money(dues.where(overdue).fold<double>(0, (t, d) => t + toDouble(d['balance']))), label: 'Overdue', sub: '${dues.where(overdue).length} past promise date', selected: _card == 'overdue', onTap: () => _set(() => _card = 'overdue')),
           WebMetric(icon: LucideIcons.calendarClock, color: const Color(0xFFD97706), value: money(dues.where(dueToday).fold<double>(0, (t, d) => t + toDouble(d['balance']))), label: 'Due Today', sub: '${dues.where(dueToday).length} promised for today', selected: _card == 'today', onTap: () => _set(() => _card = 'today')),
           WebMetric(icon: LucideIcons.users, color: const Color(0xFF0EA5E9), value: '${people.length}', label: 'People with Dues', sub: 'customers who owe money'),
         ]),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebCard(
           padding: const EdgeInsets.all(14),
           child: WebGrid(columns: 5, gap: 12, minWidth: 170, children: [
@@ -104,17 +104,17 @@ class _DuesWebState extends State<DuesWeb> {
             WebSelect<String>(icon: LucideIcons.calendar, label: 'Date range applies to', value: _applies, options: const [('ignore', 'Ignore date range'), ('created', 'Created'), ('promise', 'Promise date')], onChanged: (v) => _set(() => _applies = v)),
           ]),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebCard(
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
               const Spacer(),
-              const Text('Search:', style: TextStyle(fontSize: 15, color: W.g800)),
+              const Text('Search:', style: TextStyle(fontSize: 13, color: W.g800)),
               const SizedBox(width: 8),
               WebSearch(width: 260, hint: 'Name, phone, order, product..', onChanged: (v) => _set(() => _q = v)),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             WebTable(
               bordered: true,
               rowHeight: 82,
@@ -126,10 +126,10 @@ class _DuesWebState extends State<DuesWeb> {
                     Cell2('${d['orderNumber']}', b: '${orders[toInt(d['orderId'])]?['type'] == 'online' ? 'Online' : 'In-store'} · ${dateShort(d['createdAt'])}', aColor: W.blue,
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: toInt(d['orderId']))))),
                     Cell2(money(d['amount']), b: toDouble(d['paid']) > 0 ? 'Paid ${money(d['paid'])}' : null, bColor: const Color(0xFF16A34A)),
-                    Text(money(d['balance']), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
+                    Text(money(d['balance']), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: Color(0xFFDC2626))),
                     d['promised'] == null
-                        ? const Text('Not set', style: TextStyle(color: W.g400, fontSize: 15))
-                        : Text(dateShort(d['promised']), style: TextStyle(fontSize: 15, color: overdue(d) ? const Color(0xFFDC2626) : W.g800, fontWeight: overdue(d) ? FontWeight.w600 : FontWeight.w400)),
+                        ? const Text('Not set', style: TextStyle(color: W.g400, fontSize: 13))
+                        : Text(dateShort(d['promised']), style: TextStyle(fontSize: 13, color: overdue(d) ? const Color(0xFFDC2626) : W.g800, fontWeight: overdue(d) ? FontWeight.w600 : FontWeight.w400)),
                     WebPill(toDouble(d['paid']) > 0 ? 'Partly' : 'Unpaid', color: toDouble(d['paid']) > 0 ? W.yellow : W.grey, textColor: toDouble(d['paid']) > 0 ? W.g900 : Colors.white),
                     canCollect
                         ? Align(alignment: Alignment.centerLeft, child: WebButton('Collect', icon: LucideIcons.handCoins, color: W.green, height: 34, onPressed: () => collectDues(context, [d])))

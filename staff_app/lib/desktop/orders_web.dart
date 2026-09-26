@@ -98,8 +98,8 @@ class _OrdersWebState extends State<OrdersWeb> {
       rows.add([
         Cell2('${o['number']}', b: dateTime(o['createdAt']), aColor: W.blue, onTap: () => _open(o)),
         Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${o['customer']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: W.g900)),
-          if (phone != null) Text(phone, style: const TextStyle(fontSize: 13, color: W.g500)),
+          Text('${o['customer']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: W.g900)),
+          if (phone != null) Text(phone, style: const TextStyle(fontSize: 12, color: W.g500)),
           if (phone != null || o['address'] != null)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -123,14 +123,14 @@ class _OrdersWebState extends State<OrdersWeb> {
             onSelected: o['paymentStatus'] != 'Paid' && st != 'Canceled' && p.markPaid && online ? (_) => markOrderPaid(context, o) : null,
           ),
           const SizedBox(height: 4),
-          Text(_methodLabel('${o['paymentMethod'] ?? ''}'), style: const TextStyle(fontSize: 13, color: W.g500)),
+          Text(_methodLabel('${o['paymentMethod'] ?? ''}'), style: const TextStyle(fontSize: 12, color: W.g500)),
         ]),
         Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
           WebPillMenu(value: st, options: statusChoices(p, o), onSelected: (v) => setOrderStatus(context, o, v)),
           if (o['agentId'] != null)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Row(children: [const Icon(LucideIcons.bike, size: 13, color: Color(0xFFD97706)), const SizedBox(width: 5), Text(agentName[toInt(o['agentId'])] ?? 'Agent', style: const TextStyle(fontSize: 13, color: W.g600))]),
+              child: Row(children: [const Icon(LucideIcons.bike, size: 13, color: Color(0xFFD97706)), const SizedBox(width: 5), Flexible(child: Text(agentName[toInt(o['agentId'])] ?? 'Agent', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: W.g600)))]),
             ),
         ]),
         canAssign
@@ -141,7 +141,7 @@ class _OrdersWebState extends State<OrdersWeb> {
                   if (id != 0 && id != toInt(o['agentId'])) assignOrder(context, o, agents.firstWhere((a) => toInt(a['id']) == id));
                 },
               )
-            : (o['agentId'] != null ? Text(agentName[toInt(o['agentId'])] ?? '—', style: const TextStyle(fontSize: 15, color: W.g800)) : webDash),
+            : (o['agentId'] != null ? Text(agentName[toInt(o['agentId'])] ?? '—', style: const TextStyle(fontSize: 13, color: W.g800)) : webDash),
         Row(children: [
           WebIconAction(LucideIcons.eye, color: W.grey, tooltip: 'View', onTap: () => _open(o)),
           WebIconAction(LucideIcons.printer, color: W.grey, tooltip: 'Print bill', onTap: () => printOrder(context, o)),
@@ -171,7 +171,7 @@ class _OrdersWebState extends State<OrdersWeb> {
             ),
           ]),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebGrid(gap: 12, minWidth: 220, children: [
           metric(LucideIcons.shoppingBag, W.blue, inRange.length, 'All Orders', '${money(sum(inRange))} in this range'),
           metric(LucideIcons.clock, W.primary, inRange.where((o) => today.contains(o['createdAt'])).length, "Today's Orders", money(sum(inRange.where((o) => today.contains(o['createdAt']))))),
@@ -182,7 +182,7 @@ class _OrdersWebState extends State<OrdersWeb> {
           metric(LucideIcons.truck, W.g700, count('Out for Delivery'), 'Out for Delivery', money(sum(inRange.where((o) => o['status'] == 'Out for Delivery'))), tab: 'Out for Delivery'),
           metric(LucideIcons.circleCheck, W.g700, count('Delivered'), 'Delivered', money(sum(inRange.where((o) => o['status'] == 'Delivered'))), tab: 'Delivered'),
         ]),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebCard(
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -194,7 +194,7 @@ class _OrdersWebState extends State<OrdersWeb> {
               WebSelect<int>(width: 150, icon: LucideIcons.truck, value: _agent, options: [(0, 'All agents'), (-1, 'No agent'), for (final a in agents) (toInt(a['id']), '${a['name']}')], onChanged: (v) => _set(() => _agent = v)),
               WebSelect<String>(width: 170, icon: LucideIcons.wallet, value: _channel, options: const [('online', 'Online orders'), ('offline', 'In-store bills'), ('all', 'All orders')], onChanged: (v) => _set(() => _channel = v)),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             WebTable(
               cols: const [
                 WebCol('Order', flex: 1.3),

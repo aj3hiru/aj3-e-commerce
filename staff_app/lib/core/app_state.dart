@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart' show CookieManager;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:uuid/uuid.dart';
@@ -87,6 +88,8 @@ class AppState extends ChangeNotifier {
   DateTime? lastSync;
   String? lastError;
   Map<String, dynamic>? release;
+  /// The website's admin menu for this person (sections → links → submenus), from /api/app/v1/menu.
+  List<Map<String, dynamic>> menu = [];
   String appVersion = '';
   String deviceId = '';
 
@@ -124,6 +127,8 @@ class AppState extends ChangeNotifier {
     if (ob is List) outbox = ob.map((e) => OutboxItem.fromJson(Map<String, dynamic>.from(e))).toList();
     final ls = await _store.read('lastSync');
     if (ls is String) lastSync = DateTime.tryParse(ls);
+    final m = await _store.read('menu');
+    if (m is List) menu = m.map((e) => Map<String, dynamic>.from(e)).toList();
     _applyEffects();
     ready = true;
     notifyListeners();
@@ -188,7 +193,12 @@ class AppState extends ChangeNotifier {
     sets = {};
     hashes = {};
     outbox = [];
+    menu = [];
     await _store.clearData();
+    // Website pages opened inside the app were signed in with a cookie — sign those out too.
+    try {
+      await CookieManager.instance().deleteAllCookies();
+    } catch (_) {}
     notifyListeners();
   }
 
@@ -374,6 +384,16 @@ class AppState extends ChangeNotifier {
       await _secure.write(key: 'token', value: api.token);
     }
     release = r.data['release'] is Map ? Map<String, dynamic>.from(r.data['release']) : null;
+    notifyListeners();
+    await loadMenu();
+  }
+
+  /// Same menu as the website sidebar (kept on the device for offline starts).
+  Future<void> loadMenu() async {
+    final r = await api.get('/api/app/v1/menu');
+    if (!r.ok || r.data['menu'] is! List) return;
+    menu = (r.data['menu'] as List).map((e) => Map<String, dynamic>.from(e)).toList();
+    await _store.write('menu', menu);
     notifyListeners();
   }
 

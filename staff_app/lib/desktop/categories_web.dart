@@ -66,16 +66,16 @@ class _CategoriesWebState extends State<CategoriesWeb> {
           WebMetric(icon: LucideIcons.circleX, color: const Color(0xFFEF4444), value: '${cats.where((c) => c['status'] != 'active').length}', label: 'Inactive Categories', selected: _status == 'inactive', onTap: () => _set(() => _status = 'inactive')),
           WebMetric(icon: LucideIcons.boxes, color: W.blue, value: '$assigned', label: 'Products Assigned', onTap: () => context.read<NavController>().go('products')),
         ]),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         WebCard(
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Wrap(spacing: 16, runSpacing: 10, children: [
               WebSearch(width: 260, hint: 'Search categories...', onChanged: (v) => _set(() => _q = v)),
               WebSelect<String>(width: 160, value: _status, options: const [('all', 'Status:  All'), ('active', 'Status:  Active'), ('inactive', 'Status:  Inactive')], onChanged: (v) => _set(() => _status = v)),
               WebSelect<String>(width: 200, value: _sort, options: const [('new', 'Sort by:  Newest First'), ('old', 'Sort by:  Oldest First'), ('name', 'Sort by:  Name A–Z'), ('products', 'Sort by:  Most products')], onChanged: (v) => _set(() => _sort = v)),
             ]),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             WebTable(
               bordered: true,
               rowHeight: 74,
@@ -85,13 +85,13 @@ class _CategoriesWebState extends State<CategoriesWeb> {
                 for (final c in shown)
                   [
                     Container(decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: W.g200)), child: NetImage(c['image'], size: 48, radius: 8, placeholder: LucideIcons.image)),
-                    Text('${c['name']}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: W.g900)),
-                    Text('${c['slug'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, color: W.g500)),
+                    Text('${c['name']}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: W.g900)),
+                    Text('${c['slug'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: W.g500)),
                     InkWell(
                       onTap: () => context.read<NavController>().go('products', {'category': toInt(c['id'])}),
-                      child: Text('${count(c)}', style: const TextStyle(fontSize: 15, color: W.g900)),
+                      child: Text('${count(c)}', style: const TextStyle(fontSize: 13, color: W.g900)),
                     ),
-                    Text('${c['serial'] ?? 0}'.padLeft(3, '0'), style: const TextStyle(fontSize: 15, color: W.g700)),
+                    Text('${c['serial'] ?? 0}'.padLeft(3, '0'), style: const TextStyle(fontSize: 13, color: W.g700)),
                     WebPill(c['status'] == 'active' ? 'Active' : 'Inactive', color: c['status'] == 'active' ? W.green : W.grey),
                     Row(children: [WebIconAction(LucideIcons.squarePen, color: const Color(0xFF4F6EF7), tooltip: 'Edit', onTap: () => editCategory(context, c))]),
                   ],

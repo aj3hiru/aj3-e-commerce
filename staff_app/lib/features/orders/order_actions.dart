@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
@@ -6,7 +7,9 @@ import '../../core/format.dart';
 import '../../core/perms.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/window.dart';
 import '../pos/receipt.dart';
+import '../web/web_page.dart';
 
 /// Order actions usable from any card (dashboard, lists): they show at once and sync.
 Future<void> orderAction(BuildContext context, Map<String, dynamic> o, String label, Map<String, dynamic> body, Map<String, dynamic> fields, {bool delivery = false}) async {
@@ -96,11 +99,72 @@ Future<void> setOrderStatus(BuildContext context, Map<String, dynamic> o, String
   }
 }
 
+/// Print an order's invoice exactly as the website does: its invoice page follows
+/// Business Settings → Invoice Settings (A4, thermal 58 / 80 mm, or ask each time,
+/// which fields show). Bills not yet uploaded (made offline) print the app's own receipt.
 Future<void> printOrder(BuildContext context, Map<String, dynamic> o) async {
   final s = context.read<AppState>();
+  if (o['localRef'] == null && toInt(o['id']) > 0 && s.online) {
+    await printInvoice(context, toInt(o['id']), '${o['number']}');
+    return;
+  }
   try {
     await reprintOrder(s.settings, o, s.settings['printerFormat'] as String? ?? 'thermal_80');
   } catch (_) {
     if (context.mounted) toast(context, 'Printer not available.', error: true);
+  }
+}
+
+/// The website invoice in a window (desktop) or page (phone), opening the print dialog.
+Future<void> printInvoice(BuildContext context, int orderId, String number) => showAppWindow(
+      context,
+      title: 'Invoice $number',
+      icon: LucideIcons.printer,
+      width: 900,
+      height: 780,
+      child: _InvoiceView(orderId: orderId, number: number),
+    );
+
+/// "As set" follows Invoice Settings (A4 / thermal / ask); A4 and Thermal print that way this time.
+class _InvoiceView extends StatefulWidget {
+  final int orderId;
+  final String number;
+  const _InvoiceView({required this.orderId, required this.number});
+  @override
+  State<_InvoiceView> createState() => _InvoiceViewState();
+}
+
+class _InvoiceViewState extends State<_InvoiceView> {
+  String _format = '';
+
+  @override
+  Widget build(BuildContext context) {
+    Widget choice(String f, String label, IconData icon) => Padding(
+          padding: const EdgeInsets.only(right: 6),
+          child: ChoiceChip(
+            avatar: Icon(icon, size: 16),
+            label: Text(label),
+            selected: _format == f,
+            onSelected: (_) => setState(() => _format = f),
+          ),
+        );
+    final q = _format.isEmpty ? 'print=1' : 'format=$_format&print=1';
+    return Column(children: [
+      Container(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        color: Colors.white,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            choice('', 'As set in Invoice Settings', LucideIcons.settings),
+            choice('a4', 'A4', LucideIcons.fileText),
+            choice('thermal_80', 'Thermal 80 mm', LucideIcons.receipt),
+            choice('thermal_58', 'Thermal 58 mm', LucideIcons.receipt),
+          ]),
+        ),
+      ),
+      const Divider(height: 1),
+      Expanded(child: WebPageScreen(key: ValueKey(_format), path: '/admin/ecommerce/invoice/${widget.orderId}?$q', title: 'Invoice ${widget.number}', bare: true)),
+    ]);
   }
 }

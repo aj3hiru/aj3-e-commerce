@@ -68,15 +68,15 @@ class _ProfileWebState extends State<ProfileWeb> {
     final hidden = pw != null && _show[pw] != true;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 14, color: W.g700))),
-        if (note != null) Text(note, style: const TextStyle(fontSize: 13, color: W.g400)),
+        Expanded(child: Text(label, style: const TextStyle(fontSize: 13, color: W.g700))),
+        if (note != null) Text(note, style: const TextStyle(fontSize: 12, color: W.g400)),
       ]),
       const SizedBox(height: 8),
       TextField(
         controller: c,
         obscureText: hidden,
         keyboardType: type,
-        style: const TextStyle(fontSize: 15),
+        style: const TextStyle(fontSize: 13),
         onChanged: (_) => setState(() {}),
         decoration: InputDecoration(
           hintText: hint,
@@ -101,7 +101,7 @@ class _ProfileWebState extends State<ProfileWeb> {
     Widget row2(Widget a, Widget b) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: a), const SizedBox(width: 14), Expanded(child: b)]);
     Widget title(IconData i, String t) => Padding(
           padding: const EdgeInsets.only(bottom: 18),
-          child: Row(children: [Icon(i, size: 19, color: _magenta), const SizedBox(width: 10), Text(t, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: W.g800))]),
+          child: Row(children: [Icon(i, size: 19, color: _magenta), const SizedBox(width: 10), Text(t, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: W.g800))]),
         );
     Widget settingRow(IconData icon, String t, String sub, VoidCallback? onTap, {Widget? trailing}) => InkWell(
           onTap: onTap,
@@ -110,7 +110,7 @@ class _ProfileWebState extends State<ProfileWeb> {
             child: Row(children: [
               Container(width: 38, height: 38, decoration: BoxDecoration(color: const Color(0xFFFCE7F6), borderRadius: BorderRadius.circular(8)), child: Icon(icon, size: 18, color: _magenta)),
               const SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(t, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)), Text(sub, style: const TextStyle(fontSize: 13, color: W.g500))])),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)), Text(sub, style: const TextStyle(fontSize: 12, color: W.g500))])),
               trailing ?? const Icon(LucideIcons.chevronRight, size: 18, color: W.g400),
             ]),
           ),
@@ -164,14 +164,14 @@ class _ProfileWebState extends State<ProfileWeb> {
                   ]),
                 ),
                 const SizedBox(height: 6),
-                Text(u['avatar'] == null ? 'Add photo' : 'Change photo', style: const TextStyle(fontSize: 12.5, color: W.g500)),
+                Text(u['avatar'] == null ? 'Add photo' : 'Change photo', style: const TextStyle(fontSize: 12, color: W.g500)),
                 const SizedBox(height: 10),
-                Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: W.g800)),
+                Text(name, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: W.g800)),
                 const SizedBox(height: 6),
                 WebBadge('${u['roleLabel'] ?? ''}', color: W.primary, bg: const Color(0xFFF3E8FF)),
                 if (u['since'] != null) ...[
                   const SizedBox(height: 8),
-                  Text('Member since ${DateFormat('MMMM yyyy').format(DateTime.parse('${u['since']}'))}', style: const TextStyle(fontSize: 13, color: W.g500)),
+                  Text('Member since ${DateFormat('MMMM yyyy').format(DateTime.parse('${u['since']}'))}', style: const TextStyle(fontSize: 12, color: W.g500)),
                 ],
               ]),
             ),
@@ -182,9 +182,9 @@ class _ProfileWebState extends State<ProfileWeb> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             title(LucideIcons.user, 'Personal details'),
             row2(_field('First name', _first), _field('Last name', _last)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             row2(_field('Mobile number', _phone, icon: LucideIcons.phone, hint: '10-digit mobile', note: 'You can log in with it', type: TextInputType.phone), _field('Email', _email, icon: LucideIcons.mail, type: TextInputType.emailAddress)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             row2(_field('Username', _username, icon: LucideIcons.atSign), const SizedBox()),
             const SizedBox(height: 18),
             Align(alignment: Alignment.centerLeft, child: WebButton(_savingDetails ? 'Saving…' : 'Save details', icon: LucideIcons.save, color: _magenta, height: 44, onPressed: _savingDetails ? null : _saveDetails)),
@@ -195,7 +195,7 @@ class _ProfileWebState extends State<ProfileWeb> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             title(LucideIcons.keyRound, 'Change password'),
             _field('Current password', _cur, icon: LucideIcons.lock, pw: 'cur'),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             row2(_field('New password', _next, icon: LucideIcons.lock, note: 'Min 6 characters', pw: 'next'), _field('Confirm new password', _again, icon: LucideIcons.lock, pw: 'again')),
             const SizedBox(height: 18),
             Align(

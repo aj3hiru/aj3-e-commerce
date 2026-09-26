@@ -221,7 +221,9 @@ class NetImage extends StatefulWidget {
   final double size;
   final double radius;
   final IconData placeholder;
-  const NetImage(this.path, {super.key, this.size = 48, this.radius = 10, this.placeholder = Icons.inventory_2_outlined});
+  final BoxFit fit;
+  final double? width; // wider than tall (logos)
+  const NetImage(this.path, {super.key, this.size = 48, this.radius = 10, this.placeholder = Icons.inventory_2_outlined, this.fit = BoxFit.cover, this.width});
   @override
   State<NetImage> createState() => _NetImageState();
 }
@@ -276,10 +278,10 @@ class _NetImageState extends State<NetImage> {
   Widget build(BuildContext context) => ClipRRect(
         borderRadius: BorderRadius.circular(widget.radius),
         child: SizedBox(
-          width: widget.size,
+          width: widget.width ?? widget.size,
           height: widget.size,
           child: _file != null
-              ? Image.file(_file!, fit: BoxFit.cover, errorBuilder: (_, _, _) => _ph())
+              ? Image.file(_file!, fit: widget.fit, errorBuilder: (_, _, _) => _ph())
               : _ph(),
         ),
       );

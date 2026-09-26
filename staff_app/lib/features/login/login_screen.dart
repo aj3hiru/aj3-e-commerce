@@ -77,18 +77,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final wide = isWide(context);
-    final form = ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 400),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Row(children: [
-          Container(width: 48, height: 48, decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(14)), child: const Icon(Icons.storefront_rounded, color: Colors.white)),
-          const SizedBox(width: 12),
-          const Expanded(child: Text(AppConfig.appName, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))),
-        ]),
-        const SizedBox(height: 28),
-        _fields(),
-      ]),
-    );
     if (!wide) {
       // Phones: brand-coloured header with a curved bottom, the form below.
       return Scaffold(
@@ -111,14 +99,81 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     }
+    // Windows: the website's staff login card.
+    const magenta = Color(0xFFA21C87);
+    final biz = context.read<AppState>().settings['businessName'] as String?;
+    InputDecoration box({Widget? suffix}) => InputDecoration(
+          suffixIcon: suffix,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: Color(0xFFD1D5DB))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: const BorderSide(color: magenta, width: 1.5)),
+        );
+    const label = TextStyle(fontSize: 14, color: Color(0xFF4B5563));
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Card(child: Padding(padding: const EdgeInsets.all(36), child: form)),
-          ),
+      backgroundColor: const Color(0xFFF2F2F7),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 358,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+                border: const Border(top: BorderSide(color: magenta, width: 3)),
+                boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 24, offset: Offset(0, 8))],
+              ),
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 28),
+              child: AutofillGroup(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Text(biz?.trim().isNotEmpty == true ? biz! : AppConfig.appName, textAlign: TextAlign.center, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700, color: magenta)),
+                  if (widget.again) const Padding(padding: EdgeInsets.only(top: 8), child: Text('Your login has ended. Nothing you did offline is lost.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: Color(0xFF6B7280)))),
+                  const SizedBox(height: 30),
+                  const Text('Username, mobile or email', style: label),
+                  const SizedBox(height: 8),
+                  TextField(controller: _id, autofocus: true, textInputAction: TextInputAction.next, autofillHints: const [AutofillHints.username], decoration: box()),
+                  const SizedBox(height: 18),
+                  const Text('Password', style: label),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _pw,
+                    obscureText: !_show,
+                    onSubmitted: (_) => _submit(),
+                    autofillHints: const [AutofillHints.password],
+                    decoration: box(suffix: IconButton(icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 19, color: const Color(0xFF6B7280)), onPressed: () => setState(() => _show = !_show))),
+                  ),
+                  if (_error != null) ...[
+                    const SizedBox(height: 14),
+                    Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFFEF2F2), borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFFFECACA))),
+                        child: Text(_error!, style: const TextStyle(color: Color(0xFFB91C1C), fontSize: 13.5))),
+                  ],
+                  if (_advanced) ...[
+                    const SizedBox(height: 18),
+                    const Text('Server', style: label),
+                    const SizedBox(height: 8),
+                    TextField(controller: _server, keyboardType: TextInputType.url, decoration: box()),
+                  ],
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    height: 44,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: magenta, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)), textStyle: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontSize: 15)),
+                      onPressed: _busy ? null : _submit,
+                      child: _busy ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white)) : const Text('Log In'),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+            const SizedBox(height: 22),
+            TextButton.icon(
+              onPressed: () => setState(() => _advanced = !_advanced),
+              style: TextButton.styleFrom(foregroundColor: const Color(0xFF6B7280)),
+              icon: const Icon(Icons.dns_outlined, size: 15),
+              label: Text(_advanced ? 'Hide server address' : 'Server address', style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 13.5)),
+            ),
+          ]),
         ),
       ),
     );

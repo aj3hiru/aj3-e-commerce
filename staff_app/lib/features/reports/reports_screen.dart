@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
@@ -10,6 +12,9 @@ import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
 import 'report_export.dart';
+import '../../widgets/web.dart';
+
+part 'reports_web.dart';
 
 /// Report Builder — same numbers as the website: any day / month / range,
 /// store or online, whole business or one staff member; PDF and Excel.
@@ -54,6 +59,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   void _set(Map<String, String> p) {
     setState(() => _params = {...p, if (_params['channel'] != null && !p.containsKey('channel')) 'channel': _params['channel']!, if (_params['user'] != null && !p.containsKey('user')) 'user': _params['user']!});
+    _load();
+  }
+
+  void _setChannel(String? v) {
+    setState(() => v == null ? _params.remove('channel') : _params['channel'] = v);
+    _load();
+  }
+
+  void _setUser(String? v) {
+    setState(() => v == null || v.isEmpty ? _params.remove('user') : _params['user'] = v);
     _load();
   }
 
@@ -108,6 +123,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final preset = _params['range'];
     Widget chip(String label, String range) => Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(label: Text(label), selected: preset == range, onSelected: (_) => _set({'range': range})));
 
+    if (wide) return _webPage(r, k, staffList, preset);
     return Scaffold(
       appBar: AppBar(leading: menuButton(context), 
         title: const Text('Reports'),

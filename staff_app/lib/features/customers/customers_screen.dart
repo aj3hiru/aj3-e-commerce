@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -6,6 +7,7 @@ import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/web.dart';
 import '../../widgets/mobile.dart';
 import '../dues/collect_sheet.dart';
 import '../orders/orders_screen.dart';
@@ -90,7 +92,12 @@ class CustomerProfile extends StatelessWidget {
     final spent = orders.where((o) => o['status'] != 'Canceled').fold<double>(0, (t, o) => t + toDouble(o['total']));
     final phone = c['phone'] as String?;
     return Scaffold(
-      appBar: AppBar(title: Text('${c['name']}'), actions: [if (s.perms.customers) IconButton(icon: const Icon(Icons.edit_outlined), onPressed: () => editCustomer(context, c))]),
+      backgroundColor: isWide(context) ? W.g50 : null,
+      appBar: isWide(context)
+          ? WebAppBar(title: '${c['name']}', subtitle: 'Customer profile — contact, dues and orders', actions: [
+              if (s.perms.customers) WebButton('Edit', icon: LucideIcons.squarePen, onPressed: () => editCustomer(context, c)),
+            ])
+          : AppBar(title: Text('${c['name']}'), actions: [if (s.perms.customers) IconButton(icon: const Icon(Icons.edit_outlined), onPressed: () => editCustomer(context, c))]),
       body: PageBody(
         maxWidth: 1000,
         child: ListView(padding: const EdgeInsets.all(16), children: [

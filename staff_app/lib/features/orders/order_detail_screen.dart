@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -7,7 +8,12 @@ import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
+import '../../widgets/web.dart';
+import '../customers/customers_screen.dart' show CustomerProfile;
 import '../pos/receipt.dart';
+import 'order_actions.dart';
+
+part 'order_detail_web.dart';
 
 /// One order: items, bill, customer, history, and the actions this role may take.
 /// Actions work offline too — they show at once and reach the server when it can.
@@ -128,6 +134,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       OutlinedButton.icon(icon: const Icon(Icons.print_outlined), label: const Text('Print bill'), onPressed: () => _print(s, o)),
     ];
 
+    if (wide) return _web(s, o, agents, agentName, mine);
     final items = ((o['items'] as List?) ?? const []).cast<Map>();
     final main = [
       AppCard(

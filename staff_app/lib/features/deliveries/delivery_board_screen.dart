@@ -6,6 +6,7 @@ import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/web.dart';
 import '../../widgets/mobile.dart';
 import '../orders/order_detail_screen.dart';
 import '../orders/orders_screen.dart';
@@ -130,7 +131,8 @@ class _AgentOrders extends StatelessWidget {
     final s = context.watch<AppState>();
     final list = s.list('orders').where((o) => toInt(o['agentId']) == toInt(agent['id'])).toList();
     return Scaffold(
-      appBar: AppBar(title: Text('${agent['name']}')),
+      backgroundColor: isWide(context) ? W.g50 : null,
+      appBar: isWide(context) ? WebAppBar(title: '${agent['name']}', subtitle: 'Orders given to this delivery agent') : AppBar(title: Text('${agent['name']}')),
       body: PageBody(
         maxWidth: 900,
         child: list.isEmpty

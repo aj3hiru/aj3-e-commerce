@@ -11,7 +11,6 @@ import 'package:sri_staff/core/app_state.dart';
 import 'package:sri_staff/core/local_store.dart';
 import 'package:sri_staff/core/nav.dart';
 import 'package:sri_staff/features/categories/categories_screen.dart';
-import 'package:sri_staff/features/deliveries/delivery_board_screen.dart';
 import 'package:sri_staff/features/account/account_screen.dart';
 import 'package:sri_staff/core/perms.dart';
 import 'package:sri_staff/core/theme.dart';
@@ -21,11 +20,9 @@ import 'package:sri_staff/features/dues/dues_screen.dart';
 import 'package:sri_staff/features/login/login_screen.dart';
 import 'package:sri_staff/features/orders/order_detail_screen.dart';
 import 'package:sri_staff/features/orders/orders_screen.dart';
-import 'package:sri_staff/features/pos/pos_screen.dart';
 import 'package:sri_staff/features/products/product_edit_screen.dart';
 import 'package:sri_staff/features/products/products_screen.dart';
 import 'package:sri_staff/features/shell/shell.dart';
-import 'package:sri_staff/features/staff/staff_screen.dart';
 
 Future<void> _fonts() async {
   final inter = FontLoader('Inter');
@@ -36,6 +33,16 @@ Future<void> _fonts() async {
   final root = Platform.environment['FLUTTER_ROOT'] ?? '';
   final icons = FontLoader('MaterialIcons')..addFont(Future.value(ByteData.sublistView(File('$root/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf').readAsBytesSync())));
   await icons.load();
+  // Icon fonts of the website look (Font Awesome in the sidebar, Lucide on the pages).
+  final cache = '${Platform.environment['PUB_CACHE'] ?? '${Platform.environment['HOME']}/.pub-cache'}/hosted/pub.dev';
+  for (final (family, file) in [
+    ('packages/font_awesome_flutter/FontAwesomeSolid', '$cache/font_awesome_flutter-11.0.0/lib/fonts/Font-Awesome-7-Free-Solid-900.otf'),
+    ('packages/font_awesome_flutter/FontAwesomeRegular', '$cache/font_awesome_flutter-11.0.0/lib/fonts/Font-Awesome-7-Free-Regular-400.otf'),
+    ('packages/lucide_icons_flutter/Lucide', '$cache/lucide_icons_flutter-3.1.20/assets/lucide.ttf'),
+  ]) {
+    if (!File(file).existsSync()) continue; // another cache layout: icons show as boxes, the test still runs
+    await (FontLoader(family)..addFont(Future.value(ByteData.sublistView(File(file).readAsBytesSync())))).load();
+  }
 }
 
 Map<String, dynamic> _all(bool v) => {
@@ -90,12 +97,12 @@ AppState _state({String role = 'admin', Map<String, dynamic>? perms}) {
   return s;
 }
 
-Future<void> _shot(WidgetTester t, String name, Widget screen, {Size size = const Size(412, 900), AppState? state}) async {
+Future<void> _shot(WidgetTester t, String name, Widget screen, {Size size = const Size(412, 900), AppState? state, String? section}) async {
   debugDisableShadows = false; // real soft shadows, as on a device
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
   AppColors.useMobileStyle(size.width < 900); // as main.dart does on Android
-  await t.pumpWidget(MultiProvider(providers: [ChangeNotifierProvider.value(value: state ?? _state()), ChangeNotifierProvider(create: (_) => NavController())], child: MaterialApp(debugShowCheckedModeBanner: false, theme: buildTheme(), home: screen)));
+  await t.pumpWidget(MultiProvider(providers: [ChangeNotifierProvider.value(value: state ?? _state()), ChangeNotifierProvider(create: (_) => section == null ? NavController() : (NavController()..go(section)))], child: MaterialApp(debugShowCheckedModeBanner: false, theme: buildTheme(), home: screen)));
   for (var i = 0; i < 5; i++) {
     await t.pump(const Duration(milliseconds: 200));
   }
@@ -107,6 +114,22 @@ void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     await _fonts();
+    final now = DateTime.now().toUtc().toIso8601String();
+    await LocalStore.instance.write('report', {
+      'rangeLabel': '26 Sep 2026', 'generatedAt': now,
+      'business': {'name': 'Sri Andal Traders'},
+      'kpis': {'sales': 2330, 'orders': 3, 'units': 7, 'due': 0, 'dueOrders': 0, 'collected': 0, 'collections': 0, 'productsAdded': 0, 'newDues': 0, 'newDueCount': 0, 'discount': 0, 'gst': 110.5, 'onlinePlaced': 1},
+      'payments': [{'method': 'Cash', 'amount': 1830}, {'method': 'UPI', 'amount': 500}],
+      'channels': {'offline': {'amount': 2330, 'orders': 3}, 'online': {'amount': 0, 'orders': 0}},
+      'onlineStatus': [{'status': 'Pending', 'count': 0}, {'status': 'In Progress', 'count': 0}, {'status': 'Out for Delivery', 'count': 1}, {'status': 'Delivered', 'count': 0}, {'status': 'Canceled', 'count': 0}],
+      'aging': [{'bucket': '0 – 30 days', 'amount': 0, 'orders': 0}, {'bucket': '31 – 60 days', 'amount': 0, 'orders': 0}, {'bucket': '61 – 90 days', 'amount': 0, 'orders': 0}, {'bucket': '90+ days', 'amount': 0, 'orders': 0}],
+      'timeline': [
+        {'at': now, 'orderNumber': 'ORD0000013', 'channel': 'offline', 'customer': 'Walk-in Customer', 'product': 'Hawan Samagri 500g', 'qty': 1, 'total': 300},
+        {'at': now, 'orderNumber': 'ORD0000012', 'channel': 'offline', 'customer': 'Aman Kumar', 'product': 'Pure Cow Ghee 1L', 'qty': 2, 'total': 1300},
+      ],
+      'products': [{'name': 'Pure Cow Ghee 1L', 'sku': 'GH1L', 'orders': 1, 'qty': 2, 'revenue': 1300, 'lastSoldAt': now}, {'name': 'Hawan Samagri 500g', 'sku': 'HS500', 'orders': 1, 'qty': 1, 'revenue': 300, 'lastSoldAt': now}],
+      'daily': [], 'collections': [], 'agents': [], 'staff': [], 'added': [], 'activity': [], 'staffList': [],
+    });
     await LocalStore.instance.write('dashboard', {
       'today': '2026-09-26',
       'sales': {'today': 18450.5, 'count': 23, 'store': 12950.5, 'online': 5500, 'yesterday': 16100,
@@ -134,19 +157,24 @@ void main() {
   testWidgets('home desktop', (t) => _shot(t, 'home_desktop', const Shell(), size: desktop));
   testWidgets('pos desktop', (t) async {
     final s = _state();
-    await _shot(t, 'pos_desktop_empty', const PosScreen(), size: desktop, state: s);
+    await _shot(t, 'pos_desktop_empty', const Shell(), size: desktop, state: s, section: 'pos');
   });
   testWidgets('orders phone', (t) => _shot(t, 'orders_phone', const OrdersScreen()));
   testWidgets('order detail desktop', (t) => _shot(t, 'order_detail_desktop', const OrderDetailScreen(orderId: 17), size: desktop));
   testWidgets('order detail phone', (t) => _shot(t, 'order_detail_phone', const OrderDetailScreen(orderId: 17)));
   testWidgets('products phone', (t) => _shot(t, 'products_phone', const ProductsScreen()));
   testWidgets('product edit desktop', (t) => _shot(t, 'product_edit_desktop', ProductEditScreen(product: _state().list('products').first), size: desktop));
-  testWidgets('customers desktop', (t) => _shot(t, 'customers_desktop', const CustomersScreen(), size: desktop));
   testWidgets('customer profile phone', (t) => _shot(t, 'customer_profile_phone', const CustomerProfile(id: 2)));
   testWidgets('dues phone', (t) => _shot(t, 'dues_phone', const DuesScreen()));
-  testWidgets('staff desktop', (t) => _shot(t, 'staff_desktop', const StaffScreen(), size: desktop));
   testWidgets('agent phone', (t) => _shot(t, 'agent_home_phone', const Shell(), state: _state(role: 'delivery_agent', perms: {'delivery': {'deliver': true}, 'dashboard_access': true})));
-  testWidgets('board desktop', (t) => _shot(t, 'board_desktop', const DeliveryBoardScreen(), size: desktop));
+  for (final x in ['products', 'categories', 'customers', 'dues', 'board', 'staff']) {
+    testWidgets('$x web', (t) => _shot(t, '${x}_web', const Shell(), size: desktop, section: x));
+  }
+  for (final x in ['reports', 'account']) {
+    testWidgets('$x web', (t) => _shot(t, '${x}_web', const Shell(), size: desktop, section: x));
+  }
+  testWidgets('customer profile desktop', (t) => _shot(t, 'customer_profile_desktop', const CustomerProfile(id: 2), size: desktop));
+  testWidgets('orders desktop', (t) => _shot(t, 'orders_desktop', const Shell(), size: desktop, section: 'orders'));
   testWidgets('categories phone', (t) => _shot(t, 'categories_phone', const CategoriesScreen()));
   testWidgets('account phone', (t) => _shot(t, 'account_phone', const AccountScreen()));
   testWidgets('my deliveries phone', (t) => _shot(t, 'my_deliveries_phone', const MyDeliveriesScreen(), state: _state(role: 'delivery_agent', perms: {'delivery': {'deliver': true}, 'dashboard_access': true})));

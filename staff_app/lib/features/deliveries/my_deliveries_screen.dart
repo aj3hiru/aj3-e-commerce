@@ -7,6 +7,7 @@ import '../../core/nav.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/web.dart';
 import '../../widgets/mobile.dart';
 import '../orders/order_detail_screen.dart';
 
@@ -39,7 +40,8 @@ class _MyDeliveriesScreenState extends State<MyDeliveriesScreen> {
     final list = _done ? finished : active;
 
     return Scaffold(
-      appBar: AppBar(leading: menuButton(context), title: const Text('My deliveries'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
+      backgroundColor: isWide(context) ? W.g50 : null,
+      appBar: isWide(context) ? const WebAppBar(title: 'My Deliveries', subtitle: 'Orders given to you — deliver, collect cash and mark them done', back: false) : AppBar(leading: menuButton(context), title: const Text('My deliveries'), actions: [Padding(padding: const EdgeInsets.only(right: 12), child: SyncBadge(onTap: () => s.syncNow(force: true)))]),
       body: RefreshIndicator(
         onRefresh: () => s.syncNow(only: const ['deliveries']),
         child: PageBody(

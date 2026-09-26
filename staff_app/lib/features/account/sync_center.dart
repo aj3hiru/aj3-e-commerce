@@ -5,6 +5,7 @@ import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/web.dart';
 
 /// Everything about syncing in one place: connection, last update, and each
 /// change still waiting to reach the server (with Retry / Discard for any the
@@ -16,7 +17,8 @@ class SyncCenter extends StatelessWidget {
     final s = context.watch<AppState>();
     final busy = s.phase != SyncPhase.idle;
     return Scaffold(
-      appBar: AppBar(title: const Text('Sync')),
+      backgroundColor: isWide(context) ? W.g50 : null,
+      appBar: isWide(context) ? const WebAppBar(title: 'Sync', subtitle: 'Changes made on this computer and when they reached the server') : AppBar(title: const Text('Sync')),
       body: PageBody(
         maxWidth: 820,
         child: ListView(padding: const EdgeInsets.all(16), children: [

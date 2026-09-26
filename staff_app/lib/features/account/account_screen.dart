@@ -54,7 +54,7 @@ class AccountScreen extends StatelessWidget {
               top: 128,
               child: InkWell(
                 customBorder: const CircleBorder(),
-                onTap: () => _changePhoto(context),
+                onTap: () => changePhoto(context),
                 child: Stack(children: [
                   Container(padding: const EdgeInsets.all(4), decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Color(0x22000000), blurRadius: 14, offset: Offset(0, 4))]), child: Avatar(u['name'] ?? '', photo: u['avatar'], size: 96)),
                   Positioned(right: 4, bottom: 4, child: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)), child: const Icon(Icons.photo_camera_rounded, color: Colors.white, size: 15))),
@@ -75,7 +75,7 @@ class AccountScreen extends StatelessWidget {
               child: Column(children: [
                 item(Icons.person_rounded, AppColors.primary, AppColors.primarySoft, 'Edit my details', u['email'] as String?, () => _editDetails(context)),
                 item(Icons.lock_rounded, const Color(0xFF7C5CE0), AppColors.lilac, 'Change password', null, () => _changePassword(context)),
-                item(Icons.print_rounded, const Color(0xFF3B7BE0), AppColors.sky, 'Printing', 'Paper size and automatic receipt', () => _printing(context)),
+                item(Icons.print_rounded, const Color(0xFF3B7BE0), AppColors.sky, 'Printing', 'Paper size and automatic receipt', () => printingSettings(context)),
                 item(Icons.sync_rounded, const Color(0xFF12A37F), AppColors.mint, 'Sync', s.pending > 0 ? '${s.pending} change(s) waiting' : 'All saved', () => _sync(context)),
                 item(Icons.system_update_rounded, const Color(0xFFE09A00), AppColors.cream, 'App version',
                     s.appVersion.isEmpty ? '—' : 'v${s.appVersion}${s.release?['version'] != null ? ' · latest v${s.release!['version']}' : ''}', s.release != null ? () => openUpdate(context, s.release!) : null,
@@ -99,7 +99,7 @@ class AccountScreen extends StatelessWidget {
             subtitle: [u['roleLabel'], u['phone'], u['email']].where((x) => x != null && '$x'.isNotEmpty).join(' · '),
             trailing: InkWell(
               customBorder: const CircleBorder(),
-              onTap: () => _changePhoto(context),
+              onTap: () => changePhoto(context),
               child: Stack(children: [
                 Container(padding: const EdgeInsets.all(3), decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: Avatar(u['name'] ?? '', photo: u['avatar'], size: 64)),
                 Positioned(right: 0, bottom: 0, child: Container(padding: const EdgeInsets.all(5), decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle), child: const Icon(Icons.photo_camera_rounded, color: Colors.white, size: 14))),
@@ -115,7 +115,7 @@ class AccountScreen extends StatelessWidget {
               const Divider(),
               ListTile(leading: const Icon(Icons.lock_reset_rounded), title: const Text('Change password'), trailing: const Icon(Icons.chevron_right), onTap: () => _changePassword(context)),
               const Divider(),
-              ListTile(leading: const Icon(Icons.print_outlined), title: const Text('Printing'), subtitle: const Text('Paper size and automatic receipt'), trailing: const Icon(Icons.chevron_right), onTap: () => _printing(context)),
+              ListTile(leading: const Icon(Icons.print_outlined), title: const Text('Printing'), subtitle: const Text('Paper size and automatic receipt'), trailing: const Icon(Icons.chevron_right), onTap: () => printingSettings(context)),
               const Divider(),
               ListTile(leading: const Icon(Icons.sync_rounded), title: const Text('Sync'), subtitle: Text(s.pending > 0 ? '${s.pending} change(s) waiting' : 'All saved'), trailing: const Icon(Icons.chevron_right), onTap: () => _sync(context)),
               const Divider(),
@@ -139,7 +139,7 @@ class AccountScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _changePhoto(BuildContext context) async {
+  Future<void> changePhoto(BuildContext context) async {
     final s = context.read<AppState>();
     XFile? x;
     try {
@@ -163,7 +163,7 @@ class AccountScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _printing(BuildContext context) async {
+  Future<void> printingSettings(BuildContext context) async {
     final saved = await LocalStore.instance.read('pos_prefs');
     if (!context.mounted) return;
     var auto = saved is Map ? saved['autoPrint'] != false : true;

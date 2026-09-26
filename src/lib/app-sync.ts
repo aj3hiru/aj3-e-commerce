@@ -67,12 +67,18 @@ async function buildProducts() {
 }
 
 async function buildCustomers() {
-  const [rows, open] = await Promise.all([
+  const [rows, open, bought] = await Promise.all([
     prisma.ecomCustomer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, phone: true, email: true, customerType: true, status: true, address: true, avatar: true, createdAt: true } }),
     prisma.ecomCredit.groupBy({ by: ["customerId"], where: { status: { not: "paid" } }, _sum: { amount: true, amountPaid: true } }),
+    // All-time orders and spend per customer (the website's Customers table shows both).
+    prisma.ecomOrder.groupBy({ by: ["customerId"], where: { customerId: { not: null }, orderStatus: { not: "Canceled" } }, _count: { _all: true }, _sum: { totalAmount: true } }),
   ]);
   const due = new Map(open.map((d) => [d.customerId, Math.max(0, Number(d._sum.amount ?? 0) - Number(d._sum.amountPaid ?? 0))]));
-  return rows.map((c) => ({ id: c.id, name: c.name, phone: c.phone, email: c.email, type: c.customerType, status: c.status, address: c.address, avatar: c.avatar, since: iso(c.createdAt), due: Math.round((due.get(c.id) ?? 0) * 100) / 100 }));
+  const spend = new Map(bought.map((b) => [b.customerId, { orders: b._count._all, spent: Math.round(Number(b._sum.totalAmount ?? 0) * 100) / 100 }]));
+  return rows.map((c) => ({
+    id: c.id, name: c.name, phone: c.phone, email: c.email, type: c.customerType, status: c.status, address: c.address, avatar: c.avatar, since: iso(c.createdAt),
+    due: Math.round((due.get(c.id) ?? 0) * 100) / 100, orders: spend.get(c.id)?.orders ?? 0, spent: spend.get(c.id)?.spent ?? 0,
+  }));
 }
 
 const ORDER_SELECT = {
@@ -133,7 +139,7 @@ const DEPS: Record<SetName, string[]> = {
   products: ["EcomProduct", "EcomCampaign", "EcomCampaignTarget"],
   categories: ["EcomCategory"],
   brands: ["EcomBrand"],
-  customers: ["EcomCustomer", "EcomCredit", "EcomCreditPayment"],
+  customers: ["EcomCustomer", "EcomCredit", "EcomCreditPayment", "EcomOrder"],
   coupons: ["EcomCoupon"],
   orders: ["EcomOrder", "EcomOrderItem", "EcomOrderEvent", "EcomCredit", "EcomCreditPayment", "EcomCustomer"],
   dues: ["EcomCredit", "EcomCreditPayment"],

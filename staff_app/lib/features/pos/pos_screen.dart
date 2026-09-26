@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
@@ -10,9 +11,12 @@ import '../../core/local_store.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
+import '../../widgets/web.dart';
 import 'cart.dart';
 import 'receipt.dart';
 import 'scanner.dart';
+
+part 'pos_web.dart';
 
 /// Counter billing. Works fully offline: the bill is saved on this device,
 /// printed, and uploaded by itself (exactly once) when the internet is back.
@@ -58,6 +62,8 @@ class _PosScreenState extends State<PosScreen> {
     _coupon.dispose();
     super.dispose();
   }
+
+  void _setQ(String v) => setState(() => _q = v);
 
   void _savePrefs() => LocalStore.instance.write('pos_prefs', {'autoPrint': _autoPrint, 'paper': _paper});
 
@@ -206,7 +212,7 @@ class _PosScreenState extends State<PosScreen> {
           _PayIntent: CallbackAction<_PayIntent>(onInvoke: (_) => _busy ? null : _complete()),
           _ClearIntent: CallbackAction<_ClearIntent>(onInvoke: (_) => cart.clear()),
         },
-        child: Scaffold(
+        child: wide ? _webPage(products) : Scaffold(
           appBar: AppBar(leading: menuButton(context), 
             title: const Text('Billing'),
             actions: [

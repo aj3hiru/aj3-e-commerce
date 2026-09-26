@@ -97,6 +97,7 @@ class AppState extends ChangeNotifier {
   DateTime _lastMe = DateTime.fromMillisecondsSinceEpoch(0);
 
   bool get signedIn => user != null && api.token != null;
+  bool get syncing => _syncing;
   int get pending => outbox.where((o) => !o.failed).length;
   int get failed => outbox.where((o) => o.failed).length;
   Map<String, dynamic> get settings => Map<String, dynamic>.from(sets['settings'] ?? {});

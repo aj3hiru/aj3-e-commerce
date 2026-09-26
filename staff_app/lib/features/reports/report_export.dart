@@ -144,3 +144,19 @@ Future<void> exportReportExcel(BuildContext context, Map<String, dynamic> r) asy
   if (bytes == null || !context.mounted) return;
   await _deliver(context, Uint8List.fromList(bytes), '${_fileBase(r)}.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 }
+
+/// One-sheet Excel export of a list page (Orders, Products, Customers, Due…).
+Future<void> exportTable(BuildContext context, String name, List<String> head, List<List<Object?>> rows) async {
+  final book = xl.Excel.createExcel();
+  final s = book[name];
+  s.appendRow([for (final h in head) xl.TextCellValue(h)]);
+  for (final row in rows) {
+    s.appendRow([for (final c in row) c is num ? xl.DoubleCellValue(c.toDouble()) : xl.TextCellValue('${c ?? ''}')]);
+  }
+  book.delete('Sheet1');
+  final bytes = book.save();
+  if (bytes == null || !context.mounted) return;
+  final day = ist(DateTime.now().toUtc());
+  await _deliver(context, Uint8List.fromList(bytes), '$name-${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}.xlsx',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+}

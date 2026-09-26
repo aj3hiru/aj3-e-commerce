@@ -1,15 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
 import '../../core/config.dart';
 import '../../core/format.dart';
+import '../../core/local_store.dart';
 import '../../core/nav.dart';
 import '../../core/perms.dart';
 import '../../core/theme.dart';
+import '../../desktop/board_web.dart';
+import '../../desktop/categories_web.dart';
+import '../../desktop/customers_web.dart';
+import '../../desktop/dashboard_web.dart';
+import '../../desktop/dues_web.dart';
+import '../../desktop/products_web.dart';
+import '../../desktop/profile_web.dart';
+import '../../desktop/staff_web.dart';
+import '../../desktop/orders_web.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
+import '../../widgets/web.dart';
 import '../account/account_screen.dart';
 import '../account/sync_center.dart';
 import '../account/update.dart';
@@ -40,18 +52,18 @@ class Section {
 
 /// The sections this person may use — built from their role's permissions.
 List<Section> sectionsFor(Perms p) => [
-      Section('home', 'Dashboard', 'Overview', Icons.space_dashboard_outlined, Icons.space_dashboard_rounded, () => const DashboardScreen()),
+      Section('home', 'Dashboard', 'Overview', Icons.space_dashboard_outlined, Icons.space_dashboard_rounded, () => const Responsive(phone: DashboardScreen(), desktop: DashboardWeb())),
       if (p.seesPos) Section('pos', 'Billing', 'Sales', Icons.point_of_sale_outlined, Icons.point_of_sale_rounded, () => const PosScreen()),
-      if (p.seesOrders) Section('orders', 'Orders', 'Sales', Icons.receipt_long_outlined, Icons.receipt_long_rounded, () => const OrdersScreen()),
+      if (p.seesOrders) Section('orders', 'Orders', 'Sales', Icons.receipt_long_outlined, Icons.receipt_long_rounded, () => const Responsive(phone: OrdersScreen(), desktop: OrdersWeb())),
       if (p.seesMyDeliveries) Section('deliveries', 'My deliveries', 'Sales', Icons.two_wheeler_outlined, Icons.two_wheeler_rounded, () => const MyDeliveriesScreen()),
-      if (p.deliveryBoard && p.seesOrders) Section('board', 'Delivery board', 'Sales', Icons.local_shipping_outlined, Icons.local_shipping_rounded, () => const DeliveryBoardScreen()),
-      if (p.seesDues) Section('dues', 'Dues', 'Sales', Icons.account_balance_wallet_outlined, Icons.account_balance_wallet_rounded, () => const DuesScreen()),
-      if (p.seesProducts) Section('products', 'Products', 'Catalog', Icons.inventory_2_outlined, Icons.inventory_2_rounded, () => const ProductsScreen()),
-      if (p.categories) Section('categories', 'Categories', 'Catalog', Icons.category_outlined, Icons.category_rounded, () => const CategoriesScreen()),
-      if (p.seesCustomers) Section('customers', 'Customers', 'People', Icons.people_alt_outlined, Icons.people_alt_rounded, () => const CustomersScreen()),
-      if (p.seesStaff) Section('staff', 'Staff', 'People', Icons.badge_outlined, Icons.badge_rounded, () => const StaffScreen()),
+      if (p.deliveryBoard && p.seesOrders) Section('board', 'Delivery board', 'Sales', Icons.local_shipping_outlined, Icons.local_shipping_rounded, () => const Responsive(phone: DeliveryBoardScreen(), desktop: BoardWeb())),
+      if (p.seesDues) Section('dues', 'Dues', 'Sales', Icons.account_balance_wallet_outlined, Icons.account_balance_wallet_rounded, () => const Responsive(phone: DuesScreen(), desktop: DuesWeb())),
+      if (p.seesProducts) Section('products', 'Products', 'Catalog', Icons.inventory_2_outlined, Icons.inventory_2_rounded, () => const Responsive(phone: ProductsScreen(), desktop: ProductsWeb())),
+      if (p.categories) Section('categories', 'Categories', 'Catalog', Icons.category_outlined, Icons.category_rounded, () => const Responsive(phone: CategoriesScreen(), desktop: CategoriesWeb())),
+      if (p.seesCustomers) Section('customers', 'Customers', 'People', Icons.people_alt_outlined, Icons.people_alt_rounded, () => const Responsive(phone: CustomersScreen(), desktop: CustomersWeb())),
+      if (p.seesStaff) Section('staff', 'Staff', 'People', Icons.badge_outlined, Icons.badge_rounded, () => const Responsive(phone: StaffScreen(), desktop: StaffWeb())),
       if (p.seesReports) Section('reports', 'Reports', 'Insights', Icons.insert_chart_outlined_rounded, Icons.insert_chart_rounded, () => const ReportsScreen()),
-      Section('account', 'Profile', 'Account', Icons.person_outline_rounded, Icons.person_rounded, () => const AccountScreen()),
+      Section('account', 'Profile', 'Account', Icons.person_outline_rounded, Icons.person_rounded, () => const Responsive(phone: AccountScreen(), desktop: ProfileWeb())),
     ];
 
 /// Badge counts shown on menu items (new orders, deliveries to do, low stock…).
@@ -121,11 +133,47 @@ class _ShellState extends State<Shell> {
     });
   }
 
+  final _content = GlobalKey<NavigatorState>();
+  String? _lastSection;
+
+  void _goWeb(NavController nav, String id) {
+    _content.currentState?.popUntil((r) => r.isFirst);
+    nav.go(id);
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    final s = context.read<AppState>();
+    final msg = s.pending > 0
+        ? '${s.pending} change(s) have not reached the server yet. If you log out now they will be LOST. Connect to the internet first to send them.'
+        : 'You can log in again any time.';
+    if (await confirm(context, 'Log out?', msg, ok: 'Log out', danger: s.pending > 0)) s.logout();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    webUserMenu = (ctx, action) {
+      switch (action) {
+        case 'profile':
+          _goWeb(context.read<NavController>(), 'account');
+        case 'sync':
+          Navigator.of(ctx).push(MaterialPageRoute(builder: (_) => const SyncCenter()));
+        case 'logout':
+          _logout(context);
+      }
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final nav = context.watch<NavController>();
     _checkNewOrders();
+    // A card or search result switched section: close any open detail page first.
+    if (_lastSection != null && _lastSection != nav.section) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _content.currentState?.popUntil((r) => r.isFirst));
+    }
+    _lastSection = nav.section;
     final sections = sectionsFor(s.perms);
     final current = sections.any((x) => x.id == nav.section) ? nav.section : 'home';
     final wide = isWide(context);
@@ -156,7 +204,14 @@ class _ShellState extends State<Shell> {
       child: Focus(
         autofocus: true,
         child: wide
-            ? Scaffold(body: Row(children: [_Sidebar(sections: sections, current: current, badges: badges), const VerticalDivider(width: 1), Expanded(child: body)]))
+            ? Scaffold(
+                backgroundColor: W.g50,
+                body: Row(children: [
+                  _Sidebar(sections: sections, current: current, badges: badges, onGo: (id) => _goWeb(nav, id), onLogout: () => _logout(context)),
+                  // Details (an order, a customer…) open inside this area, so the sidebar stays — as on the website.
+                  Expanded(child: Navigator(key: _content, onGenerateRoute: (_) => MaterialPageRoute(builder: (_) => body))),
+                ]),
+              )
             : _phone(context, s, sections, current, badges, body),
       ),
     );
@@ -295,109 +350,133 @@ class _UpdateBar extends StatelessWidget {
       );
 }
 
-class _Sidebar extends StatelessWidget {
+/// Website sidebar (AdminSidebar.tsx): brand, grouped links, same labels and icons.
+const _webNav = <String, (String, String, FaIconData)>{
+  'home': ('Main', 'Dashboard', FontAwesomeIcons.solidHouse),
+  'pos': ('Sales', 'Billing / POS', FontAwesomeIcons.cashRegister),
+  'orders': ('Sales', 'Orders', FontAwesomeIcons.receipt),
+  'board': ('Sales', 'Deliveries', FontAwesomeIcons.solidTruck),
+  'deliveries': ('Sales', 'My Deliveries', FontAwesomeIcons.motorcycle),
+  'dues': ('Sales', 'Due Payments', FontAwesomeIcons.handHoldingDollar),
+  'products': ('Catalog', 'Products', FontAwesomeIcons.boxesStacked),
+  'categories': ('Catalog', 'Categories', FontAwesomeIcons.list),
+  'customers': ('Customers & Marketing', 'Customers', FontAwesomeIcons.userGroup),
+  'reports': ('Reports', 'Report Builder', FontAwesomeIcons.fileInvoiceDollar),
+  'staff': ('Settings', 'Staff & Roles', FontAwesomeIcons.usersGear),
+  'account': ('Account', 'My Profile', FontAwesomeIcons.solidUser),
+};
+
+class _Sidebar extends StatefulWidget {
   final List<Section> sections;
   final String current;
   final Map<String, int> badges;
-  const _Sidebar({required this.sections, required this.current, required this.badges});
+  final ValueChanged<String> onGo;
+  final VoidCallback onLogout;
+  const _Sidebar({required this.sections, required this.current, required this.badges, required this.onGo, required this.onLogout});
+  @override
+  State<_Sidebar> createState() => _SidebarState();
+}
+
+class _SidebarState extends State<_Sidebar> {
+  Set<String> _hidden = {};
+
+  @override
+  void initState() {
+    super.initState();
+    LocalStore.instance.read('sidebar_hidden').then((v) {
+      if (v is List && mounted) setState(() => _hidden = v.map((e) => '$e').toSet());
+    });
+  }
+
+  void _toggle(String id) {
+    setState(() => _hidden.contains(id) ? _hidden.remove(id) : _hidden.add(id));
+    LocalStore.instance.write('sidebar_hidden', _hidden.toList());
+  }
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
-    final nav = context.read<NavController>();
-    final name = s.settings['businessName'] as String? ?? AppConfig.appName;
-    final groups = <String, List<Section>>{};
-    for (final x in sections) {
-      groups.putIfAbsent(x.group, () => []).add(x);
+    final name = (s.settings['businessName'] as String?)?.trim().isNotEmpty == true ? s.settings['businessName'] as String : AppConfig.appName;
+    final groups = <String, List<String>>{};
+    for (final x in widget.sections) {
+      final w = _webNav[x.id];
+      if (w == null || (_hidden.contains(x.id) && x.id != widget.current)) continue;
+      groups.putIfAbsent(w.$1, () => []).add(x.id);
     }
     return Container(
-      width: 252,
-      color: Colors.white,
-      child: SafeArea(
-        child: Column(children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-            child: Row(children: [
-              s.settings['logo'] != null
-                  ? NetImage(s.settings['logo'], size: 38, radius: 11, placeholder: Icons.storefront_rounded)
-                  : Container(width: 38, height: 38, decoration: BoxDecoration(gradient: AppColors.heroGradient, borderRadius: BorderRadius.circular(11)), child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 21)),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                  const Text('Staff app', style: TextStyle(fontSize: 11.5, color: AppColors.muted)),
-                ]),
-              ),
-            ]),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(10),
-              onTap: () => openSearch(context),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
-                child: const Row(children: [
-                  Icon(Icons.search_rounded, size: 19, color: AppColors.faint),
-                  SizedBox(width: 8),
-                  Expanded(child: Text('Search…', style: TextStyle(color: AppColors.faint))),
-                  Text('Ctrl K', style: TextStyle(fontSize: 11, color: AppColors.faint, fontWeight: FontWeight.w600)),
-                ]),
+      width: 280,
+      decoration: const BoxDecoration(color: Colors.white, border: Border(right: BorderSide(color: W.g200))),
+      child: Column(children: [
+        Container(
+          constraints: const BoxConstraints(minHeight: 89),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: W.g100))),
+          child: Row(children: [
+            Expanded(
+              child: InkWell(
+                onTap: () => widget.onGo('home'),
+                child: s.settings['logo'] != null
+                    ? Align(alignment: Alignment.centerLeft, child: NetImage(s.settings['logo'], size: 44, width: 170, radius: 0, fit: BoxFit.contain, placeholder: Icons.storefront_rounded))
+                    : Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 18.4, fontWeight: FontWeight.w800, color: W.primary)),
               ),
             ),
-          ),
-          Expanded(
-            child: ListView(padding: const EdgeInsets.fromLTRB(12, 4, 12, 8), children: [
-              for (final g in groups.entries) ...[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 12, 10, 6),
-                  child: Text(g.key.toUpperCase(), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.faint, letterSpacing: 1)),
-                ),
-                for (final x in g.value) _item(x, nav),
+            // Display options: show / hide menu items (the website's sliders icon).
+            PopupMenuButton<String>(
+              tooltip: 'Show / hide menu items',
+              position: PopupMenuPosition.under,
+              icon: const FaIcon(FontAwesomeIcons.sliders, size: 16, color: W.g500),
+              onSelected: _toggle,
+              itemBuilder: (_) => [
+                for (final x in widget.sections)
+                  if (_webNav[x.id] != null && x.id != 'home')
+                    CheckedPopupMenuItem(value: x.id, checked: !_hidden.contains(x.id), child: Text(_webNav[x.id]!.$2)),
               ],
-            ]),
-          ),
-          const Divider(),
-          InkWell(
-            onTap: () => nav.go('account'),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
-              child: Row(children: [
-                Avatar(s.user?['name'] ?? '', photo: s.user?['avatar'], size: 36),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(s.user?['name'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
-                    Text(s.user?['roleLabel'] ?? '', style: const TextStyle(fontSize: 12, color: AppColors.muted)),
-                  ]),
-                ),
-              ]),
             ),
-          ),
-          Padding(padding: const EdgeInsets.fromLTRB(12, 0, 12, 14), child: SyncBadge(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncCenter())))),
-        ]),
-      ),
+          ]),
+        ),
+        Expanded(
+          child: ListView(padding: const EdgeInsets.symmetric(vertical: 16), children: [
+            for (final g in groups.entries)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Text(g.key.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: W.g400, letterSpacing: 1.1)),
+                  ),
+                  for (final id in g.value) _link(id, _webNav[id]!.$2, _webNav[id]!.$3, () => widget.onGo(id), badge: widget.badges[id] ?? 0),
+                  if (g.key == 'Account') _link('logout', 'Logout', FontAwesomeIcons.rightFromBracket, widget.onLogout),
+                ]),
+              ),
+          ]),
+        ),
+      ]),
     );
   }
 
-  Widget _item(Section x, NavController nav) {
-    final active = x.id == current;
+  Widget _link(String id, String label, FaIconData icon, VoidCallback onTap, {int badge = 0}) {
+    final active = id == widget.current;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Material(
-        color: active ? AppColors.primarySoft : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        color: active ? W.primaryLighter : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
-          borderRadius: BorderRadius.circular(10),
-          onTap: () => nav.go(x.id),
+          borderRadius: BorderRadius.circular(8),
+          hoverColor: W.g50,
+          onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
             child: Row(children: [
-              Icon(active ? x.activeIcon : x.icon, size: 20, color: active ? AppColors.primary : AppColors.muted),
-              const SizedBox(width: 12),
-              Expanded(child: Text(x.label, style: TextStyle(fontSize: 14, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? AppColors.primary : AppColors.text))),
-              CountBadge(badges[x.id] ?? 0, color: x.id == 'products' ? AppColors.amber : AppColors.red),
+              SizedBox(width: 24, child: Center(child: FaIcon(icon, size: 17, color: active ? W.primary : W.g600))),
+              const SizedBox(width: 14),
+              Expanded(child: Text(label, style: TextStyle(fontSize: 15, fontWeight: active ? FontWeight.w600 : FontWeight.w500, color: active ? W.primary : W.g600))),
+              if (badge > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                  decoration: BoxDecoration(color: id == 'products' ? W.yellow : W.red, borderRadius: BorderRadius.circular(999)),
+                  child: Text('$badge', style: const TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                ),
             ]),
           ),
         ),

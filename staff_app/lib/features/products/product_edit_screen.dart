@@ -8,6 +8,7 @@ import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/web.dart';
 import '../pos/scanner.dart';
 
 /// Add or edit a product. Editing changes only these fields — the description,
@@ -223,7 +224,10 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     ]);
 
     return Scaffold(
-      appBar: AppBar(title: Text(_isNew ? 'Add product' : 'Edit product')),
+      backgroundColor: isWide(context) ? W.g50 : null,
+      appBar: isWide(context)
+          ? WebAppBar(title: _isNew ? 'Add Product' : 'Edit Product', subtitle: _isNew ? 'Add something new to sell in your store' : 'Change price, stock, photo and details')
+          : AppBar(title: Text(_isNew ? 'Add product' : 'Edit product')),
       body: Form(
         key: _form,
         child: PageBody(

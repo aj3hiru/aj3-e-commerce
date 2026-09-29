@@ -52,7 +52,12 @@ List<(Map<String, dynamic>, Map<String, dynamic>?)> lineChoices(AppState s, Map<
   final products = vs.isEmpty ? [product] : vs;
   return [
     for (final p in products)
-      if (CartLine.sizesOf(p).isNotEmpty) for (final z in CartLine.sizesOf(p)) (p, z) else (p, null),
+      if (CartLine.sizesOf(p).isNotEmpty) ...[
+        if (p['quantity'] != null && toDouble(p['quantity']) > 0) (p, null),
+        for (final z in CartLine.sizesOf(p))
+          if (!(p['quantity'] != null && '${z['label']}'.trim().toLowerCase() == (packOf(p) ?? '').toLowerCase())) (p, z),
+      ] else
+        (p, null),
   ];
 }
 

@@ -416,7 +416,7 @@ export function Billing2Screen({
                           const p = byId.get(c.productId);
                           const group = p?.variantGroup ? variantGroups.get(p.variantGroup) : undefined;
                           // Linked variants and this product's own sizes, all in one list.
-                          const opts = p ? (group && group.length > 1 ? group : [p]).flatMap((v): { product: PosProduct; size: NonNullable<PosProduct["sizes"]>[number] | null }[] => (v.sizes?.length ? v.sizes.map((z) => ({ product: v, size: z })) : [{ product: v, size: null }])) : [];
+                          const opts = p ? (group && group.length > 1 ? group : [p]).flatMap((v): { product: PosProduct; size: NonNullable<PosProduct["sizes"]>[number] | null }[] => (v.sizes?.length ? [...(v.quantity && v.quantity > 0 ? [{ product: v, size: null }] : []), ...v.sizes.filter((z) => !(v.quantity && z.label.trim().toLowerCase() === (packLabel(v.quantity, v.unit) ?? '').toLowerCase())).map((z) => ({ product: v, size: z }))] : [{ product: v, size: null }])) : [];
                           if (p && opts.length > 1) {
                             return <VariantPicker value={`${c.productId}:${c.sizeId ?? 0}`} options={opts} name={c.name} onPick={(v, size) => swapProduct(idx, v, size)} />;
                           }

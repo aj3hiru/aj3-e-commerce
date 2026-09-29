@@ -5,7 +5,7 @@ import { loadLiveCampaigns } from "@/lib/campaign-pricing";
 import { priceLine, type CartProduct, type CartSize } from "@/lib/cart-lines";
 import { LOW_STOCK_LIMIT } from "@/components/admin/products2/filters";
 import type { ProductPageConfig } from "@/types/product-page";
-import { packLabel, packSortKey, variantLabel } from "@/lib/product-variants-shared";
+import { packLabel, packSortKey, sizeLabelKey, variantLabel } from "@/lib/product-variants-shared";
 import { getDeliverySettings, type DeliverySettings } from "@/lib/delivery-charge";
 
 /** Everything the Meesho-style product page shows, already priced and serialisable. */
@@ -76,8 +76,18 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
     return { id: z.id, label: z.label, mrp: pr.mrp, final: pr.unitPrice, discountPct: pct(pr.mrp, pr.unitPrice), isDefault: z.isDefault,
       stock: stockOf(physical, lim) };
   });
-  const def = p.sizes.find((z) => z.isDefault) ?? p.sizes[0] ?? null;
+  // A product with its own Quantity (500 Gram at its own price) is the first choice; the Sizes / Units
+  // rows are the other choices (id 0 = the product itself, bought without a size).
+  const ownPack = p.quantity !== null && Number(p.quantity) > 0 ? packLabel(Number(p.quantity), p.unit) : null;
+  const def = ownPack ? null : p.sizes.find((z) => z.isDefault) ?? p.sizes[0] ?? null;
   const main = priceLine(cp, (def as unknown as CartSize) ?? null, campaigns, now);
+  if (ownPack && sizes.length) {
+    const others = sizes.filter((z) => z.label.trim().toLowerCase() !== ownPack.toLowerCase()).map((z) => ({ ...z, isDefault: false }));
+    sizes.splice(0, sizes.length, ...[
+      { id: 0, label: ownPack, mrp: main.mrp, final: main.unitPrice, discountPct: pct(main.mrp, main.unitPrice), isDefault: true, stock: stockOf(physical, main.maxQty) },
+      ...others,
+    ].sort((a, b) => sizeLabelKey(a.label) - sizeLabelKey(b.label)));
+  }
   const campEnds = main.campaign ? campaigns.find((c) => c.id === main.campaign!.campaignId)?.endsAt ?? null : null;
   const dealEndsAt = campEnds && campEnds.getTime() > now.getTime() && campEnds.getTime() - now.getTime() < 3 * 86_400_000 ? campEnds.toISOString() : null;
 

@@ -18,6 +18,8 @@ class CartLine {
 
   static List<Map<String, dynamic>> sizesOf(Map p) => ((p['sizes'] as List?) ?? const []).cast<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
   static Map<String, dynamic>? defaultSize(Map p) {
+    // A product with its own Quantity (500 Gram) sells as itself first.
+    if (p['quantity'] != null && toDouble(p['quantity']) > 0) return null;
     final l = sizesOf(p);
     return l.where((z) => z['isDefault'] == true).firstOrNull ?? l.firstOrNull;
   }

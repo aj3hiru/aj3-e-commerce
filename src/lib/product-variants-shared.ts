@@ -71,3 +71,10 @@ export function variantLabel(v: { quantity: number | null; unit: string | null; 
   if (v.quantity !== null && v.quantity > 0) return packLabel(v.quantity, v.unit) ?? v.name;
   return packFromName(v.name) ?? v.sizeLabel ?? (v.unit?.trim() || "Option");
 }
+
+/** Sort key for a size label like "400 Gram" / "1 KG" (small → large); labels without a number go last. */
+export function sizeLabelKey(label: string): number {
+  const m = label.trim().match(/^(\d+(?:\.\d+)?)\s*(.*)$/);
+  if (!m) return Number.MAX_SAFE_INTEGER;
+  return packSortKey(Number(m[1]), m[2] || null);
+}

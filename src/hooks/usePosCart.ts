@@ -16,7 +16,8 @@ let paymentRowId = 0;
 
 type Size = NonNullable<PosProduct["sizes"]>[number];
 /** The size a product is sold in by default (its default Sizes / Units row), if it has sizes. */
-export const defaultSize = (p: PosProduct): Size | null => p.sizes?.find((z) => z.isDefault) ?? p.sizes?.[0] ?? null;
+/** A product with its own Quantity (500 Gram) sells as itself first; otherwise its default size row. */
+export const defaultSize = (p: PosProduct): Size | null => (p.quantity && p.quantity > 0 ? null : p.sizes?.find((z) => z.isDefault) ?? p.sizes?.[0] ?? null);
 export const sizePrice = (z: Size) => (z.price !== null && z.price > 0 && z.price < z.mrp ? z.price : z.mrp);
 
 /** A new bill line for a product (in one of its sizes when it has them). */

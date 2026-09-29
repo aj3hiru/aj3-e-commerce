@@ -18,10 +18,10 @@ const CAP = 3000; // price/discount/rating need computed values, so they're appl
 
 export const FEED_SELECT = {
   id: true, slug: true, name: true, image: true, price: true, salePrice: true, stockQty: true, productType: true,
-  badgeTag: true, categoryId: true, brandId: true, createdAt: true,
+  badgeTag: true, categoryId: true, brandId: true, createdAt: true, quantity: true,
 } as const;
 export type FeedRow = { id: number; slug: string; name: string; image: string | null; price: unknown; salePrice: unknown; stockQty: number | null;
-  productType: string; badgeTag: string; categoryId: number | null; brandId: number | null; createdAt: Date };
+  productType: string; badgeTag: string; categoryId: number | null; brandId: number | null; createdAt: Date; quantity?: unknown };
 
 /** Product rows → what a product tile needs: live price/discount, rating, stock, deal countdown. */
 export async function enrichProducts(rows: FeedRow[]): Promise<(FeedProduct & { _created: number })[]> {
@@ -48,7 +48,8 @@ export async function enrichProducts(rows: FeedRow[]): Promise<(FeedProduct & { 
     .map((r) => [r.productId, { avg: r._avg.rating, count: r._count._all }]));
 
   return rows.map((r) => {
-    const size = defaultSize.get(r.id);
+    // A product with its own Quantity (e.g. 500 Gram) is sold at its own price first; its extra sizes are choices.
+    const size = r.quantity !== null && r.quantity !== undefined && Number(r.quantity) > 0 ? undefined : defaultSize.get(r.id);
     const sized = size ? priceLine(r as unknown as CartProduct, size, campaigns, now) : null;
     const price = sized ? sized.mrp : Number(r.price);
     const sale = r.salePrice === null || r.salePrice === undefined ? 0 : Number(r.salePrice);

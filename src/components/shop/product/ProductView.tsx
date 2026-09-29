@@ -358,7 +358,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
   async function add(buy: boolean) {
     if (out) return;
     if (buy) setBuying(true);
-    const res = await addToCart(d.product.id, 1, sizeId, { silent: buy });
+    const res = await addToCart(d.product.id, 1, sizeId || null, { silent: buy });
     if (buy) {
       if (res?.success) router.push("/checkout");
       else { setBuying(false); setToast(res?.message || "Couldn't add to cart"); }

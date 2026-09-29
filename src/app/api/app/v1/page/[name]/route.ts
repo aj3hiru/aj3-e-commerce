@@ -9,7 +9,8 @@ import { getCampaigns2Data, parseRange } from "@/lib/campaigns2";
 import { getSiteFiles } from "@/lib/file-manager2";
 import { getCacheStats } from "@/lib/cache-manager2";
 import { getCampaignHistory } from "@/lib/push-manager2";
-import { getPushSettings } from "@/lib/push-settings";
+import { getPushSettings, keyFingerprint } from "@/lib/push-settings";
+import { BROWSER_LABEL, browserOf, subscriberBreakdown } from "@/lib/push-subscriptions";
 import { listBackups } from "@/lib/backup";
 import { getDeliverySettings } from "@/lib/delivery-charge";
 import { getTaxMode } from "@/lib/tax-mode";
@@ -89,8 +90,26 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ name
     }
     case "push": {
       if (!hasPermission(p, "push_notifications", "send")) return deny();
-      const [settings, subs, history] = await Promise.all([getPushSettings(), prisma.pushSubscription.count(), getCampaignHistory(1, 40)]);
-      return ok({ configured: settings.configured, subscribers: subs, history: history.rows });
+      const canManage = hasPermission(p, "push_notifications", "manage_templates");
+      const [settings, subs, history, totals, newThisWeek, breakdown, rows] = await Promise.all([
+        getPushSettings(), prisma.pushSubscription.count(), getCampaignHistory(1, 100),
+        prisma.pushCampaign.aggregate({ _sum: { sent: true, failed: true } }),
+        prisma.pushSubscription.count({ where: { createdAt: { gte: new Date(Date.now() - 7 * 86_400_000) } } }),
+        canManage ? subscriberBreakdown() : Promise.resolve([]),
+        canManage ? prisma.pushSubscription.findMany({ orderBy: { id: "desc" }, take: 500, select: { id: true, endpoint: true, createdAt: true } }) : Promise.resolve([]),
+      ]);
+      return ok({
+        configured: settings.configured, subscribers: subs, history: history.rows, campaigns: history.total,
+        sent: totals._sum.sent ?? 0, failed: totals._sum.failed ?? 0, canManage, newThisWeek, breakdown,
+        // Only the push-service host is sent — the full endpoint is a delivery address.
+        subscriberRows: rows.map((r) => {
+          let host = "";
+          try { host = new URL(r.endpoint).hostname; } catch { /* keep blank */ }
+          return { id: r.id, host, browser: browserOf(r.endpoint), browserLabel: BROWSER_LABEL[browserOf(r.endpoint)], createdAt: r.createdAt.toISOString() };
+        }),
+        // The private key never leaves the server — only whether one is saved, and hashes to tell keys apart.
+        keys: canManage ? { publicKey: settings.publicKey, subject: settings.subject, hasPrivateKey: !!settings.privateKey, publicFingerprint: keyFingerprint(settings.publicKey), privateFingerprint: keyFingerprint(settings.privateKey) } : null,
+      });
     }
     case "business": {
       if (!hasPermission(p, "ecommerce", "manage_payment")) return deny();

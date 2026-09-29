@@ -12,6 +12,7 @@ import { loadCartLines, type CartLine } from "@/lib/cart-lines";
 import { formatAddress, toAddress } from "@/lib/customer-addresses";
 import { withApiErrors } from "@/lib/api-errors";
 import { deliveryChargeFor, getDeliverySettings } from "@/lib/delivery-charge";
+import { getTaxMode, itemsTotal, lineTax } from "@/lib/tax-mode";
 
 /** Verified 1:1 against shop/checkout.php's POST handler: re-validates stock,
  *  re-fetches prices server-side, applies an optional coupon with proportional
@@ -53,7 +54,7 @@ async function handlePOST(req: NextRequest) {
   // This is read before the order is opened; if it can't be read the order simply
   // goes ahead at normal prices.
   const now = new Date();
-  const [liveCampaigns, deliveryRule] = await Promise.all([loadLiveCampaigns({ fresh: true }), getDeliverySettings()]);
+  const [liveCampaigns, deliveryRule, taxMode] = await Promise.all([loadLiveCampaigns({ fresh: true }), getDeliverySettings(), getTaxMode()]);
 
   try {
     // Orders wait in an orderly line (4 at a time) instead of piling onto the database.
@@ -101,11 +102,11 @@ async function handlePOST(req: NextRequest) {
       for (const li of lineItems) {
         const discountShare = subtotal > 0 ? discount * (li.lineTotal / subtotal) : 0;
         const taxable = Math.max(0, li.lineTotal - discountShare);
-        const lineGst = taxable * (Number(li.product.gstRate) / 100);
+        const lineGst = lineTax(taxable, Number(li.product.gstRate), taxMode.pricesIncludeTax);
         li.gstAmount = lineGst;
         totalGst += lineGst;
       }
-      grandTotal += totalGst;
+      grandTotal = itemsTotal(grandTotal, totalGst, taxMode.pricesIncludeTax);
       // Business Settings → Delivery Charge (online orders only), decided on the items total.
       const deliveryCharge = deliveryChargeFor(subtotal, deliveryRule);
       grandTotal += deliveryCharge;

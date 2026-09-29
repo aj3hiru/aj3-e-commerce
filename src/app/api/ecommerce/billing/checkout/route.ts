@@ -8,6 +8,7 @@ import { randomUUID } from "crypto";
 import { logActivity } from "@/lib/activity-log";
 import { checkoutSchema } from "@/lib/validators/checkout";
 import type { Prisma } from "@prisma/client";
+import { getTaxMode, itemsTotal, lineTax } from "@/lib/tax-mode";
 import { findRedeemableCoupon, consumeCouponUse } from "@/lib/coupon-redeem";
 import { campaignPriceFor, type CampaignPrice } from "@/lib/campaign-core";
 import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "@/lib/campaign-pricing";
@@ -53,6 +54,7 @@ async function handlePOST(req: NextRequest) {
 
   try {
     // Bills wait in the same orderly line as online orders instead of piling onto the database.
+    const taxMode = await getTaxMode();
     const result = await inLine("checkout", 4, 40_000, () => prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Re-fetch authoritative product data — never trust client-sent prices.
       const lineItems: {
@@ -137,11 +139,11 @@ async function handlePOST(req: NextRequest) {
       for (const li of lineItems) {
         const discountShare = subtotal > 0 ? discount * (li.lineTotal / subtotal) : 0;
         const taxableValue = Math.max(0, li.lineTotal - discountShare);
-        const lineGst = taxableValue * (Number(li.product!.gstRate) / 100);
+        const lineGst = lineTax(taxableValue, Number(li.product!.gstRate), taxMode.pricesIncludeTax);
         li.gstAmount = lineGst;
         totalGst += lineGst;
       }
-      grandTotal += totalGst;
+      grandTotal = itemsTotal(grandTotal, totalGst, taxMode.pricesIncludeTax);
 
       // ── Resolve / create customer ──
       let customerId: number | null = input.customer_id > 0 ? input.customer_id : null;

@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import type { Prisma } from "@prisma/client";
 import { adjustOrderStock } from "./order-stock";
+import { getTaxMode, itemsTotal, lineTax } from "./tax-mode";
 
 /** Verified against recalcOrderTotals() in order-view.php: re-sums every line
  *  item's price*qty and GST, refreshes each item's stored gst_amount, and updates
@@ -15,6 +16,12 @@ export async function recalcOrderTotals(tx: Prisma.TransactionClient | typeof pr
   const delivery = Number(order?.deliveryCharge ?? 0);
 
   const subtotal = items.reduce((s, it) => s + Number(it.price) * it.qty, 0);
+  // Keep the order's own mode: GST inside the prices when its total didn't add the GST.
+  const cur = await tx.ecomOrder.findUnique({ where: { id: orderId }, select: { totalAmount: true, subtotalAmount: true, gstAmount: true } });
+  const inclusiveNow = cur && Number(cur.gstAmount) > 0
+    ? Math.abs(Number(cur.totalAmount) - (Number(cur.subtotalAmount) - discount + delivery)) < 0.05
+    : null;
+  const taxMode = inclusiveNow === null ? await getTaxMode() : { pricesIncludeTax: inclusiveNow };
   let totalGst = 0;
 
   for (const it of items) {
@@ -26,12 +33,12 @@ export async function recalcOrderTotals(tx: Prisma.TransactionClient | typeof pr
     // edit silently raise the GST on discounted orders.)
     const discountShare = subtotal > 0 ? discount * (lineTotal / subtotal) : 0;
     const taxable = Math.max(0, lineTotal - discountShare);
-    const lineGst = Math.round(taxable * (gstRate / 100) * 100) / 100;
+    const lineGst = Math.round(lineTax(taxable, gstRate, taxMode.pricesIncludeTax) * 100) / 100;
     totalGst += lineGst;
     await tx.ecomOrderItem.update({ where: { id: it.id }, data: { gstAmount: lineGst } });
   }
 
-  const grandTotal = Math.max(0, subtotal - discount + totalGst) + delivery;
+  const grandTotal = itemsTotal(Math.max(0, subtotal - discount), totalGst, taxMode.pricesIncludeTax) + delivery;
 
   await tx.ecomOrder.update({
     where: { id: orderId },

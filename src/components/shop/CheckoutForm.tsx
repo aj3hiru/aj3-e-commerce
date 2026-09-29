@@ -23,6 +23,8 @@ interface CheckoutFormProps {
   items: CheckoutItemSummary[];
   subtotal: number;
   estimatedGst: number;
+  /** Prices already include GST (shown for information, not added). */
+  gstIncluded?: boolean;
   /** Business Settings → Delivery Charge for this order (0 = free), and the free-delivery amount. */
   delivery: { charge: number; freeAbove: number | null; enabled: boolean; note: string };
 }
@@ -30,7 +32,7 @@ interface CheckoutFormProps {
 const payIcon = (key: string) => (/cod|cash/i.test(key) ? Banknote : /upi|wallet/i.test(key) ? Wallet : CreditCard);
 
 /** Checkout (Meesho style): address, payment, coupon, order summary, and a sticky Place Order bar. */
-export function CheckoutForm({ addresses, customerName, customerPhone, paymentMethods, items, subtotal, estimatedGst, delivery }: CheckoutFormProps) {
+export function CheckoutForm({ addresses, customerName, customerPhone, paymentMethods, items, subtotal, estimatedGst, gstIncluded = false, delivery }: CheckoutFormProps) {
   const router = useRouter();
   const [addressId, setAddressId] = useState<number | null>(null);
   const pickAddress = useCallback((id: number | null) => { setAddressId(id); setError(""); }, []);
@@ -38,7 +40,7 @@ export function CheckoutForm({ addresses, customerName, customerPhone, paymentMe
   const [couponCode, setCouponCode] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const total = subtotal + estimatedGst + delivery.charge;
+  const total = subtotal + (gstIncluded ? 0 : estimatedGst) + delivery.charge;
   const step = !addressId ? 1 : !paymentMethod ? 2 : 3;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -120,7 +122,9 @@ export function CheckoutForm({ addresses, customerName, customerPhone, paymentMe
 
       <Section title="Price Details" id="price-details">
         <PriceRow label="Items total" value={rupees(subtotal)} />
-        <PriceRow label="Estimated GST" value={`+ ${rupees(estimatedGst)}`} />
+        {gstIncluded
+          ? <PriceRow label="GST (included in prices)" value={rupees(estimatedGst)} />
+          : <PriceRow label="Estimated GST" value={`+ ${rupees(estimatedGst)}`} />}
         {delivery.enabled && (
           <PriceRow label="Delivery charge" value={delivery.charge > 0 ? `+ ${rupees(delivery.charge)}` : "FREE"} tone={delivery.charge > 0 ? undefined : "green"} />
         )}

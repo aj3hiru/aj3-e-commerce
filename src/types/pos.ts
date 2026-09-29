@@ -67,6 +67,8 @@ export interface BusinessPosSettings {
   shortcutCompleteSale: string;
   shortcutPrint: string;
   shortcutNewSale: string;
+  /** GST / Tax Settings: prices already include GST. */
+  pricesIncludeTax?: boolean;
   /** For the receipt printed on the till when a bill is made offline. */
   business?: { name: string; address: string | null; phones: string[]; gstin: string | null };
 }

@@ -1,11 +1,12 @@
 import type { InvoiceData } from "@/lib/invoice-data";
 
 /** GST summary by rate, scaled so it adds up to the order's own GST total (discounts included). */
-export function taxSummary(data: Pick<InvoiceData, "items" | "totalGst">) {
+export function taxSummary(data: Pick<InvoiceData, "items" | "totalGst"> & { taxIncluded?: boolean }) {
   const by = new Map<number, { taxable: number; tax: number }>();
   for (const it of data.items) {
     if (!(it.gstRate > 0)) continue;
-    const taxable = it.price * it.qty;
+    const gross = it.price * it.qty;
+    const taxable = data.taxIncluded ? gross / (1 + it.gstRate / 100) : gross;
     const row = by.get(it.gstRate) ?? { taxable: 0, tax: 0 };
     row.taxable += taxable; row.tax += (taxable * it.gstRate) / 100;
     by.set(it.gstRate, row);

@@ -267,7 +267,7 @@ extension _PosWeb on _PosScreenState {
             child: Column(children: [
               line('Subtotal', money(cart.subtotal)),
               line('Discount', '-${money(cart.discount)}', color: const Color(0xFFEF4444)),
-              line('GST', '+${money(cart.gst)}'),
+              line(cart.taxIncluded ? 'GST (incl.)' : 'GST', '${cart.taxIncluded ? '' : '+'}${money(cart.gst)}'),
             ]),
           ),
         ]),

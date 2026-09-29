@@ -7,6 +7,7 @@ import { GlobalSearchBar } from "@/components/admin/GlobalSearchBar";
 import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
+import { getTaxMode } from "@/lib/tax-mode";
 import { campaignSalePrices } from "@/lib/campaign-pricing";
 
 interface Billing2PageProps {
@@ -40,6 +41,7 @@ export default async function Billing2Page({ searchParams }: Billing2PageProps) 
 
   const resolvedSearchParams = await searchParams;
 
+  const taxMode = await getTaxMode();
   const [products, coupons, customers, business] = await Promise.all([
     prisma.ecomProduct.findMany({
       where: { status: "active" },
@@ -117,6 +119,7 @@ export default async function Billing2Page({ searchParams }: Billing2PageProps) 
           shortcutCompleteSale: business?.shortcutCompleteSale ?? "F2",
           shortcutPrint: business?.shortcutPrint ?? "F3",
           shortcutNewSale: business?.shortcutNewSale ?? "F4",
+          pricesIncludeTax: taxMode.pricesIncludeTax,
           business: {
             name: business?.businessName ?? "My Store",
             address: business?.address ?? null,

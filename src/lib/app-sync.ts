@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { getTaxMode } from "@/lib/tax-mode";
 import { packLabel } from "@/lib/product-variants-shared";
 import { prisma } from "@/lib/db";
 import { getBusinessRow } from "@/lib/business-row";
@@ -43,13 +44,14 @@ export function allowedSets(session: AdminSession): SetName[] {
 const staffName = (u: { username: string; firstName: string | null; lastName: string | null }) => [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || u.username;
 
 async function buildSettings() {
-  const b = await getBusinessRow();
+  const [b, taxMode] = await Promise.all([getBusinessRow(), getTaxMode()]);
   const phones = Array.isArray(b?.contactNumbers) ? (b!.contactNumbers as unknown[]).filter((x): x is string => typeof x === "string" && !!x.trim()) : b?.phone ? [b.phone] : [];
   return {
     businessName: b?.businessName ?? "My Store", tagline: b?.tagline ?? null, logo: b?.logo ?? null, address: b?.address ?? null, phones,
     email: b?.email ?? null, gstin: b?.showGstinOnInvoice ? b?.gstin ?? null : null,
     printerFormat: b?.printerFormat ?? "thermal_80", posPrintMode: b?.posPrintMode ?? "both",
     paymentMethods: ["Cash", "UPI", "Card", "Other"],
+    pricesIncludeTax: taxMode.pricesIncludeTax,
   };
 }
 

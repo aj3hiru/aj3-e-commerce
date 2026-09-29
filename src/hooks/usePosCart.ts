@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import type { CartLine, PaymentRow, PosCoupon, PosProduct } from "@/types/pos";
 import { packLabel } from "@/lib/product-variants-shared";
+import { itemsTotal, lineTax } from "@/lib/tax-mode-shared";
 
 /** Same effectivePrice(p) logic from billing.php: use sale_price only if it's
  *  a real positive number strictly less than the regular price. */
@@ -13,7 +14,8 @@ function effectivePrice(p: PosProduct): number {
 
 let paymentRowId = 0;
 
-export function usePosCart() {
+/** `pricesIncludeTax`: GST / Tax Settings — GST is inside the prices instead of added on top. */
+export function usePosCart(pricesIncludeTax = false) {
   const [cart, setCart] = useState<CartLine[]>([]);
   const [appliedCoupon, setAppliedCoupon] = useState<PosCoupon | null>(null);
   const [couponMessage, setCouponMessage] = useState<{ text: string; ok: boolean } | null>(null);
@@ -189,12 +191,12 @@ export function usePosCart() {
       const lineTotal = c.unitPrice * c.qty;
       const discountShare = subtotal > 0 ? discount * (lineTotal / subtotal) : 0;
       const taxable = Math.max(0, lineTotal - discountShare);
-      gst += taxable * ((c.gstRate || 0) / 100);
+      gst += lineTax(taxable, c.gstRate || 0, pricesIncludeTax);
     }
 
-    const grandTotal = Math.max(0, subtotal - discount) + gst;
+    const grandTotal = itemsTotal(Math.max(0, subtotal - discount), gst, pricesIncludeTax);
     return { subtotal, discount, gst, grandTotal };
-  }, [cart, appliedCoupon]);
+  }, [cart, appliedCoupon, pricesIncludeTax]);
 
   const paidTotal = useMemo(
     () => payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0),

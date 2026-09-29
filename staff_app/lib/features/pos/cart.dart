@@ -45,6 +45,8 @@ class PosCart extends ChangeNotifier {
   String customerPhone = '';
   bool guest = false;
   DateTime? promisedDate;
+  /// GST / Tax Settings: prices already include GST (it is inside, not added on top).
+  bool taxIncluded = false;
 
   /// Adds one; returns a message when stock stops it.
   String? add(Map<String, dynamic> product, {int qty = 1}) {
@@ -138,12 +140,12 @@ class PosCart extends ChangeNotifier {
     for (final l in lines) {
       final share = sub > 0 ? disc * (l.total / sub) : 0;
       final taxable = (l.total - share).clamp(0, double.infinity);
-      g += taxable * l.gstRate / 100;
+      g += l.gstRate <= 0 ? 0 : (taxIncluded ? taxable - taxable / (1 + l.gstRate / 100) : taxable * l.gstRate / 100);
     }
     return g;
   }
 
-  double get grandTotal => (subtotal - discount).clamp(0, double.infinity) + gst;
+  double get grandTotal => (subtotal - discount).clamp(0, double.infinity) + (taxIncluded ? 0 : gst);
 
   /// Payment rows as they will be sent (a single untouched row = the bill total).
   List<PayRow> get effectivePayments =>

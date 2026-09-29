@@ -24,6 +24,8 @@ export interface InvoiceData {
   /** Business Settings → Delivery Charge paid on this (online) order. */
   deliveryCharge: number;
   totalGst: number;
+  /** GST was inside the prices (total = subtotal − discount + delivery), so it is shown as "incl.". */
+  taxIncluded: boolean;
   cgst: number;
   sgst: number;
   grandTotal: number;
@@ -72,6 +74,7 @@ export async function getInvoiceData(orderId: number): Promise<InvoiceData | nul
   const discount = Number(order.discountAmount) > 0 ? Number(order.discountAmount) : Math.max(0, subtotal - grandTotal);
   const totalGst = Number(order.gstAmount);
   const deliveryCharge = Number(order.deliveryCharge ?? 0);
+  const taxIncluded = totalGst > 0 && Math.abs(grandTotal - (subtotal - discount + deliveryCharge)) < 0.05;
   const cgst = totalGst / 2;
   const sgst = totalGst / 2;
 
@@ -131,6 +134,7 @@ export async function getInvoiceData(orderId: number): Promise<InvoiceData | nul
     discount,
     deliveryCharge,
     totalGst,
+    taxIncluded,
     cgst,
     sgst,
     grandTotal,

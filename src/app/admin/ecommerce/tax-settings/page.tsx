@@ -7,6 +7,8 @@ import { TAX2_GROUPS, TAX2_PREF_KEY, TAX2_STANDALONE } from "@/components/admin/
 import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
+import { getTaxMode } from "@/lib/tax-mode";
+import { TaxModeCard } from "@/components/admin/tax-settings2/TaxModeCard";
 
 /**
  * /admin/ecommerce/tax-settings2 — a trial redesign of GST/Tax Settings,
@@ -33,9 +35,10 @@ export default async function TaxSettings2Page() {
   if (!session) redirect("/staff/login");
   if (!hasPermission(session.permissions, "ecommerce", "manage_products")) redirect("/admin/dashboard?denied=1");
 
-  const [ratesRaw, productRates] = await Promise.all([
+  const [ratesRaw, productRates, taxMode] = await Promise.all([
     prisma.ecomGstRate.findMany({ orderBy: { rate: "asc" } }),
     prisma.ecomProduct.findMany({ select: { gstRate: true } }),
+    getTaxMode(),
   ]);
 
   const rates = ratesRaw as { id: number; label: string; rate: unknown; isDefault: boolean }[];
@@ -64,6 +67,7 @@ export default async function TaxSettings2Page() {
           <div className="mb-5 flex flex-wrap items-center justify-end gap-3 xl:hidden">
             <DisplayOptionsPanel variant="toolbar" /><Tax2AddButton />
           </div>
+          <TaxModeCard initial={taxMode.pricesIncludeTax} />
           <TaxSettings2Body rates={rows} orphanProducts={orphanProducts} />
         </SettingsHub>
       </AdminShell>

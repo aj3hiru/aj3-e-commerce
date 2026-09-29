@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTaxMode, lineTax } from "@/lib/tax-mode";
 import { ShopLayout } from "@/components/shop/ShopLayout";
 import { CheckoutForm } from "@/components/shop/CheckoutForm";
 import { Page } from "@/components/shop/ui/Meesho";
@@ -22,13 +23,14 @@ export default async function CheckoutPage() {
   const cart = await getCart();
   if (Object.keys(cart).length === 0) redirect("/cart");
 
-  const [layoutData, customerRow, lines, paymentMethods, addresses, deliveryRule] = await Promise.all([
+  const [layoutData, customerRow, lines, paymentMethods, addresses, deliveryRule, taxMode] = await Promise.all([
     getShopLayoutData(),
     prisma.ecomCustomer.findUnique({ where: { id: customer.customerId } }),
     loadCartLines(cart), // campaign and size prices
     prisma.ecomPaymentSettings.findMany({ where: { isEnabled: true }, select: { methodKey: true, name: true } }),
     listAddresses(customer.customerId),
     getDeliverySettings(),
+    getTaxMode(),
   ]);
 
   let subtotal = 0;
@@ -36,7 +38,7 @@ export default async function CheckoutPage() {
   const items = lines.map((l) => {
     const lineTotal = l.unitPrice * l.qty;
     subtotal += lineTotal;
-    estimatedGst += lineTotal * (Number(l.product.gstRate) / 100);
+    estimatedGst += lineTax(lineTotal, Number(l.product.gstRate), taxMode.pricesIncludeTax);
     return { name: l.name, qty: l.qty, lineTotal, image: l.product.image };
   });
 
@@ -51,6 +53,7 @@ export default async function CheckoutPage() {
           items={items}
           subtotal={subtotal}
           estimatedGst={estimatedGst}
+          gstIncluded={taxMode.pricesIncludeTax}
           delivery={{ charge: deliveryChargeFor(subtotal, deliveryRule), freeAbove: deliveryRule.freeAbove, enabled: deliveryRule.enabled, note: deliveryRule.note }}
         />
       </Page>

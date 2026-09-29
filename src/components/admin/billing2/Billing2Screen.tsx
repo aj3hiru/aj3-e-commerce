@@ -59,7 +59,7 @@ export function Billing2Screen({
     appliedCoupon, couponMessage, applyCoupon, totals,
     payments, addPaymentRow, removePaymentRow, updatePaymentRow,
     resetForNextSale,
-  } = usePosCart();
+  } = usePosCart(posSettings.pricesIncludeTax ?? false);
 
   // Received/due are computed from `payments` exactly as it will be submitted
   // (the hook auto-fills the single row with the bill total until the cashier
@@ -501,8 +501,8 @@ export function Billing2Screen({
                     <span>Discount</span><span className="text-red-500">-{fmt(totals.discount)}</span>
                   </div>
                   <div className="flex justify-between text-admin-gray-500">
-                    <span>GST{gstLabelRate !== null ? ` (${gstLabelRate}%)` : ""}</span>
-                    <span className="text-admin-gray-800">+{fmt(totals.gst)}</span>
+                    <span>GST{gstLabelRate !== null ? ` (${gstLabelRate}%)` : ""}{posSettings.pricesIncludeTax ? " incl." : ""}</span>
+                    <span className="text-admin-gray-800">{posSettings.pricesIncludeTax ? "" : "+"}{fmt(totals.gst)}</span>
                   </div>
                 </div>
               </div>

@@ -5,7 +5,7 @@ import {
   faTruck, faUserFriends, faPercentage,
   faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
   faSignOutAlt, faMobileAlt, faFileInvoiceDollar, faChartLine, faFileAlt, faBars, faGripLines, faBox,
-  faBrush, faCog, faUsersCog,
+  faBrush, faCog, faUsersCog, faPercent,
 } from "@fortawesome/free-solid-svg-icons";
 
 // Grouped by what a shop owner does: sell, catalogue, customers & marketing,
@@ -138,6 +138,17 @@ export const ADMIN_NAV: NavSection[] = [
       { href: "/admin/ecommerce/reports", label: "Report Builder", icon: faFileInvoiceDollar, permission: "reports.any" },
       { href: "/admin/ecommerce/analytics", label: "Sales Analytics", icon: faChartLine, permission: "ecommerce.manage_orders" },
       { href: "/admin/ecommerce/sales-history", label: "Sales History", icon: faHistory, permission: "ecommerce.manage_billing" },
+      {
+        href: "/admin/ecommerce/gst-report",
+        label: "Tax / GST",
+        icon: faPercent,
+        permission: "reports.any",
+        submenuId: "submenu-tax",
+        submenu: [
+          { href: "/admin/ecommerce/gst-report", label: "GST Report", icon: faFileInvoiceDollar, permission: "reports.any" },
+          { href: "/admin/ecommerce/tax-settings", label: "GST / Tax Settings", icon: faCog, permission: "ecommerce.manage_products" },
+        ],
+      },
     ],
   },
 

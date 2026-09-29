@@ -268,6 +268,7 @@ class _PosScreenState extends State<PosScreen> {
 
   @override
   Widget build(BuildContext context) {
+    cart.taxIncluded = context.select<AppState, bool>((s) => s.settings['pricesIncludeTax'] == true);
     final s = context.watch<AppState>();
     final products = s.list('products');
     final wide = isWide(context);
@@ -485,7 +486,7 @@ class _PosScreenState extends State<PosScreen> {
           const SizedBox(height: 12),
           InfoRow('Subtotal', money(cart.subtotal)),
           if (cart.discount > 0) InfoRow('Discount', '-${money(cart.discount)}', color: AppColors.green),
-          InfoRow('GST', money(cart.gst)),
+          InfoRow(cart.taxIncluded ? 'GST (incl.)' : 'GST', money(cart.gst)),
           const Divider(height: 18),
           Row(children: [
             const Expanded(child: Text('Total', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),

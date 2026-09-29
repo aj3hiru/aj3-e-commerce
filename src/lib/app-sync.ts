@@ -82,16 +82,21 @@ async function buildProducts() {
 
 async function buildCustomers() {
   const [rows, open, bought] = await Promise.all([
-    prisma.ecomCustomer.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, phone: true, email: true, customerType: true, status: true, address: true, avatar: true, createdAt: true } }),
+    prisma.ecomCustomer.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, phone: true, email: true, customerType: true, status: true, address: true, avatar: true, createdAt: true, password: true, _count: { select: { addresses: true } } },
+    }),
     prisma.ecomCredit.groupBy({ by: ["customerId"], where: { status: { not: "paid" } }, _sum: { amount: true, amountPaid: true } }),
     // All-time orders and spend per customer (the website's Customers table shows both).
-    prisma.ecomOrder.groupBy({ by: ["customerId"], where: { customerId: { not: null }, orderStatus: { not: "Canceled" } }, _count: { _all: true }, _sum: { totalAmount: true } }),
+    prisma.ecomOrder.groupBy({ by: ["customerId"], where: { customerId: { not: null }, orderStatus: { not: "Canceled" } }, _count: { _all: true }, _sum: { totalAmount: true }, _max: { createdAt: true } }),
   ]);
   const due = new Map(open.map((d) => [d.customerId, Math.max(0, Number(d._sum.amount ?? 0) - Number(d._sum.amountPaid ?? 0))]));
-  const spend = new Map(bought.map((b) => [b.customerId, { orders: b._count._all, spent: Math.round(Number(b._sum.totalAmount ?? 0) * 100) / 100 }]));
+  const spend = new Map(bought.map((b) => [b.customerId, { orders: b._count._all, spent: Math.round(Number(b._sum.totalAmount ?? 0) * 100) / 100, last: b._max.createdAt }]));
   return rows.map((c) => ({
     id: c.id, name: c.name, phone: c.phone, email: c.email, type: c.customerType, status: c.status, address: c.address, avatar: c.avatar, since: iso(c.createdAt),
     due: Math.round((due.get(c.id) ?? 0) * 100) / 100, orders: spend.get(c.id)?.orders ?? 0, spent: spend.get(c.id)?.spent ?? 0,
+    // Website Customers table: login methods, saved addresses, "last order …".
+    hasPassword: !!c.password, addresses: c._count.addresses, lastOrderAt: iso(spend.get(c.id)?.last ?? null),
   }));
 }
 
@@ -100,7 +105,7 @@ const ORDER_SELECT = {
   totalAmount: true, subtotalAmount: true, discountAmount: true, gstAmount: true, deliveryCharge: true, paidAmount: true, shippingAddress: true, shippingLat: true, shippingLng: true,
   deliveryAgentId: true, assignedAt: true, deliveredAt: true, cancelReason: true, createdAt: true,
   customer: { select: { phone: true } },
-  items: { select: { productId: true, productName: true, qty: true, price: true, gstRate: true, gstAmount: true } },
+  items: { select: { id: true, productId: true, productName: true, qty: true, price: true, gstRate: true, gstAmount: true } },
   credits: { select: { amount: true, amountPaid: true, status: true } },
   events: { orderBy: { id: "desc" as const }, take: 1, select: { id: true } },
   payments: { select: { paymentMethod: true, amount: true, createdAt: true } },
@@ -115,7 +120,7 @@ function orderOut(o: OrderRow) {
     discount: Number(o.discountAmount), gst: Number(o.gstAmount), delivery: Number(o.deliveryCharge), paid: Number(o.paidAmount), due: Math.round(due * 100) / 100,
     address: o.shippingAddress, lat: num(o.shippingLat), lng: num(o.shippingLng), agentId: o.deliveryAgentId, assignedAt: iso(o.assignedAt),
     deliveredAt: iso(o.deliveredAt), cancelReason: o.cancelReason, createdAt: o.createdAt.toISOString(), rev: o.events[0]?.id ?? 0,
-    items: o.items.map((i) => ({ productId: i.productId, name: i.productName, qty: i.qty, price: Number(i.price), gstRate: Number(i.gstRate), gst: Number(i.gstAmount) })),
+    items: o.items.map((i) => ({ id: i.id, productId: i.productId, name: i.productName, qty: i.qty, price: Number(i.price), gstRate: Number(i.gstRate), gst: Number(i.gstAmount) })),
     pays: o.payments.map((p) => ({ method: p.paymentMethod, amount: Number(p.amount), at: p.createdAt.toISOString() })),
   };
 }
@@ -137,16 +142,44 @@ async function buildDeliveries(userId: number) {
   return rows.map(orderOut);
 }
 
-async function buildDues() {
-  const rows = await prisma.ecomCredit.findMany({
-    where: { status: { not: "paid" } }, orderBy: { createdAt: "desc" }, take: 5000,
-    select: { id: true, orderId: true, customerId: true, customerName: true, customerPhone: true, amount: true, amountPaid: true, promisedDate: true, status: true, createdAt: true, order: { select: { orderNumber: true } } },
-  });
-  return rows.map((c) => ({
-    id: c.id, orderId: c.orderId, orderNumber: c.order.orderNumber, customerId: c.customerId, customer: c.customerName, phone: c.customerPhone,
+const DUE_SELECT = {
+  id: true, orderId: true, customerId: true, customerName: true, customerPhone: true, amount: true, amountPaid: true, promisedDate: true, status: true, createdAt: true,
+  order: { select: { orderNumber: true, orderType: true, items: { select: { productId: true, productName: true } } } },
+  payments: { orderBy: { createdAt: "asc" as const }, select: { receiptNumber: true, amount: true, paymentMethod: true, createdAt: true, createdBy: true } },
+} as const;
+
+type DueRow = Awaited<ReturnType<typeof prisma.ecomCredit.findMany<{ select: typeof DUE_SELECT }>>>[number];
+/** One due as the app's Due page shows it (the website's Due table), with its payment receipts. */
+export function dueOut(c: DueRow, staff: Map<number, string>) {
+  return {
+    id: c.id, orderId: c.orderId, orderNumber: c.order.orderNumber, orderType: c.order.orderType, customerId: c.customerId, customer: c.customerName, phone: c.customerPhone,
     amount: Number(c.amount), paid: Number(c.amountPaid), balance: Math.round(Math.max(0, Number(c.amount) - Number(c.amountPaid)) * 100) / 100,
     promised: iso(c.promisedDate), status: c.status, createdAt: c.createdAt.toISOString(),
-  }));
+    products: c.order.items.map((i) => ({ id: i.productId, name: i.productName })),
+    payments: c.payments.map((p) => ({ receipt: p.receiptNumber, amount: Number(p.amount), method: p.paymentMethod, at: p.createdAt.toISOString(), by: p.createdBy ? staff.get(p.createdBy) ?? null : null })),
+  };
+}
+
+export async function staffNames() {
+  const users = await prisma.user.findMany({ select: { id: true, username: true, firstName: true, lastName: true } });
+  return new Map(users.map((u) => [u.id, staffName(u)]));
+}
+
+async function buildDues() {
+  const [rows, staff] = await Promise.all([
+    prisma.ecomCredit.findMany({ where: { status: { not: "paid" } }, orderBy: { createdAt: "desc" }, take: 5000, select: DUE_SELECT }),
+    staffNames(),
+  ]);
+  return rows.map((c) => dueOut(c, staff));
+}
+
+/** Dues paid off in the last 180 days — the Due page's "Fully paid" / "All dues" (page data, not the dues set). */
+export async function paidDues() {
+  const [rows, staff] = await Promise.all([
+    prisma.ecomCredit.findMany({ where: { status: "paid", createdAt: { gte: new Date(Date.now() - 180 * DAY) } }, orderBy: { createdAt: "desc" }, take: 5000, select: DUE_SELECT }),
+    staffNames(),
+  ]);
+  return rows.map((c) => dueOut(c, staff));
 }
 
 /** Tables each set is built from — any write to them rebuilds the set (lib/cache.ts). */
@@ -155,10 +188,10 @@ const DEPS: Record<SetName, string[]> = {
   products: ["EcomProduct", "EcomProductSize", "EcomCampaign", "EcomCampaignTarget"],
   categories: ["EcomCategory"],
   brands: ["EcomBrand"],
-  customers: ["EcomCustomer", "EcomCredit", "EcomCreditPayment", "EcomOrder"],
+  customers: ["EcomCustomer", "EcomCredit", "EcomCreditPayment", "EcomOrder", "EcomCustomerAddress"],
   coupons: ["EcomCoupon"],
   orders: ["EcomOrder", "EcomOrderItem", "EcomOrderEvent", "EcomOrderPayment", "EcomCredit", "EcomCreditPayment", "EcomCustomer"],
-  dues: ["EcomCredit", "EcomCreditPayment"],
+  dues: ["EcomCredit", "EcomCreditPayment", "EcomOrder", "EcomOrderItem"],
   deliveries: ["EcomOrder", "EcomOrderItem", "EcomOrderEvent", "EcomOrderPayment", "EcomCustomer"],
   agents: ["User"],
   staff: ["User"],
@@ -174,7 +207,7 @@ async function buildFresh(name: SetName, session: AdminSession): Promise<unknown
   switch (name) {
     case "settings": return buildSettings();
     case "products": return buildProducts();
-    case "categories": return prisma.ecomCategory.findMany({ orderBy: [{ serial: "asc" }, { name: "asc" }], select: { id: true, name: true, slug: true, image: true, status: true, serial: true, metaKeywords: true, metaDescription: true } });
+    case "categories": return prisma.ecomCategory.findMany({ orderBy: [{ serial: "asc" }, { name: "asc" }], select: { id: true, name: true, slug: true, image: true, status: true, serial: true, metaKeywords: true, metaDescription: true, createdAt: true, updatedAt: true } });
     case "brands": return prisma.ecomBrand.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, logo: true, status: true } });
     case "customers": return buildCustomers();
     case "coupons": return (await prisma.ecomCoupon.findMany({ where: { status: "active", isPaused: false }, select: { id: true, code: true, title: true, discountType: true, discountValue: true, appliesTo: true, productId: true, categoryId: true, numberOfTimes: true, usedCount: true, startsAt: true, endsAt: true } }))

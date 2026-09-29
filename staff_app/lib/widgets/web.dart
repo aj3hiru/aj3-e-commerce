@@ -553,7 +553,9 @@ class WebTable extends StatefulWidget {
   final Widget? empty;
   final double rowHeight;
   final bool upper; // UPPERCASE heads (plain style)
-  const WebTable({super.key, required this.cols, required this.rows, this.bordered = false, this.onRowTap, this.onRowMenu, this.empty, this.rowHeight = DS.rowH, this.upper = true});
+  /// A coloured stripe at the start of some rows (e.g. new orders), one entry per row.
+  final List<Color?>? highlight;
+  const WebTable({super.key, required this.cols, required this.rows, this.bordered = false, this.onRowTap, this.onRowMenu, this.empty, this.rowHeight = DS.rowH, this.upper = true, this.highlight});
   @override
   State<WebTable> createState() => _WebTableState();
 }
@@ -651,7 +653,10 @@ class _WebTableState extends State<WebTable> {
             child: Container(
               decoration: BoxDecoration(
                 color: r == _sel ? DS.selected : r == _hover ? DS.hover : widget.bordered && r.isOdd ? const Color(0xFFFAFAFB) : Colors.white,
-                border: Border(bottom: BorderSide(color: line), left: BorderSide(color: r == _sel ? DS.primary : Colors.transparent, width: 2)),
+                border: Border(
+                  bottom: BorderSide(color: line),
+                  left: BorderSide(color: r == _sel ? DS.primary : (widget.highlight != null && r < widget.highlight!.length ? widget.highlight![r] : null) ?? Colors.transparent, width: widget.highlight?.elementAtOrNull(r) != null ? 3 : 2),
+                ),
               ),
               child: IntrinsicHeight(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [for (var i = 0; i < cols.length; i++) cell(i, widget.rows[r][i])])),
             ),
@@ -706,7 +711,7 @@ class WebPager extends StatelessWidget {
           Expanded(child: Text('Showing $from–$to of $total${extra ?? ''}', style: DS.small.copyWith(color: DS.text2))),
           const Text('Rows', style: DS.small),
           const SizedBox(width: 6),
-          SizedBox(width: 72, child: DSelect<int>(small: true, value: perPage, options: const [(10, '10'), (20, '20'), (50, '50'), (100, '100')], onChanged: onPerPage)),
+          SizedBox(width: 72, child: DSelect<int>(small: true, value: perPage, options: [for (final n in {10, 20, 25, 50, 100, perPage}.toList()..sort()) (n, '$n')], onChanged: onPerPage)),
           const SizedBox(width: 10),
           DButton.icon(LucideIcons.chevronLeft, tooltip: 'Previous (PgUp)', size: DSize.sm, variant: DVariant.secondary, onPressed: page > 0 ? () => onPage(page - 1) : null),
           Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text('${page + 1} / $pages', style: DS.small.copyWith(color: DS.text2))),

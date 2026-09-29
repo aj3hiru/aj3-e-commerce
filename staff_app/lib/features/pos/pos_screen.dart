@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/local_store.dart';
+import '../../core/nav.dart';
 import '../../core/theme.dart';
 import '../../ds/ds.dart';
 import '../../widgets/common.dart';
@@ -42,6 +43,7 @@ class _PosScreenState extends State<PosScreen> {
   String _paper = 'thermal_80';
   ReceiptData? _last;
   int? _lastOrderId;
+  int _navSeq = -1;
 
   @override
   void initState() {
@@ -270,6 +272,19 @@ class _PosScreenState extends State<PosScreen> {
   Widget build(BuildContext context) {
     cart.taxIncluded = context.select<AppState, bool>((s) => s.settings['pricesIncludeTax'] == true);
     final s = context.watch<AppState>();
+    // "New order" from a customer's profile: that customer on a fresh bill.
+    final nav = context.watch<NavController>();
+    if (nav.seq != _navSeq) {
+      _navSeq = nav.seq;
+      final a = nav.take('pos');
+      final c = a['customer'] == null ? null : s.list('customers').where((x) => toInt(x['id']) == toInt(a['customer'])).firstOrNull;
+      if (c != null) {
+        cart.customer = c;
+        cart.customerName = '${c['name']}';
+        cart.customerPhone = '${c['phone'] ?? ''}';
+        cart.guest = false;
+      }
+    }
     final products = s.list('products');
     final wide = isWide(context);
     return Shortcuts(

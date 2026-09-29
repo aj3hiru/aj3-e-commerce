@@ -70,7 +70,7 @@ enum SyncPhase { idle, sending, receiving }
 
 /// Data behind the app's versions of the website's other admin pages (`/api/app/v1/page/<name>`).
 /// All of them are downloaded in the background, so every page opens at once — also offline.
-const kPageNames = ['brands', 'tags', 'reviews', 'campaigns', 'coupons', 'pages', 'files', 'activity', 'push', 'business', 'customizer', 'cache', 'backups'];
+const kPageNames = ['brands', 'tags', 'reviews', 'campaigns', 'coupons', 'pages', 'files', 'activity', 'push', 'business', 'customizer', 'cache', 'backups', 'deliveries', 'dues_paid', 'addresses', 'customer_orders', 'coupon_activity'];
 
 /// The app's shared state: who is signed in, the data kept on the device,
 /// the outbox, and the sync engine that keeps them in step with the server.
@@ -280,7 +280,7 @@ class AppState extends ChangeNotifier {
     }
     if (r.ok) {
       // (A new product sent at once needs no stand-in: the server's copy is fetched right away.)
-      if (item.effect != null && item.effect!['kind'] != 'product_new') {
+      if (item.effect != null && !const ['product_new', 'customer_new', 'page_row_new'].contains(item.effect!['kind'])) {
         _applyEffect(item.effect!);
         await _store.write('sets', sets);
       }
@@ -469,6 +469,7 @@ class AppState extends ChangeNotifier {
         if (r == ApiOutcome.offline) { off = true; break; }
       }
       if (!off) await _loadProductDetails();
+      if (!off) await _loadOrderHistories();
       _lastPages = DateTime.now();
     } finally {
       _pagesBusy = false;
@@ -494,6 +495,29 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Each order's history, payments and receipts (the order page), kept on the device and fetched again
+  /// only when the order changed (its `rev` = newest history entry). Newest orders first.
+  Future<void> _loadOrderHistories() async {
+    if (!perms.seesOrders) return;
+    for (final o in list('orders').take(400)) {
+      final id = toInt(o['id']);
+      if (id <= 0) continue;
+      final have = await _store.read('order:$id');
+      if (have is Map && have['rev'] == o['rev']) continue;
+      final r = await api.get('/api/app/v1/orders/$id');
+      if (r.outcome == ApiOutcome.offline) return;
+      if (r.ok) await _store.write('order:$id', {'rev': o['rev'], 'order': r.data['order']});
+    }
+  }
+
+  /// An order's saved history (null if not downloaded yet), and saving a fresh copy.
+  Future<Map<String, dynamic>?> savedOrder(int id) async {
+    final v = await _store.read('order:$id');
+    return v is Map && v['order'] is Map ? Map<String, dynamic>.from(v['order']) : null;
+  }
+
+  Future<void> saveOrder(int id, Map<String, dynamic> order, Object? rev) => _store.write('order:$id', {'rev': rev, 'order': order});
+
   /// A product's full form from the device (null if not downloaded yet).
   Future<Map<String, dynamic>?> savedProduct(int id) async {
     final v = await _store.read('product:$id');
@@ -509,6 +533,10 @@ class AppState extends ChangeNotifier {
       final v = {'data': r.data['data'], 'at': r.data['at'] as String? ?? DateTime.now().toUtc().toIso8601String()};
       pageData[name] = v;
       await _store.write('page:$name', v);
+      // Changes still waiting to be sent stay visible on the fresh copy.
+      for (final o in outbox) {
+        if (o.effect != null && !o.failed && o.effect!['page'] == name) _applyEffect(o.effect!);
+      }
       if (notify) notifyListeners();
     } else if (r.outcome == ApiOutcome.offline && online) {
       online = false;
@@ -565,7 +593,8 @@ class AppState extends ChangeNotifier {
             if (a > 0) {
               final m = Map<String, dynamic>.from(l[i]);
               final bal = (toDouble(m['balance']) - a).clamp(0, double.infinity);
-              l[i] = {...m, 'paid': toDouble(m['paid']) + a, 'balance': bal, 'status': bal <= 0.004 ? 'paid' : m['status']};
+              final pays = [...((m['payments'] as List?) ?? const []), {'receipt': null, 'amount': a, 'method': e['method'] ?? 'Cash', 'at': DateTime.now().toUtc().toIso8601String()}];
+              l[i] = {...m, 'paid': toDouble(m['paid']) + a, 'balance': bal, 'status': bal <= 0.004 ? 'paid' : m['status'], 'payments': pays};
             }
           }
           sets['dues'] = l.where((d) => toDouble(d['balance']) > 0.004).toList();
@@ -573,6 +602,28 @@ class AppState extends ChangeNotifier {
         break;
       case 'product':
         _patchIn('products', (m) => m['id'] == e['id'], Map<String, dynamic>.from(e['fields']));
+        break;
+      case 'order_items':
+        // A line removed / a product added on the order page: items and totals change at once.
+        for (final set in ['orders', 'deliveries']) {
+          final l = sets[set];
+          if (l is! List) continue;
+          for (var i = 0; i < l.length; i++) {
+            if (l[i]['id'] != e['id']) continue;
+            final o = Map<String, dynamic>.from(l[i]);
+            final items = ((o['items'] as List?) ?? const []).map((x) => Map<String, dynamic>.from(x)).toList();
+            double line(Map x) => toDouble(x['qty']) * toDouble(x['price']);
+            final before = items.fold<double>(0, (t, x) => t + line(x));
+            if (e['op'] == 'remove') items.removeWhere((x) => toInt(x['id']) == toInt(e['itemId']));
+            if (e['op'] == 'add') {
+              final it = Map<String, dynamic>.from(e['item']);
+              final same = items.indexWhere((x) => toInt(x['productId']) == toInt(it['productId']));
+              same >= 0 ? items[same]['qty'] = toInt(items[same]['qty']) + toInt(it['qty']) : items.add(it);
+            }
+            final diff = items.fold<double>(0, (t, x) => t + line(x)) - before;
+            l[i] = {...o, 'items': items, 'subtotal': toDouble(o['subtotal']) + diff, 'total': toDouble(o['total']) + diff};
+          }
+        }
         break;
       case 'product_new':
         // Made offline: in the list at once (a temporary negative id) until the server's copy arrives.
@@ -592,6 +643,43 @@ class AppState extends ChangeNotifier {
             if (l[i]['id'] == e['id'] && l[i]['stock'] != null) l[i] = {...Map<String, dynamic>.from(l[i]), 'stock': toInt(l[i]['stock']) + toInt(e['qty'])};
           }
         }
+        break;
+      // A page's own rows (brands, tags, reviews, coupons…): edit / add / remove at once, even offline.
+      case 'page_row' || 'page_row_new' || 'page_row_delete':
+        final page = pageData[e['page']];
+        if (page == null) break;
+        final data = page['data'];
+        final rows = e['list'] == null ? data : (data is Map ? data[e['list']] : null);
+        if (rows is! List) break;
+        if (e['kind'] == 'page_row') {
+          final f = Map<String, dynamic>.from(e['fields']);
+          for (var i = 0; i < rows.length; i++) {
+            if (rows[i] is Map && rows[i]['id'] == e['id']) rows[i] = {...Map<String, dynamic>.from(rows[i]), ...f};
+          }
+        } else if (e['kind'] == 'page_row_delete') {
+          final ids = (e['ids'] as List).toSet();
+          rows.removeWhere((r) => r is Map && ids.contains(r['id']));
+        } else {
+          final row = Map<String, dynamic>.from(e['row']);
+          if (!rows.any((r) => r is Map && r['localRef'] != null && r['localRef'] == row['localRef'])) rows.insert(0, row);
+        }
+        pageData[e['page']] = {...page}; // a new object, so the page redraws
+        break;
+      // A row of a synced list (categories…): edit / remove at once, even offline.
+      case 'set_row':
+        _patchIn('${e['set']}', (m) => m['id'] == e['id'], Map<String, dynamic>.from(e['fields']));
+        break;
+      case 'set_row_delete':
+        final ids = (e['ids'] as List).toSet();
+        (sets['${e['set']}'] as List?)?.removeWhere((r) => r is Map && ids.contains(r['id']));
+        break;
+      case 'customer_new':
+        final nc = Map<String, dynamic>.from(e['customer']);
+        final cl = (sets['customers'] as List?) ?? [];
+        if (!cl.any((x) => x['localRef'] == nc['localRef'])) sets['customers'] = [nc, ...cl];
+        break;
+      case 'due':
+        _patchIn('dues', (m) => m['id'] == e['id'], Map<String, dynamic>.from(e['fields']));
         break;
       case 'customer':
         _patchIn('customers', (m) => m['id'] == e['id'], Map<String, dynamic>.from(e['fields']));

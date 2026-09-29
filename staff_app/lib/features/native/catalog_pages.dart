@@ -8,6 +8,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
+import '../../desktop/barcodes_web.dart';
 import '../../core/format.dart';
 import '../../core/printer.dart';
 import '../../ds/ds.dart';
@@ -113,51 +114,7 @@ class _BrandsBody extends StatefulWidget {
 class _BrandsBodyState extends State<_BrandsBody> {
   String _q = '';
 
-  Future<void> _edit(Map<String, dynamic>? b) async {
-    final name = TextEditingController(text: b?['name'] ?? '');
-    var popular = b?['isPopular'] == true, active = b == null || b['status'] == 'active';
-    String? logo;
-    final ok = await showAppDialog<bool>(
-      context,
-      title: b == null ? 'Add brand' : 'Edit brand',
-      icon: LucideIcons.copyright,
-      builder: (c) => StatefulBuilder(
-        builder: (c, set) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          AppField(controller: name, label: 'Brand name', required: true, autofocus: true),
-          const AppGap(),
-          Row(children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: SizedBox(width: 56, height: 56, child: logo != null ? Image.file(File(logo!), fit: BoxFit.cover) : NetImage(b?['logo'], size: 56, radius: 8)),
-            ),
-            const SizedBox(width: 12),
-            OutlinedButton.icon(
-              onPressed: () async {
-                final x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 800, imageQuality: 88).catchError((_) => null);
-                if (x != null) set(() => logo = x.path);
-              },
-              icon: const Icon(Icons.image_outlined, size: 18),
-              label: const Text('Logo'),
-            ),
-          ]),
-          const AppGap(),
-          SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Popular brand'), value: popular, onChanged: (v) => set(() => popular = v)),
-          SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Active'), value: active, onChanged: (v) => set(() => active = v)),
-        ]),
-      ),
-      actions: [const DAction.cancel(), DAction('Save', primary: true, onPressed: () async => popDialog(context, true))],
-    );
-    if (ok != true || !mounted || name.text.trim().isEmpty) return;
-    await nativeSend(
-      context,
-      OutboxItem(
-        id: newId(), method: b == null ? 'POST' : 'PUT', path: b == null ? '/api/ecommerce/brands2' : '/api/ecommerce/brands2/${b['id']}', label: '${b == null ? 'New' : 'Edit'} brand: ${name.text.trim()}',
-        multipart: true, fields: {'name': name.text.trim(), 'is_popular': popular ? '1' : '0', 'status': active ? 'active' : 'inactive'}, files: {'logo': ?logo}, refresh: const ['brands'],
-      ),
-      reload: widget.reload,
-      done: 'Saved.',
-    );
-  }
+  Future<void> _edit(Map<String, dynamic>? b) => editBrand(context, b, widget.reload);
 
   Future<void> _delete(Map<String, dynamic> b) async {
     if (!await confirm(context, 'Delete ${b['name']}?', toInt(b['products']) > 0 ? '${b['products']} products use this brand — they will have no brand.' : 'This cannot be undone.', danger: true)) return;
@@ -212,6 +169,53 @@ class _BrandsBodyState extends State<_BrandsBody> {
   }
 }
 
+Future<void> editBrand(BuildContext context, Map<String, dynamic>? b, Future<void> Function() reload) async {
+  final name = TextEditingController(text: b?['name'] ?? '');
+  var popular = b?['isPopular'] == true, active = b == null || b['status'] == 'active';
+  String? logo;
+  final ok = await showAppDialog<bool>(
+    context,
+    title: b == null ? 'Add brand' : 'Edit brand',
+    icon: LucideIcons.copyright,
+    builder: (c) => StatefulBuilder(
+      builder: (c, set) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppField(controller: name, label: 'Brand name', required: true, autofocus: true),
+        const AppGap(),
+        Row(children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(width: 56, height: 56, child: logo != null ? Image.file(File(logo!), fit: BoxFit.cover) : NetImage(b?['logo'], size: 56, radius: 8)),
+          ),
+          const SizedBox(width: 12),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final x = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 800, imageQuality: 88).catchError((_) => null);
+              if (x != null) set(() => logo = x.path);
+            },
+            icon: const Icon(Icons.image_outlined, size: 18),
+            label: const Text('Logo'),
+          ),
+        ]),
+        const AppGap(),
+        SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Popular brand'), value: popular, onChanged: (v) => set(() => popular = v)),
+        SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Active'), value: active, onChanged: (v) => set(() => active = v)),
+      ]),
+    ),
+    actions: [const DAction.cancel(), DAction('Save', primary: true, onPressed: () async => popDialog(context, true))],
+  );
+  if (ok != true || !context.mounted || name.text.trim().isEmpty) return;
+  await nativeSend(
+    context,
+    OutboxItem(
+      id: newId(), method: b == null ? 'POST' : 'PUT', path: b == null ? '/api/ecommerce/brands2' : '/api/ecommerce/brands2/${b['id']}', label: '${b == null ? 'New' : 'Edit'} brand: ${name.text.trim()}',
+      multipart: true, fields: {'name': name.text.trim(), 'is_popular': popular ? '1' : '0', 'status': active ? 'active' : 'inactive'}, files: {'logo': ?logo}, refresh: const ['brands'],
+      effect: b == null ? null : {'kind': 'page_row', 'page': 'brands', 'id': b['id'], 'fields': {'name': name.text.trim(), 'isPopular': popular, 'status': active ? 'active' : 'inactive'}},
+    ),
+    reload: reload,
+    done: 'Saved.',
+  );
+}
+
 /* ───────────────────────── Badge tags & item types ───────────────────────── */
 
 class TagsPage extends StatelessWidget {
@@ -234,34 +238,7 @@ class _TagsBody extends StatefulWidget {
 class _TagsBodyState extends State<_TagsBody> {
   String _group = 'badge';
 
-  Future<void> _edit(Map<String, dynamic>? t) async {
-    final label = TextEditingController(text: t?['label'] ?? '');
-    final color = TextEditingController(text: t?['color'] ?? '');
-    final order = TextEditingController(text: '${t?['sortOrder'] ?? 0}');
-    final ok = await showAppDialog<bool>(
-      context,
-      title: t == null ? (_group == 'badge' ? 'Add badge tag' : 'Add item type') : 'Edit ${t['label']}',
-      icon: LucideIcons.tags,
-      builder: (c) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppField(controller: label, label: 'Name', required: true, autofocus: true, hint: _group == 'badge' ? 'e.g. Best Seller' : 'e.g. Combo Pack'),
-        const AppGap(),
-        AppField(controller: color, label: 'Colour', helper: 'Optional', hint: '#16A34A'),
-        const AppGap(),
-        AppField(controller: order, label: 'Order', keyboardType: TextInputType.number),
-      ]),
-      actions: [const DAction.cancel(), DAction('Save', primary: true, onPressed: () async => popDialog(context, true))],
-    );
-    if (ok != true || !mounted) return;
-    await nativeSend(
-      context,
-      OutboxItem(
-        id: newId(), method: t == null ? 'POST' : 'PUT', path: t == null ? '/api/ecommerce/product-tags2' : '/api/ecommerce/product-tags2/${t['id']}', label: 'Tag: ${label.text.trim()}',
-        body: {'label': label.text.trim(), 'tagGroup': t?['tagGroup'] ?? _group, 'color': color.text.trim(), 'sortOrder': int.tryParse(order.text.trim()) ?? 0, 'slug': t?['slug'] ?? ''},
-      ),
-      reload: widget.reload,
-      done: 'Saved.',
-    );
-  }
+  Future<void> _edit(Map<String, dynamic>? t) => editTag(context, t, _group, widget.reload);
 
   @override
   Widget build(BuildContext context) {
@@ -301,6 +278,36 @@ class _TagsBodyState extends State<_TagsBody> {
   }
 
   Future<void> _toggle(Map<String, dynamic> t, bool on) => nativeSend(context, OutboxItem(id: newId(), method: 'PATCH', path: '/api/ecommerce/product-tags2/${t['id']}', label: 'Tag ${t['label']}: ${on ? 'on' : 'off'}', body: {'status': on ? 'active' : 'inactive'}), reload: widget.reload);
+}
+
+Future<void> editTag(BuildContext context, Map<String, dynamic>? t, String group, Future<void> Function() reload) async {
+  final label = TextEditingController(text: t?['label'] ?? '');
+  final color = TextEditingController(text: t?['color'] ?? '');
+  final order = TextEditingController(text: '${t?['sortOrder'] ?? 0}');
+  final ok = await showAppDialog<bool>(
+    context,
+    title: t == null ? (group == 'badge' ? 'Add badge tag' : 'Add item type') : 'Edit ${t['label']}',
+    icon: LucideIcons.tags,
+    builder: (c) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppField(controller: label, label: 'Name', required: true, autofocus: true, hint: group == 'badge' ? 'e.g. Best Seller' : 'e.g. Combo Pack'),
+      const AppGap(),
+      AppField(controller: color, label: 'Colour', helper: 'Optional', hint: '#16A34A'),
+      const AppGap(),
+      AppField(controller: order, label: 'Order', keyboardType: TextInputType.number),
+    ]),
+    actions: [const DAction.cancel(), DAction('Save', primary: true, onPressed: () async => popDialog(context, true))],
+  );
+  if (ok != true || !context.mounted) return;
+  await nativeSend(
+    context,
+    OutboxItem(
+      id: newId(), method: t == null ? 'POST' : 'PUT', path: t == null ? '/api/ecommerce/product-tags2' : '/api/ecommerce/product-tags2/${t['id']}', label: 'Tag: ${label.text.trim()}',
+      body: {'label': label.text.trim(), 'tagGroup': t?['tagGroup'] ?? group, 'color': color.text.trim(), 'sortOrder': int.tryParse(order.text.trim()) ?? 0, 'slug': t?['slug'] ?? ''},
+      effect: t == null ? null : {'kind': 'page_row', 'page': 'tags', 'id': t['id'], 'fields': {'label': label.text.trim(), 'color': color.text.trim(), 'sortOrder': int.tryParse(order.text.trim()) ?? 0}},
+    ),
+    reload: reload,
+    done: 'Saved.',
+  );
 }
 
 Color _hex(dynamic v) {
@@ -449,6 +456,7 @@ class _BarcodePrintPageState extends State<BarcodePrintPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (isWide(context)) return BarcodesWeb(ids: widget.ids); // Windows: the website's page
     final s = context.watch<AppState>();
     final all = s.list('products').where((p) => '${p['barcode'] ?? ''}'.isNotEmpty).toList();
     if (!_started) {

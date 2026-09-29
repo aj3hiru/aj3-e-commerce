@@ -51,7 +51,7 @@ class _CollectState extends State<_Collect> {
     final item = OutboxItem(
       id: newId(), method: 'POST', path: '/api/ecommerce/due-payment', label: 'Due collected · ${money(amounts.fold<double>(0, (a, b) => a + b))} · $customer',
       body: {'creditIds': ids, 'amounts': amounts, 'paymentMethod': _method, 'combineReceipt': true},
-      effect: {'kind': 'due_payment', 'amounts': {for (var i = 0; i < ids.length; i++) '${ids[i]}': amounts[i]}},
+      effect: {'kind': 'due_payment', 'method': _method, 'amounts': {for (var i = 0; i < ids.length; i++) '${ids[i]}': amounts[i]}},
       refresh: const ['dues', 'customers', 'orders'],
     );
     final r = await s.sendNow(item);

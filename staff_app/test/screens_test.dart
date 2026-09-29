@@ -26,6 +26,12 @@ import 'package:sri_staff/features/orders/orders_screen.dart';
 import 'package:sri_staff/features/products/product_edit_screen.dart';
 import 'package:sri_staff/features/products/products_screen.dart';
 import 'package:sri_staff/features/shell/shell.dart';
+import 'package:sri_staff/desktop/barcodes_web.dart';
+import 'package:sri_staff/desktop/catalog_web.dart';
+import 'package:sri_staff/desktop/categories_web.dart';
+import 'package:sri_staff/desktop/offers_web.dart';
+import 'package:sri_staff/desktop/sales_history_web.dart';
+import 'package:sri_staff/desktop/stock_out_web.dart';
 
 Future<void> _fonts() async {
   final inter = FontLoader('Inter');
@@ -135,6 +141,29 @@ void main() {
       {'id': 1, 'name': 'Patanjali', 'slug': 'patanjali', 'logo': null, 'isPopular': true, 'status': 'active', 'products': 30},
       {'id': 2, 'name': 'Dabur', 'slug': 'dabur', 'logo': null, 'isPopular': false, 'status': 'inactive', 'products': 0},
     ]});
+    await _page('tags', {'at': at, 'data': [
+      {'id': 1, 'label': 'Best Seller', 'slug': 'best-seller', 'tagGroup': 'badge', 'color': '#DC2626', 'sortOrder': 0, 'status': 'active', 'products': 4, 'activeProducts': 4, 'unitsSold': 38, 'revenue': 9120, 'orders': 20, 'unitsSoldAllTime': 60},
+      {'id': 2, 'label': 'New', 'slug': 'new', 'tagGroup': 'badge', 'color': '#16A34A', 'sortOrder': 1, 'status': 'active', 'products': 0, 'activeProducts': 0, 'unitsSold': 0, 'revenue': 0, 'orders': 0, 'unitsSoldAllTime': 0},
+      {'id': 3, 'label': 'Combo Pack', 'slug': 'combo', 'tagGroup': 'item_type', 'color': null, 'sortOrder': 0, 'status': 'inactive', 'products': 2, 'activeProducts': 2, 'unitsSold': 5, 'revenue': 1500, 'orders': 5, 'unitsSoldAllTime': 5},
+    ]});
+    await _page('reviews', {'at': at, 'data': {'rows': [
+      {'id': 1, 'productId': 1, 'productName': 'Hawan Samagri 500g', 'productImage': null, 'categoryId': 1, 'categoryName': 'Puja Items', 'customerName': 'Sujata Kumari', 'customerPhone': '9876543210', 'orderNumber': 'ORD0000009', 'rating': 5, 'reviewText': 'Very good quality, fresh smell.', 'status': 'pending', 'createdAt': now},
+      {'id': 2, 'productId': 2, 'productName': 'Pure Cow Ghee 1L', 'productImage': null, 'categoryId': 2, 'categoryName': 'Grocery', 'customerName': 'Aman Kumar', 'customerPhone': null, 'rating': 2, 'reviewText': null, 'status': 'approved', 'createdAt': now},
+    ], 'spread': []}});
+    await _page('campaigns', {'at': at, 'data': {
+      'campaigns': [
+        {'id': 1, 'name': 'Navratri Sale', 'scope': 'category', 'discountType': 'percent', 'discountValue': 10, 'startsAt': '2026-09-20T00:00:00.000Z', 'endsAt': '2026-10-05T18:29:00.000Z', 'isPaused': false, 'createdAt': '2026-09-19T10:00:00.000Z', 'targets': [{'type': 'category', 'id': 1, 'fixedPrice': null}], 'stats': {'orders': 12, 'units': 30, 'revenue': 5400, 'discount': 600}},
+        {'id': 2, 'name': 'Ghee Weekend', 'scope': 'product', 'discountType': 'amount', 'discountValue': 50, 'startsAt': '2026-08-01T00:00:00.000Z', 'endsAt': '2026-08-03T18:29:00.000Z', 'isPaused': false, 'createdAt': '2026-07-30T10:00:00.000Z', 'targets': [{'type': 'product', 'id': 2, 'fixedPrice': null}], 'stats': {'orders': 0, 'units': 0, 'revenue': 0, 'discount': 0}},
+      ],
+      'offers': [{'productId': 1, 'campaignId': 1, 'campaignName': 'Navratri Sale', 'unitPrice': 108, 'beforePrice': 120}],
+      'range': {'orders': 12, 'units': 30, 'revenue': 5400, 'discount': 600},
+      'chart': {'granularity': 'day', 'points': [for (var i = 1; i <= 28; i++) {'key': '$i', 'label': '$i Sep', 'revenue': (i * 37) % 400, 'units': i % 5, 'discount': 10, 'orders': 1}]},
+    }});
+    await _page('coupons', {'at': at, 'data': [
+      {'id': 1, 'code': 'WELCOME10', 'title': 'Welcome Offer', 'discountType': 'percentage', 'discountValue': 10, 'appliesTo': 'all', 'target': null, 'limit': 100, 'used': 14, 'status': 'active', 'paused': false, 'startsAt': null, 'endsAt': null, 'createdAt': at},
+      {'id': 2, 'code': 'DIWALI50', 'title': 'Diwali', 'discountType': 'fixed', 'discountValue': 50, 'appliesTo': 'category', 'target': 'Pooja Items', 'limit': 50, 'used': 0, 'status': 'active', 'paused': true, 'startsAt': '2026-10-20T00:00:00.000Z', 'endsAt': '2026-11-02T18:29:00.000Z', 'createdAt': at},
+    ]});
+    await _page('coupon_activity', {'at': at, 'data': [{'id': 1, 'action': 'create', 'description': 'Created coupon WELCOME10', 'byUsername': 'arjun', 'createdAt': at}]});
     await _page('customizer', {'at': at, 'data': {
       'canStore': true, 'unpublished': false, 'header': {'showLocation': true, 'showDeliveryInfo': true, 'deliveryLabel': "We're open", 'deliveryTimeText': '', 'searchPlaceholder': 'Search for products'},
       'store': {'headerMenu': [{'id': 'h1', 'label': 'Home', 'href': '/', 'icon': 'home', 'visibility': 'all', 'enabled': true, 'newTab': false, 'autoCategories': false, 'children': []}], 'sidebarMenu': [], 'menuDesign': {'accent': '#9f2089', 'showIcons': true, 'dividers': true}, 'push': {'showBell': true, 'autoPrompt': true}, 'footer': {'columns': []}},
@@ -194,9 +223,18 @@ void main() {
   testWidgets('customer profile phone', (t) => _shot(t, 'customer_profile_phone', const CustomerProfile(id: 2)));
   testWidgets('dues phone', (t) => _shot(t, 'dues_phone', const DuesScreen()));
   const wideSize = Size(1440, 900);
-  testWidgets('native stock out web', (t) => _shot(t, 'n_stockout_web', const StockOutPage(), size: wideSize));
-  testWidgets('native brands web', (t) => _shot(t, 'n_brands_web', const BrandsPage(), size: wideSize));
-  testWidgets('native sales history web', (t) => _shot(t, 'n_sales_web', const SalesHistoryPage(), size: wideSize, after: (t) async {
+  testWidgets('native stock out web', (t) => _shot(t, 'n_stockout_web', const StockOutWeb(), size: wideSize));
+  testWidgets('native brands web', (t) => _shot(t, 'n_brands_web', const BrandsWeb(), size: wideSize));
+  testWidgets('native tags web', (t) => _shot(t, 'n_tags_web', const TagsWeb(), size: wideSize));
+  testWidgets('native reviews web', (t) => _shot(t, 'n_reviews_web', const ReviewsWeb(), size: wideSize));
+  testWidgets('native barcodes web', (t) => _shot(t, 'n_barcodes_web', const BarcodesWeb(ids: [1, 2]), size: wideSize));
+  testWidgets('native categories web', (t) => _shot(t, 'n_categories_web', const CategoriesWeb(), size: wideSize));
+  testWidgets('native offers web', (t) => _shot(t, 'n_offers_web', const OffersWeb(), size: wideSize));
+  testWidgets('native coupons web', (t) => _shot(t, 'n_coupons_web', const OffersWeb(), size: wideSize, after: (t) async {
+        await t.tap(find.text('Coupons').first);
+        await t.pump(const Duration(milliseconds: 300));
+      }));
+  testWidgets('native sales history web', (t) => _shot(t, 'n_sales_web', const SalesHistoryWeb(), size: wideSize, after: (t) async {
         await t.tap(find.text('This Month').first);
         await t.pump(const Duration(milliseconds: 300));
       }));

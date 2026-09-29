@@ -20,7 +20,7 @@ Future<void> orderAction(BuildContext context, Map<String, dynamic> o, String la
     effect: {'kind': 'order', 'id': o['id'], 'fields': fields},
     refresh: const ['orders', 'deliveries'],
   ));
-  if (context.mounted) toast(context, s.online ? '$label ✓' : '$label — will sync when online');
+  if (context.mounted) toast(context, '$label ✓');
 }
 
 Future<String?> askReason(BuildContext context, String title, List<String> presets) {

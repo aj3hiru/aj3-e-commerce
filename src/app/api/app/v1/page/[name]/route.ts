@@ -17,6 +17,9 @@ import { getDraftHome, hasUnpublished } from "@/lib/home-config";
 import { getDraftProductPage } from "@/lib/product-page-config";
 import { getStorefrontConfig } from "@/lib/storefront-config";
 import { getShopHeaderSettings } from "@/lib/header-settings";
+import { loadDeliveryHistory } from "@/lib/delivery-history";
+import { getCouponActivity } from "@/lib/coupons2-activity";
+import { paidDues } from "@/lib/app-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -54,8 +57,9 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ name
     }
     case "campaigns": {
       if (!hasPermission(p, "ecommerce", "manage_products") && !hasPermission(p, "ecommerce", "manage_coupons")) return deny();
-      const d = await getCampaigns2Data(parseRange({}));
-      return ok({ campaigns: d.campaigns, offers: d.offers.length });
+      const range = parseRange({});
+      const d = await getCampaigns2Data(range);
+      return ok({ campaigns: d.campaigns, offers: d.offers, range: d.range, chart: d.chart, from: range.from, to: range.to });
     }
     case "coupons": {
       if (!hasPermission(p, "ecommerce", "manage_coupons")) return deny();
@@ -65,6 +69,10 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ name
         productId: c.productId, categoryId: c.categoryId, target: c.product?.name ?? c.category?.name ?? null, limit: c.numberOfTimes, used: c.usedCount,
         status: c.status, paused: c.isPaused, startsAt: c.startsAt?.toISOString() ?? null, endsAt: c.endsAt?.toISOString() ?? null, createdAt: c.createdAt.toISOString(),
       })));
+    }
+    case "coupon_activity": {
+      if (!hasPermission(p, "ecommerce", "manage_coupons")) return deny();
+      return ok(await getCouponActivity(12));
     }
     case "pages": {
       if (!hasPermission(p, "pages", "create")) return deny();
@@ -101,6 +109,16 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ name
     case "cache": {
       if (!hasPermission(p, "settings", "maintenance_mode")) return deny();
       return ok(await getCacheStats());
+    }
+    case "dues_paid": {
+      if (!hasPermission(p, "ecommerce", "manage_credits") && !hasPermission(p, "ecommerce", "manage_customers") && !hasPermission(p, "ecommerce", "manage_billing")) return deny();
+      return ok(await paidDues());
+    }
+    case "deliveries": {
+      // Deliveries Board → History and Agent report: the last 90 days (the app filters and adds up itself).
+      if (!hasPermission(p, "delivery", "view_all")) return deny();
+      const d = await loadDeliveryHistory({ from: ymd(new Date(Date.now() - 90 * 86_400_000)), to: ymd(new Date()), preset: "custom", agent: null, status: "all", q: "" });
+      return ok({ rows: d.rows, agents: d.agents });
     }
     case "backups": {
       if (s.role !== "admin") return deny();

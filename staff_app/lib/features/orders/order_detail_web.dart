@@ -2,8 +2,56 @@ part of 'order_detail_screen.dart';
 
 /// Windows: the website's order page — header card with status / payment pills and total,
 /// progress steps, items and totals, history, and a "Next step" column.
+final _ovPrefs = DisplayPrefs('ecom_order_view_display');
+
 extension _OrderDetailWeb on _OrderDetailScreenState {
-  Widget _web(AppState s, Map<String, dynamic> o, List<Map<String, dynamic>> agents, String? agentName, bool mine) {
+  /// Follows the website's Display Options for the order page.
+  Widget _web(AppState s, Map<String, dynamic> o, List<Map<String, dynamic>> agents, String? agentName, bool mine) =>
+      ListenableBuilder(listenable: _ovPrefs, builder: (context, _) => _webBody(s, o, agents, agentName, mine, _ovPrefs.on, _ovPrefs.item));
+
+  /// Remove a line / add a product (website: order page items table). Shows at once, synced like every change.
+  Future<void> _itemChange(Map<String, dynamic> o, String label, Map<String, dynamic> body, Map<String, dynamic> effect) async {
+    final s = context.read<AppState>();
+    await s.enqueue(OutboxItem(id: newId(), method: 'POST', path: '/api/ecommerce/orders/${o['id']}/items', body: body, label: label,
+        effect: {'kind': 'order_items', 'id': o['id'], ...effect}, refresh: const ['orders', 'products']));
+    if (mounted) toast(context, '$label ✓');
+  }
+
+  Future<void> _addProduct(Map<String, dynamic> o) async {
+    final s = context.read<AppState>();
+    final products = s.list('products').where((p) => p['status'] == 'active').toList();
+    Map<String, dynamic>? pick;
+    var qty = 1;
+    final ok = await showDDialog<bool>(
+      context,
+      title: 'Add a product to ${o['number']}',
+      width: 480,
+      actions: [const DAction.cancel(), DAction('Add', primary: true, onPressed: () async => pick == null ? toast(context, 'Choose a product.', error: true) : popDialog(context, true))],
+      builder: (c) => StatefulBuilder(
+        builder: (c, set) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          DSelect<int>(
+            value: pick == null ? 0 : toInt(pick!['id']),
+            options: [(0, 'Choose a product…'), for (final p in products) (toInt(p['id']), '${p['name']} — ${money(toDouble(p['salePrice']) > 0 ? p['salePrice'] : p['price'])}')],
+            onChanged: (v) => set(() => pick = products.where((p) => toInt(p['id']) == v).firstOrNull),
+          ),
+          const SizedBox(height: 12),
+          Row(children: [
+            const Text('Quantity', style: TextStyle(fontSize: 13, color: W.g700)),
+            const SizedBox(width: 12),
+            DButton.icon(LucideIcons.minus, tooltip: 'Less', size: DSize.sm, variant: DVariant.secondary, onPressed: qty > 1 ? () => set(() => qty--) : null),
+            Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text('$qty', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700))),
+            DButton.icon(LucideIcons.plus, tooltip: 'More', size: DSize.sm, variant: DVariant.secondary, onPressed: () => set(() => qty++)),
+          ]),
+        ]),
+      ),
+    );
+    if (ok != true || pick == null || !mounted) return;
+    final price = toDouble(pick!['salePrice']) > 0 ? toDouble(pick!['salePrice']) : toDouble(pick!['price']);
+    await _itemChange(o, 'Add ${pick!['name']} to ${o['number']}', {'action': 'add_item', 'productId': toInt(pick!['id']), 'addQty': qty},
+        {'op': 'add', 'item': {'productId': toInt(pick!['id']), 'name': pick!['name'], 'qty': qty, 'price': price, 'gstRate': toDouble(pick!['gstRate'])}});
+  }
+
+  Widget _webBody(AppState s, Map<String, dynamic> o, List<Map<String, dynamic>> agents, String? agentName, bool mine, bool Function(String, [String?]) on, bool Function(String) one) {
     final p = s.perms;
     final st = '${o['status']}';
     final online = o['type'] == 'online';
@@ -36,25 +84,34 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Flexible(child: Text('${o['number']}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: W.g900))),
-              const SizedBox(width: 10),
-              online ? const WebBadge('Online order', color: W.primary, bg: W.primaryLighter) : const WebBadge('In-store bill', color: Color(0xFFB45309), bg: Color(0xFFFEF3C7)),
+              if (on('ov-header', 'ov-h-type')) ...[
+                const SizedBox(width: 10),
+                online ? const WebBadge('Online order', color: W.primary, bg: W.primaryLighter) : const WebBadge('In-store bill', color: Color(0xFFB45309), bg: Color(0xFFFEF3C7)),
+              ],
             ]),
-            const SizedBox(height: 4),
-            Row(children: [const Icon(LucideIcons.calendar, size: 14, color: W.g500), const SizedBox(width: 6), Text(dateTime(o['createdAt']), style: const TextStyle(fontSize: 13, color: W.g600))]),
+            if (on('ov-header', 'ov-h-date')) ...[
+              const SizedBox(height: 4),
+              Row(children: [const Icon(LucideIcons.calendar, size: 14, color: W.g500), const SizedBox(width: 6), Text(dateTime(o['createdAt']), style: const TextStyle(fontSize: 13, color: W.g600))]),
+            ],
           ]),
         ),
-        WebPillMenu(value: st, options: widget.agentView ? [st] : statusChoices(p, o), onSelected: (v) => setOrderStatus(context, o, v).then((_) => _loadExtra())),
-        const SizedBox(width: 8),
-        WebPillMenu(value: paid ? 'Paid' : 'Unpaid', options: const ['Unpaid', 'Paid'], onSelected: canMarkPaid ? (_) => _collect(o) : null),
-        const SizedBox(width: 12),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          const Text('Total', style: TextStyle(fontSize: 12, color: W.g500)),
-          Text(money(o['total']), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: W.g900)),
-        ]),
-        const SizedBox(width: 12),
-        WebButton('Print', icon: LucideIcons.printer, onPressed: () => _print(s, o)),
-        if (phone != null) square(LucideIcons.phone, () => launchUrl(Uri.parse('tel:$phone')), tip: 'Call $phone'),
-        if (phone != null) square(LucideIcons.messageCircle, () => launchUrl(Uri.parse('https://wa.me/91${digits(phone)}'), mode: LaunchMode.externalApplication), color: W.green, tip: 'WhatsApp'),
+        if (on('ov-header', 'ov-h-pills')) ...[
+          WebPillMenu(value: st, options: widget.agentView ? [st] : statusChoices(p, o), onSelected: (v) => setOrderStatus(context, o, v).then((_) => _loadExtra())),
+          const SizedBox(width: 8),
+          WebPillMenu(value: paid ? 'Paid' : 'Unpaid', options: const ['Unpaid', 'Paid'], color: paid ? W.green : W.grey, onSelected: canMarkPaid ? (_) => _collect(o) : null),
+          const SizedBox(width: 12),
+        ],
+        if (on('ov-header', 'ov-h-total')) ...[
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            const Text('Total', style: TextStyle(fontSize: 12, color: W.g500)),
+            Text(money(o['total']), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: W.g900)),
+          ]),
+          const SizedBox(width: 12),
+        ],
+        if (!widget.agentView) Padding(padding: const EdgeInsets.only(right: 8), child: DisplayOptionsButton(displayDefs['ecom_order_view_display']!)),
+        if (on('ov-header', 'ov-h-print')) WebButton('Print', icon: LucideIcons.printer, onPressed: () => _print(s, o)),
+        if (phone != null && on('ov-header', 'ov-h-contact')) square(LucideIcons.phone, () => launchUrl(Uri.parse('tel:$phone')), tip: 'Call $phone'),
+        if (phone != null && on('ov-header', 'ov-h-contact')) square(LucideIcons.messageCircle, () => launchUrl(Uri.parse('https://wa.me/91${digits(phone)}'), mode: LaunchMode.externalApplication), color: W.green, tip: 'WhatsApp'),
       ]),
     );
 
@@ -95,6 +152,45 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
             Text(b, style: TextStyle(fontSize: bold ? 17 : 14.5, fontWeight: bold ? FontWeight.w700 : FontWeight.w500, color: color ?? W.g900)),
           ]),
         );
+    // Items can be changed while the order is still open (as on the website).
+    final editable = !widget.agentView && st != 'Delivered' && st != 'Canceled' && p.seesOrders && o['localRef'] == null;
+    bool c(String k) => on('ov-items', k);
+    final itemCols = <(String, int, TextAlign)>[
+      if (c('ov-c-num')) ('#', 0, TextAlign.left),
+      if (c('ov-c-product')) ('PRODUCT', 5, TextAlign.left),
+      if (c('ov-c-qty')) ('QTY', 1, TextAlign.left),
+      if (c('ov-c-price')) ('PRICE', 2, TextAlign.right),
+      if (c('ov-c-gst')) ('GST', 1, TextAlign.right),
+      if (c('ov-c-subtotal')) ('AMOUNT', 2, TextAlign.right),
+      if (c('ov-c-remove') && editable) ('', 0, TextAlign.right),
+    ];
+    Widget col((String, int, TextAlign) x, Widget child) => x.$2 == 0 ? SizedBox(width: x.$1 == '#' ? 30 : 40, child: child) : Expanded(flex: x.$2, child: child);
+    Widget cellFor((String, int, TextAlign) x, int i) {
+      final it = items[i];
+      return switch (x.$1) {
+        '#' => Text('${i + 1}', style: const TextStyle(color: W.g500)),
+        'PRODUCT' => Row(children: [
+            if (c('ov-c-image')) ...[
+              NetImage(s.list('products').where((x) => toInt(x['id']) == toInt(it['productId'])).firstOrNull?['image'], size: 40, radius: 6),
+              const SizedBox(width: 10),
+            ],
+            Expanded(child: Text('${it['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: W.g900))),
+          ]),
+        'QTY' => Text('${it['qty']}', style: const TextStyle(fontSize: 13)),
+        'PRICE' => Text(money(it['price']), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13)),
+        'GST' => Text('${toDouble(it['gstRate']).toStringAsFixed(0)}%', textAlign: TextAlign.right, style: const TextStyle(fontSize: 13, color: W.g600)),
+        'AMOUNT' => Text(money(toDouble(it['qty']) * toDouble(it['price'])), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        _ => Align(
+            alignment: Alignment.centerRight,
+            child: WebIconAction(LucideIcons.trash2, color: const Color(0xFFDC2626), tooltip: 'Remove ${it['name']}', onTap: items.length <= 1 || it['id'] == null
+                ? () => toast(context, items.length <= 1 ? 'An order needs at least one item — cancel the order instead.' : 'Refresh first (F5), then remove it.', error: true)
+                : () async {
+                    if (!await confirm(context, 'Remove item?', 'Remove ${it['name']} from ${o['number']}? The total is worked out again.', ok: 'Remove', danger: true)) return;
+                    await _itemChange(o, 'Remove ${it['name']} from ${o['number']}', {'action': 'remove_item', 'itemId': toInt(it['id'])}, {'op': 'remove', 'itemId': toInt(it['id'])});
+                  }),
+          ),
+      };
+    }
     final itemsCard = WebCard(
       padding: EdgeInsets.zero,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -106,60 +202,42 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
             const Text('Items', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: W.g900)),
             const SizedBox(width: 8),
             Text('(${items.length})', style: const TextStyle(fontSize: 13, color: W.g500)),
+            const Spacer(),
+            if (editable && c('ov-i-add')) WebButton('Add a product', icon: LucideIcons.plus, onPressed: () => _addProduct(o)),
           ]),
         ),
         Container(
           color: W.g50,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: const Row(children: [
-            SizedBox(width: 30, child: Text('#', style: head)),
-            Expanded(flex: 4, child: Text('PRODUCT', style: head)),
-            Expanded(flex: 1, child: Text('QTY', style: head)),
-            Expanded(flex: 2, child: Text('PRICE', style: head, textAlign: TextAlign.right)),
-            Expanded(flex: 1, child: Text('GST', style: head, textAlign: TextAlign.right)),
-            Expanded(flex: 2, child: Text('AMOUNT', style: head, textAlign: TextAlign.right)),
-          ]),
+          child: Row(children: [for (final x in itemCols) col(x, Text(x.$1, style: head, textAlign: x.$3))]),
         ),
         for (var i = 0; i < items.length; i++)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: W.g100))),
-            child: Row(children: [
-              SizedBox(width: 30, child: Text('${i + 1}', style: const TextStyle(color: W.g500))),
-              Expanded(
-                flex: 4,
-                child: Row(children: [
-                  NetImage(s.list('products').where((x) => toInt(x['id']) == toInt(items[i]['productId'])).firstOrNull?['image'], size: 40, radius: 6),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text('${items[i]['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: W.g900))),
-                ]),
-              ),
-              Expanded(flex: 1, child: Text('${items[i]['qty']}', style: const TextStyle(fontSize: 13))),
-              Expanded(flex: 2, child: Text(money(items[i]['price']), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13))),
-              Expanded(flex: 1, child: Text('${toDouble(items[i]['gstRate']).toStringAsFixed(0)}%', textAlign: TextAlign.right, style: const TextStyle(fontSize: 13, color: W.g600))),
-              Expanded(flex: 2, child: Text(money(toDouble(items[i]['qty']) * toDouble(items[i]['price'])), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))),
+            child: Row(children: [for (final x in itemCols) col(x, cellFor(x, i))]),
+          ),
+        if (on('ov-bill'))
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(children: [
+              if (on('ov-bill', 'ov-b-subtotal')) total('Subtotal', money(o['subtotal'])),
+              if (on('ov-bill', 'ov-b-discount') && toDouble(o['discount']) > 0) total('Discount', '-${money(o['discount'])}', color: const Color(0xFF16A34A)),
+              if (on('ov-bill', 'ov-b-gst')) total('GST', money(o['gst'])),
+              if (toDouble(o['delivery']) > 0) total('Delivery charge', money(o['delivery'])),
+              const Row(children: [Spacer(flex: 3), Expanded(flex: 2, child: Divider(height: 14, color: W.g200))]),
+              total('Total', money(o['total']), bold: true),
+              if (on('ov-bill', 'ov-b-paid')) total('Paid', money(paid ? o['total'] : toDouble(o['total']) - (toDouble(o['due']) > 0 ? toDouble(o['due']) : toDouble(o['total'])))),
+              if (on('ov-bill', 'ov-b-due') && (toDouble(o['due']) > 0 || (!paid && st != 'Canceled'))) total('Due', money(toDouble(o['due']) > 0 ? o['due'] : o['total']), color: const Color(0xFFDC2626)),
             ]),
           ),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(children: [
-            total('Subtotal', money(o['subtotal'])),
-            if (toDouble(o['discount']) > 0) total('Discount', '-${money(o['discount'])}', color: const Color(0xFF16A34A)),
-            total('GST', money(o['gst'])),
-            if (toDouble(o['delivery']) > 0) total('Delivery charge', money(o['delivery'])),
-            const Row(children: [Spacer(flex: 3), Expanded(flex: 2, child: Divider(height: 14, color: W.g200))]),
-            total('Total', money(o['total']), bold: true),
-            total('Paid', money(paid ? o['total'] : toDouble(o['paid']))),
-            if (toDouble(o['due']) > 0 || (!paid && st != 'Canceled')) total('Due', money(toDouble(o['due']) > 0 ? o['due'] : o['total']), color: const Color(0xFFDC2626)),
-          ]),
-        ),
       ]),
     );
 
     final history = WebCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const WebCardTitle('Order history', icon: LucideIcons.history, iconColor: W.blue),
-        if (_extra == null) Text(s.online ? 'Loading…' : 'Available when online.', style: const TextStyle(color: W.g500)),
+        if (_extra == null) const Text('No history yet.', style: TextStyle(color: W.g500)),
         for (final e in events)
           Padding(
             padding: const EdgeInsets.only(bottom: 14),
@@ -237,8 +315,58 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
         ),
     ];
 
+    // Payment details: how it was paid, and every due payment with its receipt (website: "Payment details").
+    final pays = ((o['pays'] as List?) ?? const []).cast<Map>();
+    final receipts = [for (final c in ((_extra?['credits'] as List?) ?? const []).cast<Map>()) ...((c['payments'] as List?) ?? const []).cast<Map>()];
+    final paymentCard = WebCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const Text('Payment details', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: W.g900)),
+        const SizedBox(height: 12),
+        Row(children: [const Text('Method', style: TextStyle(fontSize: 13, color: W.g500)), const Spacer(), Text('${o['paymentMethod'] == 'COD' ? 'Cash On Delivery' : o['paymentMethod'] ?? '—'}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))]),
+        const SizedBox(height: 6),
+        Row(children: [const Text('Status', style: TextStyle(fontSize: 13, color: W.g500)), const Spacer(), Text(paid ? 'Paid' : 'Unpaid', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: paid ? W.green : const Color(0xFFDC2626)))]),
+        for (final x in pays) ...[
+          const SizedBox(height: 6),
+          Row(children: [Text('${x['method']}', style: const TextStyle(fontSize: 13, color: W.g700)), const Spacer(), Text(money(x['amount']), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600))]),
+        ],
+        if (receipts.isNotEmpty) ...[
+          const Divider(height: 22),
+          const Text('Due payments', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: W.g500)),
+          for (final r in receipts)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(children: [
+                Expanded(child: Text('${r['receipt']} · ${r['method']}\n${dateTime(r['at'])}', style: const TextStyle(fontSize: 12.5, color: W.g700, height: 1.35))),
+                Text(money(r['amount']), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: W.green)),
+              ]),
+            ),
+        ],
+      ]),
+    );
+    final mapCard = o['lat'] == null
+        ? null
+        : WebCard(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const Text('Delivery spot', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: W.g900)),
+              const SizedBox(height: 10),
+              Container(
+                height: 120,
+                decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFBFDBFE))),
+                child: Center(
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(LucideIcons.mapPin, size: 28, color: Color(0xFFDC2626)),
+                    const SizedBox(height: 6),
+                    Text('${toDouble(o['lat']).toStringAsFixed(5)}, ${toDouble(o['lng']).toStringAsFixed(5)}', style: const TextStyle(fontSize: 12.5, color: W.g700)),
+                  ]),
+                ),
+              ),
+              const SizedBox(height: 10),
+              WebButton('Open in Google Maps', icon: LucideIcons.navigation, onPressed: () => launchUrl(Uri.parse('https://www.google.com/maps?q=${o['lat']},${o['lng']}'), mode: LaunchMode.externalApplication)),
+            ]),
+          );
+
     final side = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (next.isNotEmpty)
+      if (next.isNotEmpty && on('ov-side', 'ov-s-actions'))
         WebCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             const Text('Next step', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: W.g900)),
@@ -246,8 +374,8 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
             for (final w in next) Padding(padding: const EdgeInsets.only(bottom: 12), child: w),
           ]),
         ),
-      if (next.isNotEmpty) const SizedBox(height: 12),
-      WebCard(
+      if (next.isNotEmpty && on('ov-side', 'ov-s-actions')) const SizedBox(height: 12),
+      if (on('ov-side', 'ov-s-customer')) WebCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           const Text('Customer', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: W.g900)),
           const SizedBox(height: 14),
@@ -270,7 +398,9 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
           if (customer?['email'] != null) ...[const SizedBox(height: 8), Row(children: [const Icon(LucideIcons.mail, size: 15, color: W.g500), const SizedBox(width: 10), Expanded(child: Text('${customer!['email']}', style: const TextStyle(fontSize: 13)))])],
         ]),
       ),
-      if (o['address'] != null) ...[
+      if (on('ov-side', 'ov-s-payment')) ...[const SizedBox(height: 12), paymentCard],
+      if (mapCard != null && on('ov-side', 'ov-s-map')) ...[const SizedBox(height: 12), mapCard],
+      if (o['address'] != null && on('ov-side', 'ov-s-address')) ...[
         const SizedBox(height: 12),
         WebCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -300,9 +430,9 @@ extension _OrderDetailWeb on _OrderDetailScreenState {
       children: [
         header,
         const SizedBox(height: 12),
-        if (online) ...[progress, const SizedBox(height: 12)],
+        if (online && one('ov-progress')) ...[progress, const SizedBox(height: 12)],
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(flex: 7, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [itemsCard, const SizedBox(height: 12), history])),
+          Expanded(flex: 7, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [if (on('ov-items')) ...[itemsCard, const SizedBox(height: 12)], if (one('ov-history')) history])),
           const SizedBox(width: 12),
           Expanded(flex: 4, child: side),
         ]),

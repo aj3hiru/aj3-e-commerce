@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../desktop/customer_profile_web.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -85,6 +87,8 @@ class CustomerProfile extends StatelessWidget {
   const CustomerProfile({super.key, required this.id});
   @override
   Widget build(BuildContext context) {
+    // Windows: the website's profile page.
+    if (isWide(context)) return CustomerProfileWeb(id: id);
     final s = context.watch<AppState>();
     final c = s.list('customers').where((x) => toInt(x['id']) == id).firstOrNull;
     if (c == null) return Scaffold(appBar: AppBar(), body: const EmptyState(icon: Icons.person_off_outlined, title: 'Customer not found'));
@@ -198,7 +202,10 @@ Future<void> editCustomer(BuildContext context, Map<String, dynamic>? c) async {
   final r = await s.sendNow(OutboxItem(
     id: newId(), method: c == null ? 'POST' : 'PUT', path: c == null ? '/api/ecommerce/customers2' : '/api/ecommerce/customers2/${c['id']}', body: body,
     label: '${c == null ? 'New' : 'Edit'} customer: ${body['name']}', refresh: const ['customers'],
-    effect: c == null ? null : {'kind': 'customer', 'id': c['id'], 'fields': {...body, 'type': type}},
+    effect: c == null
+        ? {'kind': 'customer_new', 'customer': {'id': -DateTime.now().millisecondsSinceEpoch, 'localRef': newId(), 'name': body['name'], 'phone': body['phone'] == '' ? null : body['phone'], 'email': body['email'] == '' ? null : body['email'],
+            'address': body['address'], 'type': type, 'status': 'active', 'since': DateTime.now().toUtc().toIso8601String(), 'due': 0, 'orders': 0, 'spent': 0}}
+        : {'kind': 'customer', 'id': c['id'], 'fields': {...body, 'type': type}},
   ));
   if (!context.mounted) return;
   if (r.outcome == ApiOutcome.rejected || r.outcome == ApiOutcome.forbidden) {

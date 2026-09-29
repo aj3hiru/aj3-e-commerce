@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
+import '../../core/display_defs.dart';
+import '../../ds/display_options.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../ds/ds.dart';
@@ -34,9 +36,19 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     _loadExtra();
   }
 
+  /// History / payments / receipts: the copy on this computer at once, then the server's.
   Future<void> _loadExtra() async {
-    final r = await context.read<AppState>().api.get('/api/app/v1/orders/${widget.orderId}');
-    if (r.ok && mounted) setState(() => _extra = Map<String, dynamic>.from(r.data['order']));
+    final s = context.read<AppState>();
+    if (_extra == null) {
+      final saved = await s.savedOrder(widget.orderId);
+      if (saved != null && mounted) setState(() => _extra = saved);
+    }
+    final r = await s.api.get('/api/app/v1/orders/${widget.orderId}');
+    if (r.ok && mounted) {
+      final x = Map<String, dynamic>.from(r.data['order']);
+      setState(() => _extra = x);
+      await s.saveOrder(widget.orderId, x, _order(s)?['rev']);
+    }
   }
 
   Map<String, dynamic>? _order(AppState s) {
@@ -58,7 +70,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       effect: {'kind': 'order', 'id': widget.orderId, 'fields': fields},
       refresh: const ['orders', 'deliveries'],
     ));
-    if (mounted) toast(context, s.online ? '$label ✓' : '$label — will sync when online');
+    if (mounted) toast(context, '$label ✓');
     _loadExtra();
   }
 

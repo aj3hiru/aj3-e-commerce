@@ -186,6 +186,11 @@ async function warm(urls) {
           seen.add(self.location.origin + href);
           queue.push(self.location.origin + href);
         }
+        // Payment receipts open from buttons (not links): take their numbers from the page's data.
+        for (const m of new Set(html.match(/\bRCPT\d{4,}\b/g) || [])) {
+          const r = `${self.location.origin}/ecommerce/payment-receipt/${m}`;
+          if (!seen.has(r)) { seen.add(r); queue.push(r); }
+        }
       } catch (_) { /* offline or slow — next round */ }
     }
   } finally {

@@ -21,7 +21,7 @@ function formatBytes(n: number | null): string {
 }
 function src(relPath: string) { return `/${relPath}`; }
 const CATEGORY_OPTIONS: { value: string; label: string }[] = [
-  { value: "all", label: "All Categories" }, { value: "media", label: "Blog Media" },
+  { value: "all", label: "All Categories" }, { value: "media", label: "Media Library" },
   { value: "product", label: "Product Images" }, { value: "category", label: "Category Icons" },
   { value: "brand", label: "Brand Logos" }, { value: "banner", label: "Homepage Banners" },
   { value: "payment", label: "Payment Icons" }, { value: "logo", label: "Site Logo" }, { value: "author", label: "Author Photos" },

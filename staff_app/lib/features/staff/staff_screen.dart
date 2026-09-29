@@ -17,8 +17,6 @@ const staffRoles = [
   ('cashier', 'Billing / Cashier'),
   ('catalog_manager', 'Product Manager'),
   ('marketing', 'Marketing'),
-  ('editor', 'Editor (blog)'),
-  ('author', 'Author (blog)'),
 ];
 
 /// Staff & roles: add people, change their role, suspend / re-activate.
@@ -117,7 +115,7 @@ Future<void> editStaff(BuildContext context, Map<String, dynamic>? u) async {
           label: 'Role',
           helper: canRole ? null : "You can't change roles",
           value: role,
-          options: [for (final (id, label) in staffRoles) if (id != 'admin' || s.perms.isAdmin || role == 'admin') (id, label)],
+          options: [for (final (id, label) in staffRoles) if (id != 'admin' || s.perms.isAdmin || role == 'admin') (id, label), if (!staffRoles.any((r) => r.$1 == role)) (role, 'Old role ($role) — pick a new one')],
           onChanged: canRole ? (v) => set(() => role = v) : null,
         ),
       ]),

@@ -3,7 +3,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { clearCacheSection, type CacheSection } from "@/lib/cache-manager2";
 import { withApiErrors } from "@/lib/api-errors";
 
-const VALID: CacheSection[] = ["home", "shop", "blog", "dashboard", "all", "redis"];
+const VALID: CacheSection[] = ["home", "shop", "dashboard", "all", "redis"];
 
 async function handlePOST(req: NextRequest) {
   const session = await getAdminSession();

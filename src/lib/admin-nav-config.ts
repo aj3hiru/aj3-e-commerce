@@ -30,11 +30,6 @@ export type NavPermissionPath =
   | "push_notifications.send"
   | "reports.any" // special: orders (manage_orders) or billing (manage_billing)
   | "offers.any" // special: campaigns (manage_products) or coupons (manage_coupons)
-  | "blogs.any" // special: true if ANY key under `blogs` is true, OR analytics.view_basic is true
-  | "blogs.manage_categories"
-  | "blogs.manage_tags"
-  | "blogs.manage_comments"
-  | "analytics.view_basic"
   | "settings.maintenance_mode"
   | "security.view_logs"
   | "users.create"
@@ -220,11 +215,6 @@ export function hasPermission(
   if (path === "reports.any") return !!permissions.ecommerce?.manage_orders || !!permissions.ecommerce?.manage_billing;
   if (path === "offers.any") return !!permissions.ecommerce?.manage_products || !!permissions.ecommerce?.manage_coupons;
 
-  if (path === "blogs.any") {
-    const blogsAny = Object.values(permissions.blogs ?? {}).some(Boolean);
-    const analyticsBasic = !!permissions.analytics?.view_basic;
-    return blogsAny || analyticsBasic;
-  }
 
   const [group, key] = path.split(".");
   return !!permissions[group]?.[key];

@@ -21,7 +21,7 @@ export interface FileAsset {
 }
 
 const CATEGORY_LABEL: Record<AssetCategory, string> = {
-  media: "Blog Media", product: "Product Image", category: "Category Icon", brand: "Brand Logo",
+  media: "Media Library", product: "Product Image", category: "Category Icon", brand: "Brand Logo",
   banner: "Homepage Banner", payment: "Payment Icon", logo: "Site Logo", author: "Author Photo",
 };
 

@@ -8,7 +8,6 @@ export const CACHEMGR2_GROUPS: readonly WidgetGroup[] = [
     groupLabel: "Summary Cards",
     items: [
       { key: "cm2-k-size", label: "Cache Size" },
-      { key: "cm2-k-posts", label: "Trackable Blog Posts" },
       { key: "cm2-k-total", label: "Total Clears" },
       { key: "cm2-k-last", label: "Last Cleared" },
     ],

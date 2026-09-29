@@ -17,20 +17,6 @@ export class PushSendError extends Error {
   }
 }
 
-/** Mirrors admin_push.php's post picker: published posts, newest first,
- *  optionally filtered by title (the modal's search box). */
-export async function searchPublishedPosts(query: string, limit = 50) {
-  const posts = await prisma.post.findMany({
-    where: { status: "published", ...(query ? { title: { contains: query } } : {}) },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-    select: { id: true, title: true, slug: true, featuredImage: { select: { filePath: true } } },
-  });
-  return (posts as { id: number; title: string; slug: string; featuredImage: { filePath: string } | null }[]).map((p) => ({
-    id: p.id, title: p.title, slug: p.slug, image: p.featuredImage?.filePath ?? null,
-  }));
-}
-
 /** Queues a campaign for every current subscriber — mirrors send-push.php's
  *  transaction (INSERT campaign, then one push_queue row per subscription).
  *  Nothing is sent here: the single queue worker (kickPushQueue) picks the

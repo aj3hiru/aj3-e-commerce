@@ -79,12 +79,14 @@ function cloneDefaults(): PermissionsShape {
  *  quick "42 / 85 granted" summary per user without listing every checkbox. */
 export function countGrantedPermissions(permissions: PermissionsShape): number {
   // Only keys that exist in the permission map count (older accounts can carry retired keys).
+  // Only the permissions shown in the editor (PERMISSION_GROUPS) count; retired ones are ignored.
   let count = 0;
-  const walk = (shape: unknown, value: unknown) => {
-    if (typeof shape === "boolean") { if (value === true) count++; return; }
-    if (shape && typeof shape === "object") for (const k of Object.keys(shape)) walk((shape as Record<string, unknown>)[k], (value as Record<string, unknown> | undefined)?.[k]);
-  };
-  walk(DEFAULT_PERMISSIONS, permissions);
+  const p = permissions as unknown as Record<string, unknown>;
+  for (const g of PERMISSION_GROUPS) {
+    if (!g.fields) { if (p[g.key] === true) count++; continue; }
+    const v = (p[g.key] ?? {}) as Record<string, unknown>;
+    for (const k of Object.keys(g.fields)) if (v[k] === true) count++;
+  }
   return count;
 }
 
@@ -107,33 +109,8 @@ export function getRolePermissionDefaults(role: string): PermissionsShape {
     return all;
   }
 
-  if (role === "editor") {
-    all.dashboard_access = true;
-    (Object.keys(all.blogs) as (keyof typeof all.blogs)[]).forEach((k) => (all.blogs[k] = true));
-    (Object.keys(all.media) as (keyof typeof all.media)[]).forEach((k) => (all.media[k] = true));
-    all.push_notifications.send = true;
-    all.push_notifications.schedule = true;
-    all.authors.edit = true;
-    all.authors.approve = true;
-    all.authors.feature = true;
-    all.analytics.view_basic = true;
-    all.analytics.view_advanced = true;
-    all.pages.create = true;
-    all.pages.edit = true;
-    all.files.access_file_manager = true;
-    return all;
-  }
-
-  // author (default)
+  // Any other (old blog) role: dashboard only until a store role is chosen.
   all.dashboard_access = true;
-  all.blogs.create = true;
-  all.blogs.edit_own = true;
-  all.blogs.delete_own = true;
-  all.blogs.view_drafts = true;
-  all.blogs.manage_seo = true;
-  all.media.upload = true;
-  all.analytics.view_basic = true;
-  all.files.access_file_manager = true;
   return all;
 }
 
@@ -147,36 +124,29 @@ export const PERMISSION_GROUPS: {
   icon: string;
   fields?: Record<string, string>;
 }[] = [
-  { key: "dashboard_access", label: "Dashboard Access", icon: "Gauge" },
+  // Only permissions the store actually checks are listed, each once. Retired
+  // groups (blog, authors, ads, media, analytics…) stay in the saved JSON for
+  // old accounts but are no longer shown or used.
+  { key: "dashboard_access", label: "Dashboard", icon: "Gauge" },
   {
-    key: "blogs", label: "Blogs", icon: "Rss",
-    fields: { create: "Create", edit_own: "Edit Own", edit_all: "Edit All", delete_own: "Delete Own", delete_all: "Delete All", publish: "Publish", unpublish: "Unpublish", schedule: "Schedule", feature: "Feature", manage_categories: "Categories", manage_tags: "Tags", manage_comments: "Comments", view_drafts: "View Drafts", manage_seo: "Manage SEO" },
-  },
-  { key: "media", label: "Media", icon: "Images", fields: { upload: "Upload", delete: "Delete", manage_all: "Manage All" } },
-  { key: "push_notifications", label: "Push Notifications", icon: "Bell", fields: { send: "Send", schedule: "Schedule", manage_templates: "Subscribers & Settings" } },
-  {
-    key: "ecommerce", label: "Ecommerce", icon: "Store",
-    // Real bug fixed here: Homepage Settings was gated on manage_payment
-    // ("Payment Settings" in this very panel) — completely unrelated to
-    // managing the storefront's banner slider/sections. An admin granted
-    // every other ecommerce permission except Payment Settings hit
-    // "Access Denied" on every single homepage action, making the whole
-    // feature look broken. New manage_homepage field, checked instead.
-    fields: { manage_categories: "Categories", manage_products: "Products", manage_orders: "Orders", manage_customers: "Customers", manage_coupons: "Coupons", manage_payment: "Payment Settings", manage_billing: "Billing / POS", manage_credits: "Due", manage_homepage: "Homepage Settings" },
+    key: "ecommerce", label: "Store", icon: "Store",
+    fields: {
+      manage_billing: "Billing / POS", manage_credits: "Due payments", manage_customers: "Customers",
+      manage_products: "Products, brands & stock", manage_categories: "Categories", manage_coupons: "Offers & coupons",
+      manage_homepage: "Store customizer", manage_payment: "Business & payment settings", manage_orders: "Reports, analytics & GST",
+    },
   },
   {
     key: "orders", label: "Online Orders", icon: "ClipboardList",
     fields: { view: "View orders", accept_reject: "Accept / Reject", update_status: "Change status", assign_delivery: "Assign delivery agent", mark_paid: "Mark paid / unpaid", edit_items: "Edit items", cancel: "Cancel orders" },
   },
   { key: "delivery", label: "Delivery", icon: "Truck", fields: { deliver: "Is a delivery agent (own deliveries)", view_all: "Deliveries board (all agents)" } },
-  { key: "users", label: "Users", icon: "Users", fields: { create: "Create", edit: "Edit", delete: "Delete", suspend: "Suspend", change_roles: "Change Roles", manage_permissions: "Manage Permissions" } },
-  { key: "authors", label: "Authors", icon: "Feather", fields: { create: "Create", edit: "Edit", delete: "Delete", approve: "Approve", feature: "Feature" } },
-  { key: "analytics", label: "Analytics", icon: "BarChart3", fields: { view_basic: "Basic Analytics", view_advanced: "Advanced Analytics" } },
-  { key: "ads", label: "Ads", icon: "Megaphone", fields: { manage_ads: "Manage Ads", view_revenue: "View Revenue" } },
-  { key: "settings", label: "Settings", icon: "Settings", fields: { general: "General", seo: "SEO", smtp: "SMTP", api_keys: "API Keys", maintenance_mode: "Maintenance" } },
-  { key: "pages", label: "Pages", icon: "FileText", fields: { create: "Create", edit: "Edit", delete: "Delete" } },
-  { key: "files", label: "Files", icon: "Folder", fields: { access_file_manager: "File Manager" } },
-  { key: "security", label: "Security", icon: "Shield", fields: { view_logs: "View Logs", manage_blacklist: "Blacklist", manage_recaptcha: "reCAPTCHA" } },
+  { key: "push_notifications", label: "Push Notifications", icon: "Bell", fields: { send: "Send notifications", manage_templates: "Subscribers & settings" } },
+  { key: "pages", label: "Static Pages", icon: "FileText", fields: { create: "Create", edit: "Edit", delete: "Delete" } },
+  { key: "files", label: "Files", icon: "Folder", fields: { access_file_manager: "File manager" } },
+  { key: "users", label: "Staff & Roles", icon: "Users", fields: { create: "Add staff", edit: "Edit staff", delete: "Delete staff", suspend: "Suspend", change_roles: "Change roles", manage_permissions: "Change permissions" } },
+  { key: "security", label: "System", icon: "Shield", fields: { view_logs: "Activity logs" } },
+  { key: "settings", label: "Maintenance", icon: "Settings", fields: { maintenance_mode: "Cache manager" } },
 ];
 
 /* ───────────────────────── store roles ───────────────────────── */
@@ -190,31 +160,36 @@ export const STORE_ROLE_PRESETS: Record<string, Setter> = {
     const walk = (o: Record<string, unknown>) => { for (const k of Object.keys(o)) { if (o[k] && typeof o[k] === "object") walk(o[k] as Record<string, unknown>); else o[k] = true; } };
     walk(p as unknown as Record<string, unknown>);
   },
+  // Runs the shop day to day — everything except staff accounts and system tools.
   manager: (p) => {
     p.dashboard_access = true;
     allOf(p.ecommerce); allOf(p.orders); p.delivery.view_all = true;
-    allOf(p.analytics); allOf(p.push_notifications); p.media.upload = true; p.files.access_file_manager = true;
+    allOf(p.push_notifications); allOf(p.pages); p.files.access_file_manager = true; p.security.view_logs = true;
   },
+  // Online order desk.
   order_manager: (p) => {
     p.dashboard_access = true;
     allOf(p.orders); p.orders.edit_items = false;
-    p.delivery.view_all = true; p.ecommerce.manage_customers = true; p.analytics.view_basic = true;
+    p.delivery.view_all = true; p.ecommerce.manage_customers = true;
   },
+  // Own deliveries only.
   delivery_agent: (p) => { p.dashboard_access = true; p.delivery.deliver = true; },
+  // Counter billing, dues and customers; can see orders and mark them paid.
   cashier: (p) => {
     p.dashboard_access = true;
     p.ecommerce.manage_billing = true; p.ecommerce.manage_credits = true; p.ecommerce.manage_customers = true;
-    p.orders.view = true; p.orders.mark_paid = true; p.analytics.view_basic = true;
+    p.orders.view = true; p.orders.mark_paid = true;
   },
+  // Catalogue: products, categories, brands, stock, images.
   catalog_manager: (p) => {
     p.dashboard_access = true;
-    p.ecommerce.manage_products = true; p.ecommerce.manage_categories = true;
-    p.media.upload = true; p.media.delete = true; p.files.access_file_manager = true; p.analytics.view_basic = true;
+    p.ecommerce.manage_products = true; p.ecommerce.manage_categories = true; p.files.access_file_manager = true;
   },
+  // Storefront look, pages, offers and notifications.
   marketing: (p) => {
     p.dashboard_access = true;
     p.ecommerce.manage_homepage = true; p.ecommerce.manage_coupons = true;
-    allOf(p.push_notifications); p.analytics.view_basic = true; p.media.upload = true; p.files.access_file_manager = true;
+    allOf(p.push_notifications); allOf(p.pages); p.files.access_file_manager = true;
   },
 };
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  HardDrive, FileText, RotateCcw, Clock, Home, Store, Newspaper, LayoutDashboard, Layers,
+  HardDrive, RotateCcw, Clock, Home, Store, LayoutDashboard, Layers,
   Loader2, CheckCircle2, AlertCircle, X, History, Database, Zap, ZapOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,6 @@ function relTime(iso: string): string {
 const SECTIONS: { key: CacheSection; label: string; blurb: string; icon: React.ComponentType<{ className?: string }>; tint: string }[] = [
   { key: "home", label: "Homepage", blurb: "The storefront landing page (/).", icon: Home, tint: "bg-blue-50 text-blue-600" },
   { key: "shop", label: "Storefront Pages", blurb: "Shop, categories, product pages, cart, checkout — everything under /shop.", icon: Store, tint: "bg-emerald-50 text-emerald-600" },
-  { key: "blog", label: "Blog Posts", blurb: "Every published post, revalidated individually by its real URL.", icon: Newspaper, tint: "bg-amber-50 text-amber-600" },
   { key: "dashboard", label: "Admin Dashboard", blurb: "Your own dashboard stats view.", icon: LayoutDashboard, tint: "bg-violet-50 text-violet-600" },
 ];
 
@@ -58,7 +57,6 @@ export function CacheManager2Body({ stats: initial }: { stats: CacheStats }) {
       {show("cm2-cards") && (
         <div className="grid grid-cols-2 gap-4 lg:grid-flow-col lg:grid-cols-none lg:auto-cols-fr">
           {show("cm2-k-size") && <StatCard icon={HardDrive} tint="bg-blue-50 text-blue-600" value={formatBytes(stats.cacheSizeBytes)} label="Cache Size on Disk" />}
-          {show("cm2-k-posts") && <StatCard icon={FileText} tint="bg-amber-50 text-amber-600" value={String(stats.publishedPostCount)} label="Trackable Blog Posts" />}
           {show("cm2-k-total") && <StatCard icon={RotateCcw} tint="bg-emerald-50 text-emerald-600" value={String(stats.totalClears)} label="Total Clears (all time)" />}
           {show("cm2-k-last") && <StatCard icon={Clock} tint="bg-violet-50 text-violet-600" value={stats.lastCleared ? relTime(stats.lastCleared.at) : "Never"} label={stats.lastCleared ? `Last: ${stats.lastCleared.section}` : "Last Cleared"} />}
         </div>
@@ -130,7 +128,7 @@ export function CacheManager2Body({ stats: initial }: { stats: CacheStats }) {
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.5rem] bg-[#2563eb]/10 text-[#2563eb]"><Layers className="h-5 w-5" /></span>
                   <div>
                     <h3 className="font-bold text-admin-gray-900">Everything</h3>
-                    <p className="text-sm text-admin-gray-500">Homepage, storefront, all blog posts, the dashboard, and Redis — in one go.</p>
+                    <p className="text-sm text-admin-gray-500">Homepage, storefront, the dashboard and Redis — in one go.</p>
                   </div>
                 </div>
                 <button type="button" disabled={busy !== null} onClick={() => clear("all")}

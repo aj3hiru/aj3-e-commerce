@@ -19,7 +19,7 @@ async function handlePOST(req: NextRequest) {
   const username = (body.username ?? "").trim();
   const email = (body.email ?? "").trim();
   const password = body.password ?? "";
-  const requestedRole = isStaffRole(body.role) ? body.role : "author";
+  const requestedRole = isStaffRole(body.role) ? body.role : "cashier";
   // Picking a non-default role needs change_roles, and only an admin can create
   // another admin — otherwise a users.create-only staffer could mint an admin.
   if (requestedRole !== "author" && !hasPermission(session.permissions, "users", "change_roles")) {

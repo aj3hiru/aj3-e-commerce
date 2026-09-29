@@ -205,6 +205,9 @@ function takeForce(path) {
   forceNet.delete(path);
   return !!at && Date.now() - at < 8000;
 }
+// The last few decisions, for troubleshooting ({type:"debug"} → {type:"debug", log}).
+const trace = [];
+const note = (m) => { trace.push(`${new Date().toISOString().slice(11, 23)} ${m}`); if (trace.length > 80) trace.shift(); };
 /** Which way an answer came (seen in the app's network log; "saved" = from this computer). */
 function tag(res, src) {
   const headers = new Headers(res.headers);
@@ -216,6 +219,7 @@ self.addEventListener("message", (e) => {
   const d = e.data || {};
   if (d.type === "sync") e.waitUntil(flush());
   else if (d.type === "status") e.waitUntil(broadcast());
+  else if (d.type === "debug") e.source && e.source.postMessage({ type: "debug", log: trace.slice(), warming });
   else if (d.type === "warm") e.waitUntil(warm(d.urls || []));
   else if (d.type === "opened") {
     const at = servedStale.get(d.path);
@@ -333,8 +337,10 @@ self.addEventListener("fetch", (e) => {
     if (prefetch) { e.respondWith(Response.error()); return; }
     const key = rscKey(url, req.headers.get("next-router-state-tree"), false);
     e.respondWith((async () => {
+      const t0 = Date.now();
       const cache = await caches.open(PAGES);
       const hit = await cache.match(key, { ignoreVary: true });
+      note(`rsc ${path} lookup ${Date.now() - t0}ms hit=${!!hit}`);
       const net = () => fetch(req).then(async (res) => {
         if (res.ok && res.type === "basic") await cache.put(key, await stamp(res.clone()));
         return res;
@@ -347,8 +353,9 @@ self.addEventListener("fetch", (e) => {
         // page data in the background for next time.
         const u = new URL(url.href); u.searchParams.delete("_rsc");
         const page = (await cache.match(pageKey(u), { ignoreVary: true })) || (await cache.match(u.origin + u.pathname, { ignoreVary: true }));
-        if (page) { e.waitUntil(net().catch(() => {})); return Response.error(); }
+        if (page) { note(`rsc ${path} → page load (${Date.now() - t0}ms)`); e.waitUntil(net().catch(() => {})); return Response.error(); }
       }
+      note(`rsc ${path} → server (forced=${forced})`);
       try {
         return tag(await withTimeout(net(), hit ? 4000 : NET_TIMEOUT), "server");
       } catch (_) {

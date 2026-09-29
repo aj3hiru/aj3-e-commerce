@@ -120,6 +120,28 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ name
       const d = await loadDeliveryHistory({ from: ymd(new Date(Date.now() - 90 * 86_400_000)), to: ymd(new Date()), preset: "custom", agent: null, status: "all", q: "" });
       return ok({ rows: d.rows, agents: d.agents });
     }
+    case "customer_orders": {
+      // Customer profile → Orders: every order of every customer, light (the last 60 days come with sync).
+      if (!hasPermission(p, "ecommerce", "manage_customers") && !hasPermission(p, "ecommerce", "manage_credits")) return deny();
+      const rows = await prisma.ecomOrder.findMany({
+        where: { customerId: { not: null } }, orderBy: { id: "desc" }, take: 20000,
+        select: { id: true, orderNumber: true, orderType: true, orderStatus: true, paymentStatus: true, customerId: true, totalAmount: true, createdAt: true, payments: { select: { paymentMethod: true, amount: true, createdAt: true } } },
+      });
+      return ok(rows.map((o) => ({
+        id: o.id, number: o.orderNumber, type: o.orderType, status: o.orderStatus, paymentStatus: o.paymentStatus, customerId: o.customerId, total: Number(o.totalAmount), createdAt: o.createdAt.toISOString(),
+        pays: o.payments.map((x) => ({ method: x.paymentMethod, amount: Number(x.amount), at: x.createdAt.toISOString() })),
+      })));
+    }
+    case "addresses": {
+      // Customer profile → Addresses: the delivery addresses customers saved on the shop.
+      if (!hasPermission(p, "ecommerce", "manage_customers")) return deny();
+      const rows = await prisma.ecomCustomerAddress.findMany({ orderBy: [{ isDefault: "desc" }, { id: "desc" }] });
+      return ok(rows.map((a) => ({
+        id: a.id, customerId: a.customerId, name: a.name, phone: a.phone, type: a.type, isDefault: a.isDefault,
+        text: [a.house, a.area, a.landmark ? `Near ${a.landmark}` : null, a.city, `${a.state} - ${a.pincode}`].filter(Boolean).join(", "),
+        mapUrl: a.lat !== null && a.lng !== null ? `https://maps.google.com/?q=${Number(a.lat)},${Number(a.lng)}` : null,
+      })));
+    }
     case "backups": {
       if (s.role !== "admin") return deny();
       return ok(await listBackups());

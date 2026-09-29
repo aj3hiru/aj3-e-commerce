@@ -264,7 +264,7 @@ function Reviews({ d, cfg, loggedIn }: { d: ProductPageData; cfg: ProductPageCon
   const side = cfg.side && d.side.length > 0;
   const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   return (
-    <div className={cn("px-4 pt-5 shop:grid shop:gap-x-10 shop:px-5 shop:pb-4", side ? "shop:grid-cols-[260px_minmax(0,1fr)_minmax(0,1.1fr)]" : "shop:grid-cols-[260px_minmax(0,1fr)]")} id="reviews">
+    <div className={cn("px-4 pt-5 shop:grid shop:gap-x-10 shop:px-5 shop:pb-4", side ? "shop:grid-cols-[240px_minmax(0,1fr)_minmax(0,1.6fr)] shop:gap-x-8" : "shop:grid-cols-[260px_minmax(0,1fr)]")} id="reviews">
       <div>
       <h2 className="text-[18px] font-semibold leading-6">{cfg.title}</h2>
       {d.rating.count === 0 ? (

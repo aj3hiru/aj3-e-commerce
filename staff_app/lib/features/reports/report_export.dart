@@ -7,10 +7,10 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/format.dart';
+import '../../core/printer.dart';
 import '../../widgets/common.dart';
 
 String _fileBase(Map<String, dynamic> r) {
@@ -105,7 +105,7 @@ Future<void> exportReportPdf(BuildContext context, Map<String, dynamic> r) async
   ));
   final bytes = await doc.save();
   if (!context.mounted) return;
-  await Printing.layoutPdf(name: _fileBase(r), onLayout: (_) async => bytes); // print or "Save as PDF" / share
+  await printPdf(bytes, name: _fileBase(r)); // chosen printer, or the dialog (print / "Save as PDF")
 }
 
 Future<void> exportReportExcel(BuildContext context, Map<String, dynamic> r) async {

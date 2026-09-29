@@ -6,6 +6,7 @@ import { BARCODES2_GROUPS, BARCODES2_PREF_KEY, BARCODES2_STANDALONE } from "@/co
 import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { getBarcodes2Data, parseBarcodeRange } from "@/lib/barcodes2";
+import { getBarcodeTemplates } from "@/lib/barcode-templates";
 
 /**
  * /admin/ecommerce/barcode-print — a redesign of Print Barcodes, kept
@@ -38,7 +39,7 @@ export default async function BarcodePrint2Page({ searchParams }: PageProps) {
     .split(",")
     .map((x) => Number(x.trim()))
     .filter((n) => Number.isInteger(n) && n > 0);
-  const data = await getBarcodes2Data(range, [...new Set(ids)]);
+  const [data, templates] = await Promise.all([getBarcodes2Data(range, [...new Set(ids)]), getBarcodeTemplates()]);
 
   return (
     <DashboardWidgetPrefsProvider prefKey={BARCODES2_PREF_KEY} groups={BARCODES2_GROUPS} standalone={BARCODES2_STANDALONE}>
@@ -61,7 +62,7 @@ export default async function BarcodePrint2Page({ searchParams }: PageProps) {
           <DisplayOptionsPanel variant="toolbar" />
           <Barcodes2HeaderButtons />
         </div>
-        <Barcodes2Body data={data} />
+        <Barcodes2Body data={data} templates={templates} />
       </AdminShell>
     </DashboardWidgetPrefsProvider>
   );

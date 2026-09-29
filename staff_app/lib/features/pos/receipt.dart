@@ -2,9 +2,9 @@
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 import '../../core/format.dart';
+import '../../core/printer.dart';
 
 class ReceiptLine {
   final String name;
@@ -96,7 +96,7 @@ Future<Uint8List> buildReceipt(ReceiptData r, String size) async {
 /// Opens the system print dialog (Windows / Android) with the receipt.
 Future<void> printReceipt(ReceiptData r, String size) async {
   final bytes = await buildReceipt(r, size);
-  await Printing.layoutPdf(name: 'Bill ${r.number}', format: pageFor(size), onLayout: (_) async => bytes);
+  await printPdf(bytes, name: 'Bill ${r.number}', format: pageFor(size));
 }
 
 /// Prints a saved order / bill (from the synced orders) again.

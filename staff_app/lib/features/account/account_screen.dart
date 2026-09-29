@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
 import '../../core/format.dart';
+import '../../core/printer.dart';
 import '../../core/local_store.dart';
 import '../../core/theme.dart';
 import '../../ds/ds.dart';
@@ -170,6 +171,10 @@ class AccountScreen extends StatelessWidget {
     var auto = saved is Map ? saved['autoPrint'] != false : true;
     var paper = saved is Map && saved['paper'] is String ? saved['paper'] as String : (context.read<AppState>().settings['printerFormat'] as String? ?? 'thermal_80');
     void save() => LocalStore.instance.write('pos_prefs', {'autoPrint': auto, 'paper': paper});
+    final printers = await PrinterPrefs.list();
+    var printer = await PrinterPrefs.saved();
+    if (printer != null && !printers.any((p) => p.url == printer)) printer = null;
+    if (!context.mounted) return;
     await showAppSheet(
       context,
       title: 'Printing',
@@ -194,6 +199,20 @@ class AccountScreen extends StatelessWidget {
             set(() => paper = v);
             save();
           }),
+          const AppGap(),
+          if (PrinterPrefs.canPick)
+            AppSelect<String?>(
+              label: 'Printer',
+              helper: printers.isEmpty ? 'No printers found' : 'Bills print straight to it',
+              value: printer,
+              options: [(null, 'Ask every time'), for (final p in printers) (p.url, '${p.name}${p.isDefault ? ' (Windows default)' : ''}')],
+              onChanged: (v) {
+                set(() => printer = v);
+                PrinterPrefs.save(v);
+              },
+            )
+          else
+            const Text('The phone asks which printer to use each time (Bluetooth / Wi-Fi printers appear in that list).', style: TextStyle(color: AppColors.muted, fontSize: 12.5)),
         ]),
       ),
     );

@@ -6,11 +6,12 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle, Barcode, CalendarDays, CheckCircle2, ChevronDown, Layers, Loader2, Minus, Package, PackagePlus,
-  Plus, Printer, RefreshCw, Search, Trash2, TriangleAlert, X,
+  Plus, Printer, RefreshCw, Save, Search, Trash2, TriangleAlert, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { BarcodeProduct, Barcodes2Data } from "@/lib/barcodes2";
+import type { BarcodeTemplate } from "@/lib/barcode-templates";
 import { money } from "@/components/admin/campaigns2/format";
 import { IconAction, PillButton } from "@/components/admin/ui/buttons";
 import { PRESETS, DEFAULT_PRESET, cleanLayout, pageWidth, presetLayout, rowsPerPage, type LabelLayout } from "./labelLayouts";
@@ -62,7 +63,7 @@ interface Line {
   qty: number;
 }
 
-export function Barcodes2Body({ data }: { data: Barcodes2Data }) {
+export function Barcodes2Body({ data, templates: initialTemplates = [] }: { data: Barcodes2Data; templates?: BarcodeTemplate[] }) {
   const router = useRouter();
   const { isVisible: show, loaded } = useDashboardWidgetPrefs();
   const [navigating, startNavigate] = useTransition();
@@ -73,6 +74,34 @@ export function Barcodes2Body({ data }: { data: Barcodes2Data }) {
   const setLayout = (patch: Partial<LabelLayout>) => setOptions((o) => ({ ...o, preset: "custom", layout: cleanLayout({ ...o.layout, ...patch }) }));
   const setNudge = (patch: Partial<LabelLayout>) => setOptions((o) => ({ ...o, layout: cleanLayout({ ...o.layout, ...patch }) }));
   const optionsLoaded = useRef(false);
+  // Saved label templates (shared by every computer): pick one to load it, or save the current setup.
+  const [templates, setTemplates] = useState(initialTemplates);
+  const [templateId, setTemplateId] = useState("");
+  const [savingTpl, setSavingTpl] = useState(false);
+  async function templateCall(body: unknown, ok: string) {
+    setSavingTpl(true);
+    const r = await fetch("/api/ecommerce/barcodes2/templates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json()).catch(() => null);
+    setSavingTpl(false);
+    if (!r?.success) { setToast({ ok: false, text: r?.message || "Couldn't save the template." }); return null; }
+    setTemplates(r.templates);
+    setToast({ ok: true, text: ok });
+    return r.templates as BarcodeTemplate[];
+  }
+  async function saveTemplate() {
+    const current = templates.find((t) => t.id === templateId);
+    const name = window.prompt("Template name (e.g. 50×25 roll with price)", current?.name ?? "");
+    if (!name?.trim()) return;
+    const list = await templateCall({ save: { id: current && current.name.toLowerCase() === name.trim().toLowerCase() ? current.id : undefined, name: name.trim(), options } }, `Template “${name.trim()}” saved.`);
+    const t = list?.find((x) => x.name.toLowerCase() === name.trim().toLowerCase());
+    if (t) setTemplateId(t.id);
+  }
+  function loadTemplate(id: string) {
+    setTemplateId(id);
+    const t = templates.find((x) => x.id === id);
+    if (!t) return;
+    const saved = t.options as Partial<LabelOptions>;
+    setOptions({ ...DEFAULT_OPTIONS, ...saved, layout: cleanLayout({ ...DEFAULT_OPTIONS.layout, ...(saved.layout ?? {}) }) });
+  }
   useEffect(() => {
     try {
       const saved = JSON.parse(window.localStorage.getItem(OPTIONS_KEY) ?? "null");
@@ -208,6 +237,27 @@ export function Barcodes2Body({ data }: { data: Barcodes2Data }) {
                     <PillButton variant="secondary" onClick={() => setOptions(DEFAULT_OPTIONS)}>
                       <RefreshCw className="h-3.5 w-3.5" /> Reset
                     </PillButton>
+                  </div>
+                  <div className="flex flex-wrap items-end gap-2 rounded-[8px] bg-admin-gray-50 p-2.5">
+                    <label className="flex min-w-[200px] flex-1 flex-col gap-1 text-sm text-admin-gray-700">
+                      Saved templates
+                      <select value={templateId} onChange={(e) => loadTemplate(e.target.value)} aria-label="Saved label templates"
+                        className="h-9 rounded-[8px] border border-[#dee2e6] bg-white pl-3 text-sm focus:border-[#86b7fe] focus:outline-none">
+                        <option value="">{templates.length ? "Choose a template…" : "No templates yet"}</option>
+                        {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                    </label>
+                    <PillButton variant="secondary" onClick={saveTemplate} disabled={savingTpl}>
+                      {savingTpl ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} {templateId ? "Save changes / as new" : "Save as template"}
+                    </PillButton>
+                    {templateId && (
+                      <PillButton variant="secondary" disabled={savingTpl} onClick={async () => {
+                        const t = templates.find((x) => x.id === templateId);
+                        if (t && window.confirm(`Delete the template “${t.name}”?`)) { await templateCall({ remove: t.id }, "Template deleted."); setTemplateId(""); }
+                      }}>
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                      </PillButton>
+                    )}
                   </div>
                   <LayoutFields layout={options.layout} custom={options.preset === "custom"} onChange={setLayout} onNudge={setNudge} />
                   <p className="text-xs text-admin-gray-500">The preview uses the first product in your list, at its real printed size.</p>

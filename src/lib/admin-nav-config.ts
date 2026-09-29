@@ -5,7 +5,7 @@ import {
   faTruck, faUserFriends, faPercentage,
   faBuilding, faHandHoldingUsd, faImages, faBell, faBolt, faUser,
   faSignOutAlt, faMobileAlt, faFileInvoiceDollar, faChartLine, faFileAlt, faBars, faGripLines, faBox,
-  faBrush, faCog, faUsersCog, faPercent,
+  faBrush, faCog, faUsersCog, faPercent, faDatabase,
 } from "@fortawesome/free-solid-svg-icons";
 
 // Grouped by what a shop owner does: sell, catalogue, customers & marketing,
@@ -33,6 +33,7 @@ export type NavPermissionPath =
   | "settings.maintenance_mode"
   | "security.view_logs"
   | "users.create"
+  | "users.manage_permissions"
   | null; // null = always visible, no permission gate
 
 export interface NavLink {
@@ -187,6 +188,7 @@ export const ADMIN_NAV: NavSection[] = [
         submenu: [
           { href: "/admin/activity-logs", label: "Activity Logs", icon: faHistory, permission: "security.view_logs" },
           { href: "/admin/cache-manager", label: "Cache Manager", icon: faBolt, permission: "settings.maintenance_mode" },
+          { href: "/admin/backup", label: "Backup & Restore", icon: faDatabase, permission: "users.manage_permissions" },
         ],
       },
     ],

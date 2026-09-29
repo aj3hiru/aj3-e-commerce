@@ -161,6 +161,25 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ name
         mapUrl: a.lat !== null && a.lng !== null ? `https://maps.google.com/?q=${Number(a.lat)},${Number(a.lng)}` : null,
       })));
     }
+    case "sales_ledger": {
+      // Analytics / GST report / Sales history for any period, offline: every sale of the last ~15 months (not cancelled).
+      if (!hasPermission(p, "ecommerce", "manage_orders") && !hasPermission(p, "ecommerce", "manage_billing")) return deny();
+      const rows = await prisma.ecomOrder.findMany({
+        where: { orderStatus: { not: "Canceled" }, createdAt: { gte: new Date(Date.now() - 460 * 86_400_000) } }, orderBy: { id: "asc" }, take: 60000,
+        select: {
+          id: true, orderNumber: true, orderType: true, orderStatus: true, paymentStatus: true, paymentMethod: true, customerId: true, customerName: true, createdAt: true,
+          totalAmount: true, subtotalAmount: true, gstAmount: true, discountAmount: true, deliveryCharge: true,
+          items: { select: { productId: true, productName: true, qty: true, price: true, gstRate: true, gstAmount: true } },
+          payments: { select: { paymentMethod: true, amount: true } },
+        },
+      });
+      return ok(rows.map((o) => ({
+        id: o.id, number: o.orderNumber, type: o.orderType, status: o.orderStatus, paymentStatus: o.paymentStatus, paymentMethod: o.paymentMethod, customerId: o.customerId, customer: o.customerName,
+        createdAt: o.createdAt.toISOString(), total: Number(o.totalAmount), subtotal: Number(o.subtotalAmount), gst: Number(o.gstAmount), discount: Number(o.discountAmount), delivery: Number(o.deliveryCharge),
+        items: o.items.map((i) => ({ productId: i.productId, name: i.productName, qty: i.qty, price: Number(i.price), gstRate: Number(i.gstRate), gst: Number(i.gstAmount) })),
+        pays: o.payments.map((x) => ({ method: x.paymentMethod, amount: Number(x.amount) })),
+      })));
+    }
     case "backups": {
       if (s.role !== "admin") return deny();
       return ok(await listBackups());

@@ -35,7 +35,7 @@ export const PUSH2_GROUPS: readonly WidgetGroup[] = [
       { key: "pm2-t-product", label: "Product" },
       { key: "pm2-t-category", label: "Category" },
       { key: "pm2-t-brand", label: "Brand" },
-      { key: "pm2-t-post", label: "Blog Post" },
+      { key: "pm2-t-offer", label: "Offer / Coupon" },
       { key: "pm2-t-custom", label: "Custom URL" },
     ],
   },

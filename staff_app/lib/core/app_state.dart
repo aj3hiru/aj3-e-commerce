@@ -13,6 +13,7 @@ export 'api.dart';
 import 'config.dart';
 import 'format.dart';
 import 'local_store.dart';
+import 'notify.dart';
 import 'perms.dart';
 
 const _uuid = Uuid();
@@ -94,6 +95,8 @@ class AppState extends ChangeNotifier {
   String deviceId = '';
 
   Timer? _timer;
+  int _liveAfter = 0; // last order event seen on the live feed
+  int _liveGen = 0; // bumps when the feed must stop (logout / restart)
   StreamSubscription? _conn;
   bool _syncing = false;
   bool _again = false;
@@ -154,6 +157,50 @@ class AppState extends ChangeNotifier {
       }
     });
     syncNow();
+    _listenLive();
+  }
+
+  /// Live order feed: the server answers the moment anyone places, accepts,
+  /// changes or assigns an order, so every device updates at once and the
+  /// right people get a notification.
+  Future<void> _listenLive() async {
+    final gen = ++_liveGen;
+    _liveAfter = 0;
+    var fails = 0;
+    while (gen == _liveGen && signedIn) {
+      final r = await api.longGet('/api/app/v1/events', query: {'after': '$_liveAfter', 'wait': '25'});
+      if (gen != _liveGen) return;
+      if (!r.ok) {
+        if (r.outcome == ApiOutcome.unauthorized) return;
+        fails++;
+        await Future.delayed(Duration(seconds: fails > 6 ? 30 : 3 * fails));
+        continue;
+      }
+      fails = 0;
+      final first = _liveAfter == 0;
+      _liveAfter = toInt(r.data['last']);
+      final events = ((r.data['events'] as List?) ?? const []).cast<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      if (first || events.isEmpty) continue;
+      unawaited(syncNow(only: const ['orders', 'deliveries', 'dues', 'customers', 'products']));
+      for (final e in events) {
+        _announce(e);
+      }
+    }
+  }
+
+  void _announce(Map<String, dynamic> e) {
+    final me = toInt(user?['id']);
+    if (toInt(e['actorId']) == me && e['actorId'] != null) return; // my own change
+    final no = '${e['orderNumber']}', who = '${e['customer'] ?? ''}'.trim(), amount = money(e['total']);
+    final id = toInt(e['orderId']);
+    final type = e['type'], to = '${e['to'] ?? ''}';
+    if (type == 'assign' && to == user?['username']) {
+      Notify.show(id, 'New delivery for you 🚚', '$no · ${who.isEmpty ? 'Customer' : who} · $amount', payload: 'delivery:$id');
+    } else if (type == 'placed' && e['orderType'] == 'online' && perms.seesOrders) {
+      Notify.show(id, 'New online order 🛒', '$no · ${who.isEmpty ? 'Customer' : who} · $amount', payload: 'order:$id');
+    } else if (type == 'status' && (perms.seesOrders || toInt(e['agentId']) == me)) {
+      Notify.show(id, '$no → $to', '${e['actor']} changed it${who.isEmpty ? '' : ' · $who'}', payload: 'order:$id');
+    }
   }
 
   // ───────────────────────────── sign in / out ─────────────────────────────
@@ -185,6 +232,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    _liveGen++;
     _timer?.cancel();
     _conn?.cancel();
     await _secure.delete(key: 'token');

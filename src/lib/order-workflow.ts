@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { isOrderLocked, paymentChangeBlocked, syncCancelStock } from "@/lib/order-recalc";
 import { isOrderStatus, isPaymentStatus } from "@/lib/order-statuses";
 import { normalizePermissions } from "@/lib/permissions";
+import { notifyCustomerStatus } from "@/lib/order-notify";
 
 /**
  * The one place order rules live, used by the admin order page, the orders
@@ -29,7 +30,8 @@ export async function listDeliveryAgents(): Promise<{ id: number; name: string }
 
 export async function changeOrderStatus(orderId: number, to: string, actor: Actor, opts: { note?: string; allowWithoutAgent?: boolean } = {}) {
   if (!isOrderStatus(to)) throw new WorkflowError("Unknown order status.");
-  return prisma.$transaction(async (tx) => {
+  let changed = false;
+  const result = await prisma.$transaction(async (tx) => {
     const o = await tx.ecomOrder.findUnique({ where: { id: orderId }, select: { orderStatus: true, paymentStatus: true, orderType: true, deliveryAgentId: true } });
     if (!o) throw new WorkflowError("Order not found.");
     if (o.orderStatus === to) return o.orderStatus;
@@ -52,8 +54,11 @@ export async function changeOrderStatus(orderId: number, to: string, actor: Acto
     });
     await syncCancelStock(tx, orderId, o.orderStatus, to);
     await logOrderEvent(tx, orderId, actor, "status", o.orderStatus, to, note);
+    changed = true;
     return to;
   });
+  if (changed) void notifyCustomerStatus(orderId, to);
+  return result;
 }
 
 export async function changePaymentStatus(orderId: number, to: string, actor: Actor, opts: { method?: string; note?: string } = {}) {
@@ -75,7 +80,8 @@ export async function changePaymentStatus(orderId: number, to: string, actor: Ac
 }
 
 export async function assignDeliveryAgent(orderId: number, agentId: number | null, actor: Actor) {
-  return prisma.$transaction(async (tx) => {
+  let sentOut = false;
+  const result = await prisma.$transaction(async (tx) => {
     const o = await tx.ecomOrder.findUnique({ where: { id: orderId }, select: { orderStatus: true, deliveryAgentId: true, deliveryAgent: { select: { username: true } } } });
     if (!o) throw new WorkflowError("Order not found.");
     if (isOrderLocked(o.orderStatus) || o.orderStatus === "Canceled") throw new WorkflowError(`This order is ${o.orderStatus} — it can't be assigned.`);
@@ -91,8 +97,11 @@ export async function assignDeliveryAgent(orderId: number, agentId: number | nul
     await tx.ecomOrder.update({ where: { id: orderId }, data: { deliveryAgentId: agentId, assignedAt: agentId ? new Date() : null, ...(nextStatus ? { orderStatus: nextStatus } : {}) } });
     await logOrderEvent(tx, orderId, actor, "assign", o.deliveryAgent?.username ?? null, name, null);
     if (nextStatus) await logOrderEvent(tx, orderId, actor, "status", o.orderStatus, nextStatus, agentId ? `Assigned to ${name}` : "Delivery agent removed");
+    sentOut = nextStatus === "Out for Delivery";
     return name;
   });
+  if (sentOut) void notifyCustomerStatus(orderId, "Out for Delivery");
+  return result;
 }
 
 /** Maps a request body to the workflow, checking the caller's fine-grained order permissions. */

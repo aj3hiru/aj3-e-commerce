@@ -46,6 +46,10 @@ class Api {
   Future<ApiResult> get(String path, {Map<String, String>? query}) =>
       _send(() => http.get(_uri(path, query), headers: _headers(json: false)));
 
+  /// A request the server holds open until something happens (live order feed).
+  Future<ApiResult> longGet(String path, {Map<String, String>? query, Duration timeout = const Duration(seconds: 40)}) =>
+      _send(() => http.get(_uri(path, query), headers: _headers(json: false)), timeout: timeout);
+
   Future<ApiResult> send(String method, String path, {Object? body, String? idem}) => _send(() {
         final req = http.Request(method, _uri(path))
           ..headers.addAll(_headers(idem: idem))

@@ -3,7 +3,7 @@
 import { storeOrigin } from "@/lib/hosts";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Bell, Send, History, Smartphone, Loader2, CheckCircle2, AlertCircle, X, PenSquare, Package, FolderTree, Tag, FileText,
+  Bell, Send, History, Smartphone, Loader2, CheckCircle2, AlertCircle, X, PenSquare, Package, FolderTree, Tag, BadgePercent,
   Link2, Sparkles, ChevronDown, RefreshCw, BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,10 +11,11 @@ import { PhoneFrame } from "@/components/admin/PhoneFrame";
 import { formatInt } from "@/lib/format";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { PushCatalog, PushProductHit } from "@/lib/push-catalog";
+import type { OfferHit } from "@/lib/push-offers-shared";
 import { CARD, INPUT, LABEL, SECTION_LABEL, ConfirmDialog, Thumb, absoluteUrl, rupees } from "./ui";
 import {
-  BrandPicker, CategoryPicker, PostPicker, PriceLine, ProductPicker, StockBadge,
-  type BrandPick, type CategoryPick, type PostHit,
+  BrandPicker, CategoryPicker, OfferPicker, PriceLine, ProductPicker, StockBadge,
+  type BrandPick, type CategoryPick,
 } from "./pickers";
 
 /* ───────────────────────── draft model ───────────────────────── */
@@ -23,10 +24,10 @@ export type Target =
   | { type: "product"; product: PushProductHit }
   | { type: "category"; category: CategoryPick }
   | { type: "brand"; brand: BrandPick }
-  | { type: "post"; post: PostHit }
+  | { type: "offer"; offer: OfferHit }
   | { type: "reuse"; label: string; image: string }; // loaded from a past campaign
 
-export type Kind = "product" | "category" | "brand" | "post" | "custom";
+export type Kind = "product" | "offer" | "category" | "brand" | "custom";
 
 export interface Draft {
   kind: Kind; // which link type is selected
@@ -42,9 +43,9 @@ export interface Draft {
 export function emptyDraft(): Draft { return { kind: "product", target: null, url: "", title: "", body: "", image: "", utm: true }; }
 const KINDS: { value: Kind; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { value: "product", label: "Product", icon: Package },
+  { value: "offer", label: "Offer / Coupon", icon: BadgePercent },
   { value: "category", label: "Category", icon: FolderTree },
   { value: "brand", label: "Brand", icon: Tag },
-  { value: "post", label: "Blog Post", icon: FileText },
   { value: "custom", label: "Custom URL", icon: Link2 },
 ];
 
@@ -61,7 +62,7 @@ function targetUrl(t: Target, origin: string): string | null {
       ? `${o}/category?slug=${encodeURIComponent(t.category.parentSlug ?? "")}&sub=${encodeURIComponent(t.category.slug)}`
       : `${o}/category?slug=${encodeURIComponent(t.category.slug)}`;
     case "brand": return `${o}/?q=${encodeURIComponent(t.brand.name)}`;
-    case "post": return `${o}/${t.post.slug}`;
+    case "offer": return `${o}${t.offer.href}`;
     default: return null;
   }
 }
@@ -71,7 +72,7 @@ function targetImage(t: Target, origin: string): string {
     case "product": return absoluteUrl(t.product.image, origin);
     case "category": return absoluteUrl(t.category.image, origin);
     case "brand": return absoluteUrl(t.brand.logo, origin);
-    case "post": return absoluteUrl(t.post.image, origin);
+    case "offer": return absoluteUrl(t.offer.image, origin);
     case "reuse": return t.image;
     default: return "";
   }
@@ -109,8 +110,20 @@ function templatesFor(kind: Kind, t: Target | null, shop: string): Template[] {
       { id: "sale", label: "🔥 Brand sale", title: `🔥 Deals on ${b.name}`, body: `Special prices on ${b.name} — for a limited time only!` },
     ];
   }
-  if (t.type === "post") {
-    return [{ id: "post", label: "📰 New post", title: t.post.title, body: "New government job alert! Check it out." }];
+  if (t.type === "offer") {
+    const o = t.offer;
+    const on = o.appliesTo === "everything" ? "on everything" : `on ${o.appliesTo}`;
+    const ends = o.endsAt ? ` Ends ${new Date(o.endsAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}.` : "";
+    if (o.type === "coupon") {
+      return [
+        { id: "code", label: "🎟️ Coupon code", title: `🎟️ ${o.offer} ${on} — use ${o.code}`, body: `Apply code ${o.code} at checkout on ${shop}.${ends}` },
+        { id: "hurry", label: "⏳ Hurry", title: `⏳ Your ${o.offer} code is waiting`, body: `Use ${o.code} ${on} before it runs out!${ends}` },
+      ];
+    }
+    return [
+      { id: "sale", label: "🔥 Sale is live", title: `🔥 ${o.name}: ${o.offer} ${on}`, body: `Prices already dropped at ${shop} — no code needed.${ends}` },
+      { id: "last", label: "⏰ Last chance", title: `⏰ Last chance: ${o.offer} ${on}`, body: `${o.name} ends soon. Shop now!${ends}` },
+    ];
   }
   return customTemplates(shop);
 }
@@ -207,7 +220,7 @@ export function ComposeTab({ draft, setDraft, catalog, appName, siteUrl, configu
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: draft.title, body: draft.body, url: finalUrl, image: draft.image || null,
-          postId: draft.target?.type === "post" ? draft.target.post.id : null,
+          postId: null,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -382,7 +395,7 @@ export function ComposeTab({ draft, setDraft, catalog, appName, siteUrl, configu
         onPick={(product) => chooseTarget({ type: "product", product })} onClose={() => setPicker(null)} />}
       {picker === "category" && <CategoryPicker catalog={catalog} origin={origin} onPick={(category) => chooseTarget({ type: "category", category })} onClose={() => setPicker(null)} />}
       {picker === "brand" && <BrandPicker catalog={catalog} origin={origin} onPick={(brand) => chooseTarget({ type: "brand", brand })} onClose={() => setPicker(null)} />}
-      {picker === "post" && <PostPicker origin={origin} onPick={(post) => chooseTarget({ type: "post", post })} onClose={() => setPicker(null)} />}
+      {picker === "offer" && <OfferPicker origin={origin} onPick={(offer) => chooseTarget({ type: "offer", offer })} onClose={() => setPicker(null)} />}
 
       {confirmOpen && (
         <ConfirmDialog icon={<Send className="h-6 w-6" />} tone="blue" title="Send this notification?"
@@ -409,9 +422,10 @@ function TargetCard({ target, origin, onChange, onClear }: { target: Target; ori
   } else if (target.type === "brand") {
     icon = Tag; kicker = "Brand"; name = target.brand.name;
     meta = <span className="text-xs text-admin-gray-500">{formatInt(target.brand.productCount)} products</span>;
-  } else if (target.type === "post") {
-    icon = FileText; kicker = "Linked Post"; name = target.post.title;
-    meta = <span className="text-xs text-admin-gray-500">ID: {target.post.id}</span>;
+  } else if (target.type === "offer") {
+    const o = target.offer;
+    icon = BadgePercent; kicker = o.type === "coupon" ? `Coupon · ${o.code}` : "Campaign offer"; name = `${o.name} — ${o.offer}`;
+    meta = <span className="text-xs text-admin-gray-500">On {o.appliesTo}{o.endsAt ? ` · ends ${new Date(o.endsAt).toLocaleDateString("en-IN")}` : ""}{o.upcoming ? " · not started yet" : ""}</span>;
   }
   return (
     <div className="mt-3 flex items-center gap-3 rounded-[0.5rem] border border-admin-gray-200 bg-admin-gray-50 p-2.5">

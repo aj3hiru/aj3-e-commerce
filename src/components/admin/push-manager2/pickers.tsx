@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
-  Search, Loader2, Package, FolderTree, Tag, FileText, SlidersHorizontal, RotateCcw, Check, ChevronDown, Megaphone,
+  Search, Loader2, Package, FolderTree, Tag, BadgePercent, SlidersHorizontal, RotateCcw, Check, ChevronDown, Megaphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatInt } from "@/lib/format";
 import type { PushCatalog, PushProductHit, ProductSort, StockFilter } from "@/lib/push-catalog";
+import type { OfferHit } from "@/lib/push-offers-shared";
 import { INPUT, LABEL, Modal, Pager, Thumb, absoluteUrl, rupees, useDebounced } from "./ui";
 
 /* ───────────────────────── shared bits ───────────────────────── */
@@ -277,64 +278,38 @@ export function BrandPicker({ catalog, origin, onPick, onClose }: {
   );
 }
 
-/* ───────────────────────── Blog post picker (admin_push.php) ───────────────────────── */
+/* ───────────────────────── Offer picker ───────────────────────── */
 
-export type PostHit = { id: number; title: string; slug: string; image: string | null };
-
-/** The original "Search & Select Post" modal: newest published posts on open,
- *  then searches by title on Enter / the Search button. */
-export function PostPicker({ origin, onPick, onClose }: { origin: string; onPick: (p: PostHit) => void; onClose: () => void }) {
-  const [q, setQ] = useState("");
-  const [posts, setPosts] = useState<PostHit[] | null>(null);
-  const [loading, setLoading] = useState(false);
+/** Campaigns (automatic price drops) and coupon codes that are live or starting soon. */
+export function OfferPicker({ origin, onPick, onClose }: { origin: string; onPick: (o: OfferHit) => void; onClose: () => void }) {
+  const [offers, setOffers] = useState<OfferHit[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const reqId = useRef(0);
-
-  async function search(term: string) {
-    const id = ++reqId.current;
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetch(`/api/push2/posts?q=${encodeURIComponent(term.trim())}`).then((r) => r.json());
-      if (id !== reqId.current) return;
-      if (data.success) setPosts(data.posts ?? []);
-      else { setPosts([]); setError(data.error ?? "Couldn't load posts."); }
-    } catch {
-      if (id === reqId.current) { setPosts([]); setError("Couldn't load posts."); }
-    } finally {
-      if (id === reqId.current) setLoading(false);
-    }
-  }
-  useEffect(() => { search(""); }, []);
-
+  const [q, setQ] = useState("");
+  useEffect(() => {
+    fetch("/api/push2/offers").then((r) => r.json()).then((d) => (d.success ? setOffers(d.offers) : setError(d.error ?? "Couldn't load offers."))).catch(() => setError("Couldn't load offers."));
+  }, []);
+  const list = (offers ?? []).filter((o) => !q.trim() || `${o.name} ${o.code ?? ""} ${o.appliesTo}`.toLowerCase().includes(q.trim().toLowerCase()));
   return (
-    <Modal title="Select a blog post" onClose={onClose} size="md">
+    <Modal title="Select an offer or coupon" onClose={onClose} size="md">
       <div className="p-4">
-        <form className="mb-2 flex" onSubmit={(e) => { e.preventDefault(); search(q); }}>
-          <input autoFocus type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Type title to search..." autoComplete="off" className={cn(INPUT, "rounded-r-none")} />
-          <button type="submit" className="flex h-10 shrink-0 items-center gap-1.5 rounded-r-[0.375rem] border border-l-0 border-[#2563eb] px-3 text-sm font-medium text-[#2563eb] hover:bg-blue-50">
-            <Search className="h-4 w-4" /> Search
-          </button>
-        </form>
-        {loading && <div className="flex justify-center py-8 text-[#2563eb]"><Loader2 className="h-7 w-7 animate-spin" /></div>}
-        {!loading && error && <div className="py-8 text-center text-sm text-red-600">{error}</div>}
-        {!loading && !error && posts?.length === 0 && <div className="py-8 text-center text-sm text-admin-gray-500"><FileText className="mx-auto mb-2 h-6 w-6 opacity-50" />No posts found</div>}
-        {!loading && !error && posts && posts.length > 0 && (
-          <ul>
-            {posts.map((p) => (
-              <li key={p.id}>
-                <button type="button" onClick={() => onPick(p)}
-                  className="flex w-full items-center gap-3 border-b border-l-4 border-b-admin-gray-100 border-l-transparent px-3 py-3 text-left transition-colors hover:border-l-[#2563eb] hover:bg-admin-gray-50">
-                  <Thumb src={absoluteUrl(p.image, origin)} className="h-[50px] w-[50px]" icon={FileText} />
-                  <span className="min-w-0">
-                    <span className="mb-0.5 block text-sm font-bold leading-tight text-admin-gray-900">{p.title}</span>
-                    <span className="block text-xs text-admin-gray-500">ID: {p.id}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <input autoFocus type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search offers and coupon codes..." autoComplete="off" className={cn(INPUT, "mb-2")} />
+        {!offers && !error && <div className="flex justify-center py-8 text-[#2563eb]"><Loader2 className="h-7 w-7 animate-spin" /></div>}
+        {error && <div className="py-8 text-center text-sm text-red-600">{error}</div>}
+        {offers && list.length === 0 && <div className="py-8 text-center text-sm text-admin-gray-500">No running campaigns or coupons. Create one in Offers &amp; Coupons.</div>}
+        <ul>
+          {list.map((o) => (
+            <li key={o.key}>
+              <button type="button" onClick={() => onPick(o)}
+                className="flex w-full items-center gap-3 border-b border-l-4 border-b-admin-gray-100 border-l-transparent px-3 py-3 text-left transition-colors hover:border-l-[#2563eb] hover:bg-admin-gray-50">
+                <Thumb src={absoluteUrl(o.image, origin)} className="h-[50px] w-[50px]" icon={BadgePercent} />
+                <span className="min-w-0 flex-1">
+                  <span className="mb-0.5 block text-sm font-bold leading-tight text-admin-gray-900">{o.name} <span className="text-emerald-600">· {o.offer}</span></span>
+                  <span className="block text-xs text-admin-gray-500">{o.type === "coupon" ? `Code ${o.code}` : "Campaign"} · on {o.appliesTo}{o.upcoming ? " · starts later" : ""}{o.endsAt ? ` · ends ${new Date(o.endsAt).toLocaleDateString("en-IN")}` : ""}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
     </Modal>
   );

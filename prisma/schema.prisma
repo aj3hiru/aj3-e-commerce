@@ -825,8 +825,11 @@ model PushSubscription {
   endpoint  String   @unique @db.VarChar(768)
   p256dh    String
   auth      String
+  // Signed-in shopper who subscribed — gets their own order updates.
+  customerId Int?    @map("customer_id")
   createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([customerId])
   @@map("push_subscriptions")
 }
 

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getPushSettings } from "@/lib/push-settings";
 import { cleanSubscription, parseEndpoint } from "@/lib/push-subscriptions";
 import { withApiErrors } from "@/lib/api-errors";
+import { getCustomerSession } from "@/lib/customer-auth";
 
 /**
  * Public storefront endpoint — the Next.js replacement for
@@ -23,10 +24,12 @@ async function handlePOST(req: NextRequest) {
   const sub = cleanSubscription(await req.json().catch(() => null));
   if (!sub) return NextResponse.json({ success: false, error: "Invalid subscription" }, { status: 400 });
 
+  // A signed-in shopper's browser is tied to them, so their order updates reach it.
+  const customerId = (await getCustomerSession().catch(() => null))?.customerId ?? null;
   await prisma.pushSubscription.upsert({
     where: { endpoint: sub.endpoint },
-    create: sub,
-    update: { p256dh: sub.p256dh, auth: sub.auth }, // same browser re-subscribing (e.g. after a key change)
+    create: { ...sub, customerId },
+    update: { p256dh: sub.p256dh, auth: sub.auth, ...(customerId ? { customerId } : {}) }, // same browser re-subscribing (e.g. after a key change)
   });
   return NextResponse.json({ success: true });
 }

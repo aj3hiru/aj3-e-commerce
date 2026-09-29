@@ -7,8 +7,10 @@ import 'package:provider/provider.dart';
 import 'core/app_state.dart';
 import 'core/config.dart';
 import 'core/nav.dart';
+import 'core/notify.dart';
 import 'core/theme.dart';
 import 'features/login/login_screen.dart';
+import 'features/orders/order_detail_screen.dart';
 import 'features/shell/shell.dart';
 
 Future<void> main() async {
@@ -16,9 +18,12 @@ Future<void> main() async {
   // Phones get the orange delivery-app look; Windows keeps the website's violet admin look.
   AppColors.useMobileStyle(Platform.isAndroid || Platform.isIOS);
   final state = AppState();
+  await Notify.init();
   await state.init();
   runApp(MultiProvider(providers: [ChangeNotifierProvider.value(value: state), ChangeNotifierProvider(create: (_) => NavController())], child: const StaffApp()));
 }
+
+final _navKey = GlobalKey<NavigatorState>();
 
 class StaffApp extends StatefulWidget {
   const StaffApp({super.key});
@@ -34,6 +39,18 @@ class _StaffAppState extends State<StaffApp> {
     super.initState();
     // Coming back to the app → send waiting work and fetch what changed.
     _life = AppLifecycleListener(onResume: () => context.read<AppState>().syncNow());
+    // Tapping a notification opens that order (or the deliveries list for an agent).
+    Notify.onTap = (payload) {
+      final parts = payload.split(':');
+      final id = parts.length == 2 ? int.tryParse(parts[1]) : null;
+      final nav = _navKey.currentState;
+      if (id == null || nav == null) return;
+      if (parts[0] == 'delivery') {
+        context.read<NavController>().go('deliveries');
+      } else {
+        nav.push(MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: id)));
+      }
+    };
   }
 
   @override
@@ -46,6 +63,7 @@ class _StaffAppState extends State<StaffApp> {
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     return MaterialApp(
+      navigatorKey: _navKey,
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),

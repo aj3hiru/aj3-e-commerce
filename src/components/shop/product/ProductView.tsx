@@ -13,6 +13,7 @@ import { ProductTile, tileGridClass } from "@/components/shop/home/ProductTile";
 import { useHomeTheme } from "@/components/shop/home/HomeTheme";
 import { useCart } from "@/hooks/useCart";
 import type { ProductPageData } from "@/lib/product-page-data";
+import { deliveryChargeFor } from "@/lib/delivery-charge-shared";
 import type { AssuranceIcon, PPSectionKey, ProductPageConfig, TrustIcon } from "@/types/product-page";
 
 const rupees = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
@@ -481,7 +482,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
               </>
             )}
             {i.showDeal && d.price.dealEndsAt && <DealTimer endsAt={d.price.dealEndsAt} />}
-            {i.deliveryText && (
+            {i.deliveryText && deliveryChargeFor(final, d.delivery) === 0 && (
               <div className="mt-2.5">
                 <p className="text-[16px] font-medium text-[#616173]">{i.deliveryText}</p>
                 {i.deliveryStrike && <s className="text-[12px] text-[#8b8ba3]">{i.deliveryStrike}</s>}

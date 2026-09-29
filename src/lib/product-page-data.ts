@@ -6,6 +6,7 @@ import { priceLine, type CartProduct, type CartSize } from "@/lib/cart-lines";
 import { LOW_STOCK_LIMIT } from "@/components/admin/products2/filters";
 import type { ProductPageConfig } from "@/types/product-page";
 import { packLabel, packSortKey, variantLabel } from "@/lib/product-variants-shared";
+import { getDeliverySettings, type DeliverySettings } from "@/lib/delivery-charge";
 
 /** Everything the Meesho-style product page shows, already priced and serialisable. */
 export interface ProductPageData {
@@ -27,6 +28,8 @@ export interface ProductPageData {
   offer: { price: number; count: number; codes: { code: string; title: string; label: string }[] } | null;
   related: FeedProduct[];
   store: { name: string; rating: number | null; count: number };
+  /** Business Settings → Delivery Charge, so the page says “Free Delivery” only when this price really ships free. */
+  delivery: DeliverySettings;
 }
 
 const pct = (mrp: number, final: number) => (mrp > 0 && final < mrp ? Math.min(final > 0 ? 99 : 100, Math.round(((mrp - final) / mrp) * 100)) : 0);
@@ -48,7 +51,7 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
 
   const now = new Date();
   const hidden = new Set(cfg.hidden);
-  const [campaigns, reviewRows, dist, storeAgg, biz, relatedRows, variantRows] = await Promise.all([
+  const [campaigns, reviewRows, dist, storeAgg, biz, relatedRows, variantRows, delivery] = await Promise.all([
     loadLiveCampaigns().catch(() => []),
     hidden.has("reviews") ? Promise.resolve([]) : prisma.ecomProductReview.findMany({ where: { productId: p.id, status: "approved" }, orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.ecomProductReview.groupBy({ by: ["rating"], where: { productId: p.id, status: "approved" }, _count: { _all: true } }),
@@ -61,6 +64,7 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
     p.variantGroup
       ? prisma.ecomProduct.findMany({ where: { variantGroup: p.variantGroup, status: "active" }, include: { sizes: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] } }, take: 40 })
       : Promise.resolve([]),
+    getDeliverySettings(),
   ]);
 
   // Main price: the default size when the product is sold in sizes.
@@ -147,6 +151,7 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
       .map((r) => ({ id: r.id, name: r.customerName, rating: r.rating, text: r.reviewText, date: r.createdAt.toISOString() })),
     offer,
     related,
+    delivery,
     store: {
       name: biz?.businessName ?? "Our Store",
       rating: storeAgg._avg.rating ? Math.round(storeAgg._avg.rating * 10) / 10 : null,

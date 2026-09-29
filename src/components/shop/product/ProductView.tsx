@@ -467,7 +467,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
                 </button>
               )}
             </div>
-            {description && <p className="mt-1.5 break-words text-[14px] leading-[21px] text-[#616173]">{description}</p>}
+            {description && <Description text={description} />}
             <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
               <span className="text-[24px] font-bold leading-8">{rupees(final)}</span>
               {discountPct > 0 && <><s className="text-[14px] text-[#8b8ba3]">{rupees(mrp)}</s><span className="text-[14px]">{discountPct}% off</span></>}
@@ -725,6 +725,34 @@ function OfferSlider({ codes, onCopy }: { codes: { code: string; title: string; 
         <div className="mt-1.5 flex gap-1">
           {codes.map((c, i) => <span key={c.code} className={cn("h-1 rounded-full transition-all", i === at ? "w-3 bg-[#038d63]" : "w-1.5 bg-[#cfe9dc]")} />)}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Product description: two lines with “…” — tap to read all of it, tap again to fold it. */
+function Description({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const [long, setLong] = useState(false);
+  const ref = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => { if (!open) setLong(el.scrollHeight > el.clientHeight + 1); };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [text, open]);
+  return (
+    <div className="mt-1.5">
+      <p ref={ref} onClick={() => long && setOpen((v) => !v)}
+        className={cn("break-words text-[14px] leading-[21px] text-[#616173]", !open && "line-clamp-2", long && "cursor-pointer")}>
+        {text}
+      </p>
+      {long && (
+        <button type="button" onClick={() => setOpen((v) => !v)} className="mt-0.5 text-[13px] font-semibold text-[var(--hp-accent)]">
+          {open ? "Show less" : "Read more"}
+        </button>
       )}
     </div>
   );

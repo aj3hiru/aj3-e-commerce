@@ -27,7 +27,24 @@ const ASSURE: Record<AssuranceIcon, { icon: typeof Box; color: string }> = {
 /** Sections that start with Meesho's 8px grey band. */
 const GAP_BEFORE: PPSectionKey[] = ["sizes", "reviews", "assurance", "related"];
 
-function Gap() { return <div className="h-2 bg-[#eaeaf2]" aria-hidden />; }
+function Gap() { return <div className="h-2 bg-[#eaeaf2] shop:hidden" aria-hidden />; }
+
+/** Desktop (≥ 901px): photos on the left (sticky), details + buy box on the right, reviews and related below. */
+const DESK_LEFT: PPSectionKey[] = ["gallery", "thumbs"];
+const DESK_TOP: PPSectionKey[] = ["breadcrumb"];
+const DESK_BOTTOM: PPSectionKey[] = ["reviews", "assurance", "related"];
+
+function useIsDesktop() {
+  const [desk, setDesk] = useState(false);
+  useEffect(() => {
+    const m = window.matchMedia("(min-width: 901px)");
+    const on = () => setDesk(m.matches);
+    on();
+    m.addEventListener("change", on);
+    return () => m.removeEventListener("change", on);
+  }, []);
+  return desk;
+}
 
 function useToast() {
   const [msg, setMsg] = useState("");
@@ -302,7 +319,9 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
     window.addEventListener("resize", check);
     return () => { window.removeEventListener("scroll", check); window.removeEventListener("resize", check); };
   }, [actionsShown, cfg.actions.sticky]);
-  const floating = actionsShown && cfg.actions.sticky && !docked;
+  const isDesk = useIsDesktop();
+  // On a computer the buy buttons sit in the right column, so no floating bar.
+  const floating = actionsShown && cfg.actions.sticky && !docked && !isDesk;
   useEffect(() => {
     if (!floating) return;
     const prev = document.body.style.paddingBottom, root = document.documentElement;
@@ -450,9 +469,12 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
               {discountPct > 0 && <><s className="text-[14px] text-[#8b8ba3]">{rupees(mrp)}</s><span className="text-[14px]">{discountPct}% off</span></>}
             </div>
             {i.showOffer && d.offer && (
-              <button type="button" onClick={() => setOfferOpen(true)} className="mt-1 flex items-center gap-1 text-[16px] font-medium text-[#038d63]">
-                {rupees(d.offer.price)} with {d.offer.count} Special Offer{d.offer.count > 1 ? "s" : ""}<ChevronRight className="h-4 w-4" strokeWidth={2.5} />
-              </button>
+              <>
+                <button type="button" onClick={() => setOfferOpen(true)} className="mt-1 flex items-center gap-1 text-[16px] font-medium text-[#038d63]">
+                  {rupees(d.offer.price)} with {d.offer.count} Special Offer{d.offer.count > 1 ? "s" : ""}<ChevronRight className="h-4 w-4" strokeWidth={2.5} />
+                </button>
+                <OfferSlider codes={d.offer.codes} onCopy={(msg) => setToast(msg)} />
+              </>
             )}
             {i.showDeal && d.price.dealEndsAt && <DealTimer endsAt={d.price.dealEndsAt} />}
             {i.deliveryText && (
@@ -569,22 +591,31 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
     }
   }
 
-  const rendered: React.ReactNode[] = [];
-  for (const k of cfg.order) {
+  // One list in the Customizer's order. On phones the column wrappers are
+  // `display: contents`, so `order` keeps that sequence; on a computer they
+  // become real columns.
+  const top: React.ReactNode[] = [], left: React.ReactNode[] = [], right: React.ReactNode[] = [], bottom: React.ReactNode[] = [];
+  let count = 0;
+  for (const [idx, k] of cfg.order.entries()) {
     if (!show(k)) continue;
     const node = section(k);
     if (!node) continue;
-    rendered.push(
-      <section key={k} data-hc={k}>
-        {rendered.length > 0 && GAP_BEFORE.includes(k) && <Gap />}
+    const el = (
+      <section key={k} data-hc={k} style={{ order: idx }} className={cn(DESK_BOTTOM.includes(k) && "shop:mt-6 shop:rounded-xl shop:border shop:border-[#eaeaf2]")}>
+        {count > 0 && GAP_BEFORE.includes(k) && <Gap />}
         {node}
-      </section>,
+      </section>
     );
+    count++;
+    (DESK_TOP.includes(k) ? top : DESK_LEFT.includes(k) ? left : DESK_BOTTOM.includes(k) ? bottom : right).push(el);
   }
 
   return (
-    <div className="mx-auto w-full max-w-[760px] bg-white">
-      {rendered}
+    <div className="mx-auto flex w-full max-w-[760px] flex-col bg-white shop:grid shop:max-w-[1200px] shop:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] shop:gap-x-10 shop:px-6 shop:pb-10 shop:pt-2">
+      <div className="contents shop:col-span-2 shop:block">{top}</div>
+      <div className="contents shop:sticky shop:top-4 shop:block shop:self-start shop:rounded-xl shop:border shop:border-[#eaeaf2] shop:py-4">{left}</div>
+      <div className="contents shop:block shop:min-w-0">{right}</div>
+      <div className="contents shop:col-span-2 shop:block">{bottom}</div>
       {floating && (
         <div className="fixed inset-x-0 bottom-0 z-[900] border-t border-[#eaeaf2] bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
           <div className="mx-auto max-w-[760px]">{buttons}</div>
@@ -644,4 +675,50 @@ function PackCard({ label, mrp, final, off, out, on, showPrice, href, onClick }:
   );
   if (href) return <Link href={href} className={cls} style={style} prefetch={false}>{body}</Link>;
   return <button type="button" onClick={onClick} aria-pressed={on} className={cls} style={style}>{body}</button>;
+}
+
+/** Coupons that work on this product, under the price — swipe, or it moves on by itself when there are several. */
+function OfferSlider({ codes, onCopy }: { codes: { code: string; title: string; label: string }[]; onCopy: (msg: string) => void }) {
+  const track = useRef<HTMLDivElement>(null);
+  const [at, setAt] = useState(0);
+  const [paused, setPaused] = useState(false);
+  useEffect(() => {
+    if (codes.length < 2 || paused) return;
+    const t = setInterval(() => {
+      const el = track.current;
+      if (!el) return;
+      const next = (at + 1) % codes.length;
+      const card = el.children[next] as HTMLElement | undefined;
+      el.scrollTo({ left: card ? card.offsetLeft - el.offsetLeft : 0, behavior: "smooth" });
+    }, 3500);
+    return () => clearInterval(t);
+  }, [at, codes.length, paused]);
+  if (codes.length === 0) return null;
+  return (
+    <div className="mt-2" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} onTouchStart={() => setPaused(true)}>
+      <div ref={track} onScroll={(e) => {
+          const el = e.currentTarget;
+          const w = (el.children[0] as HTMLElement | undefined)?.offsetWidth ?? el.clientWidth;
+          setAt(Math.round(el.scrollLeft / Math.max(1, w + 8)));
+        }}
+        className="flex snap-x snap-mandatory gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {codes.map((c) => (
+          <div key={c.code} className="flex w-[82%] max-w-[300px] shrink-0 snap-start items-center gap-2.5 rounded-lg border border-dashed border-[#038d63] bg-[#f0faf5] px-3 py-2">
+            <BadgePercent className="h-5 w-5 shrink-0 text-[#038d63]" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-semibold text-[#353543]">{c.label}{c.title ? ` · ${c.title}` : ""}</p>
+              <p className="truncate text-[12px] text-[#616173]">Code <b className="tracking-wide text-[#353543]">{c.code}</b></p>
+            </div>
+            <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(c.code); onCopy("Code copied"); } catch { /* blocked */ } }}
+              className="shrink-0 text-[12px] font-bold uppercase text-[var(--hp-accent)]">Copy</button>
+          </div>
+        ))}
+      </div>
+      {codes.length > 1 && (
+        <div className="mt-1.5 flex gap-1">
+          {codes.map((c, i) => <span key={c.code} className={cn("h-1 rounded-full transition-all", i === at ? "w-3 bg-[#038d63]" : "w-1.5 bg-[#cfe9dc]")} />)}
+        </div>
+      )}
+    </div>
+  );
 }

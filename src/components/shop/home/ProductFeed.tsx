@@ -127,10 +127,14 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted, bar =
     <section ref={top} aria-label={title} className="bg-white">
       <h2 className="border-b border-[#eaeaf2] px-4 pb-3 pt-4 text-[20px] font-normal leading-7 text-[#353543]">{title}</h2>
 
-      {/* Sticky filter bar */}
+      <div className="shop:grid shop:grid-cols-[232px_minmax(0,1fr)] shop:items-start">
+      {/* Computer: filters always visible on the left, applied at once (like Amazon). */}
+      <DeskFilters value={applied} facets={facets} scoped={!!scope} bar={bar} onApply={apply} />
+      <div className="min-w-0 shop:border-l shop:border-[#eaeaf2]">
+      {/* Sticky filter bar (phones and tablets) */}
       <div className="sticky top-0 z-30 bg-white">
         {barCount > 0 && (
-          <div className="grid h-[52px] border-b border-[#cfcedc]" style={{ gridTemplateColumns: `repeat(${barCount}, minmax(0, 1fr))` }}>
+          <div className="grid h-[52px] border-b border-[#cfcedc] shop:hidden" style={{ gridTemplateColumns: `repeat(${barCount}, minmax(0, 1fr))` }}>
             {bar.showSort && (
               <button type="button" onClick={() => setSheet("sort")} className={barBtn}>
                 <ArrowDownUp className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} /> <span className="truncate">Sort</span>
@@ -179,7 +183,7 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted, bar =
           )}
         </div>
       ) : (
-        <div className={cn("grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5", tileGridClass(card.gap), loading === "replace" && "opacity-60")}>
+        <div className={cn("grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 shop:grid-cols-3 min-[1100px]:grid-cols-4 min-[1320px]:grid-cols-5", tileGridClass(card.gap), loading === "replace" && "opacity-60")}>
           {items.map((p, i) => <ProductTile key={p.id} p={p} wished={wish.has(p.id)} onWish={onWish} priority={i < 4} />)}
           {loading === "replace" && items.length === 0 && Array.from({ length: 6 }, (_, i) => <ProductTileSkeleton key={i} />)}
           {loading === "more" && Array.from({ length: 4 }, (_, i) => <ProductTileSkeleton key={`s${i}`} />)}
@@ -191,6 +195,8 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted, bar =
           : error && items.length > 0 ? <button type="button" onClick={() => load(applied, page + 1, "more")} className="font-bold text-[var(--hp-accent)]">Couldn&apos;t load more — tap to retry</button>
           : page < pageCount ? <button type="button" onClick={() => load(applied, page + 1, "more")} className="font-bold text-[var(--hp-accent)]">Load more</button>
           : items.length > 0 ? `You've seen all ${total.toLocaleString("en-IN")} products` : null}
+      </div>
+      </div>
       </div>
 
       {sheet === "sort" && (
@@ -393,5 +399,104 @@ function FiltersSheet({ value, facets, onClose, onApply }: { value: Draft; facet
         </div>
       </div>
     </Sheet>
+  );
+}
+
+/** Left filter column on a computer: every option visible, each click applies at once. */
+function DeskFilters({ value, facets, scoped, bar, onApply }: { value: Draft; facets: FeedFacets; scoped: boolean; bar: FeedBar; onApply: (d: Draft) => void }) {
+  const [minIn, setMinIn] = useState(value.min !== null ? String(value.min) : "");
+  const [maxIn, setMaxIn] = useState(value.max !== null ? String(value.max) : "");
+  const [moreCats, setMoreCats] = useState(false);
+  const [moreBrands, setMoreBrands] = useState(false);
+  useEffect(() => { setMinIn(value.min !== null ? String(value.min) : ""); setMaxIn(value.max !== null ? String(value.max) : ""); }, [value.min, value.max]);
+  const any = activeCount(value) > 0;
+  const head = "mb-1.5 mt-4 text-[13px] font-bold uppercase tracking-[0.4px] text-[#353543]";
+  const row = "flex w-full items-center gap-2 rounded px-1.5 py-[5px] text-left text-[13.5px] text-[#353543] hover:bg-[#f5f5f8]";
+  const box = (on: boolean) => (
+    <span className={cn("grid h-4 w-4 shrink-0 place-items-center rounded-[3px] border", on ? "border-[var(--hp-accent)] bg-[var(--hp-accent)]" : "border-[#9d9db0]")}>
+      {on && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+    </span>
+  );
+  const dot = (on: boolean) => (
+    <span className={cn("grid h-4 w-4 shrink-0 place-items-center rounded-full border", on ? "border-[var(--hp-accent)]" : "border-[#9d9db0]")}>{on && <span className="h-2 w-2 rounded-full bg-[var(--hp-accent)]" />}</span>
+  );
+  const cats = moreCats ? facets.categories : facets.categories.slice(0, 8);
+  const brands = moreBrands ? facets.brands : facets.brands.slice(0, 8);
+  const setPrice = () => {
+    const min = minIn.trim() ? Math.max(0, Number(minIn)) || null : null;
+    const max = maxIn.trim() ? Math.max(0, Number(maxIn)) || null : null;
+    onApply({ ...value, min, max: min !== null && max !== null && max < min ? min : max });
+  };
+  return (
+    <aside aria-label="Filters" className="sticky top-2 hidden max-h-[calc(100vh-16px)] overflow-y-auto px-4 pb-6 pt-1 [scrollbar-width:thin] shop:block">
+      <div className="flex items-center justify-between">
+        <p className="text-[15px] font-bold text-[#353543]">Filters</p>
+        {any && <button type="button" onClick={() => onApply({ ...EMPTY, sort: value.sort })} className="text-[12px] font-bold text-[#d9480f]">Clear all</button>}
+      </div>
+      {bar.showSort && (
+        <>
+          <p className={head}>Sort by</p>
+          <select value={value.sort} onChange={(e) => onApply({ ...value, sort: e.target.value as FeedSort })} aria-label="Sort by"
+            className="h-9 w-full rounded-md border border-[#cfcedc] bg-white px-2 text-[13.5px] outline-none focus:border-[var(--hp-accent)]">
+            {FEED_SORTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </>
+      )}
+      {!scoped && facets.categories.length > 0 && (
+        <>
+          <p className={head}>Category</p>
+          {cats.map((c) => {
+            const on = value.cat.includes(c.slug);
+            return (
+              <button key={c.slug} type="button" role="checkbox" aria-checked={on} className={row}
+                onClick={() => onApply({ ...value, cat: on ? value.cat.filter((x) => x !== c.slug) : [...value.cat, c.slug] })}>
+                {box(on)}<span className="min-w-0 flex-1 truncate">{c.name}</span><span className="text-[12px] text-[#8b8ba3]">{c.count}</span>
+              </button>
+            );
+          })}
+          {facets.categories.length > 8 && <button type="button" onClick={() => setMoreCats((v) => !v)} className="px-1.5 text-[12.5px] font-semibold text-[var(--hp-accent)]">{moreCats ? "Show less" : `See all ${facets.categories.length}`}</button>}
+        </>
+      )}
+      {facets.brands.length > 0 && (
+        <>
+          <p className={head}>Brand</p>
+          {brands.map((b) => {
+            const on = value.brand.includes(b.id);
+            return (
+              <button key={b.id} type="button" role="checkbox" aria-checked={on} className={row}
+                onClick={() => onApply({ ...value, brand: on ? value.brand.filter((x) => x !== b.id) : [...value.brand, b.id] })}>
+                {box(on)}<span className="min-w-0 flex-1 truncate">{b.name}</span><span className="text-[12px] text-[#8b8ba3]">{b.count}</span>
+              </button>
+            );
+          })}
+          {facets.brands.length > 8 && <button type="button" onClick={() => setMoreBrands((v) => !v)} className="px-1.5 text-[12.5px] font-semibold text-[var(--hp-accent)]">{moreBrands ? "Show less" : `See all ${facets.brands.length}`}</button>}
+        </>
+      )}
+      <p className={head}>Price</p>
+      {PRICE_PRESETS.map((pp) => {
+        const on = value.min === pp.min && value.max === pp.max;
+        return <button key={pp.label} type="button" className={row} onClick={() => onApply({ ...value, min: on ? null : pp.min, max: on ? null : pp.max })}>{dot(on)}{pp.label}</button>;
+      })}
+      <form className="mt-1.5 flex items-center gap-1.5 px-1.5" onSubmit={(e) => { e.preventDefault(); setPrice(); }}>
+        <input inputMode="numeric" value={minIn} onChange={(e) => setMinIn(e.target.value.replace(/\D/g, ""))} placeholder="Min" aria-label="Minimum price"
+          className="h-8 w-full min-w-0 rounded border border-[#cfcedc] px-2 text-[13px] outline-none focus:border-[var(--hp-accent)]" />
+        <span className="text-[#999]">–</span>
+        <input inputMode="numeric" value={maxIn} onChange={(e) => setMaxIn(e.target.value.replace(/\D/g, ""))} placeholder="Max" aria-label="Maximum price"
+          className="h-8 w-full min-w-0 rounded border border-[#cfcedc] px-2 text-[13px] outline-none focus:border-[var(--hp-accent)]" />
+        <button type="submit" className="h-8 shrink-0 rounded border border-[#cfcedc] px-2 text-[12.5px] font-semibold hover:border-[var(--hp-accent)]">Go</button>
+      </form>
+      <p className={head}>Discount</p>
+      {DISCOUNTS.slice(0, 5).map((v) => (
+        <button key={v} type="button" className={row} onClick={() => onApply({ ...value, disc: value.disc === v ? null : v })}>{dot(value.disc === v)}{v}% off or more</button>
+      ))}
+      <p className={head}>Customer rating</p>
+      {RATINGS.map((v) => (
+        <button key={v} type="button" className={row} onClick={() => onApply({ ...value, rating: value.rating === v ? null : v })}>
+          {dot(value.rating === v)}<span className="flex items-center gap-1">{v}<Star className="h-3.5 w-3.5 fill-[#23bb75] text-[#23bb75]" /> &amp; above</span>
+        </button>
+      ))}
+      <p className={head}>Availability</p>
+      <button type="button" role="checkbox" aria-checked={value.inStock} className={row} onClick={() => onApply({ ...value, inStock: !value.inStock })}>{box(value.inStock)}Exclude out of stock</button>
+    </aside>
   );
 }

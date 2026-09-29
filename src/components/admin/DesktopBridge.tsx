@@ -147,7 +147,7 @@ export function DesktopBridge() {
 
   return createPortal(
     <>
-      <div className="fixed bottom-3 left-3 z-[1900] flex flex-col items-start gap-2">
+      <div className="fixed bottom-3 right-3 z-[1900] flex flex-col items-end gap-2">
         {update && (
           <div className="flex items-center gap-2 rounded-md border border-admin-gray-200 bg-white px-3 py-2 text-[13px] shadow-lg">
             <Download className="h-4 w-4 text-admin-primary" />
@@ -168,7 +168,7 @@ export function DesktopBridge() {
       </div>
 
       {open && (
-        <div className="fixed bottom-12 left-3 z-[1901] w-[360px] max-w-[calc(100vw-24px)] overflow-hidden rounded-md border border-admin-gray-200 bg-white text-[13px] shadow-[0_8px_28px_rgba(0,0,0,.18)]" role="dialog" aria-label="Sync status">
+        <div className="fixed bottom-12 right-3 z-[1901] w-[360px] max-w-[calc(100vw-24px)] overflow-hidden rounded-md border border-admin-gray-200 bg-white text-[13px] shadow-[0_8px_28px_rgba(0,0,0,.18)]" role="dialog" aria-label="Sync status">
           <div className="flex items-center justify-between border-b border-admin-gray-100 px-3 py-2">
             <b className="font-semibold text-admin-gray-900">{online ? "Connected to the server" : "Working offline"}</b>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="rounded p-1 text-admin-gray-400 hover:bg-admin-gray-100"><X className="h-4 w-4" /></button>
@@ -199,7 +199,7 @@ export function DesktopBridge() {
         </div>
       )}
 
-      {toast && <div role="status" className="fixed bottom-12 left-3 z-[1902] max-w-sm rounded-md bg-admin-gray-900 px-3 py-2 text-[13px] text-white shadow-lg">{toast}</div>}
+      {toast && <div role="status" className="fixed bottom-12 right-3 z-[1902] max-w-sm rounded-md bg-admin-gray-900 px-3 py-2 text-[13px] text-white shadow-lg">{toast}</div>}
     </>,
     document.body,
   );

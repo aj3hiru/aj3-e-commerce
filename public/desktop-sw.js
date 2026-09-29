@@ -129,9 +129,13 @@ async function warm(urls) {
     for (const u of urls.slice(0, 120)) {
       try {
         const res = await fetch(u, { credentials: "include", headers: { Accept: "text/html" } });
-        if (!res.ok || res.redirected || res.type !== "basic") continue;
+        // Sidebar links like /admin/ecommerce/orders land on /ecommerce/orders: keep it under both addresses.
+        // Sent to the login page (signed out) = a different site: not saved.
+        const final = new URL(res.url || u);
+        if (!res.ok || res.type !== "basic" || final.origin !== self.location.origin) continue;
         const html = await res.clone().text();
-        await pages.put(pageKey(new URL(u)), res);
+        await pages.put(pageKey(final), res.clone());
+        if (pageKey(final) !== pageKey(new URL(u))) await pages.put(pageKey(new URL(u)), res);
         // The scripts and styles that page needs, so it also works (not just shows) offline.
         const found = new Set(html.match(/\/_next\/static\/[^"'\s)\\]+/g) || []);
         for (const a of found) {

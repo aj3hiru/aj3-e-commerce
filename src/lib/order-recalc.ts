@@ -63,6 +63,15 @@ export async function paymentChangeBlocked(tx: Prisma.TransactionClient | typeof
 /** Canceling an order puts its stock back on the shelf; moving it out of
  *  Canceled again takes the stock back off. */
 export async function syncCancelStock(tx: Prisma.TransactionClient, orderId: number, from: string, to: string): Promise<void> {
-  if (from !== "Canceled" && to === "Canceled") await adjustOrderStock(tx, orderId, 1);
-  else if (from === "Canceled" && to !== "Canceled") await adjustOrderStock(tx, orderId, -1);
+  const sign = from !== "Canceled" && to === "Canceled" ? 1 : from === "Canceled" && to !== "Canceled" ? -1 : 0;
+  if (!sign) return;
+  await adjustOrderStock(tx, orderId, sign);
+  // The coupon's use comes back with a cancelled order (and is taken again if it is un-cancelled).
+  const o = await tx.ecomOrder.findUnique({ where: { id: orderId }, select: { couponCode: true } });
+  if (o?.couponCode) {
+    await tx.ecomCoupon.updateMany({
+      where: { code: o.couponCode, ...(sign === 1 ? { usedCount: { gt: 0 } } : {}) },
+      data: { usedCount: sign === 1 ? { decrement: 1 } : { increment: 1 } },
+    });
+  }
 }

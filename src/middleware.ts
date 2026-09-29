@@ -87,12 +87,7 @@ export async function middleware(req: NextRequest) {
     if (preview) return NextResponse.next();
     // Customer pages belong on the main domain — except the delivery app's own /order/<id> page.
     const agentOrder = app === "delivery" && /^\/order\/\d+/.test(pathname);
-    if (STORE_PATHS.test(pathname) && !agentOrder) {
-      // A store link's page data fetched in the background (Link prefetch / client navigation): a redirect to the
-      // store's domain can't be followed from here, so answer empty — Next.js then opens the link normally.
-      if (req.headers.get("rsc") === "1") return new NextResponse(null, { status: 204 });
-      return at(store, pathname + search, 308);
-    }
+    if (STORE_PATHS.test(pathname) && !agentOrder) return at(store, pathname + search, 308);
     // Old /admin/… (or /agent/…) links → the clean URL.
     const own = app === "admin" ? /^\/admin(\/|$)/ : /^\/agent(\/|$)/;
     if (own.test(pathname)) return at(hostname, toPublicPath(pathname, app) + search);

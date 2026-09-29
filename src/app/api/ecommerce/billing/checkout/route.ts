@@ -292,7 +292,7 @@ async function handlePOST(req: NextRequest) {
       }
 
       const orderNumber = await generateOrderNumber(tx);
-      await tx.ecomOrder.update({ where: { id: order.id }, data: { orderNumber } });
+      await tx.ecomOrder.update({ where: { id: order.id }, data: { orderNumber, ...(coupon ? { couponCode: coupon.code } : {}) } });
 
       return { order: { ...order, orderNumber }, discount, totalGst, dueAmount, grandTotal, campaignSales };
     }));

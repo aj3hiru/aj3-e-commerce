@@ -180,8 +180,9 @@ async function handlePOST(req: NextRequest) {
 
       await tx.ecomOrderEvent.create({ data: { orderId: order.id, type: "placed", toValue: "Pending", actorName: custRow!.name || "Customer" } });
 
-      if (coupon && !(await consumeCouponUse(tx, coupon.id))) {
-        throw new CheckoutError("This coupon has just reached its usage limit. Please remove it and try again.");
+      if (coupon) {
+        if (!(await consumeCouponUse(tx, coupon.id))) throw new CheckoutError("This coupon has just reached its usage limit. Please remove it and try again.");
+        await tx.ecomOrder.update({ where: { id: order.id }, data: { couponCode: coupon.code } });
       }
 
       const orderNumber = await generateOrderNumber(tx);

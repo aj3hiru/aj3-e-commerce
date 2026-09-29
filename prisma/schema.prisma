@@ -180,6 +180,7 @@ model EcomProduct {
   coupons     EcomCoupon[]     @relation("CouponProduct")
 
   @@index([variantGroup])
+  @@index([status], map: "ecom_products_status_idx")
   @@map("ecom_products")
 }
 
@@ -324,6 +325,8 @@ model EcomOrder {
   paidAmount      Decimal  @default(0) @map("paid_amount") @db.Decimal(10, 2)
   subtotalAmount  Decimal  @map("subtotal_amount") @db.Decimal(10, 2)
   discountAmount  Decimal  @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  /// The coupon used (prisma/order-coupon-indexes.sql); cancelling the order gives its use back.
+  couponCode      String?  @map("coupon_code") @db.VarChar(50)
   gstAmount       Decimal  @map("gst_amount") @db.Decimal(10, 2)
   deliveryCharge  Decimal  @default(0) @map("delivery_charge") @db.Decimal(10, 2) // online orders only — Business Settings → Delivery Charge
   paymentStatus   String   @map("payment_status") // "Paid" | "Unpaid"
@@ -340,6 +343,8 @@ model EcomOrder {
   payments EcomOrderPayment[]
   credits  EcomCredit[]
 
+  @@index([createdAt], map: "ecom_orders_created_at_idx")
+  @@index([orderStatus, createdAt], map: "ecom_orders_status_created_idx")
   @@map("ecom_orders")
 }
 

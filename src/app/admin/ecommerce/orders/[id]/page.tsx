@@ -88,6 +88,7 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           createdAt: order.createdAt.toISOString(),
           subtotal: Number(order.subtotalAmount),
           discount: Number(order.discountAmount),
+          couponCode: order.couponCode,
           gst: Number(order.gstAmount),
           deliveryCharge: Number(order.deliveryCharge),
           paidAmount: Number(order.paidAmount),

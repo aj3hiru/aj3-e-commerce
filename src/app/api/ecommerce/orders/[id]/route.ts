@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import type { Prisma } from "@prisma/client";
-import { adjustOrderStock } from "@/lib/order-stock";
+import { syncCancelStock } from "@/lib/order-recalc";
 import { applyOrderAction, WorkflowError } from "@/lib/order-workflow";
 
 // Single source of truth shared with both status dropdowns, so the UI can never
@@ -62,8 +62,8 @@ async function handleDELETE(req: NextRequest, { params }: { params: Promise<{ id
 
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // A deleted (not-already-canceled) order gives its stock back.
-      if (order.orderStatus !== "Canceled") await adjustOrderStock(tx, orderId, 1);
+      // A deleted (not-already-canceled) order gives its stock and coupon use back, as cancelling does.
+      await syncCancelStock(tx, orderId, order.orderStatus, "Canceled");
       // ecom_credits has no ON DELETE CASCADE, so the unpaid due must go first or
       // the delete fails; campaign sale rows are plain ids and would be orphaned.
       await tx.ecomCredit.deleteMany({ where: { orderId } });

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
@@ -70,7 +70,7 @@ List<Section> sectionsFor(Perms p, [List<Map<String, dynamic>> menu = const []])
       if (p.seesReports) Section('reports', 'Reports', 'Insights', Icons.insert_chart_outlined_rounded, Icons.insert_chart_rounded, () => const ReportsScreen()),
       Section('account', 'Profile', 'Account', Icons.person_outline_rounded, Icons.person_rounded, () => const Responsive(phone: AccountScreen(), desktop: ProfileWeb())),
       // Every other website menu item opens that website page inside the app.
-      for (final l in webLinks(parseMenu(menu)).where((l) => nativePageFor(l.href) != null)) Section('web:${l.href}', l.label, 'Website', faIcon(l.icon).data, faIcon(l.icon).data, nativePageFor(l.href)!),
+      for (final l in webLinks(parseMenu(menu)).where((l) => nativePageFor(l.href) != null)) Section('web:${l.href}', l.label, 'Website', faIcon(l.icon), faIcon(l.icon), nativePageFor(l.href)!),
     ];
 
 /// Badge counts shown on menu items (new orders, deliveries to do, low stock…).
@@ -309,7 +309,7 @@ class _ShellState extends State<Shell> {
           selectedColor: AppColors.primary,
           contentPadding: EdgeInsets.only(left: sub ? 36 : 16, right: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          leading: SizedBox(width: 24, child: Center(child: FaIcon(faIcon(l.icon), size: sub ? 15 : 17))),
+          leading: SizedBox(width: 24, child: Center(child: Icon(faIcon(l.icon), size: sub ? 17 : 19))),
           title: Text(l.label, style: TextStyle(fontWeight: l.sectionId == current ? FontWeight.w700 : FontWeight.w500)),
           trailing: CountBadge(badges[l.sectionId] ?? 0),
           onTap: () => tap(l),
@@ -329,7 +329,7 @@ class _ShellState extends State<Shell> {
               child: ExpansionTile(
                 initiallyExpanded: on(l),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                leading: SizedBox(width: 24, child: Center(child: FaIcon(faIcon(l.icon), size: 17))),
+                leading: SizedBox(width: 24, child: Center(child: Icon(faIcon(l.icon), size: 19))),
                 title: Text(l.label, style: const TextStyle(fontWeight: FontWeight.w500)),
                 childrenPadding: EdgeInsets.zero,
                 children: [
@@ -438,19 +438,19 @@ class _UpdateBar extends StatelessWidget {
 }
 
 /// Website sidebar (AdminSidebar.tsx): brand, grouped links, same labels and icons.
-const _webNav = <String, (String, String, FaIconData)>{
-  'home': ('Main', 'Dashboard', FontAwesomeIcons.solidHouse),
-  'pos': ('Sales', 'Billing / POS', FontAwesomeIcons.cashRegister),
-  'orders': ('Sales', 'Orders', FontAwesomeIcons.receipt),
-  'board': ('Sales', 'Deliveries', FontAwesomeIcons.solidTruck),
-  'deliveries': ('Sales', 'My Deliveries', FontAwesomeIcons.motorcycle),
-  'dues': ('Sales', 'Due Payments', FontAwesomeIcons.handHoldingDollar),
-  'products': ('Catalog', 'Products', FontAwesomeIcons.boxesStacked),
-  'categories': ('Catalog', 'Categories', FontAwesomeIcons.list),
-  'customers': ('Customers & Marketing', 'Customers', FontAwesomeIcons.userGroup),
-  'reports': ('Reports', 'Report Builder', FontAwesomeIcons.fileInvoiceDollar),
-  'staff': ('Settings', 'Staff & Roles', FontAwesomeIcons.usersGear),
-  'account': ('Account', 'My Profile', FontAwesomeIcons.solidUser),
+const _webNav = <String, (String, String, IconData)>{
+  'home': ('Main', 'Dashboard', LucideIcons.house),
+  'pos': ('Sales', 'Billing / POS', LucideIcons.calculator),
+  'orders': ('Sales', 'Orders', LucideIcons.receipt),
+  'board': ('Sales', 'Deliveries', LucideIcons.truck),
+  'deliveries': ('Sales', 'My Deliveries', LucideIcons.bike),
+  'dues': ('Sales', 'Due Payments', LucideIcons.handCoins),
+  'products': ('Catalog', 'Products', LucideIcons.boxes),
+  'categories': ('Catalog', 'Categories', LucideIcons.listTree),
+  'customers': ('Customers & Marketing', 'Customers', LucideIcons.users),
+  'reports': ('Reports', 'Report Builder', LucideIcons.fileSpreadsheet),
+  'staff': ('Settings', 'Staff & Roles', LucideIcons.userCog),
+  'account': ('Account', 'My Profile', LucideIcons.user),
 };
 
 class _Sidebar extends StatefulWidget {
@@ -535,7 +535,7 @@ class _SidebarState extends State<_Sidebar> {
                         icon: AnimatedRotation(
                           turns: _expanded(l, on(l)) ? .5 : 0,
                           duration: const Duration(milliseconds: 200),
-                          child: const FaIcon(FontAwesomeIcons.chevronDown, size: 12, color: W.g400),
+                          child: const Icon(LucideIcons.chevronDown, size: 14, color: W.g400),
                         ),
                       ),
                     ]),
@@ -583,7 +583,7 @@ class _SidebarState extends State<_Sidebar> {
               popUpAnimationStyle: AnimationStyle.noAnimation,
               tooltip: 'Show / hide menu items',
               position: PopupMenuPosition.under,
-              icon: const FaIcon(FontAwesomeIcons.sliders, size: 16, color: W.g500),
+              icon: const Icon(LucideIcons.slidersHorizontal, size: 17, color: W.g500),
               onSelected: _toggle,
               itemBuilder: (_) => menu.isNotEmpty
                   ? [
@@ -610,7 +610,7 @@ class _SidebarState extends State<_Sidebar> {
                     child: Text(g.key.toUpperCase(), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: W.g400, letterSpacing: 1)),
                   ),
                   for (final id in g.value) _link(id, _webNav[id]!.$2, _webNav[id]!.$3, () => widget.onGo(id), badge: widget.badges[id] ?? 0),
-                  if (g.key == 'Account') _link('logout', 'Logout', FontAwesomeIcons.rightFromBracket, widget.onLogout),
+                  if (g.key == 'Account') _link('logout', 'Logout', LucideIcons.logOut, widget.onLogout),
                 ]),
               ),
           ]),
@@ -619,7 +619,7 @@ class _SidebarState extends State<_Sidebar> {
     );
   }
 
-  Widget _link(String id, String label, FaIconData icon, VoidCallback onTap, {int badge = 0, bool small = false}) {
+  Widget _link(String id, String label, IconData icon, VoidCallback onTap, {int badge = 0, bool small = false}) {
     final active = id == widget.current;
     return Padding(
       padding: const EdgeInsets.only(bottom: 1),
@@ -633,7 +633,7 @@ class _SidebarState extends State<_Sidebar> {
           child: Padding(
             padding: EdgeInsets.fromLTRB(10, small ? 6 : 8, 8, small ? 6 : 8),
             child: Row(children: [
-              SizedBox(width: 20, child: Center(child: FaIcon(icon, size: small ? 12.5 : 14, color: active ? W.primary : W.g500))),
+              SizedBox(width: 20, child: Center(child: Icon(icon, size: small ? 15 : 17, color: active ? W.primary : W.g500))),
               const SizedBox(width: 10),
               Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: small ? 12.5 : 13.5, fontWeight: active ? FontWeight.w600 : FontWeight.w500, color: active ? W.primary : W.g700))),
               if (badge > 0)

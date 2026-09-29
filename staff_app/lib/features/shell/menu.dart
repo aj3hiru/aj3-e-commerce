@@ -1,46 +1,47 @@
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter/widgets.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 /// The website's admin menu (from /api/app/v1/menu), and which links the app
 /// shows with its own screens. Everything else opens the website page inside the app.
 
-/// Font Awesome names the website uses → the same solid icons.
-const faByName = <String, FaIconData>{
-  'house': FontAwesomeIcons.solidHouse,
-  'cash-register': FontAwesomeIcons.cashRegister,
-  'receipt': FontAwesomeIcons.receipt,
-  'truck': FontAwesomeIcons.solidTruck,
-  'hand-holding-dollar': FontAwesomeIcons.handHoldingDollar,
-  'boxes-stacked': FontAwesomeIcons.boxesStacked,
-  'square-plus': FontAwesomeIcons.solidSquarePlus,
-  'box-open': FontAwesomeIcons.boxOpen,
-  'star-half-stroke': FontAwesomeIcons.solidStarHalfStroke,
-  'copyright': FontAwesomeIcons.solidCopyright,
-  'tags': FontAwesomeIcons.tags,
-  'barcode': FontAwesomeIcons.barcode,
-  'list': FontAwesomeIcons.list,
-  'user-group': FontAwesomeIcons.userGroup,
-  'percent': FontAwesomeIcons.percent,
-  'bell': FontAwesomeIcons.solidBell,
-  'file-invoice-dollar': FontAwesomeIcons.fileInvoiceDollar,
-  'chart-line': FontAwesomeIcons.chartLine,
-  'clock-rotate-left': FontAwesomeIcons.clockRotateLeft,
-  'brush': FontAwesomeIcons.brush,
-  'box': FontAwesomeIcons.box,
-  'bars': FontAwesomeIcons.bars,
-  'grip-lines': FontAwesomeIcons.gripLines,
-  'file-lines': FontAwesomeIcons.solidFileLines,
-  'images': FontAwesomeIcons.solidImages,
-  'building': FontAwesomeIcons.solidBuilding,
-  'users-gear': FontAwesomeIcons.usersGear,
-  'gear': FontAwesomeIcons.gear,
-  'bolt': FontAwesomeIcons.bolt,
-  'user': FontAwesomeIcons.solidUser,
-  'mobile-screen-button': FontAwesomeIcons.mobileScreenButton,
-  'right-from-bracket': FontAwesomeIcons.rightFromBracket,
-  'motorcycle': FontAwesomeIcons.motorcycle,
+/// Icon names the website's menu uses → the app's clean line icons (same family on every page).
+const faByName = <String, IconData>{
+  'house': LucideIcons.house,
+  'cash-register': LucideIcons.calculator,
+  'receipt': LucideIcons.receipt,
+  'truck': LucideIcons.truck,
+  'hand-holding-dollar': LucideIcons.handCoins,
+  'boxes-stacked': LucideIcons.boxes,
+  'square-plus': LucideIcons.squarePlus,
+  'box-open': LucideIcons.packageOpen,
+  'star-half-stroke': LucideIcons.starHalf,
+  'copyright': LucideIcons.copyright,
+  'tags': LucideIcons.tags,
+  'barcode': LucideIcons.barcode,
+  'list': LucideIcons.listTree,
+  'user-group': LucideIcons.users,
+  'percent': LucideIcons.percent,
+  'bell': LucideIcons.bell,
+  'file-invoice-dollar': LucideIcons.fileSpreadsheet,
+  'chart-line': LucideIcons.chartLine,
+  'clock-rotate-left': LucideIcons.history,
+  'brush': LucideIcons.paintbrush,
+  'box': LucideIcons.box,
+  'bars': LucideIcons.menu,
+  'grip-lines': LucideIcons.panelBottom,
+  'file-lines': LucideIcons.fileText,
+  'images': LucideIcons.images,
+  'building': LucideIcons.building2,
+  'users-gear': LucideIcons.userCog,
+  'gear': LucideIcons.settings,
+  'bolt': LucideIcons.zap,
+  'user': LucideIcons.user,
+  'mobile-screen-button': LucideIcons.smartphone,
+  'right-from-bracket': LucideIcons.logOut,
+  'motorcycle': LucideIcons.bike,
 };
 
-FaIconData faIcon(String? name) => faByName[name] ?? FontAwesomeIcons.solidCircle;
+IconData faIcon(String? name) => faByName[name] ?? LucideIcons.circle;
 
 /// Website links the app shows with its own (offline-capable) screens.
 const nativeByHref = <String, String>{

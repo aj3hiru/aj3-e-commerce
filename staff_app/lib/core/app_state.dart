@@ -99,6 +99,18 @@ class AppState extends ChangeNotifier {
   DateTime _lastPages = DateTime.fromMillisecondsSinceEpoch(0);
   bool _pagesBusy = false;
   String appVersion = '';
+  /// First start (or after an update with new pages): everything is downloaded once, with a % shown.
+  bool setupNeeded = false;
+  double setupProgress = 0;
+  String setupStep = '';
+  bool setupRunning = false;
+  bool setupSkipped = false;
+  /// Open the app with what is saved; the rest downloads in the background when online.
+  void skipSetup() {
+    setupSkipped = true;
+    notifyListeners();
+  }
+  static String get _setupKey => 'v3:${kPageNames.join(',')}';
   String deviceId = '';
 
   Timer? _timer;
@@ -144,6 +156,7 @@ class AppState extends ChangeNotifier {
       if (v is Map && v.containsKey('data')) pageData[n] = Map<String, dynamic>.from(v);
     }
     _applyEffects();
+    setupNeeded = signedIn && await _store.read('setup') != _setupKey;
     ready = true;
     notifyListeners();
     if (signedIn) _startLoop();
@@ -237,6 +250,7 @@ class AppState extends ChangeNotifier {
     _setUser(newUser);
     release = r.data['release'] is Map ? Map<String, dynamic>.from(r.data['release']) : null;
     needLogin = false;
+    setupNeeded = await _store.read('setup') != _setupKey;
     await _store.write('user', user);
     notifyListeners();
     _startLoop();
@@ -460,14 +474,19 @@ class AppState extends ChangeNotifier {
   /// Downloads every page's data in the background (at most every few minutes unless [force]).
   Future<void> loadPages({bool force = false}) async {
     if (!signedIn || _pagesBusy) return;
+    if (setupNeeded) {
+      await downloadAll(); // skipped earlier: finish the one-time download quietly
+      return;
+    }
     if (!force && DateTime.now().difference(_lastPages) < const Duration(minutes: 3)) return;
     _pagesBusy = true;
     try {
       var off = false;
-      for (final n in kPageNames) {
+      await _pool(kPageNames, 5, (n) async {
         final r = await reloadPage(n, notify: false);
-        if (r == ApiOutcome.offline) { off = true; break; }
-      }
+        if (r == ApiOutcome.offline) off = true;
+        return !off;
+      });
       if (!off) await _loadProductDetails();
       if (!off) await _loadOrderHistories();
       if (!off) await _loadReports();
@@ -478,36 +497,108 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Runs [work] for every item, [lanes] at a time (downloads in parallel, much faster).
+  static Future<void> _pool<T>(List<T> items, int lanes, Future<bool> Function(T) work, [void Function(int done)? tick]) async {
+    var next = 0, done = 0;
+    var stop = false;
+    Future<void> lane() async {
+      while (!stop && next < items.length) {
+        final it = items[next++];
+        if (!await work(it)) stop = true;
+        tick?.call(++done);
+      }
+    }
+
+    await Future.wait([for (var i = 0; i < lanes; i++) lane()]);
+  }
+
   /// The full product form (description, photos, sizes, specifications) of every product, and the form's
   /// choices, kept on the device — so a product can be fully edited offline. Only changed products are fetched.
-  Future<void> _loadProductDetails() async {
+  Future<void> _loadProductDetails([void Function(int done, int total)? tick]) async {
     final form = await api.get('/api/app/v1/product-form');
     if (form.ok) await _store.write('product_form', form.data['form']);
-    final products = list('products');
-    if (products.length > 3000) return; // very large catalogues: fetched when opened instead
-    for (final p in products) {
+    final todo = <Map<String, dynamic>>[];
+    for (final p in list('products')) {
       final id = toInt(p['id']);
       if (id <= 0) continue;
       final have = await _store.read('product:$id');
       if (have is Map && have['updatedAt'] == p['updatedAt']) continue;
-      final r = await api.get('/api/app/v1/products/$id');
-      if (r.outcome == ApiOutcome.offline) return;
-      if (r.ok) await _store.write('product:$id', {'updatedAt': p['updatedAt'], 'product': r.data['product']});
+      todo.add(p);
     }
+    await _pool(todo, 6, (p) async {
+      final r = await api.get('/api/app/v1/products/${p['id']}');
+      if (r.outcome == ApiOutcome.offline) return false;
+      if (r.ok) await _store.write('product:${p['id']}', {'updatedAt': p['updatedAt'], 'product': r.data['product']});
+      return true;
+    }, (d) => tick?.call(d, todo.length));
   }
 
   /// Each order's history, payments and receipts (the order page), kept on the device and fetched again
   /// only when the order changed (its `rev` = newest history entry). Newest orders first.
-  Future<void> _loadOrderHistories() async {
+  Future<void> _loadOrderHistories([void Function(int done, int total)? tick]) async {
     if (!perms.seesOrders) return;
-    for (final o in list('orders').take(400)) {
+    final todo = <Map<String, dynamic>>[];
+    for (final o in list('orders').take(1000)) {
       final id = toInt(o['id']);
       if (id <= 0) continue;
       final have = await _store.read('order:$id');
       if (have is Map && have['rev'] == o['rev']) continue;
-      final r = await api.get('/api/app/v1/orders/$id');
-      if (r.outcome == ApiOutcome.offline) return;
-      if (r.ok) await _store.write('order:$id', {'rev': o['rev'], 'order': r.data['order']});
+      todo.add(o);
+    }
+    await _pool(todo, 6, (o) async {
+      final r = await api.get('/api/app/v1/orders/${o['id']}');
+      if (r.outcome == ApiOutcome.offline) return false;
+      if (r.ok) await _store.write('order:${o['id']}', {'rev': o['rev'], 'order': r.data['order']});
+      return true;
+    }, (d) => tick?.call(d, todo.length));
+  }
+
+  /// Everything the app can show, downloaded once (first start / after an update), with progress:
+  /// data sets, menu, dashboard, every page, reports, full product forms and order histories.
+  /// Returns false when the internet dropped before the end (what came is kept).
+  Future<bool> downloadAll() async {
+    if (setupRunning) return false;
+    setupRunning = true;
+    void step(double p, String label) {
+      setupProgress = p.clamp(0, 1).toDouble();
+      setupStep = label;
+      notifyListeners();
+    }
+
+    try {
+      step(0.02, 'Connecting');
+      await _push();
+      step(0.05, 'Products, orders and customers');
+      lastError = null;
+      await _pull(force: true);
+      if (!online || lastError != null) return false;
+      step(0.18, 'Menu and your account');
+      await refreshMe();
+      final dash = await api.get('/api/app/v1/dashboard');
+      if (dash.ok) await _store.write('dashboard', dash.data['dashboard']);
+      step(0.22, 'Pages');
+      var off = false;
+      await _pool(kPageNames, 5, (n) async {
+        final r = await reloadPage(n, notify: false);
+        if (r == ApiOutcome.offline) off = true;
+        return !off;
+      }, (d) => step(0.22 + 0.28 * d / kPageNames.length, 'Pages ($d of ${kPageNames.length})'));
+      if (off) return false;
+      step(0.50, 'Reports');
+      await _loadReports();
+      step(0.55, 'Product details');
+      await _loadProductDetails((d, t) => step(0.55 + 0.25 * d / (t == 0 ? 1 : t), 'Product details ($d of $t)'));
+      step(0.80, 'Order histories');
+      await _loadOrderHistories((d, t) => step(0.80 + 0.19 * d / (t == 0 ? 1 : t), 'Order histories ($d of $t)'));
+      if (!online) return false;
+      await _store.write('setup', _setupKey);
+      _lastPages = DateTime.now();
+      step(1, 'Ready');
+      setupNeeded = false;
+      return true;
+    } finally {
+      setupRunning = false;
+      notifyListeners();
     }
   }
 
@@ -517,11 +608,11 @@ class AppState extends ChangeNotifier {
   /// Report Builder's common ranges, downloaded in the background so they open offline.
   Future<void> _loadReports() async {
     if (!perms.ordersAdmin && !perms.billing) return;
-    for (final range in const ['today', 'yesterday', 'this_month', 'prev_month']) {
+    await _pool(const ['today', 'yesterday', 'this_month', 'prev_month'], 4, (range) async {
       final r = await api.get('/api/app/v1/report', query: {'range': range});
-      if (r.outcome == ApiOutcome.offline) return;
       if (r.ok) await _store.write(reportKey({'range': range}), r.data['report']);
-    }
+      return r.outcome != ApiOutcome.offline;
+    });
   }
 
   /// An order's saved history (null if not downloaded yet), and saving a fresh copy.

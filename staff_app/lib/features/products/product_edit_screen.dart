@@ -8,6 +8,8 @@ import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
 import '../../core/barcode.dart';
+import '../../core/display_defs.dart';
+import '../../ds/display_options.dart';
 import '../../core/format.dart';
 import '../../core/local_store.dart';
 import '../../core/theme.dart';
@@ -71,6 +73,11 @@ String _withUnit(String label, String unit) {
 const _defaultUnits = ['KG', 'Gram', 'Liter', 'ml', 'cm', 'Meter', 'Piece'];
 
 class _ProductEditScreenState extends State<ProductEditScreen> {
+  final _apPrefs = DisplayPrefs(displayDefs['ecom_add_product2_display']!.key);
+  void _apRedraw() {
+    if (mounted) setState(() {});
+  }
+
   final _form = GlobalKey<FormState>();
   Map<String, dynamic> get p => widget.product ?? const {};
   bool get _isNew => widget.product == null;
@@ -99,8 +106,15 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
   String? _loadNote;
 
   @override
+  void dispose() {
+    _apPrefs.removeListener(_apRedraw);
+    super.dispose();
+  }
+
+  @override
   void initState() {
     super.initState();
+    _apPrefs.addListener(_apRedraw);
     _fillFromSync();
     if (widget.barcode != null) _barcode.text = widget.barcode!;
     LocalStore.instance.read('product_form').then((v) {
@@ -470,18 +484,21 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     }
 
     Widget two(Widget a, Widget b) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Expanded(child: a), const SizedBox(width: 10), Expanded(child: b)]);
+    // Display Options (the website's Add Product options): hidden fields drop out, a pair keeps what is left.
+    bool ap(String g, [String? i]) => !wide || _apPrefs.on(g, i);
+    Widget? twoOpt(Widget? a, Widget? b) => a == null ? b : b == null ? a : two(a, b);
 
     final basic = _Section(icon: LucideIcons.info, title: 'Basic Info', children: [
       tf(controller: _name, validator: req, textCapitalization: TextCapitalization.words, label: dec('Product Name *', hint: 'e.g. Aashirvaad Atta 5kg')),
-      tf(controller: _slug, enabled: !lockExtra, label: dec('Slug', hint: 'auto-generated', helper: 'Made from the name automatically')),
-      two(tf(controller: _sku, label: dec('SKU', hint: 'e.g. SKU-00123')), tf(controller: _hsn, label: dec('HSN Code', helper: 'For GST'))),
-      tf(
+      if (ap('ap2-basic', 'ap2-slug')) tf(controller: _slug, enabled: !lockExtra, label: dec('Slug', hint: 'auto-generated', helper: 'Made from the name automatically')),
+      ?twoOpt(ap('ap2-basic', 'ap2-sku') ? tf(controller: _sku, label: dec('SKU', hint: 'e.g. SKU-00123')) : null, ap('ap2-basic', 'ap2-hsn') ? tf(controller: _hsn, label: dec('HSN Code', helper: 'For GST')) : null),
+      if (ap('ap2-basic', 'ap2-barcode')) tf(
         controller: _barcode,
         onEditingComplete: _checkBarcode,
         label: dec('Barcode / QR Code', hint: 'Scan or leave blank', helper: _isNew ? 'Blank = automatic barcode (EM00000123)' : null,
             suffix: Platform.isAndroid ? IconButton(tooltip: 'Scan', icon: Icon(Icons.qr_code_scanner_rounded, color: AppColors.primary), onPressed: _scanBarcode) : null),
       ),
-      tf(controller: _desc, enabled: !lockExtra, minLines: 3, maxLines: 8, label: dec('Description', hint: 'What should customers know about this product?')),
+      if (ap('ap2-basic', 'ap2-desc')) tf(controller: _desc, enabled: !lockExtra, minLines: 3, maxLines: 8, label: dec('Description', hint: 'What should customers know about this product?')),
     ]);
 
     Widget thumb(Widget img, VoidCallback onRemove) => Stack(clipBehavior: Clip.none, children: [
@@ -526,7 +543,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
             label: const Text('Remove'),
           ),
       ]),
-      if (!lockExtra) ...[
+      if (!lockExtra && ap('ap2-media', 'ap2-gallery')) ...[
         const Divider(height: 20),
         Row(children: [
           const Icon(LucideIcons.images, size: 16, color: AppColors.muted),
@@ -559,9 +576,9 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     if (!gstItems.any((i) => i.value == _gst)) gstItems.add(DropdownMenuItem(value: _gst, child: Text('$_gst% (current)')));
 
     final pricing = _Section(icon: LucideIcons.indianRupee, title: 'Pricing & Stock', children: [
-      two(
-        AppSelect<String>(label: 'Unit', helper: 'How it is sold', value: _unit, options: [('', 'No unit'), for (final u in _units) (u, u), ('custom', 'Custom…')], onChanged: (v) => setState(() => _unit = v)),
-        tf(
+      ?twoOpt(
+        !ap('ap2-cat', 'ap2-unit') ? null : AppSelect<String>(label: 'Unit', helper: 'How it is sold', value: _unit, options: [('', 'No unit'), for (final u in _units) (u, u), ('custom', 'Custom…')], onChanged: (v) => setState(() => _unit = v)),
+        !ap('ap2-price', 'ap2-qty') ? null : tf(
           controller: _qty,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           validator: (v) => v == null || v.trim().isEmpty ? null : ((double.tryParse(v.trim()) ?? 0) <= 0 ? 'Enter a number like 1 or 250' : null),
@@ -573,14 +590,14 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
         tf(controller: _unitCustom, validator: req, label: dec('Custom unit', hint: 'e.g. Dozen')),
         const SizedBox(),
       ),
-      two(
+      ?twoOpt(
         tf(
           controller: _price,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           validator: (v) => hasSizes && (v ?? '').trim().isEmpty ? null : (req(v) ?? amount(v)),
           label: dec(hasSizes ? 'Price (₹)' : 'Price (₹) *', prefix: '₹ ', helper: hasSizes ? 'Blank = default size price' : null),
         ),
-        tf(
+        !ap('ap2-price', 'ap2-sale') ? null : tf(
           controller: _sale,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           label: dec('Sale Price (₹)', prefix: '₹ ', helper: 'Optional'),
@@ -592,21 +609,21 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
           },
         ),
       ),
-      two(
-        tf(
+      ?twoOpt(
+        !ap('ap2-price', 'ap2-stock') ? null : tf(
           controller: _stock,
           enabled: _type == 'physical',
           keyboardType: TextInputType.number,
           validator: (v) => v != null && v.trim().isNotEmpty && (int.tryParse(v.trim()) ?? -1) < 0 ? 'Whole number' : null,
           label: dec('Stock Quantity'),
         ),
-        AppSelect<String>(label: 'GST Rate', helper: 'Auto in bills', value: _gst, options: [for (final i in gstItems) (i.value!, (i.child as Text).data!)], onChanged: (v) => setState(() => _gst = v)),
+        !ap('ap2-price', 'ap2-gst') ? null : AppSelect<String>(label: 'GST Rate', helper: 'Auto in bills', value: _gst, options: [for (final i in gstItems) (i.value!, (i.child as Text).data!)], onChanged: (v) => setState(() => _gst = v)),
       ),
     ]);
 
     final categorization = _Section(icon: LucideIcons.listTree, title: 'Categorization', children: [
-      AppSelect<int?>(label: 'Category', value: _category, options: [(null, 'Select category…'), for (final c in cats) (toInt(c['id']), '${c['name']}')], onChanged: (v) => setState(() => _category = v)),
-      AppSelect<int?>(label: 'Brand', value: _brand, options: [(null, 'Select brand…'), for (final b in brands) (toInt(b['id']), '${b['name']}')], onChanged: (v) => setState(() => _brand = v)),
+      if (ap('ap2-cat', 'ap2-category')) AppSelect<int?>(label: 'Category', value: _category, options: [(null, 'Select category…'), for (final c in cats) (toInt(c['id']), '${c['name']}')], onChanged: (v) => setState(() => _category = v)),
+      if (ap('ap2-cat', 'ap2-brand')) AppSelect<int?>(label: 'Brand', value: _brand, options: [(null, 'Select brand…'), for (final b in brands) (toInt(b['id']), '${b['name']}')], onChanged: (v) => setState(() => _brand = v)),
     ]);
 
     final sizes = _Section(
@@ -741,17 +758,17 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
         ];
 
     final organization = _Section(icon: LucideIcons.slidersHorizontal, title: 'Organization', children: [
-      AppSegmented<String>(options: const [('active', 'Published'), ('inactive', 'Unpublished')], value: _status, onChanged: (v) => setState(() => _status = v)),
+      if (ap('ap2-org', 'ap2-status')) AppSegmented<String>(options: const [('active', 'Published'), ('inactive', 'Unpublished')], value: _status, onChanged: (v) => setState(() => _status = v)),
       if (!lockExtra) ...[
-        AppSelect<String>(label: 'Badge Tag', helper: 'Optional', value: _badge, options: [for (final i in tagItems(badges, 'none', 'None', _badge)) (i.value!, (i.child as Text).data!)], onChanged: (v) => setState(() => _badge = v)),
-        AppSelect<String>(label: 'Item Type', helper: 'Optional', value: _itemType, options: [for (final i in tagItems(itemTypes, 'normal', 'Normal', _itemType)) (i.value!, (i.child as Text).data!)], onChanged: (v) => setState(() => _itemType = v)),
-        wide
+        if (ap('ap2-org', 'ap2-badge')) AppSelect<String>(label: 'Badge Tag', helper: 'Optional', value: _badge, options: [for (final i in tagItems(badges, 'none', 'None', _badge)) (i.value!, (i.child as Text).data!)], onChanged: (v) => setState(() => _badge = v)),
+        if (ap('ap2-org', 'ap2-itemtype')) AppSelect<String>(label: 'Item Type', helper: 'Optional', value: _itemType, options: [for (final i in tagItems(itemTypes, 'normal', 'Normal', _itemType)) (i.value!, (i.child as Text).data!)], onChanged: (v) => setState(() => _itemType = v)),
+        if (ap('ap2-org', 'ap2-home')) wide
             ? DSwitchRow(label: 'Show on home page', hint: "Feature this product on the shop's home page.", value: _home, onChanged: (v) => setState(() => _home = v))
             : SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Show on home page'), subtitle: const Text("Feature this product on the shop's home page."), value: _home, onChanged: (v) => setState(() => _home = v)),
-        wide
+        if (ap('ap2-org', 'ap2-campaign')) wide
             ? DSwitchRow(label: 'Campaign product', hint: 'Include in the current campaign offer.', value: _campaign, onChanged: (v) => setState(() => _campaign = v))
             : SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Campaign product'), subtitle: const Text('Include in the current campaign offer.'), value: _campaign, onChanged: (v) => setState(() => _campaign = v)),
-        if (_campaign) tf(controller: _campaignPrice, keyboardType: const TextInputType.numberWithOptions(decimal: true), validator: amount, label: dec('Campaign price (₹)', prefix: '₹ ', helper: 'Optional')),
+        if (_campaign && ap('ap2-org', 'ap2-campaign')) tf(controller: _campaignPrice, keyboardType: const TextInputType.numberWithOptions(decimal: true), validator: amount, label: dec('Campaign price (₹)', prefix: '₹ ', helper: 'Optional')),
       ],
     ]);
 
@@ -790,9 +807,9 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
         ? ListView(padding: const EdgeInsets.all(24), children: [
             ...notes,
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(flex: 13, child: Column(children: [basic, pricing, categorization, variants, sizes, specs])),
+              Expanded(flex: 13, child: Column(children: [if (ap('ap2-basic')) basic, if (ap('ap2-price')) pricing, if (ap('ap2-cat')) categorization, if (ap('ap2-variants')) variants, if (ap('ap2-sizes')) sizes, if (ap('ap2-specs')) specs])),
               const SizedBox(width: 20),
-              Expanded(flex: 7, child: Column(children: [images, organization])),
+              Expanded(flex: 7, child: Column(children: [if (ap('ap2-media')) images, if (ap('ap2-org')) organization])),
             ]),
             buttons,
             const SizedBox(height: 30),
@@ -802,7 +819,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     return Scaffold(
       backgroundColor: wide ? W.g50 : null,
       appBar: wide
-          ? WebAppBar(title: _isNew ? 'Add Product' : 'Edit Product', subtitle: _isNew ? 'Fill in the details for your new product' : 'Change price, stock, photos and every detail')
+          ? WebAppBar(title: _isNew ? 'Add Product' : 'Edit Product', subtitle: _isNew ? 'Fill in the details for your new product' : 'Change price, stock, photos and every detail', actions: [DisplayOptionsButton(displayDefs['ecom_add_product2_display']!)])
           : AppBar(title: Text(_isNew ? 'Add product' : 'Edit product')),
       body: Form(key: _form, child: body),
     );

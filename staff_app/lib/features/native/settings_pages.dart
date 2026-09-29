@@ -7,7 +7,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/app_display_defs.dart';
 import '../../core/app_state.dart';
+import '../../ds/display_options.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../ds/ds.dart';
@@ -644,13 +646,15 @@ class _BackupPageState extends State<BackupPage> {
   Widget build(BuildContext context) => NativeData(name: 'backups', builder: (context, data, reload) {
         final rows = _list(data);
         final running = _job?['status'] == 'running';
-        return NativeScreen(
+        final bk = DisplayPrefs(appDisplayDefs['app_backup_display']!.key);
+        return ListenableBuilder(listenable: bk, builder: (context, _) => NativeScreen(
           title: 'Backup & Restore',
           subtitle: 'A complete copy of your store — keep it safe, restore it any time',
+          display: appDisplayDefs['app_backup_display'],
           onRefresh: reload,
           actions: [NativeAction('Back up now', LucideIcons.databaseBackup, running ? null : () => _start({'action': 'backup'}, reload))],
           children: [
-            if (_job != null)
+            if (_job != null && bk.item('bk-progress'))
               WebCard(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                   Row(children: [
@@ -678,7 +682,7 @@ class _BackupPageState extends State<BackupPage> {
                 ]),
               ),
             NList(
-              cols: const [WebCol('Backup file', flex: 2.4), WebCol('Size', flex: .7), WebCol('Made', flex: 1.1), WebCol('Actions', width: 190)],
+              cols: [const WebCol('Backup file', flex: 2.4), if (bk.on('bk-table', 'bk-c-size')) const WebCol('Size', flex: .7), if (bk.on('bk-table', 'bk-c-made')) const WebCol('Made', flex: 1.1), if (bk.on('bk-table', 'bk-c-actions')) const WebCol('Actions', width: 190)],
               empty: 'No backups yet. Tap “Back up now”.',
               rows: [
                 for (final b in rows)
@@ -692,9 +696,9 @@ class _BackupPageState extends State<BackupPage> {
                     ),
                     cells: [
                       Text('${b['name']}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5)),
-                      Text('${(toInt(b['size']) / 1048576).toStringAsFixed(1)} MB'),
-                      Text(dateTime(b['createdAt'])),
-                      Row(children: [
+                      if (bk.on('bk-table', 'bk-c-size')) Text('${(toInt(b['size']) / 1048576).toStringAsFixed(1)} MB'),
+                      if (bk.on('bk-table', 'bk-c-made')) Text(dateTime(b['createdAt'])),
+                      if (bk.on('bk-table', 'bk-c-actions')) Row(children: [
                         DButton('Scan', icon: LucideIcons.shieldCheck, size: DSize.sm, variant: DVariant.secondary, onPressed: running ? null : () => _start({'action': 'validate', 'file': b['name']}, reload)),
                         const SizedBox(width: 6),
                         DButton('Restore', icon: LucideIcons.rotateCcw, size: DSize.sm, variant: DVariant.danger, onPressed: running ? null : () => _restore(b, reload)),
@@ -703,9 +707,9 @@ class _BackupPageState extends State<BackupPage> {
                   ),
               ],
             ),
-            const Text('Download or upload backup files from the website (System → Backup & Restore).', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+            if (bk.item('bk-note')) const Text('Download or upload backup files from the website (System → Backup & Restore).', style: TextStyle(color: AppColors.muted, fontSize: 12)),
           ],
-        );
+        ));
       });
 
   Future<void> _restore(Map<String, dynamic> b, Future<void> Function() reload) async {
@@ -729,11 +733,13 @@ class StaffAppPage extends StatelessWidget {
     final s = context.watch<AppState>();
     final r = s.release;
     final newer = r != null && isNewer('${r['version']}', s.appVersion);
-    return NativeScreen(
+    final sa = DisplayPrefs(appDisplayDefs['app_staffapp_display']!.key);
+    return ListenableBuilder(listenable: sa, builder: (context, _) => NativeScreen(
       title: 'Staff App',
       subtitle: 'Android and Windows app for your team',
+      display: appDisplayDefs['app_staffapp_display'],
       children: [
-        WebCard(
+        if (sa.item('sa-version')) WebCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('This device: version ${s.appVersion}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             const SizedBox(height: 4),
@@ -741,7 +747,7 @@ class StaffAppPage extends StatelessWidget {
             if (newer) ...[const SizedBox(height: 10), DButton('Update now', icon: LucideIcons.download, onPressed: () => openUpdate(context, r))],
           ]),
         ),
-        if (r != null)
+        if (r != null && sa.item('sa-install'))
           WebCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Install on another device', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -754,6 +760,6 @@ class StaffAppPage extends StatelessWidget {
             ]),
           ),
       ],
-    );
+    ));
   }
 }

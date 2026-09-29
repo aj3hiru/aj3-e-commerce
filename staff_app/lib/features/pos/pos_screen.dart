@@ -6,6 +6,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
+import '../../core/display_defs.dart';
+import '../../ds/display_options.dart';
 import '../../core/format.dart';
 import '../../core/local_store.dart';
 import '../../core/nav.dart';

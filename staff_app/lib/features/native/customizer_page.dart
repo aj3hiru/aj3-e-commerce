@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_state.dart';
+import '../../core/display_defs.dart';
+import '../../ds/display_options.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../ds/ds.dart';
@@ -36,6 +38,7 @@ class _Body extends StatefulWidget {
 }
 
 class _BodyState extends State<_Body> {
+  static final _czPrefs = DisplayPrefs(displayDefs['ecom_customizer_display']!.key);
   late String _tab = widget.tab;
   late Map<String, dynamic> _home = _copy(widget.data['home']);
   late Map<String, dynamic> _product = _copy(widget.data['product']);
@@ -109,12 +112,13 @@ class _BodyState extends State<_Body> {
     final publishable = _tab == 'home' || _tab == 'product';
     final server = context.read<AppState>().api.server;
     final shop = Uri.parse(server).replace(host: Uri.parse(server).host.replaceFirst('admin.', '')).origin;
-    return NativeScreen(
+    return ListenableBuilder(listenable: _czPrefs, builder: (context, _) => NativeScreen(
+      display: displayDefs['ecom_customizer_display'],
       title: 'Store Customizer',
       subtitle: 'How your shop looks — homepage, product page, menus and footer',
       onRefresh: widget.reload,
       actions: [
-        NativeAction('View shop', LucideIcons.externalLink, () => launchUrl(Uri.parse(_tab == 'home' ? '$shop/?hc=draft' : shop), mode: LaunchMode.externalApplication), primary: false),
+        if (_czPrefs.on('cz-toolbar', 'cz-b-open')) NativeAction('View shop', LucideIcons.externalLink, () => launchUrl(Uri.parse(_tab == 'home' ? '$shop/?hc=draft' : shop), mode: LaunchMode.externalApplication), primary: false),
         if (publishable) NativeAction('Save draft', LucideIcons.save, _saving ? null : () => _save(), primary: false),
         NativeAction(publishable ? 'Publish' : 'Save', LucideIcons.rocket, _saving ? null : () => _save(publish: true)),
       ],
@@ -127,7 +131,7 @@ class _BodyState extends State<_Body> {
           onTab: (v) => setState(() => _tab = v),
         ),
         if (_dirty) const Text('Unsaved changes', style: TextStyle(color: AppColors.amber, fontWeight: FontWeight.w600)),
-        if (widget.data['unpublished'] == true && _tab == 'home') const Text('The homepage has a saved draft that is not published yet.', style: TextStyle(color: AppColors.muted, fontSize: 12.5)),
+        if (widget.data['unpublished'] == true && _tab == 'home' && _czPrefs.item('cz-draft-note')) const Text('The homepage has a saved draft that is not published yet.', style: TextStyle(color: AppColors.muted, fontSize: 12.5)),
         ...switch (_tab) {
           'product' => _productTab(),
           'header' => _headerTab(),
@@ -135,7 +139,7 @@ class _BodyState extends State<_Body> {
           _ => _homeTab(),
         },
       ],
-    );
+    ));
   }
 
   /* ── small form helpers ── */

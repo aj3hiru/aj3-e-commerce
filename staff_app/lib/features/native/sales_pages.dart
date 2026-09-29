@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/app_display_defs.dart';
 import '../../core/app_state.dart';
+import '../../ds/display_options.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
 import '../../ds/ds.dart';
@@ -272,8 +274,14 @@ class _GstReportPageState extends State<GstReportPage> {
     };
   }
 
+  static final _def = appDisplayDefs['app_gst_display']!;
+  final _prefs = DisplayPrefs(_def.key);
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(listenable: _prefs, builder: (context, _) => _build(context));
+
+  Widget _build(BuildContext context) {
+    final on = _prefs.on;
     final s = context.watch<AppState>();
     final products = {for (final p in s.list('products')) toInt(p['id']): p};
     final orders = allOrders(s).where((o) => isSale(o) && (_channel == 'all' || o['type'] == _channel) && _range.contains(o['createdAt'])).toList()..sort((a, b) => '${a['createdAt']}'.compareTo('${b['createdAt']}'));
@@ -321,6 +329,7 @@ class _GstReportPageState extends State<GstReportPage> {
     return NativeScreen(
       title: 'GST Report',
       subtitle: 'Tax on your sales — by rate, HSN, product and invoice',
+      display: _def,
       onRefresh: () async {
         await s.syncNow(only: const ['orders', 'products']);
         await s.reloadPage('sales_ledger');
@@ -328,12 +337,14 @@ class _GstReportPageState extends State<GstReportPage> {
       actions: [NativeAction('Export sheet', LucideIcons.fileSpreadsheet, () => exportTable(context, 'GST ${_tab.toUpperCase()} ${_range.label}', head, rows))],
       children: [
         Wrap(spacing: 6, runSpacing: 6, children: [
+          if (on('gst-filters', 'gst-f-period'))
           for (final (k, l) in const [('month', 'This month'), ('prev', 'Last month'), ('quarter', 'This quarter'), ('year', 'This financial year')])
             ChoiceChip(label: Text(l), selected: _period == k, onSelected: (_) => setState(() {
                   _period = k;
                   _range = _periodRange(k);
                 })),
           const SizedBox(width: 12),
+          if (on('gst-filters', 'gst-f-channel'))
           for (final (k, l) in const [('all', 'All sales'), ('offline', 'Store'), ('online', 'Online')])
             ChoiceChip(label: Text(l), selected: _channel == k, onSelected: (_) => setState(() => _channel = k)),
           const SizedBox(width: 12),
@@ -351,14 +362,14 @@ class _GstReportPageState extends State<GstReportPage> {
             },
           ),
         ]),
-        Text('${DateFormat('d MMM yyyy').format(_range.from)} – ${DateFormat('d MMM yyyy').format(_range.to)}', style: const TextStyle(color: AppColors.muted, fontSize: 12.5)),
-        NStats([
-          (LucideIcons.receipt, const Color(0xFF2563EB), '${orders.length}', 'Invoices'),
-          (LucideIcons.indianRupee, const Color(0xFF16A34A), money(tTaxable), 'Taxable value'),
-          (LucideIcons.percent, const Color(0xFF7C3AED), money(tTax), 'Total GST (CGST ${money(tTax / 2)} + SGST ${money(tTax / 2)})'),
-          (LucideIcons.wallet, const Color(0xFFD97706), money(tTaxable + tTax), 'Invoice value'),
+        if (on('gst-filters', 'gst-f-dates')) Text('${DateFormat('d MMM yyyy').format(_range.from)} – ${DateFormat('d MMM yyyy').format(_range.to)}', style: const TextStyle(color: AppColors.muted, fontSize: 12.5)),
+        if (on('gst-cards')) NStats([
+          if (on('gst-cards', 'gst-k-invoices')) (LucideIcons.receipt, const Color(0xFF2563EB), '${orders.length}', 'Invoices'),
+          if (on('gst-cards', 'gst-k-taxable')) (LucideIcons.indianRupee, const Color(0xFF16A34A), money(tTaxable), 'Taxable value'),
+          if (on('gst-cards', 'gst-k-gst')) (LucideIcons.percent, const Color(0xFF7C3AED), money(tTax), 'Total GST (CGST ${money(tTax / 2)} + SGST ${money(tTax / 2)})'),
+          if (on('gst-cards', 'gst-k-value')) (LucideIcons.wallet, const Color(0xFFD97706), money(tTaxable + tTax), 'Invoice value'),
         ]),
-        NFilters(hint: '', onSearch: (_) {}, tabs: const [('rate', 'Rate-wise'), ('hsn', 'HSN-wise'), ('product', 'Product-wise'), ('invoice', 'Invoice-wise')], tab: _tab, onTab: (v) => setState(() => _tab = v)),
+        NFilters(hint: '', onSearch: (_) {}, tabs: [for (final (k, l) in const [('rate', 'Rate-wise'), ('hsn', 'HSN-wise'), ('product', 'Product-wise'), ('invoice', 'Invoice-wise')]) if (on('gst-tabs', 'gst-t-$k')) (k, l)], tab: _tab, onTab: (v) => setState(() => _tab = v)),
         NList(
           cols: [for (var i = 0; i < head.length; i++) WebCol(head[i], flex: i == 0 || (head[i] == 'Description' || head[i] == 'Product' || head[i] == 'Customer') ? 1.6 : 1, right: i > 0 && rows.isNotEmpty && rows.first[i] is num)],
           empty: 'No sales in this period.',

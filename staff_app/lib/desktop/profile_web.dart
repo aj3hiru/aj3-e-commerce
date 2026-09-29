@@ -4,6 +4,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_state.dart';
+import '../core/display_defs.dart';
+import '../ds/display_options.dart';
 import '../features/account/account_screen.dart';
 import '../features/account/sync_center.dart';
 import '../features/account/update.dart';
@@ -21,6 +23,24 @@ class ProfileWeb extends StatefulWidget {
 const _magenta = Color(0xFFA21C87);
 
 class _ProfileWebState extends State<ProfileWeb> {
+  static final _def = displayDefs['ecom_my_profile_display']!;
+  final _prefs = DisplayPrefs(_def.key);
+  void _redraw() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _prefs.addListener(_redraw);
+  }
+
+  @override
+  void dispose() {
+    _prefs.removeListener(_redraw);
+    super.dispose();
+  }
+
   late final Map<String, dynamic> _u = Map<String, dynamic>.from(context.read<AppState>().user ?? {});
   late final _first = TextEditingController(text: '${_u['name'] ?? ''}'.split(' ').first);
   late final _last = TextEditingController(text: '${_u['name'] ?? ''}'.split(' ').skip(1).join(' '));
@@ -120,8 +140,9 @@ class _ProfileWebState extends State<ProfileWeb> {
       title: 'My Profile',
       subtitle: 'Your details, photo and password',
       maxWidth: 640,
+      actions: [DisplayOptionsButton(_def)],
       children: [
-        WebCard(
+        if (_prefs.on('mp-sections', 'mp-card')) WebCard(
           padding: EdgeInsets.zero,
           child: Stack(children: [
             Container(
@@ -178,7 +199,7 @@ class _ProfileWebState extends State<ProfileWeb> {
           ]),
         ),
         const SizedBox(height: 12),
-        WebCard(
+        if (_prefs.on('mp-sections', 'mp-details')) WebCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             title(LucideIcons.user, 'Personal details'),
             row2(_field('First name', _first), _field('Last name', _last)),
@@ -191,7 +212,7 @@ class _ProfileWebState extends State<ProfileWeb> {
           ]),
         ),
         const SizedBox(height: 12),
-        WebCard(
+        if (_prefs.on('mp-sections', 'mp-password')) WebCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             title(LucideIcons.keyRound, 'Change password'),
             _field('Current password', _cur, icon: LucideIcons.lock, pw: 'cur'),
@@ -212,6 +233,11 @@ class _ProfileWebState extends State<ProfileWeb> {
             settingRow(LucideIcons.printer, 'Printing', 'Paper size and automatic receipt', () => account.printingSettings(context)),
             const Divider(height: 1, color: W.g100),
             settingRow(LucideIcons.refreshCw, 'Sync', s.pending > 0 ? '${s.pending} change(s) waiting to upload' : 'Everything is saved on the server', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SyncCenter()))),
+            const Divider(height: 1, color: W.g100),
+            settingRow(LucideIcons.hardDriveDownload, 'Download everything again', 'Refresh every page, product and order saved on this computer', () async {
+              await s.downloadAll();
+              if (context.mounted) toast(context, 'Everything on this computer is up to date.');
+            }),
             const Divider(height: 1, color: W.g100),
             settingRow(LucideIcons.download, 'App version', s.appVersion.isEmpty ? '—' : 'v${s.appVersion}${s.release?['version'] != null ? ' · latest v${s.release!['version']}' : ''}',
                 s.release != null ? () => openUpdate(context, s.release!) : null, trailing: s.release != null ? null : const SizedBox()),

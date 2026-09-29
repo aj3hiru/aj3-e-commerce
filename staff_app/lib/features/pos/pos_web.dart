@@ -2,15 +2,23 @@ part of 'pos_screen.dart';
 
 /// Windows: the website's Billing / POS page — coral scan bar, cart table, coupon + totals,
 /// and the "Payment Summary" column with customer, payments and Pay Now.
+/// Billing's Display Options (the website's ecom_billing2_display).
+final _posPrefs = DisplayPrefs(displayDefs['ecom_billing2_display']!.key);
+
 extension _PosWeb on _PosScreenState {
   static const _coral = W.coral;
   static const _coralSoft = W.coralSoft;
 
-  Widget _webPage(List<Map<String, dynamic>> products) {
+  Widget _webPage(List<Map<String, dynamic>> products) => ListenableBuilder(listenable: _posPrefs, builder: (context, _) => _webPage2(products));
+
+  Widget _webPage2(List<Map<String, dynamic>> products) {
+    final on = _posPrefs.on;
     return WebPage(
       title: 'Billing / POS',
       subtitle: 'Scan a barcode or search a product to start a sale',
       actions: [
+        DisplayOptionsButton(displayDefs['ecom_billing2_display']!),
+        if (_posPrefs.item('b2-add-product')) WebButton('Add Product', icon: LucideIcons.packagePlus, onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductEditScreen()))),
         WebButton('Recent bills', icon: LucideIcons.history, onPressed: _recentBills),
         if (_last != null) WebButton('Print last', icon: LucideIcons.printer, onPressed: _printLast),
         WebButton('Printing', icon: LucideIcons.slidersHorizontal, onPressed: _printSettings),
@@ -20,14 +28,14 @@ extension _PosWeb on _PosScreenState {
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              _webScan(products),
+              if (_posPrefs.item('b2-scan')) _webScan(products),
               if (_q.trim().isNotEmpty) _webResults(products),
               const SizedBox(height: 12),
               _webCart(),
             ]),
           ),
           const SizedBox(width: 12),
-          SizedBox(width: 350, child: _webSummary()),
+          if (on('b2-summary') || on('b2-checkout')) SizedBox(width: 350, child: _webSummary()),
         ]),
       ),
     );
@@ -116,16 +124,17 @@ extension _PosWeb on _PosScreenState {
 
   Widget _webCart() {
     const head = TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: W.g700);
+    bool c(String k) => _posPrefs.on('b2-cart', k);
     Widget row(List<Widget> cells, {Color? bg}) => Container(
           color: bg,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(children: [
-            Expanded(flex: 30, child: cells[0]),
-            Expanded(flex: 13, child: cells[1]),
-            Expanded(flex: 17, child: cells[2]),
-            Expanded(flex: 11, child: cells[3]),
-            Expanded(flex: 13, child: Align(alignment: Alignment.centerRight, child: cells[4])),
-            SizedBox(width: 64, child: Align(alignment: Alignment.center, child: cells[5])),
+            if (c('b2-col-product')) Expanded(flex: 30, child: cells[0]),
+            if (c('b2-col-price')) Expanded(flex: 13, child: cells[1]),
+            if (c('b2-col-qty')) Expanded(flex: 17, child: cells[2]),
+            if (c('b2-col-unit')) Expanded(flex: 11, child: cells[3]),
+            if (c('b2-col-subtotal')) Expanded(flex: 13, child: Align(alignment: Alignment.centerRight, child: cells[4])),
+            if (c('b2-col-action')) SizedBox(width: 64, child: Align(alignment: Alignment.center, child: cells[5])),
           ]),
         );
     return WebCard(
@@ -189,11 +198,12 @@ extension _PosWeb on _PosScreenState {
           ]),
         ),
         const SizedBox(height: 12),
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: _webCoupon()),
-          const SizedBox(width: 12),
-          Expanded(child: _webTotals()),
-        ]),
+        if (_posPrefs.on('b2-footer'))
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (_posPrefs.on('b2-footer', 'b2-coupon')) Expanded(child: _webCoupon()),
+            if (_posPrefs.on('b2-footer', 'b2-coupon') && _posPrefs.on('b2-footer', 'b2-totals')) const SizedBox(width: 12),
+            if (_posPrefs.on('b2-footer', 'b2-totals')) Expanded(child: _webTotals()),
+          ]),
       ]),
     );
   }
@@ -321,18 +331,18 @@ extension _PosWeb on _PosScreenState {
             ),
           ]),
         ),
-        Container(
+        if (_posPrefs.on('b2-summary')) Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
           child: Column(children: [
-            Row(children: [const Expanded(child: Text('Total Amount', style: TextStyle(fontSize: 13, color: W.g700))), Text(money(cart.grandTotal), style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: W.g900))]),
-            const Divider(height: 24, color: W.g100),
-            Row(children: [const Expanded(child: Text('Amount Received', style: TextStyle(fontSize: 13, color: W.g700))), Text(money(cart.paid), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: W.g900))]),
-            if (cart.change > 0.004) ...[
+            if (_posPrefs.on('b2-summary', 'b2-sum-total')) Row(children: [const Expanded(child: Text('Total Amount', style: TextStyle(fontSize: 13, color: W.g700))), Text(money(cart.grandTotal), style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: W.g900))]),
+            if (_posPrefs.on('b2-summary', 'b2-sum-total') && _posPrefs.on('b2-summary', 'b2-sum-received')) const Divider(height: 24, color: W.g100),
+            if (_posPrefs.on('b2-summary', 'b2-sum-received')) Row(children: [const Expanded(child: Text('Amount Received', style: TextStyle(fontSize: 13, color: W.g700))), Text(money(cart.paid), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: W.g900))]),
+            if (_posPrefs.on('b2-summary', 'b2-sum-due') && cart.change > 0.004) ...[
               const SizedBox(height: 8),
               Row(children: [const Expanded(child: Text('Return change', style: TextStyle(fontSize: 13, color: Color(0xFF16A34A)))), Text(money(cart.change), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF16A34A)))]),
             ],
-            if (cart.due > 0.004) ...[
+            if (_posPrefs.on('b2-summary', 'b2-sum-due') && cart.due > 0.004) ...[
               const SizedBox(height: 8),
               Row(children: [const Expanded(child: Text('Due (on credit)', style: TextStyle(fontSize: 13, color: Color(0xFFDC2626)))), Text(money(cart.due), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFFDC2626)))]),
             ],
@@ -343,7 +353,7 @@ extension _PosWeb on _PosScreenState {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            section(
+            if (_posPrefs.on('b2-checkout', 'b2-customer')) section(
               LucideIcons.user,
               'Customer',
               Row(mainAxisSize: MainAxisSize.min, children: [
@@ -352,7 +362,7 @@ extension _PosWeb on _PosScreenState {
                 const Text('Guest Bill', style: TextStyle(fontSize: 12, color: W.g700, fontWeight: FontWeight.w500)),
               ]),
             ),
-            if (!cart.guest) ...[
+            if (!cart.guest && _posPrefs.on('b2-checkout', 'b2-customer')) ...[
               const SizedBox(height: 10),
               Row(children: [
                 Expanded(
@@ -412,8 +422,8 @@ extension _PosWeb on _PosScreenState {
               if (cart.customer != null && toDouble(cart.customer!['due']) > 0)
                 Padding(padding: const EdgeInsets.only(top: 8), child: Text('Previous due: ${money(cart.customer!['due'])}', style: const TextStyle(color: Color(0xFFDC2626), fontWeight: FontWeight.w600, fontSize: 12))),
             ],
-            const Divider(height: 28, color: W.g100),
-            section(
+            if (_posPrefs.on('b2-checkout', 'b2-customer')) const Divider(height: 28, color: W.g100),
+            if (_posPrefs.on('b2-checkout', 'b2-payments')) section(
               LucideIcons.wallet,
               'Payment',
               InkWell(
@@ -431,6 +441,7 @@ extension _PosWeb on _PosScreenState {
               ),
             ),
             const SizedBox(height: 10),
+            if (_posPrefs.on('b2-checkout', 'b2-payments'))
             for (var i = 0; i < cart.effectivePayments.length; i++)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -499,7 +510,7 @@ extension _PosWeb on _PosScreenState {
               ),
             ),
             const SizedBox(height: 10),
-            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            if (_posPrefs.on('b2-checkout', 'b2-secure-note')) Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               const Icon(LucideIcons.lock, size: 12, color: W.g500),
               const SizedBox(width: 6),
               Flexible(child: Text('F2 Pay Now · F4 New bill', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: W.g500))),

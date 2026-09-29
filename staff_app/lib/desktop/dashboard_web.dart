@@ -1,11 +1,12 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_state.dart';
+import '../core/display_defs.dart';
+import '../ds/display_options.dart';
 import '../core/format.dart';
 import '../core/local_store.dart';
 import '../core/nav.dart';
@@ -24,6 +25,12 @@ class DashboardWeb extends StatefulWidget {
 }
 
 class _DashboardWebState extends State<DashboardWeb> {
+  static final _def = displayDefs['ecom_dashboard2_widgets']!;
+  final _prefs = DisplayPrefs(_def.key);
+  void _redraw() {
+    if (mounted) setState(() {});
+  }
+
   DateRange _range = DateRange.preset('today');
   Map<String, dynamic>? _dash; // /dashboard (7-day chart, today's collections)
   Map<String, dynamic>? _report; // /report kpis for the chosen range
@@ -31,6 +38,7 @@ class _DashboardWebState extends State<DashboardWeb> {
   @override
   void initState() {
     super.initState();
+    _prefs.addListener(_redraw);
     LocalStore.instance.read('dashboard').then((v) {
       if (v is Map && mounted && _dash == null) setState(() => _dash = Map<String, dynamic>.from(v));
     });
@@ -53,8 +61,20 @@ class _DashboardWebState extends State<DashboardWeb> {
     final k = _range.key;
     String d(DateTime x) => DateFormat('yyyy-MM-dd').format(x);
     final q = const ['today', 'yesterday', 'this_month', 'prev_month'].contains(k) ? {'range': k} : {'range': 'custom', 'from': d(_range.from), 'to': d(_range.to)};
+    final key = AppState.reportKey(Map<String, String>.from(q));
+    final saved = await LocalStore.instance.read(key);
+    if (saved is Map && mounted) setState(() => _report = Map<String, dynamic>.from(saved['kpis'] ?? {}));
     final r = await s.api.get('/api/app/v1/report', query: q);
-    if (r.ok && mounted) setState(() => _report = Map<String, dynamic>.from(r.data['report']['kpis'] ?? {}));
+    if (r.ok && mounted) {
+      setState(() => _report = Map<String, dynamic>.from(r.data['report']['kpis'] ?? {}));
+      LocalStore.instance.write(key, r.data['report']);
+    }
+  }
+
+  @override
+  void dispose() {
+    _prefs.removeListener(_redraw);
+    super.dispose();
   }
 
   @override
@@ -75,33 +95,34 @@ class _DashboardWebState extends State<DashboardWeb> {
         .fold(0, (t, o) => t + ((o['items'] as List?) ?? const []).cast<Map>().fold<int>(0, (u, i) => u + toInt(i['qty'])));
     String when = range.key == 'today' ? 'Today' : range.label;
 
+    bool on(String g, [String? i]) => _prefs.on(g, i);
     final cards = <Widget>[
-      if (p.seesOrders) ...[
-        WebStatCard(icon: FontAwesomeIcons.cartShopping.data, color: W.green, label: 'Total Orders', value: '${now.length}', trend: trend(now.length, before.length), onTap: () => nav.go('orders', {'tab': 'all'})),
-        WebStatCard(icon: FontAwesomeIcons.hourglassHalf.data, color: W.primary, label: 'Pending Orders', value: '${st(now, 'Pending')}', trend: trend(st(now, 'Pending'), st(before, 'Pending')), onTap: () => nav.go('orders', {'tab': 'Pending'})),
-        WebStatCard(icon: FontAwesomeIcons.peopleCarryBox.data, color: W.green, label: 'In Progress', value: '${st(now, 'In Progress')}', trend: trend(st(now, 'In Progress'), st(before, 'In Progress')), onTap: () => nav.go('orders', {'tab': 'In Progress'})),
-        WebStatCard(icon: FontAwesomeIcons.circleCheck.data, color: W.primary, label: 'Delivered Orders', value: '${st(now, 'Delivered')}', trend: trend(st(now, 'Delivered'), st(before, 'Delivered')), onTap: () => nav.go('orders', {'tab': 'Delivered'})),
-        WebStatCard(icon: FontAwesomeIcons.ban.data, color: W.red, label: 'Canceled Orders', value: '${st(now, 'Canceled')}', trend: trend(st(now, 'Canceled'), st(before, 'Canceled')), onTap: () => nav.go('orders', {'tab': 'Canceled'})),
+      if (p.seesOrders && on('d2-orders')) ...[
+        if (on('d2-orders', 'd2-on-total')) WebStatCard(icon: LucideIcons.shoppingCart, color: W.green, label: 'Total Orders', value: '${now.length}', trend: trend(now.length, before.length), onTap: () => nav.go('orders', {'tab': 'all'})),
+        if (on('d2-orders', 'd2-on-pending')) WebStatCard(icon: LucideIcons.hourglass, color: W.primary, label: 'Pending Orders', value: '${st(now, 'Pending')}', trend: trend(st(now, 'Pending'), st(before, 'Pending')), onTap: () => nav.go('orders', {'tab': 'Pending'})),
+        if (on('d2-orders', 'd2-on-progress')) WebStatCard(icon: LucideIcons.packageOpen, color: W.green, label: 'In Progress', value: '${st(now, 'In Progress')}', trend: trend(st(now, 'In Progress'), st(before, 'In Progress')), onTap: () => nav.go('orders', {'tab': 'In Progress'})),
+        if (on('d2-orders', 'd2-on-delivered')) WebStatCard(icon: LucideIcons.circleCheck, color: W.primary, label: 'Delivered Orders', value: '${st(now, 'Delivered')}', trend: trend(st(now, 'Delivered'), st(before, 'Delivered')), onTap: () => nav.go('orders', {'tab': 'Delivered'})),
+        if (on('d2-orders', 'd2-on-canceled')) WebStatCard(icon: LucideIcons.ban, color: W.red, label: 'Canceled Orders', value: '${st(now, 'Canceled')}', trend: trend(st(now, 'Canceled'), st(before, 'Canceled')), onTap: () => nav.go('orders', {'tab': 'Canceled'})),
       ],
-      if (p.seesCustomers) ...[
-        WebStatCard(icon: FontAwesomeIcons.users.data, color: W.primary, label: 'Total Online Customers', value: '${joined(range, 'online')}', trend: trend(joined(range, 'online'), joined(prev, 'online')), onTap: () => nav.go('customers')),
-        WebStatCard(icon: FontAwesomeIcons.userPlus.data, color: W.green, label: 'Total Offline Customers', value: '${joined(range, 'offline')}', trend: trend(joined(range, 'offline'), joined(prev, 'offline')), onTap: () => nav.go('customers')),
+      if (p.seesCustomers && on('d2-orders')) ...[
+        if (on('d2-orders', 'd2-cust-online')) WebStatCard(icon: LucideIcons.users, color: W.primary, label: 'Total Online Customers', value: '${joined(range, 'online')}', trend: trend(joined(range, 'online'), joined(prev, 'online')), onTap: () => nav.go('customers')),
+        if (on('d2-orders', 'd2-cust-offline')) WebStatCard(icon: LucideIcons.userPlus, color: W.green, label: 'Total Offline Customers', value: '${joined(range, 'offline')}', trend: trend(joined(range, 'offline'), joined(prev, 'offline')), onTap: () => nav.go('customers')),
       ],
-      if (p.seesPos || p.seesReports)
-        WebStatCard(icon: FontAwesomeIcons.store.data, color: W.primary, label: '$when Store Sold Product', value: '${sold(range, 'offline')}', trend: trend(sold(range, 'offline'), sold(prev, 'offline')),
+      if ((p.seesPos || p.seesReports) && on('d2-orders', 'd2-sold-store'))
+        WebStatCard(icon: LucideIcons.store, color: W.primary, label: '$when Store Sold Product', value: '${sold(range, 'offline')}', trend: trend(sold(range, 'offline'), sold(prev, 'offline')),
             onTap: p.seesReports ? () => nav.go('reports', {'range': range.key == 'today' ? 'today' : 'this_month'}) : null),
-      if (p.seesOrders)
-        WebStatCard(icon: FontAwesomeIcons.globe.data, color: W.green, label: '$when Online Sold Product', value: '${sold(range, 'online')}', trend: trend(sold(range, 'online'), sold(prev, 'online')), onTap: () => nav.go('orders', {'tab': 'all'})),
+      if (p.seesOrders && on('d2-orders', 'd2-sold-online'))
+        WebStatCard(icon: LucideIcons.globe, color: W.green, label: '$when Online Sold Product', value: '${sold(range, 'online')}', trend: trend(sold(range, 'online'), sold(prev, 'online')), onTap: () => nav.go('orders', {'tab': 'all'})),
     ];
 
     // Agents and other roles without orders: their own numbers from /dashboard.
     final agent = _dash?['agent'] as Map?;
     if (agent != null) {
       cards.addAll([
-        WebStatCard(icon: FontAwesomeIcons.motorcycle.data, color: W.cyan, label: 'To Deliver', value: '${agent['active']}', showTrend: false, onTap: () => nav.go('deliveries')),
-        WebStatCard(icon: FontAwesomeIcons.solidTruck.data, color: W.indigo, label: 'On the Way', value: '${agent['onTheWay']}', showTrend: false, onTap: () => nav.go('deliveries')),
-        WebStatCard(icon: FontAwesomeIcons.circleCheck.data, color: W.green, label: 'Delivered Today', value: '${agent['deliveredToday']}', showTrend: false, onTap: () => nav.go('deliveries', {'done': true})),
-        WebStatCard(icon: FontAwesomeIcons.coins.data, color: W.yellow, label: 'Cash to Collect', value: money(agent['toCollect']), showTrend: false, onTap: () => nav.go('deliveries')),
+        WebStatCard(icon: LucideIcons.bike, color: W.cyan, label: 'To Deliver', value: '${agent['active']}', showTrend: false, onTap: () => nav.go('deliveries')),
+        WebStatCard(icon: LucideIcons.truck, color: W.indigo, label: 'On the Way', value: '${agent['onTheWay']}', showTrend: false, onTap: () => nav.go('deliveries')),
+        WebStatCard(icon: LucideIcons.circleCheck, color: W.green, label: 'Delivered Today', value: '${agent['deliveredToday']}', showTrend: false, onTap: () => nav.go('deliveries', {'done': true})),
+        WebStatCard(icon: LucideIcons.coins, color: W.yellow, label: 'Cash to Collect', value: money(agent['toCollect']), showTrend: false, onTap: () => nav.go('deliveries')),
       ]);
     }
 
@@ -145,12 +166,12 @@ class _DashboardWebState extends State<DashboardWeb> {
 
     final earnings = WebCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        WebCardTitle('Earnings & Due ($when)', icon: FontAwesomeIcons.indianRupeeSign.data, iconColor: W.green),
+        WebCardTitle('Earnings & Due ($when)', icon: LucideIcons.indianRupee, iconColor: W.green),
         WebGrid(columns: 2, gap: 16, minWidth: 180, children: [
-          moneyBox(FontAwesomeIcons.coins.data, W.green, 'Earnings ($when)', money(k != null ? toDouble(k['sales']) : localEarn)),
-          moneyBox(FontAwesomeIcons.clock.data, W.primary, 'Due ($when)', money(k != null ? toDouble(k['due']) : localDue)),
-          moneyBox(FontAwesomeIcons.creditCard.data, W.green, 'Payment Received', collected == null ? '—' : money(collected)),
-          moneyBox(FontAwesomeIcons.clock.data, W.primary, 'Pending Payment', money(pendingPay)),
+          if (on('d2-earnings', 'd2-earning')) moneyBox(LucideIcons.coins, W.green, 'Earnings ($when)', money(k != null ? toDouble(k['sales']) : localEarn)),
+          if (on('d2-earnings', 'd2-due')) moneyBox(LucideIcons.clock, W.primary, 'Due ($when)', money(k != null ? toDouble(k['due']) : localDue)),
+          if (on('d2-earnings', 'd2-received')) moneyBox(LucideIcons.creditCard, W.green, 'Payment Received', collected == null ? '—' : money(collected)),
+          if (on('d2-earnings', 'd2-pending-pay')) moneyBox(LucideIcons.clock, W.primary, 'Pending Payment', money(pendingPay)),
         ]),
       ]),
     );
@@ -158,12 +179,12 @@ class _DashboardWebState extends State<DashboardWeb> {
     final activeCoupons = s.list('coupons').length;
     final overview = WebCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        WebCardTitle('Store Overview', icon: FontAwesomeIcons.chartSimple.data),
+        WebCardTitle('Store Overview', icon: LucideIcons.chartColumn),
         WebGrid(columns: 2, gap: 16, minWidth: 120, children: [
-          overviewBox(FontAwesomeIcons.cube.data, W.green, 'Products', s.list('products').length, p.seesProducts ? () => nav.go('products') : null),
-          overviewBox(FontAwesomeIcons.tableCellsLarge.data, W.primary, 'Categories', s.list('categories').length, p.categories ? () => nav.go('categories') : null),
-          overviewBox(FontAwesomeIcons.tag.data, W.primary, 'Brands', s.list('brands').length, null),
-          overviewBox(FontAwesomeIcons.ticket.data, W.green, 'Active Coupons', activeCoupons, null),
+          if (on('d2-overview', 'd2-products')) overviewBox(LucideIcons.package, W.green, 'Products', s.list('products').length, p.seesProducts ? () => nav.go('products') : null),
+          if (on('d2-overview', 'd2-categories')) overviewBox(LucideIcons.layoutGrid, W.primary, 'Categories', s.list('categories').length, p.categories ? () => nav.go('categories') : null),
+          if (on('d2-overview', 'd2-brands')) overviewBox(LucideIcons.tag, W.primary, 'Brands', s.list('brands').length, null),
+          if (on('d2-overview', 'd2-coupons')) overviewBox(LucideIcons.ticket, W.green, 'Active Coupons', activeCoupons, null),
         ]),
       ]),
     );
@@ -171,7 +192,7 @@ class _DashboardWebState extends State<DashboardWeb> {
     final recentList = orders.where((o) => o['type'] == 'online').take(6).toList();
     final recent = WebCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        WebCardTitle('Recent Orders', icon: FontAwesomeIcons.fileLines.data, onViewAll: () => nav.go('orders', {'tab': 'all'})),
+        WebCardTitle('Recent Orders', icon: LucideIcons.fileText, onViewAll: () => nav.go('orders', {'tab': 'all'})),
         WebTable(
           cols: const [WebCol('Order #', flex: 1.2), WebCol('Customer', flex: 1.3), WebCol('Total'), WebCol('Payment'), WebCol('Status', flex: 1.4), WebCol('Date', flex: .9)],
           rowHeight: 50,
@@ -198,7 +219,7 @@ class _DashboardWebState extends State<DashboardWeb> {
         ? null
         : WebCard(
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              WebCardTitle('Sales Overview', icon: FontAwesomeIcons.chartLine.data, onViewAll: p.seesReports ? () => nav.go('reports', {'range': 'this_month'}) : null),
+              WebCardTitle('Sales Overview', icon: LucideIcons.chartLine, onViewAll: p.seesReports ? () => nav.go('reports', {'range': 'this_month'}) : null),
               SizedBox(height: 230, child: _SalesLine(week: week)),
             ]),
           );
@@ -214,6 +235,7 @@ class _DashboardWebState extends State<DashboardWeb> {
       subtitle: 'A live overview of your store',
       onRefresh: () async => Future.wait([_load(), s.syncNow()]),
       actions: [
+        DisplayOptionsButton(_def),
         WebSelect<String>(
           width: 150,
           icon: LucideIcons.calendar,
@@ -244,26 +266,17 @@ class _DashboardWebState extends State<DashboardWeb> {
         ),
       ],
       children: [
-        if (!s.online)
-          Container(
-            margin: const EdgeInsets.only(bottom: 20),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: const Color(0xFFFEF2F2), borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFFECACA))),
-            child: const Row(children: [
-              Icon(LucideIcons.cloudOff, color: Color(0xFFB91C1C), size: 18),
-              SizedBox(width: 10),
-              Expanded(child: Text("You're offline — keep working. Everything is saved on this computer and sent when you're back online.", style: TextStyle(color: Color(0xFF991B1B)))),
-            ]),
-          ),
         if (cards.isNotEmpty) WebGrid(gap: 20, minWidth: 220, children: cards),
-        if (showMoney || p.seesProducts) ...[
-          const SizedBox(height: 14),
-          pair(showMoney ? earnings : overview, showMoney ? overview : null, 3, 2),
-        ],
-        if (p.seesOrders || chart != null) ...[
-          const SizedBox(height: 14),
-          pair(p.seesOrders ? recent : chart!, p.seesOrders ? chart : null, 3, 2),
-        ],
+        () {
+          final a = showMoney && on('d2-earnings') ? earnings : null, b = p.seesProducts && on('d2-overview') ? overview : null;
+          if (a == null && b == null) return const SizedBox();
+          return Padding(padding: const EdgeInsets.only(top: 14), child: pair(a ?? b!, a == null ? null : b, 3, 2));
+        }(),
+        () {
+          final a = p.seesOrders && _prefs.item('d2-recent') ? recent : null, b = _prefs.item('d2-sales') ? chart : null;
+          if (a == null && b == null) return const SizedBox();
+          return Padding(padding: const EdgeInsets.only(top: 14), child: pair(a ?? b!, a == null ? null : b, 3, 2));
+        }(),
       ],
     );
   }

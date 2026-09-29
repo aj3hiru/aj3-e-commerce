@@ -41,6 +41,12 @@ export function allowedSets(session: AdminSession): SetName[] {
   return out;
 }
 
+/** How many permissions are switched on (the Users Manager's "Permissions summary"). */
+function countPerms(v: unknown): number {
+  if (v === true) return 1;
+  if (!v || typeof v !== "object") return 0;
+  return Object.values(v as Record<string, unknown>).reduce<number>((n, x) => n + countPerms(x), 0);
+}
 const staffName = (u: { username: string; firstName: string | null; lastName: string | null }) => [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || u.username;
 
 async function buildSettings() {
@@ -217,8 +223,8 @@ async function buildFresh(name: SetName, session: AdminSession): Promise<unknown
     case "deliveries": return buildDeliveries(session.userId);
     case "agents": return (await prisma.user.findMany({ where: { status: "active", OR: [{ role: "delivery_agent" }] }, orderBy: { username: "asc" }, select: { id: true, username: true, firstName: true, lastName: true, phone: true } }))
       .map((u) => ({ id: u.id, name: staffName(u), phone: u.phone }));
-    case "staff": return (await prisma.user.findMany({ orderBy: { username: "asc" }, select: { id: true, username: true, firstName: true, lastName: true, email: true, phone: true, role: true, status: true, avatar: true, createdAt: true } }))
-      .map((u) => ({ id: u.id, username: u.username, name: staffName(u), email: u.email, phone: u.phone, role: u.role, roleLabel: roleLabel(u.role), status: u.status, avatar: u.avatar, since: iso(u.createdAt) }));
+    case "staff": return (await prisma.user.findMany({ orderBy: { username: "asc" }, select: { id: true, username: true, firstName: true, lastName: true, email: true, phone: true, role: true, status: true, avatar: true, createdAt: true, permissions: true } }))
+      .map((u) => ({ id: u.id, username: u.username, name: staffName(u), email: u.email, phone: u.phone, role: u.role, roleLabel: roleLabel(u.role), status: u.status, avatar: u.avatar, since: iso(u.createdAt), permCount: countPerms(u.permissions) }));
   }
 }
 

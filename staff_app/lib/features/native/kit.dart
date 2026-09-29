@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/app_state.dart';
 import '../../core/format.dart';
 import '../../core/theme.dart';
+import '../../ds/display_options.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
 import '../../widgets/web.dart';
@@ -47,7 +48,7 @@ class NativeDataState extends State<NativeData> {
       if (!_tried) return const Material(color: Colors.transparent, child: SizedBox.expand());
       return const Material(
         color: Colors.transparent,
-        child: EmptyState(icon: Icons.cloud_download_outlined, title: 'Not downloaded yet', message: 'It downloads by itself as soon as the internet is on.'),
+        child: EmptyState(icon: Icons.cloud_download_outlined, title: 'Getting this page ready', message: 'It fills in by itself the moment the internet is on.'),
       );
     }
     return widget.builder(context, saved['data'], reload);
@@ -62,7 +63,9 @@ class NativeScreen extends StatelessWidget {
   final List<Widget> children;
   final Future<void> Function()? onRefresh;
   final Widget? body; // instead of children
-  const NativeScreen({super.key, required this.title, this.subtitle, this.actions = const [], this.children = const [], this.onRefresh, this.body});
+  /// The page's Display Options (header button on Windows).
+  final DisplayDef? display;
+  const NativeScreen({super.key, required this.title, this.subtitle, this.actions = const [], this.children = const [], this.onRefresh, this.body, this.display});
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +75,7 @@ class NativeScreen extends StatelessWidget {
         subtitle: subtitle,
         onRefresh: onRefresh,
         back: Navigator.of(context).canPop(),
-        actions: [for (final a in actions) WebButton(a.label, icon: a.icon, color: a.primary ? null : W.grey, onPressed: a.onTap)],
+        actions: [if (display != null) DisplayOptionsButton(display!), for (final a in actions) WebButton(a.label, icon: a.icon, color: a.primary ? null : W.grey, onPressed: a.onTap)],
         body: body,
         children: body == null ? children : null,
       );

@@ -11,6 +11,7 @@ import 'core/notify.dart';
 import 'core/theme.dart';
 import 'features/login/login_screen.dart';
 import 'features/orders/order_detail_screen.dart';
+import 'features/shell/setup_screen.dart';
 import 'features/shell/shell.dart';
 
 Future<void> main() async {
@@ -69,7 +70,7 @@ class _StaffAppState extends State<StaffApp> {
       theme: buildTheme(),
       localizationsDelegates: const [GlobalMaterialLocalizations.delegate, GlobalWidgetsLocalizations.delegate, GlobalCupertinoLocalizations.delegate],
       supportedLocales: const [Locale('en', 'IN'), Locale('en')],
-      home: !s.ready ? const _Splash() : (s.signedIn ? const Shell() : const LoginScreen()),
+      home: !s.ready ? const _Splash() : (!s.signedIn ? const LoginScreen() : s.setupNeeded && !s.setupSkipped ? const SetupScreen() : const Shell()),
     );
   }
 }

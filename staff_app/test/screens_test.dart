@@ -35,6 +35,7 @@ import 'package:sri_staff/desktop/offers_web.dart';
 import 'package:sri_staff/desktop/push_web.dart';
 import 'package:sri_staff/desktop/system_web.dart';
 import 'package:sri_staff/desktop/tax_web.dart';
+import 'package:sri_staff/features/shell/setup_screen.dart';
 import 'package:sri_staff/desktop/sales_history_web.dart';
 import 'package:sri_staff/desktop/stock_out_web.dart';
 
@@ -283,6 +284,12 @@ void main() {
   testWidgets('native cache web', (t) => _shot(t, 'n_cache_web', const CacheWeb(), size: wideSize));
   testWidgets('native payments web', (t) => _shot(t, 'n_payments_web', const BusinessWeb(section: 'payment'), size: wideSize));
   testWidgets('native login settings web', (t) => _shot(t, 'n_login_web', const BusinessWeb(section: 'login'), size: wideSize));
+  testWidgets('setup desktop', (t) async {
+    final st = _state();
+    st.setupProgress = .63;
+    st.setupStep = 'Product details (41 of 96)';
+    await _shot(t, 'setup_desktop', const SetupScreen(), size: wideSize, state: st);
+  });
   testWidgets('native sales history web', (t) => _shot(t, 'n_sales_web', const SalesHistoryWeb(), size: wideSize, after: (t) async {
         await t.tap(find.text('This Month').first);
         await t.pump(const Duration(milliseconds: 300));

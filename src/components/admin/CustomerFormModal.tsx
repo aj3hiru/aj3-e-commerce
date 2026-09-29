@@ -78,7 +78,7 @@ export function CustomerFormModal({ initial, onClose }: CustomerFormModalProps) 
           <div>
             <label className="block text-xs font-medium mb-1">Customer Type</label>
             <select value={form.customerType} onChange={(e) => setForm((f) => ({ ...f, customerType: e.target.value as "online" | "offline" }))} className="w-full border border-admin-gray-200 rounded px-3 py-2 text-sm">
-              <option value="offline">Offline (Walk-in)</option>
+              <option value="offline">Store</option>
               <option value="online">Online</option>
             </select>
           </div>

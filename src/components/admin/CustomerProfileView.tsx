@@ -32,6 +32,8 @@ export interface CustomerOrderRow {
   paymentStatus: string;
   orderStatus: string;
   createdAt: string;
+  orderType?: string;
+  receipts?: string[];
 }
 
 export interface CustomerCreditRow {
@@ -41,7 +43,7 @@ export interface CustomerCreditRow {
   amountPaid: number;
   status: string;
   createdAt: string;
-  payments: { paymentMethod: string; amount: number; createdAt: string }[];
+  payments: { paymentMethod: string; amount: number; createdAt: string; receipt?: string }[];
 }
 
 export interface CustomerAddressRow {
@@ -110,7 +112,7 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="truncate text-xl font-bold text-admin-gray-900">{customer.name || "No name yet"}</h2>
-              <StatusBadge variant={customer.customerType === "offline" ? "warning" : "info"}>{customer.customerType === "offline" ? "Walk-in" : "Online"}</StatusBadge>
+              <StatusBadge variant={customer.customerType === "offline" ? "warning" : "info"}>{customer.customerType === "offline" ? "Store" : "Online"}</StatusBadge>
               <StatusPill label="Change customer status" value={status === "active" ? "active" : "inactive"}
                 options={[{ value: "active", label: "Active", variant: "success" }, { value: "inactive", label: "Inactive", variant: "secondary" }]}
                 onChange={changeStatus} />
@@ -171,7 +173,21 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
                 <tbody>
                   {orders.map((o) => (
                     <tr key={o.id} className="border-b border-admin-gray-100 last:border-0 [&>td]:px-2 [&>td]:py-2.5">
-                      {on("cp-cols", "cp-c-order") && <td><Link href={`/admin/ecommerce/orders/${o.id}`} className="font-semibold text-[#2563eb] hover:underline">{o.orderNumber}</Link></td>}
+                      {on("cp-cols", "cp-c-order") && (
+                        <td>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Link href={`/admin/ecommerce/orders/${o.id}`} className="font-semibold text-[#2563eb] hover:underline">{o.orderNumber}</Link>
+                            {o.orderType === "online"
+                              ? <span className="rounded-[5px] bg-violet-50 px-1.5 py-0.5 text-[10.5px] font-bold uppercase text-violet-700">Online</span>
+                              : <span className="rounded-[5px] bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-bold uppercase text-amber-700">Store</span>}
+                            {(o.receipts ?? []).length > 0 && (
+                              <span title={(o.receipts ?? []).join(", ")} className="rounded-[5px] bg-admin-gray-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-admin-gray-600">
+                                Receipts ×{(o.receipts ?? []).length}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      )}
                       {on("cp-cols", "cp-c-date") && <td className="whitespace-nowrap text-admin-gray-600">{day(o.createdAt)}</td>}
                       {on("cp-cols", "cp-c-total") && <td className="whitespace-nowrap text-right font-semibold text-admin-gray-900">{money(o.totalAmount)}</td>}
                       {on("cp-cols", "cp-c-payment") && <td><StatusBadge variant={paymentStatusVariant(o.paymentStatus)}>{o.paymentStatus}</StatusBadge></td>}
@@ -215,7 +231,13 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
                     <p className="mt-0.5 text-xs text-admin-gray-500">{money(c.amount)} total · {money(c.amountPaid)} paid · {day(c.createdAt)}</p>
                     {c.payments.length > 0 && (
                       <ul className="mt-2 space-y-0.5 border-l-2 border-admin-gray-100 pl-2.5">
-                        {c.payments.map((p, i) => <li key={i} className="text-xs text-admin-gray-600">{day(p.createdAt)} · {p.paymentMethod} · {money(p.amount)}</li>)}
+                        {c.payments.map((p, i) => (
+                          <li key={i} className="text-xs text-admin-gray-600">
+                            <span className="mr-1 rounded bg-admin-gray-100 px-1 font-semibold">{i + 1}×</span>
+                            {day(p.createdAt)} · {p.paymentMethod} · {money(p.amount)}
+                            {p.receipt && <> · <Link href={`/admin/ecommerce/payment-receipt/${encodeURIComponent(p.receipt)}`} target="_blank" className="text-blue-600 hover:underline">{p.receipt}</Link></>}
+                          </li>
+                        ))}
                       </ul>
                     )}
                   </div>
@@ -306,7 +328,7 @@ function EditCustomer({ customer, onClose, onSaved }: { customer: CustomerProfil
             <div>
               <label className={label} htmlFor="ec-type">Customer type</label>
               <select id="ec-type" value={f.customerType} onChange={(e) => set("customerType", e.target.value)} className={input}>
-                <option value="online">Online</option><option value="offline">Walk-in (store)</option>
+                <option value="online">Online</option><option value="offline">Store</option>
               </select>
             </div>
             <div>

@@ -66,7 +66,7 @@ export function SalesHistory2Body({ rows, metrics, chart, filters, isDefaultRang
   // (Next.js would jump to the top) and mark the page as loading until the
   // new data has arrived, so a click is never followed by "nothing happened".
   const navigate = (url: string) => startLoading(() => router.push(url, { scroll: false }));
-  const filterKey = `${filters.from}|${filters.to}|${filters.status}|${filters.payment}|${filters.customer}|${filters.product}|${filters.q}`;
+  const filterKey = `${filters.from}|${filters.to}|${filters.status}|${filters.payment}|${filters.customer}|${filters.product}|${filters.q}|${filters.channel}`;
   const dim = cn("transition-opacity duration-150", loading && "pointer-events-none opacity-50");
 
   return (
@@ -401,11 +401,12 @@ function FilterSalesCard({ filters, options, navigate, pending }: {
   const [payment, setPayment] = useState<string>(filters.payment);
   const [customer, setCustomer] = useState(filters.customer);
   const [product, setProduct] = useState(filters.product);
+  const [channel, setChannel] = useState<string>(filters.channel);
 
   // Back/forward navigation or a preset click changes the URL: follow it.
   useEffect(() => {
     setFrom(filters.from); setTo(filters.to); setStatus(filters.status); setPayment(filters.payment);
-    setCustomer(filters.customer); setProduct(filters.product);
+    setCustomer(filters.customer); setProduct(filters.product); setChannel(filters.channel);
   }, [filters]);
 
   const presets = rangePresets();
@@ -416,15 +417,16 @@ function FilterSalesCard({ filters, options, navigate, pending }: {
     ? longDate(filters.from)
     : `${longDate(filters.from)} – ${longDate(filters.to)}`;
 
-  type Choice = { status: string; payment: string; customer: string; product: string };
+  type Choice = { status: string; payment: string; customer: string; product: string; channel: string };
 
-  function go(a: string, b: string, choice: Choice = { status, payment, customer, product }) {
+  function go(a: string, b: string, choice: Choice = { status, payment, customer, product, channel }) {
     const [f, t] = a <= b ? [a, b] : [b, a];
     const p = new URLSearchParams({ from: f, to: t });
     if (choice.status !== "all") p.set("status", choice.status);
     if (choice.payment !== "all") p.set("payment", choice.payment);
     if (choice.customer) p.set("customer", choice.customer);
     if (choice.product) p.set("product", choice.product);
+    if (choice.channel !== "all") p.set("channel", choice.channel);
     if (filters.q) p.set("q", filters.q);
     navigate(`${PAGE_PATH}?${p.toString()}`);
   }
@@ -432,8 +434,8 @@ function FilterSalesCard({ filters, options, navigate, pending }: {
   /** Dropdowns filter live: the new choice applies the moment it's picked,
    *  together with whatever dates are in the date boxes. */
   function pick(key: keyof Choice, value: string) {
-    const choice: Choice = { status, payment, customer, product, [key]: value };
-    setStatus(choice.status); setPayment(choice.payment); setCustomer(choice.customer); setProduct(choice.product);
+    const choice: Choice = { status, payment, customer, product, channel, [key]: value };
+    setStatus(choice.status); setPayment(choice.payment); setCustomer(choice.customer); setProduct(choice.product); setChannel(choice.channel);
     go(from || filters.from, to || filters.to, choice);
   }
 
@@ -488,6 +490,11 @@ function FilterSalesCard({ filters, options, navigate, pending }: {
             <option value="In Progress">In Progress</option>
             <option value="Canceled">Canceled</option>
           </InlineSelect>
+          <InlineSelect value={channel} onChange={(v) => pick("channel", v)} label="Store / Online" className={ctl} grow="sm:flex-[0.9]">
+            <option value="all">Store &amp; Online</option>
+            <option value="offline">Store</option>
+            <option value="online">Online</option>
+          </InlineSelect>
           <InlineSelect value={payment} onChange={(v) => pick("payment", v)} label="Payment Status" className={ctl} grow="sm:flex-[1.02]">
             <option value="all">All Payments</option>
             <option value="paid">Paid</option>
@@ -496,7 +503,7 @@ function FilterSalesCard({ filters, options, navigate, pending }: {
           </InlineSelect>
           <InlineSelect value={customer} onChange={(v) => pick("customer", v)} label="Customer" className={ctl} grow="sm:flex-[1.1]">
             <option value="">All Customers</option>
-            <option value="guest">Walk-in / Guest</option>
+            <option value="guest">Guest (no customer)</option>
             {options.customers.map((c) => (
               <option key={c.id} value={String(c.id)}>{c.name}{c.phone ? ` (${c.phone})` : ""}</option>
             ))}

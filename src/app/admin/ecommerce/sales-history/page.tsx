@@ -38,6 +38,7 @@ export default async function SalesHistory2Page({ searchParams }: SalesHistory2P
   const filters = parseSalesFilters(sp);
   const today = istYmd(new Date());
   const isDefaultRange = filters.from === `${today.slice(0, 8)}01` && filters.to === today;
+  // (the page now opens on today; "This Month" is one click away)
 
   const [rows, { metrics, chart }, options] = await Promise.all([
     getLedgerRows(filters),
@@ -48,6 +49,7 @@ export default async function SalesHistory2Page({ searchParams }: SalesHistory2P
   // Export downloads exactly what the ledger shows: same filters, same rows.
   const exportParams = new URLSearchParams({ from: filters.from, to: filters.to });
   if (filters.status !== "all") exportParams.set("status", filters.status);
+  if (filters.channel !== "all") exportParams.set("channel", filters.channel);
   if (filters.payment !== "all") exportParams.set("payment", filters.payment);
   if (filters.customer) exportParams.set("customer", filters.customer);
   if (filters.product) exportParams.set("product", filters.product);

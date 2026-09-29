@@ -64,11 +64,14 @@ export default async function CustomerProfilePage({ params, searchParams }: Cust
         orders={orders.map((o: (typeof orders)[number]) => ({
           id: o.id, orderNumber: o.orderNumber, totalAmount: Number(o.totalAmount),
           paymentStatus: o.paymentStatus, orderStatus: o.orderStatus, createdAt: o.createdAt.toISOString(),
+          orderType: o.orderType,
+          // Due receipts on this order (×2, ×3 when it was paid in parts).
+          receipts: credits.filter((c: (typeof credits)[number]) => c.orderId === o.id).flatMap((c: (typeof credits)[number]) => c.payments.map((p: (typeof c.payments)[number]) => p.receiptNumber)),
         }))}
         credits={credits.map((c: (typeof credits)[number]) => ({
           id: c.id, orderNumber: c.order?.orderNumber ?? null, amount: Number(c.amount), amountPaid: Number(c.amountPaid),
           status: c.status, createdAt: c.createdAt.toISOString(),
-          payments: c.payments.map((p: (typeof c.payments)[number]) => ({ paymentMethod: p.paymentMethod, amount: Number(p.amount), createdAt: p.createdAt.toISOString() })),
+          payments: c.payments.map((p: (typeof c.payments)[number]) => ({ paymentMethod: p.paymentMethod, amount: Number(p.amount), createdAt: p.createdAt.toISOString(), receipt: p.receiptNumber })),
         }))}
         totalSpent={totalSpent}
         totalOrders={orders.length}

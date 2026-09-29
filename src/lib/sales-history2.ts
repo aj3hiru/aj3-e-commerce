@@ -46,14 +46,16 @@ export interface SalesFilters {
   /** "" = all, else a product id */
   product: string;
   q: string;
+  /** all | offline (store bills) | online (shop orders) */
+  channel: "all" | "offline" | "online";
 }
 
-export type RawSearchParams = Partial<Record<"from" | "to" | "status" | "payment" | "customer" | "product" | "q", string>>;
+export type RawSearchParams = Partial<Record<"from" | "to" | "status" | "payment" | "customer" | "product" | "q" | "channel", string>>;
 
-/** Reads filters from the URL, falling back to "this month so far". */
+/** Reads filters from the URL, falling back to today. */
 export function parseSalesFilters(sp: RawSearchParams): SalesFilters {
   const today = istYmd(new Date());
-  let from = isYmd(sp.from) ? sp.from : `${today.slice(0, 8)}01`;
+  let from = isYmd(sp.from) ? sp.from : today;
   let to = isYmd(sp.to) ? sp.to : today;
   if (to < from) [from, to] = [to, from];
   const status = (ORDER_STATUSES as readonly string[]).includes(sp.status ?? "")
@@ -65,7 +67,8 @@ export function parseSalesFilters(sp: RawSearchParams): SalesFilters {
   const customer = sp.customer === "guest" || /^\d+$/.test(sp.customer ?? "") ? (sp.customer as string) : "";
   const product = /^\d+$/.test(sp.product ?? "") ? (sp.product as string) : "";
   const q = (sp.q ?? "").trim().slice(0, 100);
-  return { from, to, status, payment, customer, product, q };
+  const channel = sp.channel === "offline" || sp.channel === "online" ? sp.channel : "all";
+  return { from, to, status, payment, customer, product, q, channel };
 }
 
 export interface LedgerReceipt {
@@ -178,6 +181,7 @@ export async function getLedgerRows(f: SalesFilters): Promise<LedgerRow[]> {
       AND: [
         { createdAt: { gte: istStart(f.from), lte: istEnd(f.to) } },
         f.status === "all" ? saleWhere : { orderStatus: f.status },
+        ...(f.channel !== "all" ? [{ orderType: f.channel }] : []),
         ...(f.customer === "guest" ? [{ customerId: null }] : f.customer ? [{ customerId: Number(f.customer) }] : []),
         ...(f.product ? [{ items: { some: { productId: Number(f.product) } } }] : []),
         ...(f.q

@@ -10,7 +10,7 @@ export const CUSTOMERS2_GROUPS: readonly WidgetGroup[] = [
     items: [
       { key: "cus2-k-total", label: "All Customers" },
       { key: "cus2-k-online", label: "Online Customers" },
-      { key: "cus2-k-offline", label: "Walk-in Customers" },
+      { key: "cus2-k-offline", label: "Store Customers" },
       { key: "cus2-k-dues", label: "With Dues" },
     ],
   },

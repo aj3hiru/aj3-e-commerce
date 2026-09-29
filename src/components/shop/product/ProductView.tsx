@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Award, Banknote, BadgeCheck, BadgePercent, Box, Check, ChevronRight, FastForward, Gift, Headphones, Heart, ImageIcon, Leaf, Loader2, Minus, Plus,
-  PackageCheck, RotateCcw, Share2, ShieldCheck, ShoppingCart, Star, Store, Tag, Timer, Truck, User, X,
+  PackageCheck, RotateCcw, Share2, ShieldCheck, ShoppingCart, Star, Tag, Timer, Truck, User, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAddToCart } from "@/hooks/useAddToCart";
@@ -25,7 +25,7 @@ const ASSURE: Record<AssuranceIcon, { icon: typeof Box; color: string }> = {
   quality: { icon: Award, color: "#f28c28" }, gift: { icon: Gift, color: "#e0457b" },
 };
 /** Sections that start with Meesho's 8px grey band. */
-const GAP_BEFORE: PPSectionKey[] = ["sizes", "soldBy", "highlights", "reviews", "assurance", "related"];
+const GAP_BEFORE: PPSectionKey[] = ["sizes", "reviews", "assurance", "related"];
 
 function Gap() { return <div className="h-2 bg-[#eaeaf2]" aria-hidden />; }
 
@@ -531,27 +531,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
           </>
         );
       }
-      case "soldBy": {
-        const s = cfg.soldBy;
-        return (
-          <div className="px-4 pb-6 pt-5">
-            <h2 className="text-[18px] font-semibold leading-6">{s.title}</h2>
-            <div className="mt-4 flex items-center gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#eef3ff]"><Store className="h-5 w-5 text-[#5d7eea]" strokeWidth={1.8} /></span>
-              <p className="min-w-0 flex-1 break-words text-[16px] font-medium leading-[22px]">{s.name || d.store.name}</p>
-              {s.showViewShop && (
-                <Link href={s.viewShopUrl} className="flex h-[28px] shrink-0 items-center rounded-[4px] border border-[var(--hp-accent)] px-4 text-[14px] font-medium text-[var(--hp-accent)]">{s.viewShopLabel}</Link>
-              )}
-            </div>
-            {s.showRating && d.store.rating !== null && (
-              <div className="mt-3 pl-[52px]">
-                <span className="inline-flex h-[22px] items-center gap-1 rounded-full border border-[#d9e2ff] px-2 text-[14px] font-medium text-[#5d7eea]">{d.store.rating.toFixed(1)}<Star className="h-3 w-3 fill-[#5d7eea]" strokeWidth={0} /></span>
-                <p className="mt-1 text-[12px] text-[#8b8ba3]">{d.store.count.toLocaleString("en-IN")} Ratings</p>
-              </div>
-            )}
-          </div>
-        );
-      }
+      case "soldBy": return null; // Sold By (store) section removed from the product page
       case "highlights": return null; // replaced by Specifications under the price
       case "reviews": return <Reviews d={d} cfg={cfg.reviews} loggedIn={loggedIn} />;
       case "assurance": {

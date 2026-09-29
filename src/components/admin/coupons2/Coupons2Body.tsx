@@ -12,7 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import { formatMoney, formatInt } from "@/lib/format";
-import { relativeTime, type CouponActivityRow } from "@/lib/coupons2-activity";
+import { relativeTime, type CouponActivityRow } from "@/lib/coupons2-activity-shared";
 
 export interface Coupon2Row {
   id: number;

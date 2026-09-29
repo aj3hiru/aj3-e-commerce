@@ -175,7 +175,7 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
     };
     const lines = [["ID", "Name", "Phone", "Email", "Type", "Status", "Orders", "Total Spent", "Due Balance", "Last Order", "Joined", "Address"].join(",")];
     for (const r of filtered) {
-      lines.push([r.id, r.name, r.phone, r.email, r.customerType === "offline" ? "Walk-in" : "Online", r.status,
+      lines.push([r.id, r.name, r.phone, r.email, r.customerType === "offline" ? "Store" : "Online", r.status,
         r.orders, r.spent.toFixed(2), r.dueBalance.toFixed(2), r.lastOrderAt ? fmtDate(r.lastOrderAt) : "", fmtDate(r.createdAt), r.address].map(cell).join(","));
     }
     const url = URL.createObjectURL(new Blob(["\ufeff" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" }));
@@ -227,7 +227,7 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {show("cus2-k-total") && <Tile icon={Users} tone="green" value={String(c.total)} label="All Customers" sub={`${c.active} active · ${c.inactive} inactive`} on={!filtersActive} onClick={() => applyCard({})} />}
                 {show("cus2-k-online") && <Tile icon={ShoppingBag} tone="blue" value={String(c.online)} label="Online Customers" sub="signed up on the shop" on={f.type === "online"} onClick={() => applyCard({ type: "online" })} />}
-                {show("cus2-k-offline") && <Tile icon={Store} tone="navy" value={String(c.offline)} label="Walk-in Customers" sub="added at the counter" on={f.type === "offline"} onClick={() => applyCard({ type: "offline" })} />}
+                {show("cus2-k-offline") && <Tile icon={Store} tone="navy" value={String(c.offline)} label="Store Customers" sub="added at the counter" on={f.type === "offline"} onClick={() => applyCard({ type: "offline" })} />}
                 {show("cus2-k-dues") && <Tile icon={Wallet} tone="amber" value={String(c.withDues)} label="With Dues" sub={`${money(c.duesAmount)} outstanding`} on={f.dues === "with"} onClick={() => applyCard({ dues: "with" })} />}
               </div>
             </section>
@@ -244,7 +244,7 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
               <Select icon={Users} label="Customer Type" value={f.type} onChange={(v) => set("type", v as Filters["type"])} on={f.type !== "all"}>
                 <option value="all">All customers</option>
                 <option value="online">Online</option>
-                <option value="offline">Walk-in</option>
+                <option value="offline">Store</option>
               </Select>
             )}
             {show("cus2-f-status") && (
@@ -376,7 +376,7 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
                         {show("cus2-c-type") && (
                           <td className={td}>
                             <span className={cn("inline-flex h-7 items-center rounded-full px-2.5 text-xs font-semibold", r.customerType === "offline" ? "bg-amber-50 text-amber-700" : "bg-violet-50 text-violet-700")}>
-                              {r.customerType === "offline" ? "Walk-in" : "Online"}
+                              {r.customerType === "offline" ? "Store" : "Online"}
                             </span>
                           </td>
                         )}
@@ -533,7 +533,7 @@ function CustomerEditor({ customer, onClose, onSaved }: { customer: Customer2Row
         <div>
           <span className={labelCls}>Customer type</span>
           <div className="inline-flex gap-1 rounded-[0.5rem] border border-admin-gray-200 bg-admin-gray-50 p-1" role="radiogroup" aria-label="Customer type">
-            {([["offline", "Walk-in"], ["online", "Online"]] as const).map(([k, label]) => (
+            {([["offline", "Store"], ["online", "Online"]] as const).map(([k, label]) => (
               <button key={k} type="button" role="radio" aria-checked={type === k} onClick={() => { setType(k); setError(null); }}
                 className={cn("rounded-[0.375rem] px-4 py-1.5 text-sm font-medium transition-colors", type === k ? "bg-white text-[#2563eb] shadow-sm" : "text-admin-gray-600 hover:text-admin-gray-900")}>
                 {label}

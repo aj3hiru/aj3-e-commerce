@@ -78,6 +78,9 @@ export default async function OrderDetailPage({ params }: OrderDetailPageProps) 
           dueBalance,
           duePaymentCount: linkedCredit?.payments.length ?? 0,
           linkedCreditId: linkedCredit?.id ?? null,
+          duePayments: (linkedCredit?.payments ?? []).map((p: { receiptNumber: string; amount: unknown; paymentMethod: string; createdAt: Date }) => ({
+            receipt: p.receiptNumber, amount: Number(p.amount), method: p.paymentMethod, at: p.createdAt.toISOString(),
+          })),
           orderType: order.orderType,
           agent: order.deliveryAgent ? { id: order.deliveryAgent.id, name: order.deliveryAgent.username, assignedAt: order.assignedAt?.toISOString() ?? null } : null,
           cancelReason: order.cancelReason,

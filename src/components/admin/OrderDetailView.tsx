@@ -41,6 +41,8 @@ export interface OrderDetailData {
   dueBalance: number;
   duePaymentCount: number;
   linkedCreditId: number | null;
+  /** Receipts of due payments on this order (first, second, third payment…). */
+  duePayments?: { receipt: string; amount: number; method: string; at: string }[];
   orderType?: string;
   agent?: { id: number; name: string; assignedAt: string | null } | null;
   cancelReason?: string | null;
@@ -451,8 +453,28 @@ export function OrderDetailView({ order, items, availableProducts, perms = ALL, 
                 {due > 0.004 && (
                   <div className="flex items-center justify-between"><span className="text-admin-gray-500">Due</span><span className="font-bold text-red-600">{money(due)}</span></div>
                 )}
-                {order.dueBalance > 0.004 && <Link href="/admin/ecommerce/due" className="mt-1 flex h-9 items-center justify-center gap-1.5 rounded-[8px] bg-red-50 text-sm font-semibold text-red-700 hover:bg-red-100"><ReceiptText className="h-4 w-4" />Collect due</Link>}
-                {order.duePaymentCount > 0 && <p className="text-xs text-admin-gray-500">{order.duePaymentCount} due payment{order.duePaymentCount === 1 ? "" : "s"} recorded — see the invoice.</p>}
+                {order.dueBalance > 0.004 && order.linkedCreditId !== null && (
+                  <CollectDueHere creditId={order.linkedCreditId} balance={order.dueBalance} onDone={(msg) => { setNotice({ type: "success", message: msg }); router.refresh(); }}
+                    onError={(msg) => setNotice({ type: "error", message: msg })} />
+                )}
+                {(order.duePayments ?? []).length > 0 && (
+                  <div className="mt-2 border-t border-admin-gray-100 pt-2">
+                    <p className="mb-1.5 flex items-center justify-between text-xs font-semibold text-admin-gray-700">
+                      Due payments <span className="rounded bg-admin-gray-100 px-1.5 py-0.5 text-[11px] text-admin-gray-600">×{order.duePayments!.length}</span>
+                    </p>
+                    <ul className="space-y-1">
+                      {order.duePayments!.map((p, i) => (
+                        <li key={`${p.receipt}-${i}`} className="flex items-center justify-between gap-2 text-xs">
+                          <Link href={`/admin/ecommerce/payment-receipt/${encodeURIComponent(p.receipt)}`} target="_blank" className="font-medium text-blue-600 hover:underline">
+                            {p.receipt}
+                          </Link>
+                          <span className="text-admin-gray-500">{new Date(p.at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} · {p.method}</span>
+                          <span className="font-semibold text-admin-gray-800">{money(p.amount)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 {paid && due <= 0.004 && <p className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" />Fully paid</p>}
               </div>
             </section>
@@ -512,5 +534,55 @@ function QtyEditor({ initialQty, busy, onSubmit }: { initialQty: number; busy: b
         <button type="button" disabled={busy} onClick={() => onSubmit(qty)} className="h-9 rounded-[8px] bg-[#2563eb] px-2.5 text-xs font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-50">Save</button>
       )}
     </span>
+  );
+}
+
+/** Collect the due right here on the order (records the payment and issues a receipt, like the Due page). */
+function CollectDueHere({ creditId, balance, onDone, onError }: { creditId: number; balance: number; onDone: (msg: string) => void; onError: (msg: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState(balance.toFixed(2));
+  const [method, setMethod] = useState("Cash");
+  const [busy, setBusy] = useState(false);
+  async function save() {
+    const a = Math.min(Number(amount), balance);
+    if (!(a > 0)) return onError("Enter the amount received.");
+    setBusy(true);
+    const res = await fetch("/api/ecommerce/due-payment", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ creditIds: [creditId], amounts: [a], paymentMethod: method, combineReceipt: true }),
+    }).then((r) => r.json()).catch(() => null);
+    setBusy(false);
+    if (!res?.success) return onError(res?.message || "Couldn't record the payment.");
+    setOpen(false);
+    const receipt = /RCPT\d+/.exec(String(res.redirect ?? ""))?.[0];
+    onDone(`Received ${money(a)}${receipt ? ` — receipt ${receipt}` : ""}.`);
+  }
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="mt-1 flex h-9 w-full items-center justify-center gap-1.5 rounded-[8px] bg-red-50 text-sm font-semibold text-red-700 hover:bg-red-100">
+        <ReceiptText className="h-4 w-4" />Collect due
+      </button>
+    );
+  }
+  return (
+    <div className="mt-2 space-y-2 rounded-[8px] border border-admin-gray-200 bg-admin-gray-50 p-3">
+      <label className="block text-xs font-semibold text-admin-gray-700">Amount received
+        <input autoFocus inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+          onKeyDown={(e) => { if (e.key === "Enter") save(); if (e.key === "Escape") setOpen(false); }}
+          className="mt-1 h-9 w-full rounded-[6px] border border-admin-gray-300 bg-white px-2 text-right text-sm font-semibold" />
+      </label>
+      <div className="grid grid-cols-4 gap-1">
+        {["Cash", "UPI", "Card", "Other"].map((m) => (
+          <button key={m} type="button" onClick={() => setMethod(m)}
+            className={cn("h-8 rounded-[6px] border text-xs font-semibold", method === m ? "border-admin-primary bg-admin-primary text-white" : "border-admin-gray-300 bg-white text-admin-gray-700")}>{m}</button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <button type="button" onClick={() => setOpen(false)} className="h-9 flex-1 rounded-[6px] border border-admin-gray-300 bg-white text-sm font-medium">Cancel</button>
+        <button type="button" disabled={busy} onClick={save} className="h-9 flex-[2] rounded-[6px] bg-emerald-600 text-sm font-semibold text-white disabled:opacity-60">
+          {busy ? "Saving…" : `Receive ${money(Math.min(Number(amount) || 0, balance))}`}
+        </button>
+      </div>
+    </div>
   );
 }

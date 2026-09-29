@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useStaffPathname } from "@/hooks/useStaffPathname";
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useLayoutEffect, useRef, useState, Suspense } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import { faTimes, faChevronDown } from "@fortawesome/free-solid-svg-icons";
@@ -74,6 +74,7 @@ function SidebarPlaceholder() {
 }
 
 const pathOf = (href: string) => href.split("?")[0];
+const SCROLL_KEY = "admin_sidebar_scroll";
 
 function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSidebarProps) {
   const pathname = useStaffPathname("admin");
@@ -97,7 +98,8 @@ function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSide
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(ADMIN_NAV.flatMap((sec) => sec.links).filter((l) => l.submenuId).map((l) => [l.submenuId!, hereIn(l)])));
 
-  useEffect(() => {
+  // Before paint, so the sidebar never flashes at the top first.
+  useLayoutEffect(() => {
     // Saved choice wins over the default — the PHP's localStorage 'nav_<id>'.
     setOpenSubmenus((prev) => {
       const next = { ...prev };
@@ -112,10 +114,18 @@ function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSide
       }
       return next;
     });
-    // PHP scrolls the active link into view on load, so a deep page like
-    // "Print Barcodes" isn't hidden below the fold of a long sidebar.
-    const active = navRef.current?.querySelector<HTMLElement>("[data-active='true']");
-    active?.scrollIntoView({ block: "nearest" });
+    // Keep the sidebar exactly where it was on the previous page (it is drawn
+    // again on every page); only on a first visit bring the active link into view.
+    const nav = navRef.current;
+    let saved: number | null = null;
+    try { const v = window.sessionStorage.getItem(SCROLL_KEY); saved = v === null ? null : Number(v); } catch { /* storage blocked */ }
+    const restore = () => {
+      if (!nav) return;
+      if (saved !== null && Number.isFinite(saved)) nav.scrollTop = saved;
+      else nav.querySelector<HTMLElement>("[data-active='true']")?.scrollIntoView({ block: "nearest" });
+    };
+    restore();
+    requestAnimationFrame(restore); // again after the saved submenus have opened
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -217,7 +227,8 @@ function AdminSidebarInner({ siteName, permissions, isOpen, onClose }: AdminSide
         </div>
 
         {/* .sidebar-nav { flex:1; padding:1rem 0; overflow-y:auto } */}
-        <nav ref={navRef} className="admin-sidebar-nav flex-1 overflow-y-auto py-4">
+        <nav ref={navRef} className="admin-sidebar-nav flex-1 overflow-y-auto py-4"
+          onScroll={(e) => { try { window.sessionStorage.setItem(SCROLL_KEY, String(e.currentTarget.scrollTop)); } catch { /* storage blocked */ } }}>
           {allowed.map((section) => {
             if (hidden.has(sectionKey(section.title))) return null;
             const visibleLinks = section.links.filter((l) => !hidden.has(linkKey(section.title, l.label)));

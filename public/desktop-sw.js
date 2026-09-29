@@ -328,7 +328,10 @@ self.addEventListener("fetch", (e) => {
   if (req.headers.get("rsc") === "1") {
     const prefetch = req.headers.get("next-router-prefetch") === "1";
     const path = url.pathname;
-    const key = rscKey(url, req.headers.get("next-router-state-tree"), prefetch);
+    // Link prefetch (Next.js asking ahead): not needed — a click is answered from this computer at once —
+    // and a click would wait for a slow prefetch still on its way. Answer "nothing" straight away.
+    if (prefetch) { e.respondWith(Response.error()); return; }
+    const key = rscKey(url, req.headers.get("next-router-state-tree"), false);
     e.respondWith((async () => {
       const cache = await caches.open(PAGES);
       const hit = await cache.match(key, { ignoreVary: true });

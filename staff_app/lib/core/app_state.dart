@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart' show CookieManager;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:uuid/uuid.dart';
@@ -243,10 +242,6 @@ class AppState extends ChangeNotifier {
     outbox = [];
     menu = [];
     await _store.clearData();
-    // Website pages opened inside the app were signed in with a cookie — sign those out too.
-    try {
-      await CookieManager.instance().deleteAllCookies();
-    } catch (_) {}
     notifyListeners();
   }
 

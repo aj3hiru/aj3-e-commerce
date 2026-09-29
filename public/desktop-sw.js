@@ -1,22 +1,27 @@
 /*
- * Windows desktop app (Sri Andal Admin) — offline helper for the whole admin.
+ * Windows desktop app (Sri Andal Admin) — makes the whole admin fast and offline.
  * Registered only inside the desktop app (components/admin/DesktopBridge.tsx);
  * normal browsers never get it. The billing page keeps its own pos-sw.js.
  *
- *  - Every admin page: fresh from the server when online; the last saved copy
- *    when the internet is down. Pages in the sidebar are saved in the
- *    background while online ("warm"), with the scripts they need.
+ *  - Pages open at once from the copy saved on this computer; the latest version
+ *    is fetched in the background and the page then refreshes itself (the page
+ *    asks with "opened"). No copy yet: from the server, then saved.
+ *  - While online, the sidebar's pages and the pages they link to (order,
+ *    customer, invoice, receipt, product edit…) are saved in the background
+ *    ("warm"), with the scripts they need — so they also open offline.
  *  - Data (GET /api/…): fresh when online, the last answer when offline.
  *  - Changes (POST / PATCH / DELETE /api/…) made offline are queued here and
  *    sent in order when the internet is back. Each carries the
  *    Idempotency-Key the page gave it, so the server applies it exactly once.
  */
-const V = "v2";
+const V = "v3";
 const PAGES = `dsk-pages-${V}`;
 const DATA = `dsk-data-${V}`;
 const ASSETS = `dsk-assets-${V}`;
-const NAV_TIMEOUT = 8000;
-const API_TIMEOUT = 10000;
+const API_TIMEOUT = 8000;
+const NET_TIMEOUT = 6000; // a page not saved yet, while online
+const WARM_AGE = 30 * 60_000; // saved pages older than this are fetched again in the background
+const WARM_MAX = 400;
 
 // Never queued: logging in/out, the till's own bill queue, backups/system, the staff-app API, push sign-up.
 const NO_QUEUE = /^\/api\/(auth|system|cache2|app|push2\/subscribe|ecommerce\/billing|ecommerce\/backup|backup)(\/|$)/;
@@ -120,27 +125,60 @@ async function flush() {
 
 /* ───────── saving pages in the background ───────── */
 
+const pageKey = (url) => url.origin + url.pathname + url.search;
+/** "Page data" (Next.js RSC) for one page, as seen from one screen (the router tree it was asked from). */
+function hash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+const rscKey = (url, tree) => `${url.origin}${url.pathname}${url.search.replace(/[?&]_rsc=[^&]*/, "").replace(/^&/, "?")}#rsc-${hash(tree || "")}`;
+/** A saved copy, stamped with when it was saved, without the "came through a redirect" mark (a browser refuses those for pages). */
+async function stamp(res) {
+  const headers = new Headers(res.headers);
+  headers.set("x-dsk-at", String(Date.now()));
+  return new Response(await res.blob(), { status: res.status, statusText: res.statusText, headers });
+}
+const age = (res) => Date.now() - Number(res?.headers.get("x-dsk-at") || 0);
+
+// Pages reached from the sidebar's pages that are worth having offline too.
+const DEEP = /^\/(ecommerce\/(orders|customers|invoice|payment-receipt)\/[^/]+|ecommerce\/products\/add\?edit=\d+|pages\/\d+|customizer\?tab=\w+|deliveries\?view=all(&tab=\w+)?)$/;
+
 let warming = false;
+async function savePage(pages, assets, u) {
+  const res = await fetch(u, { credentials: "include", headers: { Accept: "text/html" } });
+  // Sidebar links like /admin/ecommerce/orders land on /ecommerce/orders: keep it under both addresses.
+  // Sent to the login page (signed out) = another site: not saved.
+  const final = new URL(res.url || u);
+  if (!res.ok || res.type !== "basic" || final.origin !== self.location.origin) return null;
+  const html = await res.clone().text();
+  await pages.put(pageKey(final), await stamp(res.clone()));
+  if (pageKey(final) !== pageKey(new URL(u))) await pages.put(pageKey(new URL(u)), await stamp(res));
+  for (const a of new Set(html.match(/\/_next\/static\/[^"'\s)\\]+/g) || [])) {
+    const url = new URL(a, self.location.origin).href;
+    if (!(await assets.match(url))) { const r = await fetch(url).catch(() => null); if (r && r.ok) await assets.put(url, r); }
+  }
+  return html;
+}
 async function warm(urls) {
   if (warming) return;
   warming = true;
   try {
     const pages = await caches.open(PAGES), assets = await caches.open(ASSETS);
-    for (const u of urls.slice(0, 120)) {
+    const queue = [...new Set(urls)], seen = new Set(queue);
+    let done = 0;
+    while (queue.length && done < WARM_MAX) {
+      const u = queue.shift();
+      done++;
       try {
-        const res = await fetch(u, { credentials: "include", headers: { Accept: "text/html" } });
-        // Sidebar links like /admin/ecommerce/orders land on /ecommerce/orders: keep it under both addresses.
-        // Sent to the login page (signed out) = a different site: not saved.
-        const final = new URL(res.url || u);
-        if (!res.ok || res.type !== "basic" || final.origin !== self.location.origin) continue;
-        const html = await res.clone().text();
-        await pages.put(pageKey(final), await clean(res.clone()));
-        if (pageKey(final) !== pageKey(new URL(u))) await pages.put(pageKey(new URL(u)), await clean(res));
-        // The scripts and styles that page needs, so it also works (not just shows) offline.
-        const found = new Set(html.match(/\/_next\/static\/[^"'\s)\\]+/g) || []);
-        for (const a of found) {
-          const url = new URL(a, self.location.origin).href;
-          if (!(await assets.match(url))) { const r = await fetch(url).catch(() => null); if (r && r.ok) await assets.put(url, r); }
+        const have = await pages.match(pageKey(new URL(u)), { ignoreVary: true });
+        let html = null;
+        if (have && age(have) < WARM_AGE) html = await have.clone().text(); // fresh enough — only look for its links
+        else html = await savePage(pages, assets, u);
+        if (!html) continue;
+        // One level deeper: the detail pages this page links to.
+        for (const m of html.matchAll(/href="(\/[^"#]*)"/g)) {
+          const href = m[1].replace(/&amp;/g, "&");
+          const clean = href.replace(/^\/admin(?=\/)/, "");
+          if (!DEEP.test(clean) || seen.has(self.location.origin + href)) continue;
+          seen.add(self.location.origin + href);
+          queue.push(self.location.origin + href);
         }
       } catch (_) { /* offline or slow — next round */ }
     }
@@ -149,11 +187,26 @@ async function warm(urls) {
   }
 }
 
+/* ───────── messages from the pages ───────── */
+
+// Pages shown from a saved copy in the last few seconds → the page asks, then refreshes from the server.
+const servedStale = new Map(); // path → time
+// The next page-data request for these paths goes to the server (the refresh right after a saved copy).
+const forceNet = new Set();
+
 self.addEventListener("message", (e) => {
   const d = e.data || {};
   if (d.type === "sync") e.waitUntil(flush());
   else if (d.type === "status") e.waitUntil(broadcast());
   else if (d.type === "warm") e.waitUntil(warm(d.urls || []));
+  else if (d.type === "opened") {
+    const at = servedStale.get(d.path);
+    if (at && Date.now() - at < 30_000) {
+      servedStale.delete(d.path);
+      forceNet.add(d.path);
+      e.source && e.source.postMessage({ type: "refresh", path: d.path });
+    }
+  }
   else if (d.type === "discard") e.waitUntil(del("failed", d.id).then(() => broadcast()));
   else if (d.type === "retry") {
     e.waitUntil((async () => {
@@ -168,9 +221,6 @@ self.addEventListener("message", (e) => {
 
 /* ───────── fetch handling ───────── */
 
-const pageKey = (url) => url.origin + url.pathname + url.search;
-/** A saved copy without the "came through a redirect" mark — a browser refuses to show such a response for a page. */
-const clean = async (res) => new Response(await res.blob(), { status: res.status, statusText: res.statusText, headers: res.headers });
 const isAsset = (url) => url.pathname.startsWith("/_next/static/") || /\.(woff2?|ttf)$/.test(url.pathname);
 const isMedia = (url) => url.pathname.startsWith("/uploads/") || url.pathname.startsWith("/files/");
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "X-Desktop-Offline": "1" } });
@@ -186,7 +236,7 @@ const OFFLINE_PAGE = `<!doctype html><meta charset="utf-8"><title>Offline</title
 <body style="margin:0;display:grid;place-items:center;height:100vh;font-family:'Segoe UI',system-ui,sans-serif;background:#f8f9fb;color:#1f2937">
 <div style="text-align:center;max-width:420px;padding:24px"><div style="font-size:40px">📶</div>
 <h2 style="margin:12px 0 6px;font-weight:600">No internet</h2>
-<p style="color:#6b7280;font-size:14px;line-height:1.5">This page wasn't saved on this computer yet. Other pages you've opened work offline — go back, or try again when the internet is back.</p>
+<p style="color:#6b7280;font-size:14px;line-height:1.5">This page wasn't saved on this computer yet. Other pages work offline — go back, or try again when the internet is back.</p>
 <p><button onclick="history.back()" style="height:32px;padding:0 16px;border:1px solid #d1d5db;border-radius:4px;background:#fff;cursor:pointer">Go back</button>
 <button onclick="location.reload()" style="height:32px;padding:0 16px;border:0;border-radius:4px;background:#7c3aed;color:#fff;cursor:pointer;margin-left:6px">Try again</button></p></div>`;
 
@@ -240,7 +290,7 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Data for the pages.
+  // Data for the pages: fresh when online, the last answer offline.
   if (url.pathname.startsWith("/api/")) {
     if (NO_CACHE.test(url.pathname)) return;
     e.respondWith((async () => {
@@ -256,39 +306,52 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Moving between pages inside the app (Next.js page data).
+  // Moving between pages inside the app (Next.js page data): the saved copy at once.
   if (req.headers.get("rsc") === "1") {
     const prefetch = req.headers.get("next-router-prefetch") === "1";
+    const path = url.pathname;
+    const key = rscKey(url, req.headers.get("next-router-state-tree")) + (prefetch ? "-p" : "");
     e.respondWith((async () => {
       const cache = await caches.open(PAGES);
-      const key = `${url.origin}${url.pathname}${url.search.replace(/[?&]_rsc=[^&]*/, "")}#rsc`;
-      try {
-        const res = await withTimeout(fetch(req), NAV_TIMEOUT);
-        if (res.ok && !prefetch && res.type === "basic") cache.put(key, res.clone());
+      const hit = await cache.match(key, { ignoreVary: true });
+      const net = () => fetch(req).then(async (res) => {
+        if (res.ok && res.type === "basic") await cache.put(key, await stamp(res.clone()));
         return res;
+      });
+      if (hit && !prefetch && !forceNet.has(path)) {
+        servedStale.set(path, Date.now());
+        e.waitUntil(net().catch(() => {}));
+        return hit;
+      }
+      forceNet.delete(path);
+      try {
+        return await withTimeout(net(), hit ? 2500 : NET_TIMEOUT);
       } catch (_) {
-        // No saved page data: an error makes Next.js open the page normally — from the saved page below.
-        return (!prefetch && (await cache.match(key, { ignoreVary: true }))) || Response.error();
+        // Nothing saved: an error makes Next.js open the page normally — from the saved page below.
+        return hit || Response.error();
       }
     })());
     return;
   }
 
-  // Opening a page.
+  // Opening a page: the saved copy at once, the latest saved again in the background.
   if (req.mode === "navigate") {
     e.respondWith((async () => {
       const cache = await caches.open(PAGES);
-      const saved = () => cache.match(pageKey(url), { ignoreVary: true }).then((r) => r || cache.match(url.origin + url.pathname, { ignoreVary: true }));
-      if (self.navigator && self.navigator.onLine === false) {
-        const s = await saved();
-        if (s) return s;
+      const hit = (await cache.match(pageKey(url), { ignoreVary: true })) || (await cache.match(url.origin + url.pathname, { ignoreVary: true }));
+      const net = () => fetch(req).then(async (res) => {
+        if (res.ok && !res.redirected && res.type === "basic") await cache.put(pageKey(url), await stamp(res.clone()));
+        return res;
+      });
+      if (hit) {
+        servedStale.set(url.pathname, Date.now());
+        e.waitUntil(net().catch(() => {}));
+        return hit;
       }
       try {
-        const res = await withTimeout(fetch(req), NAV_TIMEOUT);
-        if (res.ok && !res.redirected && res.type === "basic") cache.put(pageKey(url), await clean(res.clone()));
-        return res;
+        return await withTimeout(net(), NET_TIMEOUT * 2);
       } catch (_) {
-        return (await saved()) || new Response(OFFLINE_PAGE, { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } });
+        return new Response(OFFLINE_PAGE, { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } });
       }
     })());
   }

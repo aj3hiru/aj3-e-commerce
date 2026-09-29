@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { CloudOff, CloudUpload, Download, Loader2, RotateCcw, Trash2, Wifi, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +60,7 @@ export function DesktopBridge() {
   const [toast, setToast] = useState("");
   const [update, setUpdate] = useState<{ version: string; url: string } | null>(null);
   const onlineRef = useRef(true);
+  const path = usePathname();
 
   const post = useCallback((msg: unknown) => navigator.serviceWorker?.controller?.postMessage(msg), []);
 
@@ -71,6 +72,8 @@ export function DesktopBridge() {
 
     const onMsg = (e: MessageEvent) => {
       const d = e.data || {};
+      // This page came from the copy on this computer: now show the latest from the server (quietly, same page).
+      if (d.type === "refresh") { if (d.path === location.pathname) router.refresh(); return; }
       if (d.type !== "queue") return;
       setPending(d.pending || []);
       setFailed(d.failed || []);
@@ -134,6 +137,13 @@ export function DesktopBridge() {
       navigator.serviceWorker.removeEventListener("message", onMsg);
     };
   }, [post, router]);
+
+  // Each page opened: if it was shown from the saved copy, the worker answers "refresh".
+  useEffect(() => {
+    if (!on) return;
+    const t = setTimeout(() => post({ type: "opened", path }), 150);
+    return () => clearTimeout(t);
+  }, [on, path, post]);
 
   useEffect(() => {
     if (!toast) return;

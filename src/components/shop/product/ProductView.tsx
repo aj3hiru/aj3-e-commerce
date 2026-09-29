@@ -601,7 +601,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
     const node = section(k);
     if (!node) continue;
     const el = (
-      <section key={k} data-hc={k} style={{ order: idx }} className={cn(DESK_BOTTOM.includes(k) && "shop:mt-6 shop:rounded-xl shop:border shop:border-[#eaeaf2]")}>
+      <section key={k} data-hc={k} style={{ order: idx }} className={cn(DESK_BOTTOM.includes(k) && "shop:mt-6 shop:overflow-hidden shop:rounded-xl shop:border shop:border-[#eaeaf2]")}>
         {count > 0 && GAP_BEFORE.includes(k) && <Gap />}
         {node}
       </section>
@@ -611,11 +611,14 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[760px] flex-col bg-white shop:grid shop:max-w-[1200px] shop:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] shop:gap-x-10 shop:px-6 shop:pb-10 shop:pt-2">
-      <div className="contents shop:col-span-2 shop:block">{top}</div>
-      <div className="contents shop:sticky shop:top-4 shop:block shop:self-start shop:rounded-xl shop:border shop:border-[#eaeaf2] shop:py-4">{left}</div>
-      <div className="contents shop:block shop:min-w-0">{right}</div>
-      <div className="contents shop:col-span-2 shop:block">{bottom}</div>
+    <div className="mx-auto flex w-full max-w-[760px] flex-col bg-white shop:block shop:max-w-[1200px] shop:px-6 shop:pb-10 shop:pt-2">
+      <div className="contents shop:block">{top}</div>
+      {/* Photos stick beside the details only — they stop where the details end, never over the sections below. */}
+      <div className="contents shop:grid shop:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] shop:items-start shop:gap-x-10">
+        <div className="contents shop:sticky shop:top-4 shop:block shop:rounded-xl shop:border shop:border-[#eaeaf2] shop:bg-white shop:py-4">{left}</div>
+        <div className="contents shop:block shop:min-w-0">{right}</div>
+      </div>
+      <div className="contents shop:block">{bottom}</div>
       {floating && (
         <div className="fixed inset-x-0 bottom-0 z-[900] border-t border-[#eaeaf2] bg-white shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
           <div className="mx-auto max-w-[760px]">{buttons}</div>

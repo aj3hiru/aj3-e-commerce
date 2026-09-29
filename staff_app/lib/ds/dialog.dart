@@ -44,7 +44,7 @@ Future<T?> showDDialog<T>(
     barrierDismissible: false,
     barrierLabel: title,
     barrierColor: const Color(0x4D0F172A),
-    transitionDuration: DS.anim,
+    transitionDuration: Duration.zero, // opens at once, like a Windows dialog
     pageBuilder: (c, a1, a2) => _DDialog(title: title, builder: builder, actions: actions, width: width, maxHeight: maxHeight, icon: icon, closeButton: closeButton, confirmClose: confirmClose),
     transitionBuilder: (c, a, s, child) => FadeTransition(
       opacity: CurvedAnimation(parent: a, curve: Curves.easeOut),
@@ -226,6 +226,7 @@ Future<T?> showDMenu<T>(BuildContext context, Offset position, List<DMenuItem<T>
     menuPadding: const EdgeInsets.symmetric(vertical: 4),
     shape: RoundedRectangleBorder(borderRadius: DS.r, side: const BorderSide(color: DS.line)),
     constraints: const BoxConstraints(minWidth: 180, maxWidth: 280),
+    popUpAnimationStyle: AnimationStyle.noAnimation, // opens at once, like a Windows menu
     items: [
       for (final it in items)
         if (it == null)

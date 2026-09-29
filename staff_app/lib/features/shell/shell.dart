@@ -580,6 +580,7 @@ class _SidebarState extends State<_Sidebar> {
             ),
             // Display options: show / hide menu items (the website's sliders icon).
             PopupMenuButton<String>(
+              popUpAnimationStyle: AnimationStyle.noAnimation,
               tooltip: 'Show / hide menu items',
               position: PopupMenuPosition.under,
               icon: const FaIcon(FontAwesomeIcons.sliders, size: 16, color: W.g500),

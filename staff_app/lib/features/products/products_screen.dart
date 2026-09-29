@@ -79,6 +79,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
               Expanded(child: SearchBox(hint: 'Name, SKU or barcode', onChanged: (v) => setState(() => _q = v))),
               const SizedBox(width: 10),
               PopupMenuButton<int?>(
+                popUpAnimationStyle: AnimationStyle.noAnimation,
                 tooltip: 'Category',
                 initialValue: _category,
                 onSelected: (v) => setState(() => _category = v == -1 ? null : v),

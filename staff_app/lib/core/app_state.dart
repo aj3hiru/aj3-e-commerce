@@ -68,6 +68,10 @@ class OutboxItem {
 
 enum SyncPhase { idle, sending, receiving }
 
+/// Data behind the app's versions of the website's other admin pages (`/api/app/v1/page/<name>`).
+/// All of them are downloaded in the background, so every page opens at once — also offline.
+const kPageNames = ['brands', 'tags', 'reviews', 'campaigns', 'coupons', 'pages', 'files', 'activity', 'push', 'business', 'customizer', 'cache', 'backups'];
+
 /// The app's shared state: who is signed in, the data kept on the device,
 /// the outbox, and the sync engine that keeps them in step with the server.
 class AppState extends ChangeNotifier {
@@ -90,6 +94,10 @@ class AppState extends ChangeNotifier {
   Map<String, dynamic>? release;
   /// The website's admin menu for this person (sections → links → submenus), from /api/app/v1/menu.
   List<Map<String, dynamic>> menu = [];
+  /// Page data (name → {data, at}), kept on the device.
+  Map<String, Map<String, dynamic>> pageData = {};
+  DateTime _lastPages = DateTime.fromMillisecondsSinceEpoch(0);
+  bool _pagesBusy = false;
   String appVersion = '';
   String deviceId = '';
 
@@ -131,6 +139,10 @@ class AppState extends ChangeNotifier {
     if (ls is String) lastSync = DateTime.tryParse(ls);
     final m = await _store.read('menu');
     if (m is List) menu = m.map((e) => Map<String, dynamic>.from(e)).toList();
+    for (final n in kPageNames) {
+      final v = await _store.read('page:$n');
+      if (v is Map && v.containsKey('data')) pageData[n] = Map<String, dynamic>.from(v);
+    }
     _applyEffects();
     ready = true;
     notifyListeners();
@@ -217,6 +229,7 @@ class AppState extends ChangeNotifier {
       sets = {};
       hashes = {};
       outbox = [];
+      pageData = {};
     }
     api.token = r.data['token'];
     await _secure.write(key: 'token', value: api.token);
@@ -241,6 +254,7 @@ class AppState extends ChangeNotifier {
     hashes = {};
     outbox = [];
     menu = [];
+    pageData = {};
     await _store.clearData();
     notifyListeners();
   }
@@ -265,7 +279,8 @@ class AppState extends ChangeNotifier {
       return r;
     }
     if (r.ok) {
-      if (item.effect != null) {
+      // (A new product sent at once needs no stand-in: the server's copy is fetched right away.)
+      if (item.effect != null && item.effect!['kind'] != 'product_new') {
         _applyEffect(item.effect!);
         await _store.write('sets', sets);
       }
@@ -314,6 +329,7 @@ class AppState extends ChangeNotifier {
         await _pull(only: force ? null : (only == null || only.isEmpty ? null : only), force: force);
         if (DateTime.now().difference(_lastMe) > const Duration(minutes: 10)) await refreshMe();
       } while (_again);
+      if (online) unawaited(loadPages());
     } finally {
       _syncing = false;
       phase = SyncPhase.idle;
@@ -440,6 +456,67 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ───────────────────────────── other pages' data ─────────────────────────────
+  /// Downloads every page's data in the background (at most every few minutes unless [force]).
+  Future<void> loadPages({bool force = false}) async {
+    if (!signedIn || _pagesBusy) return;
+    if (!force && DateTime.now().difference(_lastPages) < const Duration(minutes: 3)) return;
+    _pagesBusy = true;
+    try {
+      var off = false;
+      for (final n in kPageNames) {
+        final r = await reloadPage(n, notify: false);
+        if (r == ApiOutcome.offline) { off = true; break; }
+      }
+      if (!off) await _loadProductDetails();
+      _lastPages = DateTime.now();
+    } finally {
+      _pagesBusy = false;
+      notifyListeners();
+    }
+  }
+
+  /// The full product form (description, photos, sizes, specifications) of every product, and the form's
+  /// choices, kept on the device — so a product can be fully edited offline. Only changed products are fetched.
+  Future<void> _loadProductDetails() async {
+    final form = await api.get('/api/app/v1/product-form');
+    if (form.ok) await _store.write('product_form', form.data['form']);
+    final products = list('products');
+    if (products.length > 3000) return; // very large catalogues: fetched when opened instead
+    for (final p in products) {
+      final id = toInt(p['id']);
+      if (id <= 0) continue;
+      final have = await _store.read('product:$id');
+      if (have is Map && have['updatedAt'] == p['updatedAt']) continue;
+      final r = await api.get('/api/app/v1/products/$id');
+      if (r.outcome == ApiOutcome.offline) return;
+      if (r.ok) await _store.write('product:$id', {'updatedAt': p['updatedAt'], 'product': r.data['product']});
+    }
+  }
+
+  /// A product's full form from the device (null if not downloaded yet).
+  Future<Map<String, dynamic>?> savedProduct(int id) async {
+    final v = await _store.read('product:$id');
+    return v is Map && v['product'] is Map ? Map<String, dynamic>.from(v['product']) : null;
+  }
+
+  Future<void> saveProductDetail(int id, Map<String, dynamic> product) => _store.write('product:$id', {'updatedAt': null, 'product': product});
+
+  /// Fresh copy of one page's data (kept on the device). Pages this person may not see are skipped.
+  Future<ApiOutcome> reloadPage(String name, {bool notify = true}) async {
+    final r = await api.get('/api/app/v1/page/$name');
+    if (r.ok) {
+      final v = {'data': r.data['data'], 'at': r.data['at'] as String? ?? DateTime.now().toUtc().toIso8601String()};
+      pageData[name] = v;
+      await _store.write('page:$name', v);
+      if (notify) notifyListeners();
+    } else if (r.outcome == ApiOutcome.offline && online) {
+      online = false;
+      if (notify) notifyListeners();
+    }
+    return r.outcome;
+  }
+
   // ───────────────────────────── local effects ─────────────────────────────
   void _applyEffects() {
     for (final o in outbox) {
@@ -496,6 +573,17 @@ class AppState extends ChangeNotifier {
         break;
       case 'product':
         _patchIn('products', (m) => m['id'] == e['id'], Map<String, dynamic>.from(e['fields']));
+        break;
+      case 'product_new':
+        // Made offline: in the list at once (a temporary negative id) until the server's copy arrives.
+        final np = Map<String, dynamic>.from(e['product']);
+        final l = (sets['products'] as List?) ?? [];
+        if (!l.any((x) => x['localRef'] == np['localRef'])) sets['products'] = [np, ...l];
+        break;
+      case 'product_delete':
+        final ids = (e['ids'] as List).map(toInt).toSet();
+        final l = sets['products'];
+        if (l is List) sets['products'] = l.where((x) => !ids.contains(toInt(x['id']))).toList();
         break;
       case 'stock_add':
         final l = sets['products'];

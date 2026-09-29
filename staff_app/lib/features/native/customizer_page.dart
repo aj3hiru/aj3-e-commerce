@@ -197,6 +197,7 @@ class _BodyState extends State<_Body> {
             ),
         ],
         trailing: PopupMenuButton<String>(
+          popUpAnimationStyle: AnimationStyle.noAnimation,
           tooltip: 'Add a section',
           icon: const Icon(Icons.add_circle_outline_rounded),
           onSelected: (t) => _touch(() => blocks.add(_newBlock(t))),

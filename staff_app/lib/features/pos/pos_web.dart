@@ -500,9 +500,9 @@ extension _PosWeb on _PosScreenState {
             ),
             const SizedBox(height: 10),
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(s.online ? LucideIcons.lock : LucideIcons.cloudOff, size: 12, color: W.g500),
+              const Icon(LucideIcons.lock, size: 12, color: W.g500),
               const SizedBox(width: 6),
-              Flexible(child: Text(s.online ? 'F2 Pay Now · F4 New bill' : 'Offline — the bill is saved and uploads later', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: W.g500))),
+              Flexible(child: Text('F2 Pay Now · F4 New bill', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: W.g500))),
             ]),
           ]),
         ),

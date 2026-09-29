@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
 import '../../core/format.dart';
-import '../../core/local_store.dart';
 import '../../core/theme.dart';
 import '../../widgets/common.dart';
 import '../../widgets/mobile.dart';
@@ -13,7 +12,8 @@ import '../../widgets/web.dart';
 /// data that opens offline (last copy kept on the device), one page frame for
 /// Windows and phones, and lists that are tables on Windows and cards on phones.
 
-/// Loads `/api/app/v1/page/<name>`, shows the saved copy at once and refreshes it.
+/// A page's data (`/api/app/v1/page/<name>`): shown at once from the copy on this computer (the app
+/// downloads every page's data in the background), refreshed quietly when online.
 class NativeData extends StatefulWidget {
   final String name;
   final Widget Function(BuildContext context, dynamic data, Future<void> Function() reload) builder;
@@ -23,66 +23,34 @@ class NativeData extends StatefulWidget {
 }
 
 class NativeDataState extends State<NativeData> {
-  dynamic _data;
-  String? _at; // when the shown copy was fetched
-  bool _loading = true;
-  String? _error;
-
-  String get _key => 'page:${widget.name}';
+  bool _tried = false;
 
   @override
   void initState() {
     super.initState();
-    LocalStore.instance.read(_key).then((v) {
-      if (!mounted) return;
-      if (v is Map && v.containsKey('data')) {
-        setState(() {
-          _data = v['data'];
-          _at = v['at'] as String?;
-        });
-      }
-      reload();
+    // Freshen it in the background; the saved copy is on screen meanwhile.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) reload();
     });
   }
 
   Future<void> reload() async {
-    setState(() => _loading = true);
-    final r = await context.read<AppState>().api.get('/api/app/v1/page/${widget.name}');
-    if (!mounted) return;
-    if (r.ok) {
-      _data = r.data['data'];
-      _at = r.data['at'] as String? ?? DateTime.now().toUtc().toIso8601String();
-      _error = null;
-      await LocalStore.instance.write(_key, {'data': _data, 'at': _at});
-    } else {
-      _error = r.outcome == ApiOutcome.offline ? 'offline' : r.message;
-    }
-    if (mounted) setState(() => _loading = false);
+    await context.read<AppState>().reloadPage(widget.name);
+    if (mounted) setState(() => _tried = true);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_data == null) {
-      if (_loading) return const Center(child: CircularProgressIndicator());
-      return EmptyState(
-        icon: _error == 'offline' ? Icons.cloud_off_rounded : Icons.error_outline_rounded,
-        title: _error == 'offline' ? 'Connect once to load this page' : 'Could not load',
-        message: _error == 'offline' ? 'After the first load it opens even without internet.' : _error,
+    final saved = context.select<AppState, Map<String, dynamic>?>((s) => s.pageData[widget.name]);
+    if (saved == null) {
+      // Only the very first start, before the background download reached this page.
+      if (!_tried) return const Material(color: Colors.transparent, child: SizedBox.expand());
+      return const Material(
+        color: Colors.transparent,
+        child: EmptyState(icon: Icons.cloud_download_outlined, title: 'Not downloaded yet', message: 'It downloads by itself as soon as the internet is on.'),
       );
     }
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (_error != null)
-        Material(
-          color: AppColors.amberSoft,
-          child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          child: Text(
-            _error == 'offline' ? 'Offline — showing the copy from ${ago(_at)}. Changes are sent when you are back online.' : _error!,
-            style: const TextStyle(color: AppColors.amber, fontSize: 12.5, fontWeight: FontWeight.w600),
-          ),
-        )),
-      Expanded(child: widget.builder(context, _data, reload)),
-    ]);
+    return widget.builder(context, saved['data'], reload);
   }
 }
 

@@ -60,7 +60,7 @@ class _CollectState extends State<_Collect> {
     if (r.outcome == ApiOutcome.rejected || r.outcome == ApiOutcome.forbidden) return toast(context, r.message, error: true);
     final receiptNo = r.ok ? RegExp(r'RCPT\d+').firstMatch('${r.data['redirect'] ?? ''}')?.group(0) ?? 'Receipt' : 'Pending';
     popDialog(context);
-    toast(context, r.ok ? 'Payment recorded ($receiptNo).' : 'Saved offline — will be recorded when online.');
+    toast(context, r.ok ? 'Payment recorded ($receiptNo).' : 'Payment recorded.');
     if (_print) {
       try {
         await printReceipt(

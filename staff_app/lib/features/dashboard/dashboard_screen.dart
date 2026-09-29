@@ -141,7 +141,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final banners = <Widget>[
-      if (!s.online) _Banner(icon: Icons.cloud_off_rounded, text: "You're offline — keep working. Everything is saved on this device and sent when you're back online.", color: AppColors.red, soft: AppColors.redSoft),
       if (offlineBills > 0) _Banner(icon: Icons.cloud_upload_outlined, text: '$offlineBills bill(s) made offline are waiting to upload.', color: AppColors.amber, soft: AppColors.amberSoft),
       if (_d == null && _loading) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
     ];
@@ -231,9 +230,10 @@ class _HeroSync extends StatelessWidget {
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: online ? (light ? AppColors.green : const Color(0xFF4ADE80)) : (light ? AppColors.red : const Color(0xFFFCA5A5)))),
-            const SizedBox(width: 7),
-            Text(online ? (pending > 0 ? 'Sending $pending' : 'Live') : 'Offline',
-                style: TextStyle(color: light ? (online ? AppColors.green : AppColors.red) : Colors.white, fontWeight: FontWeight.w600, fontSize: 12.5)),
+            if (online) ...[
+              const SizedBox(width: 7),
+              Text(pending > 0 ? 'Sending $pending' : 'Live', style: TextStyle(color: light ? AppColors.green : Colors.white, fontWeight: FontWeight.w600, fontSize: 12.5)),
+            ],
           ]),
         ),
       );

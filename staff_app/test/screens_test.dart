@@ -64,15 +64,18 @@ AppState _state({String role = 'admin', Map<String, dynamic>? perms}) {
     ..user = {'id': 1, 'username': 'arjun', 'name': 'Arjun Kumar', 'roleLabel': role == 'admin' ? 'Admin' : 'Delivery Agent', 'role': role, 'email': 'arjun@example.com', 'phone': '9876543210', 'since': '2026-01-10T00:00:00Z'}
     ..lastSync = now.subtract(const Duration(minutes: 1));
   s.api.token = 'test';
+  s.pageData = {for (final e in _pages.entries) e.key: Map<String, dynamic>.from(e.value)};
   s.perms = Perms(perms ?? _all(true), role);
   s.sets = {
-    'settings': {'businessName': 'Sri Andal Traders', 'address': 'Main Road, Narkatiaganj', 'phones': ['9876543210'], 'printerFormat': 'thermal_80'},
+    'settings': {'businessName': 'Sri Andal Traders', 'address': 'Main Road, Narkatiaganj', 'phones': ['9876543210'], 'printerFormat': 'thermal_80',
+      'badges': [{'slug': 'best', 'label': 'Bestseller', 'color': '#16a34a'}, {'slug': 'new', 'label': 'New', 'color': '#2563eb'}],
+      'itemTypes': [{'slug': 'normal', 'label': 'Normal'}, {'slug': 'combo', 'label': 'Combo Pack'}]},
     'categories': [{'id': 1, 'name': 'Pooja Items', 'status': 'active'}, {'id': 2, 'name': 'T-shirts', 'status': 'active'}],
     'brands': [{'id': 1, 'name': 'Sri Andal', 'status': 'active'}],
     'products': [
-      {'id': 1, 'name': 'Hawan Samagri 500g', 'sku': 'HS500', 'barcode': '8901001', 'price': 120, 'salePrice': 99, 'gstRate': 5, 'stock': 42, 'unit': 'Packet', 'categoryId': 1, 'status': 'active', 'type': 'physical'},
+      {'id': 1, 'name': 'Hawan Samagri 500g', 'sku': 'HS500', 'barcode': '8901001', 'price': 120, 'salePrice': 99, 'gstRate': 5, 'stock': 42, 'unit': 'Packet', 'categoryId': 1, 'status': 'active', 'type': 'physical', 'badgeTag': 'best', 'itemType': 'normal'},
       {'id': 2, 'name': 'Pure Cow Ghee 1L', 'sku': 'GH1L', 'barcode': '8901002', 'price': 650, 'salePrice': null, 'gstRate': 12, 'stock': 3, 'unit': 'Litre', 'categoryId': 1, 'status': 'active', 'type': 'physical'},
-      {'id': 3, 'name': 'Cotton T-shirt (Saffron)', 'sku': 'TS01', 'barcode': '8901003', 'price': 399, 'salePrice': 299, 'gstRate': 5, 'stock': 0, 'categoryId': 2, 'status': 'active', 'type': 'physical'},
+      {'id': 3, 'name': 'Cotton T-shirt (Saffron)', 'sku': 'TS01', 'barcode': '8901003', 'price': 399, 'salePrice': 299, 'gstRate': 5, 'stock': 0, 'categoryId': 2, 'status': 'inactive', 'type': 'physical', 'badgeTag': 'new', 'itemType': 'combo'},
       {'id': 4, 'name': 'Camphor Tablets 100g', 'sku': 'CP100', 'barcode': '8901004', 'price': 85, 'salePrice': null, 'gstRate': 18, 'stock': 120, 'categoryId': 1, 'status': 'active', 'type': 'physical'},
     ],
     'customers': [
@@ -115,17 +118,24 @@ Future<void> _shot(WidgetTester t, String name, Widget screen, {Size size = cons
   debugDisableShadows = true;
 }
 
+/// Page data (what the app downloads in the background), given to every test state.
+final _pages = <String, Map<String, dynamic>>{};
+Future<void> _page(String name, Map<String, dynamic> v) async {
+  _pages[name] = v;
+  await LocalStore.instance.write('page:$name', v);
+}
+
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     await _fonts();
     final now = DateTime.now().toUtc().toIso8601String();
     final at = DateTime.now().toUtc().toIso8601String();
-    await LocalStore.instance.write('page:brands', {'at': at, 'data': [
+    await _page('brands', {'at': at, 'data': [
       {'id': 1, 'name': 'Patanjali', 'slug': 'patanjali', 'logo': null, 'isPopular': true, 'status': 'active', 'products': 30},
       {'id': 2, 'name': 'Dabur', 'slug': 'dabur', 'logo': null, 'isPopular': false, 'status': 'inactive', 'products': 0},
     ]});
-    await LocalStore.instance.write('page:customizer', {'at': at, 'data': {
+    await _page('customizer', {'at': at, 'data': {
       'canStore': true, 'unpublished': false, 'header': {'showLocation': true, 'showDeliveryInfo': true, 'deliveryLabel': "We're open", 'deliveryTimeText': '', 'searchPlaceholder': 'Search for products'},
       'store': {'headerMenu': [{'id': 'h1', 'label': 'Home', 'href': '/', 'icon': 'home', 'visibility': 'all', 'enabled': true, 'newTab': false, 'autoCategories': false, 'children': []}], 'sidebarMenu': [], 'menuDesign': {'accent': '#9f2089', 'showIcons': true, 'dividers': true}, 'push': {'showBell': true, 'autoPrompt': true}, 'footer': {'columns': []}},
       'product': {'accent': '#9f2089', 'order': ['gallery', 'info', 'sizes', 'reviews', 'actions', 'related'], 'hidden': [], 'info': {}, 'sizes': {'title': 'Select Size', 'showPrice': true}, 'actions': {}, 'reviews': {}, 'related': {}, 'cart': {}},

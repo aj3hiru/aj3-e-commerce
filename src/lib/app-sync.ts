@@ -44,7 +44,10 @@ export function allowedSets(session: AdminSession): SetName[] {
 const staffName = (u: { username: string; firstName: string | null; lastName: string | null }) => [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || u.username;
 
 async function buildSettings() {
-  const [b, taxMode] = await Promise.all([getBusinessRow(), getTaxMode()]);
+  const [b, taxMode, tags] = await Promise.all([
+    getBusinessRow(), getTaxMode(),
+    prisma.ecomProductTag.findMany({ orderBy: { sortOrder: "asc" }, select: { slug: true, label: true, color: true, tagGroup: true } }),
+  ]);
   const phones = Array.isArray(b?.contactNumbers) ? (b!.contactNumbers as unknown[]).filter((x): x is string => typeof x === "string" && !!x.trim()) : b?.phone ? [b.phone] : [];
   return {
     businessName: b?.businessName ?? "My Store", tagline: b?.tagline ?? null, logo: b?.logo ?? null, address: b?.address ?? null, phones,
@@ -52,6 +55,9 @@ async function buildSettings() {
     printerFormat: b?.printerFormat ?? "thermal_80", posPrintMode: b?.posPrintMode ?? "both",
     paymentMethods: ["Cash", "UPI", "Card", "Other"],
     pricesIncludeTax: taxMode.pricesIncludeTax,
+    // Products table "Type" (badge, with its colour) and "Item Type" columns, as on the website.
+    badges: tags.filter((t) => t.tagGroup === "badge").map((t) => ({ slug: t.slug, label: t.label, color: t.color })),
+    itemTypes: tags.filter((t) => t.tagGroup === "item_type").map((t) => ({ slug: t.slug, label: t.label })),
   };
 }
 
@@ -60,6 +66,7 @@ async function buildProducts() {
     orderBy: { name: "asc" },
     select: { id: true, name: true, slug: true, sku: true, barcode: true, hsnCode: true, price: true, salePrice: true, gstRate: true, stockQty: true, unit: true, image: true,
       categoryId: true, brandId: true, status: true, productType: true, updatedAt: true, quantity: true, variantGroup: true,
+      badgeTag: true, itemType: true, createdAt: true,
       sizes: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, label: true, mrp: true, price: true, stockQty: true, isDefault: true } } },
   });
   const campaign = await campaignSalePrices(rows.filter((r) => r.status === "active"));
@@ -69,6 +76,7 @@ async function buildProducts() {
     quantity: num(r.quantity), variantGroup: r.variantGroup, pack: packLabel(num(r.quantity), r.unit),
     sizes: r.sizes.map((z) => ({ id: z.id, label: z.label, mrp: Number(z.mrp), price: num(z.price), stock: z.stockQty, isDefault: z.isDefault })),
     categoryId: r.categoryId, brandId: r.brandId, status: r.status, type: r.productType, updatedAt: iso(r.updatedAt),
+    badgeTag: r.badgeTag, itemType: r.itemType, createdAt: iso(r.createdAt),
   }));
 }
 
@@ -143,7 +151,7 @@ async function buildDues() {
 
 /** Tables each set is built from — any write to them rebuilds the set (lib/cache.ts). */
 const DEPS: Record<SetName, string[]> = {
-  settings: ["EcomBusinessSettings"],
+  settings: ["EcomBusinessSettings", "EcomProductTag"],
   products: ["EcomProduct", "EcomProductSize", "EcomCampaign", "EcomCampaignTarget"],
   categories: ["EcomCategory"],
   brands: ["EcomBrand"],

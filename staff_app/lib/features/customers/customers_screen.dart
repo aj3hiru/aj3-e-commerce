@@ -204,6 +204,6 @@ Future<void> editCustomer(BuildContext context, Map<String, dynamic>? c) async {
   if (r.outcome == ApiOutcome.rejected || r.outcome == ApiOutcome.forbidden) {
     toast(context, r.message, error: true);
   } else {
-    toast(context, r.ok ? 'Saved.' : 'Saved offline — will sync when online.');
+    toast(context, 'Saved.');
   }
 }

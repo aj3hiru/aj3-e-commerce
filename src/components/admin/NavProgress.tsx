@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { isDesktopApp } from "./DesktopBridge";
 
 /**
  * A thin bar at the top that starts the moment a link is clicked, so the
@@ -37,14 +36,7 @@ function Bar() {
     timer.current = setTimeout(() => setState("idle"), 300);
   }, [pathname, params]);
 
-  // Windows app: no web-style bar — the pointer shows "working" like any Windows program.
-  const desktop = typeof window !== "undefined" && isDesktopApp();
-  useEffect(() => {
-    if (!desktop) return;
-    document.documentElement.style.cursor = state === "loading" ? "progress" : "";
-  }, [desktop, state]);
-
-  if (state === "idle" || desktop) return null;
+  if (state === "idle") return null;
   return (
     <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-[5000] h-[3px]">
       <div className={state === "loading" ? "h-full w-[80%] bg-[#7c3aed] transition-[width] duration-[8000ms] ease-out" : "h-full w-full bg-[#7c3aed] opacity-0 transition-[width,opacity] duration-300"}

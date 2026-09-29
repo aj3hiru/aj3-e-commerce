@@ -686,6 +686,7 @@ class _BackupPageState extends State<BackupPage> {
                     title: '${b['name']}',
                     subtitle: '${(toInt(b['size']) / 1048576).toStringAsFixed(1)} MB · ${dateTime(b['createdAt'])}',
                     trailing: PopupMenuButton<String>(
+                      popUpAnimationStyle: AnimationStyle.noAnimation,
                       onSelected: (v) => v == 'scan' ? _start({'action': 'validate', 'file': b['name']}, reload) : _restore(b, reload),
                       itemBuilder: (_) => const [PopupMenuItem(value: 'scan', child: Text('Scan')), PopupMenuItem(value: 'restore', child: Text('Restore'))],
                     ),

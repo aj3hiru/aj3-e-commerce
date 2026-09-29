@@ -533,7 +533,12 @@ class WebCol {
   final double flex;
   final double? width; // fixed width instead of flex
   final bool right;
-  const WebCol(this.label, {this.flex = 1, this.width, this.right = false});
+  /// Click the heading to sort by this column; [sorted] = true ↑ / false ↓ / null not sorted by it.
+  final VoidCallback? onSort;
+  final bool? sorted;
+  /// Instead of the label (e.g. a "select all" checkbox).
+  final Widget? head;
+  const WebCol(this.label, {this.flex = 1, this.width, this.right = false, this.onSort, this.sorted, this.head});
 }
 
 /// Business table: compact rows, hover, selected row, click to select,
@@ -602,8 +607,25 @@ class _WebTableState extends State<WebTable> {
       child: IntrinsicHeight(
         child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           for (var i = 0; i < cols.length; i++)
-            cell(i, Text(widget.upper && !widget.bordered ? cols[i].label.toUpperCase() : cols[i].label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: widget.upper && !widget.bordered ? DS.tableHead.copyWith(fontSize: 11, letterSpacing: .5, color: DS.muted) : DS.tableHead), head: true),
+            cell(i, () {
+              final c = cols[i];
+              if (c.head != null) return c.head!;
+              final text = Text(widget.upper && !widget.bordered ? c.label.toUpperCase() : c.label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: widget.upper && !widget.bordered ? DS.tableHead.copyWith(fontSize: 11, letterSpacing: .5, color: DS.muted) : DS.tableHead);
+              if (c.onSort == null) return text;
+              return MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: c.onSort,
+                  child: Row(children: [
+                    Flexible(child: text),
+                    const SizedBox(width: 4),
+                    Icon(c.sorted == null ? LucideIcons.chevronsUpDown : c.sorted! ? LucideIcons.arrowUp : LucideIcons.arrowDown, size: 13, color: c.sorted == null ? const Color(0xFFD1D5DB) : const Color(0xFF4B5563)),
+                  ]),
+                ),
+              );
+            }(), head: true),
         ]),
       ),
     );

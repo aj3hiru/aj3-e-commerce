@@ -395,7 +395,9 @@ class _ReviewsBodyState extends State<_ReviewsBody> {
 
 /// Pick products (search or scan), set how many labels, print on a label roll or an A4 sheet — works offline.
 class BarcodePrintPage extends StatefulWidget {
-  const BarcodePrintPage({super.key});
+  /// Products to start with (one label each) — from the Products table; otherwise today's new / changed ones.
+  final List<int>? ids;
+  const BarcodePrintPage({super.key, this.ids});
   @override
   State<BarcodePrintPage> createState() => _BarcodePrintPageState();
 }
@@ -451,8 +453,9 @@ class _BarcodePrintPageState extends State<BarcodePrintPage> {
     final all = s.list('products').where((p) => '${p['barcode'] ?? ''}'.isNotEmpty).toList();
     if (!_started) {
       _started = true;
-      // Start with products added or changed today, like the website.
-      for (final p in all.where((p) => DateRange.preset('today').contains(p['updatedAt']))) {
+      // Start with the products chosen in the Products table, or those added or changed today (like the website).
+      final ids = widget.ids?.toSet();
+      for (final p in all.where((p) => ids != null ? ids.contains(toInt(p['id'])) : DateRange.preset('today').contains(p['updatedAt']))) {
         _qty[toInt(p['id'])] = 1;
       }
     }

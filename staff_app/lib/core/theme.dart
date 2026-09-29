@@ -97,7 +97,14 @@ ThemeData _mobileTheme() {
 
 /// Windows: the Material parts that remain (date pickers, menus, snack bars, remaining
 /// Material fields) follow the desktop design system — compact, 4–6 px corners,
-/// Inter 13, visible scrollbars, quick tooltips.
+/// Windows programs switch screens and open dialogs at once — no Android-style slide/fade.
+class _Instant extends PageTransitionsBuilder {
+  const _Instant();
+  @override
+  Widget buildTransitions<T>(PageRoute<T> route, BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) => child;
+}
+
+/// Inter 13, visible scrollbars, quick tooltips. Windows feel: no click ripple, instant page changes.
 ThemeData _desktopTheme() {
   const primary = Color(0xFF7C3AED);
   final scheme = ColorScheme.fromSeed(seedColor: primary, primary: primary, surface: Colors.white, brightness: Brightness.light);
@@ -107,6 +114,12 @@ ThemeData _desktopTheme() {
   const btnText = TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600);
   const btnShape = RoundedRectangleBorder(borderRadius: r4);
   return base.copyWith(
+    splashFactory: NoSplash.splashFactory,
+    highlightColor: const Color(0x0F111827),
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {
+      TargetPlatform.windows: _Instant(), TargetPlatform.macOS: _Instant(), TargetPlatform.linux: _Instant(),
+      TargetPlatform.android: _Instant(), TargetPlatform.iOS: _Instant(), TargetPlatform.fuchsia: _Instant(),
+    }),
     textTheme: () {
       final t = base.textTheme.apply(fontFamily: 'Inter', bodyColor: const Color(0xFF111827), displayColor: const Color(0xFF111827));
       return t.copyWith(

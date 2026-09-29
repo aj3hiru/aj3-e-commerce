@@ -163,20 +163,29 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
   }
 
   /// Everything the website form shows (description, gallery, sizes, specs…).
+  /// From the copy on this computer at once (downloaded in the background); from the server only if missing.
   Future<void> _loadFull() async {
+    final s = context.read<AppState>();
+    final saved = await s.savedProduct(toInt(p['id']));
+    if (!mounted) return;
+    if (saved != null) return _applyFull(saved);
     setState(() => _loading = true);
-    final r = await context.read<AppState>().api.get('/api/app/v1/products/${p['id']}');
+    final r = await s.api.get('/api/app/v1/products/${p['id']}');
     if (!mounted) return;
     if (!r.ok) {
       setState(() {
         _loading = false;
-        _loadNote = r.outcome == ApiOutcome.offline
-            ? "You're offline — you can change the main details now. Description, photos, sizes and specifications need the internet."
-            : r.message;
+        // Offline and never downloaded: the main details (from the list) can still be changed.
+        _loadNote = r.outcome == ApiOutcome.offline ? null : r.message;
       });
       return;
     }
     final x = Map<String, dynamic>.from(r.data['product']);
+    await s.saveProductDetail(toInt(p['id']), x);
+    if (mounted) _applyFull(x);
+  }
+
+  void _applyFull(Map<String, dynamic> x) {
     setState(() {
       _loading = false;
       _full = true;
@@ -315,6 +324,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     }
 
     final fields = _fields();
+    final localRef = newId();
     final r = await s.sendNow(OutboxItem(
       id: newId(),
       method: _isNew ? 'POST' : 'PUT',
@@ -325,7 +335,16 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       fields: fields,
       files: _files(),
       effect: _isNew
-          ? null
+          ? {
+              'kind': 'product_new',
+              'product': {
+                'id': -DateTime.now().millisecondsSinceEpoch, 'localRef': localRef, 'name': name, 'sku': _sku.text.trim(), 'barcode': _barcode.text.trim(),
+                'price': double.tryParse(_price.text.trim()) ?? 0, 'salePrice': double.tryParse(_sale.text.trim()), 'gstRate': double.tryParse(_gst) ?? 0,
+                'stock': _type == 'physical' ? (int.tryParse(_stock.text.trim()) ?? 0) : null, 'unit': _unitValue, 'quantity': double.tryParse(_qty.text.trim()),
+                'categoryId': _category, 'brandId': _brand, 'status': _status, 'type': _type, 'badgeTag': _badge, 'itemType': _itemType,
+                'image': null, 'localImage': _photo, 'sizes': const [], 'updatedAt': DateTime.now().toUtc().toIso8601String(),
+              },
+            }
           : {
               'kind': 'product', 'id': p['id'],
               'fields': {
@@ -341,8 +360,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       toast(context, r.message, error: true);
       return;
     }
-    final offline = !r.ok;
-    toast(context, offline ? 'Saved offline — it will be sent when you are online.' : (_isNew ? 'Product added.' : 'Saved.'));
+    toast(context, _isNew ? 'Product added.' : 'Saved.');
     if (another) {
       // The next product (usually the next size) stays linked to these variants plus the one just made.
       final newId = r.ok ? r.data['id'] : null;
@@ -385,7 +403,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (r != null && (r.outcome == ApiOutcome.rejected || r.outcome == ApiOutcome.forbidden)) return toast(context, r.message, error: true);
-    toast(context, r == null || r.ok ? 'Saved.' : 'Saved offline — will sync when online.');
+    toast(context, 'Saved.');
     Navigator.pop(context);
   }
 

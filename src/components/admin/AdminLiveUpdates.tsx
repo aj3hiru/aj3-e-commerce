@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { BellRing, Truck, X } from "lucide-react";
 import type { LiveEvent } from "@/lib/order-live-shared";
-import { desktopNotify, isDesktopApp } from "./DesktopBridge";
 
 /** Pages that show orders: they reload their data by themselves when any order changes. */
 const LIVE_PAGES = /^\/admin\/(dashboard|deliveries|ecommerce\/(orders|due|customers|sales-history))/;
@@ -65,8 +64,6 @@ export function AdminLiveUpdates({ username }: { username: string }) {
       setToasts((x) => [...x.slice(-3), toast]);
       setTimeout(() => setToasts((x) => x.filter((y) => y.key !== toast.key)), 15000);
       chime();
-      // Windows app: a real Windows notification + flashing taskbar button (only ever while online — it comes from the live feed).
-      if (isDesktopApp()) { if (!document.hasFocus()) void desktopNotify(toast.title, toast.body); return; }
       try {
         if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
           const n = new Notification(toast.title, { body: toast.body, tag: `order-${e.orderId}` });
@@ -100,7 +97,7 @@ export function AdminLiveUpdates({ username }: { username: string }) {
 
   // Ask once for desktop notifications, on the first click anywhere (browsers need a click).
   useEffect(() => {
-    if (isDesktopApp() || !("Notification" in window) || Notification.permission !== "default") return;
+    if (!("Notification" in window) || Notification.permission !== "default") return;
     const ask = () => { Notification.requestPermission().catch(() => {}); };
     document.addEventListener("click", ask, { once: true });
     return () => document.removeEventListener("click", ask);

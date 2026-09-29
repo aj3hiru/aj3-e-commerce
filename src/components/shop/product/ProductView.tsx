@@ -746,14 +746,16 @@ function Description({ text }: { text: string }) {
   return (
     <div className="mt-1.5">
       <p ref={ref} onClick={() => long && setOpen((v) => !v)}
-        className={cn("break-words text-[14px] leading-[21px] text-[#616173]", !open && "line-clamp-2", long && "cursor-pointer")}>
+        className={cn("relative break-words text-[14px] leading-[21px] text-[#616173]", !open && "line-clamp-2", long && "cursor-pointer")}>
         {text}
+        {long && open && <> <span className="font-semibold text-[var(--hp-accent)]">See less</span></>}
+        {/* Folded: “… See more” sits at the end of the second line. */}
+        {long && !open && (
+          <span className="absolute bottom-0 right-0 bg-[linear-gradient(to_right,transparent,white_22px)] pl-7">
+            <span className="bg-white">… <span className="font-semibold text-[var(--hp-accent)]">See more</span></span>
+          </span>
+        )}
       </p>
-      {long && (
-        <button type="button" onClick={() => setOpen((v) => !v)} className="mt-0.5 text-[13px] font-semibold text-[var(--hp-accent)]">
-          {open ? "Show less" : "Read more"}
-        </button>
-      )}
     </div>
   );
 }

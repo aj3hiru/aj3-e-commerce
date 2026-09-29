@@ -209,7 +209,7 @@ export function Coupons2Body({ coupons: initial, activity, options }: { coupons:
 
           {rows.length === 0 ? (
             <div className={cn(CARD, "p-10 text-center text-sm text-admin-gray-400")}>
-              {coupons.length === 0 ? <>No coupons yet. <button type="button" onClick={() => setEditing("new")} className="font-semibold text-[#2563eb] hover:underline">Create your first coupon</button></> : "No coupons match this filter."}
+              {coupons.length === 0 ? <>No coupons yet. <button type="button"onClick={() => setEditing("new")} className="font-semibold text-[#2563eb]">Create your first coupon</button></> : "No coupons match this filter."}
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -168,7 +168,7 @@ export function BackupView({ initial, runningJob }: { initial: BackupFile[]; run
               </li>
             ))}
             {log.length > 5 && (
-              <li><button type="button" onClick={() => setShowAll((v) => !v)} className="text-xs font-semibold text-admin-primary hover:underline">{showAll ? "Show fewer steps" : `Show all ${log.length} steps`}</button></li>
+              <li><button type="button"onClick={() => setShowAll((v) => !v)} className="text-xs font-semibold text-admin-primary">{showAll ? "Show fewer steps": `Show all ${log.length} steps`}</button></li>
             )}
           </ul>
           <style>{"@keyframes bk-stripes{from{background-position:0 0}to{background-position:24px 0}}"}</style>

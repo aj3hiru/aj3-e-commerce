@@ -113,7 +113,7 @@ export function DeliveryHistoryView({ tab, filters: f, agents, rows, report, tot
                   <td className="whitespace-nowrap text-right text-xs text-admin-gray-600">{money(r.cash)} / {money(r.upi)} / {money(r.other)}</td>
                   <td className="text-right"><span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-admin-gray-400" />{dur(r.avgMinutes)}</span></td>
                   <td className="text-right">{r.successRate === null ? "—" : `${r.successRate}%`}</td>
-                  <td className="text-right">{r.id !== null && <button type="button" onClick={() => start(() => router.push(`${path}?view=all&tab=history&range=${f.preset}${f.preset === "custom" ? `&from=${f.from}&to=${f.to}` : ""}&agent=${r.id}`))} className="text-xs font-semibold text-admin-primary hover:underline">Orders</button>}</td>
+                  <td className="text-right">{r.id !== null && <button type="button"onClick={() => start(() => router.push(`${path}?view=all&tab=history&range=${f.preset}${f.preset === "custom"? `&from=${f.from}&to=${f.to}`: ""}&agent=${r.id}`))} className="text-xs font-semibold text-admin-primary">Orders</button>}</td>
                 </tr>
               ))}
               {report.length === 0 && <tr><td colSpan={11} className="px-3 py-10 text-center text-admin-gray-500">No delivery agents yet.</td></tr>}
@@ -141,7 +141,7 @@ export function DeliveryHistoryView({ tab, filters: f, agents, rows, report, tot
               <tbody className="divide-y divide-admin-gray-100">
                 {rows.map((r) => (
                   <tr key={r.id} className="align-top [&>td]:px-3 [&>td]:py-2.5">
-                    <td><Link href={`/admin/ecommerce/orders/${r.id}`} className="font-semibold text-[#2563eb] hover:underline">{r.number}</Link><div className="text-xs text-admin-gray-500">{r.items} item{r.items === 1 ? "" : "s"}</div></td>
+                    <td><Link href={`/admin/ecommerce/orders/${r.id}`} className="font-semibold text-[#2563eb]">{r.number}</Link><div className="text-xs text-admin-gray-500">{r.items} item{r.items === 1 ? "": "s"}</div></td>
                     <td><div className="font-medium text-admin-gray-900">{r.customer}</div><div className="max-w-[240px] truncate text-xs text-admin-gray-500" title={r.address}>{r.phone ?? ""}{r.phone && r.address ? " · " : ""}{r.address}</div></td>
                     <td className="font-medium">{r.agent ?? <span className="text-admin-gray-400">—</span>}</td>
                     <td>{statusBadge(r)}{r.status === "Canceled" && r.cancelReason && <div className="mt-1 max-w-[200px] text-xs text-red-600">{r.cancelReason}</div>}</td>

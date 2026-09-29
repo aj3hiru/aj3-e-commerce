@@ -128,7 +128,7 @@ export function PushManager2Body({ tab, canManageSettings, appName, siteUrl, cat
           <AlertTriangle className="h-4 w-4 shrink-0" />
           <span className="flex-1">Push notifications aren&apos;t configured yet — sending is disabled until the VAPID keys are saved.</span>
           {canManageSettings && tab !== "settings" && (
-            <button type="button" onClick={() => go("settings")} className="font-semibold text-amber-900 underline-offset-2 hover:underline">Open Settings</button>
+            <button type="button"onClick={() => go("settings")} className="font-semibold text-amber-900">Open Settings</button>
           )}
         </div>
       )}

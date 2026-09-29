@@ -275,7 +275,7 @@ export function Campaigns2Body({ data, serverNow, filters, isDefaultRange, notic
         <div className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/60 px-4 py-3 text-[13px] leading-5 text-admin-gray-700">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
           <p>
-            {data.legacyCount} product{data.legacyCount === 1 ? " is" : "s are"} still in the old <Link href="/admin/ecommerce/campaign-offer" className="font-medium text-[#2563eb] hover:underline">Campaign Offer</Link> list.
+            {data.legacyCount} product{data.legacyCount === 1 ? "is": "s are"} still in the old <Link href="/admin/ecommerce/campaign-offer"className="font-medium text-[#2563eb]">Campaign Offer</Link> list.
             That list&apos;s &ldquo;campaign price&rdquo; is not applied in the shop or at billing, so it doesn&apos;t change any price. Create a campaign here to run an offer that does.
           </p>
         </div>
@@ -368,7 +368,7 @@ export function Campaigns2Body({ data, serverNow, filters, isDefaultRange, notic
                       <tr key={c.id} style={{ height: ROW_H }} className={cn("odd:bg-[#f2f2f2] even:bg-white", isBusy && "opacity-60")}>
                         <td className={td}>
                           <button type="button" onClick={() => setEditor({ editing: c, initial: formFromCampaign(c) })} title={`Edit ${c.name}`}
-                            className="block max-w-full truncate text-left font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{c.name}</button>
+                            className="block max-w-full truncate text-left font-medium text-admin-gray-900 hover:text-[#2563eb]">{c.name}</button>
                           <div className="truncate text-xs text-admin-gray-500">Created {fmtDateTime(c.createdAt)}</div>
                         </td>
                         {show("co2-c-applies") && (
@@ -476,7 +476,7 @@ export function Campaigns2Body({ data, serverNow, filters, isDefaultRange, notic
                       <tr key={o.productId} style={{ height: 76 }} className="odd:bg-[#f2f2f2] even:bg-white">
                         {show("co2-p-image") && <td className={td}><Thumb src={p.image} name={p.name} size={52} /></td>}
                         <td className={td}>
-                          <Link href={`/admin/ecommerce/products/add?edit=${p.id}`} title={`Edit ${p.name}`} className="block max-w-full truncate text-admin-gray-900 hover:text-[#2563eb] hover:underline">{p.name}</Link>
+                          <Link href={`/admin/ecommerce/products/add?edit=${p.id}`} title={`Edit ${p.name}`} className="block max-w-full truncate text-admin-gray-900 hover:text-[#2563eb]">{p.name}</Link>
                         </td>
                         {show("co2-p-price") && (
                           <td className={cn(td, "whitespace-nowrap")}>

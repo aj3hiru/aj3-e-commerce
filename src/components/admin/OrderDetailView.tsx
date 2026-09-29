@@ -402,7 +402,7 @@ export function OrderDetailView({ order, items, availableProducts, perms = ALL, 
                 </>
               )}
               {perms.cancel && st !== "Pending" && (
-                <button type="button" disabled={busy} onClick={() => { setReasonFor("cancel"); setReason(""); }} className="w-full text-center text-xs font-semibold text-red-600 hover:underline">Cancel this order</button>
+                <button type="button"disabled={busy} onClick={() => { setReasonFor("cancel"); setReason(""); }} className="w-full text-center text-xs font-semibold text-red-600">Cancel this order</button>
               )}
               {(perms.status || perms.pay) && (
                 <div className="border-t border-admin-gray-100 pt-2">
@@ -422,14 +422,14 @@ export function OrderDetailView({ order, items, availableProducts, perms = ALL, 
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-violet-100 font-bold text-violet-700">{order.customerName.trim().charAt(0).toUpperCase() || <UserRound className="h-5 w-5" />}</span>
                 <div className="min-w-0">
                   {order.customerId
-                    ? <Link href={`/admin/ecommerce/customers/${order.customerId}`} className="block truncate font-semibold text-admin-gray-900 hover:text-[#2563eb] hover:underline">{order.customerName || "Customer"}</Link>
+                    ? <Link href={`/admin/ecommerce/customers/${order.customerId}`} className="block truncate font-semibold text-admin-gray-900 hover:text-[#2563eb]">{order.customerName || "Customer"}</Link>
                     : <p className="truncate font-semibold text-admin-gray-900">{order.customerName || "Walk-in customer"}</p>}
-                  {order.customerId && <Link href={`/admin/ecommerce/customers/${order.customerId}`} className="text-xs text-[#2563eb] hover:underline">View profile</Link>}
+                  {order.customerId && <Link href={`/admin/ecommerce/customers/${order.customerId}`} className="text-xs text-[#2563eb]">View profile</Link>}
                 </div>
               </div>
               <div className="mt-3 space-y-1.5 text-sm text-admin-gray-700">
-                <Row icon={Phone}>{order.customerPhone ? <a href={`tel:${order.customerPhone}`} className="hover:underline">{order.customerPhone}</a> : <span className="text-admin-gray-400">No phone</span>}</Row>
-                <Row icon={Mail}>{order.customerEmail ? <a href={`mailto:${order.customerEmail}`} className="break-all hover:underline">{order.customerEmail}</a> : <span className="text-admin-gray-400">No email</span>}</Row>
+                <Row icon={Phone}>{order.customerPhone ? <a href={`tel:${order.customerPhone}`} className="">{order.customerPhone}</a> : <span className="text-admin-gray-400">No phone</span>}</Row>
+                <Row icon={Mail}>{order.customerEmail ? <a href={`mailto:${order.customerEmail}`} className="break-all">{order.customerEmail}</a> : <span className="text-admin-gray-400">No email</span>}</Row>
               </div>
             </section>
           )}
@@ -472,7 +472,7 @@ export function OrderDetailView({ order, items, availableProducts, perms = ALL, 
                     <ul className="space-y-1">
                       {order.duePayments!.map((p, i) => (
                         <li key={`${p.receipt}-${i}`} className="flex items-center justify-between gap-2 text-xs">
-                          <Link href={`/admin/ecommerce/payment-receipt/${encodeURIComponent(p.receipt)}`} target="_blank" className="font-medium text-blue-600 hover:underline">
+                          <Link href={`/admin/ecommerce/payment-receipt/${encodeURIComponent(p.receipt)}`} target="_blank"className="font-medium text-blue-600">
                             {p.receipt}
                           </Link>
                           <span className="text-admin-gray-500">{new Date(p.at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short" })} · {p.method}</span>

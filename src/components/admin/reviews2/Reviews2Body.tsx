@@ -330,7 +330,7 @@ export function Reviews2Body({ data, range, notice }: { data: Reviews2Data; rang
               entries
             </label>
             {filtersActive && (
-              <button type="button" onClick={() => { setF(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb] hover:underline">
+              <button type="button"onClick={() => { setF(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb]">
                 <X className="h-3.5 w-3.5" /> Clear filters
               </button>
             )}
@@ -381,7 +381,7 @@ export function Reviews2Body({ data, range, notice }: { data: Reviews2Data; rang
                             <div className="flex items-center gap-2.5">
                               <Thumb src={r.productImage} name={r.productName} size={44} />
                               <span className="min-w-0">
-                                <Link href={`/admin/ecommerce/products/add?edit=${r.productId}`} title={`Edit ${r.productName}`} className="block truncate text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.productName}</Link>
+                                <Link href={`/admin/ecommerce/products/add?edit=${r.productId}`} title={`Edit ${r.productName}`} className="block truncate text-admin-gray-900 hover:text-[#2563eb]">{r.productName}</Link>
                                 <span className="block truncate text-xs text-admin-gray-500">{r.categoryName ?? "Uncategorized"}</span>
                               </span>
                             </div>
@@ -390,7 +390,7 @@ export function Reviews2Body({ data, range, notice }: { data: Reviews2Data; rang
                         {show("rv2-c-customer") && (
                           <td className={td}>
                             {r.customerId !== null
-                              ? <Link href={`/admin/ecommerce/customers/${r.customerId}`} className="block truncate font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.customerName}</Link>
+                              ? <Link href={`/admin/ecommerce/customers/${r.customerId}`} className="block truncate font-medium text-admin-gray-900 hover:text-[#2563eb]">{r.customerName}</Link>
                               : <span className="block truncate font-medium text-admin-gray-900">{r.customerName}</span>}
                             <span className="block truncate text-xs text-admin-gray-500" title={r.phoneFromName ? "Phone matched by name" : undefined}>
                               {r.customerPhone ?? "No phone"}{r.phoneFromName ? " (by name)" : ""}
@@ -580,7 +580,7 @@ function ReviewEditor({ review, products, customers, onClose, onSaved }: {
             <div className="flex items-center gap-3 rounded-[0.5rem] border border-admin-gray-200 px-3 py-2">
               <Thumb src={chosenProduct.image} name={chosenProduct.name} size={40} />
               <span className="min-w-0 flex-1 truncate text-sm text-admin-gray-900">{chosenProduct.name}</span>
-              <button type="button" onClick={() => { setProductId(null); setProductQ(""); }} className="text-[13px] text-[#2563eb] hover:underline">Change</button>
+              <button type="button"onClick={() => { setProductId(null); setProductQ(""); }} className="text-[13px] text-[#2563eb]">Change</button>
             </div>
           ) : (
             <div className="overflow-hidden rounded-[0.5rem] border border-admin-gray-200">

@@ -297,7 +297,7 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
               entries
             </label>
             {filtersActive && (
-              <button type="button" onClick={() => { setF(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb] hover:underline">
+              <button type="button"onClick={() => { setF(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb]">
                 <X className="h-3.5 w-3.5" /> Clear filters
               </button>
             )}
@@ -359,7 +359,7 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
                                 </span>
                               )}
                               <div className="min-w-0">
-                                <Link href={`/admin/ecommerce/customers/${r.id}`} title={`Open ${r.name}'s profile`} className="block max-w-full truncate font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.name || <span className="font-normal italic text-admin-gray-400">No name yet</span>}</Link>
+                                <Link href={`/admin/ecommerce/customers/${r.id}`} title={`Open ${r.name}'s profile`} className="block max-w-full truncate font-medium text-admin-gray-900 hover:text-[#2563eb]">{r.name || <span className="font-normal italic text-admin-gray-400">No name yet</span>}</Link>
                                 {show("cus2-c-joined") && (
                                   <div className="truncate text-xs text-admin-gray-500">
                                     Joined {fmtDate(r.createdAt)}{r.lastOrderAt ? ` · last order ${fmtDate(r.lastOrderAt)}` : " · never ordered"}
@@ -371,8 +371,8 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
                         )}
                         {show("cus2-c-contact") && (
                           <td className={td}>
-                            {r.phone ? <a href={`tel:${r.phone}`} className="flex items-center gap-1.5 truncate text-admin-gray-800 hover:underline"><Phone className="h-3.5 w-3.5 shrink-0 text-admin-gray-400" />{r.phone}</a> : <span className="text-admin-gray-400">No phone</span>}
-                            {r.email ? <a href={`mailto:${r.email}`} title={r.email} className="flex items-center gap-1.5 truncate text-xs text-admin-gray-500 hover:underline"><Mail className="h-3 w-3 shrink-0" />{r.email}</a> : <span className="block text-xs text-admin-gray-400">No email</span>}
+                            {r.phone ? <a href={`tel:${r.phone}`} className="flex items-center gap-1.5 truncate text-admin-gray-800"><Phone className="h-3.5 w-3.5 shrink-0 text-admin-gray-400"/>{r.phone}</a> : <span className="text-admin-gray-400">No phone</span>}
+                            {r.email ? <a href={`mailto:${r.email}`} title={r.email} className="flex items-center gap-1.5 truncate text-xs text-admin-gray-500"><Mail className="h-3 w-3 shrink-0"/>{r.email}</a> : <span className="block text-xs text-admin-gray-400">No email</span>}
                           </td>
                         )}
                         {show("cus2-c-type") && (
@@ -387,7 +387,7 @@ export function Customers2Body({ data, range, notice }: { data: Customers2Data; 
                         {show("cus2-c-due") && (
                           <td className={cn(td, "whitespace-nowrap")}>
                             {r.dueBalance > PAISA
-                              ? <Link href={`/admin/ecommerce/due?from=${range.from}&to=${range.to}`} className="font-bold text-[#dc3545] hover:underline">{money(r.dueBalance)}</Link>
+                              ? <Link href={`/admin/ecommerce/due?from=${range.from}&to=${range.to}`} className="font-bold text-[#dc3545]">{money(r.dueBalance)}</Link>
                               : <span className="text-admin-gray-400">—</span>}
                           </td>
                         )}

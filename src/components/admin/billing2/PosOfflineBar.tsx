@@ -79,7 +79,7 @@ export function PosOfflineBar({ notice, onNoticeDone }: { notice: string | null;
               {failed.length > 0 && <> {failed.length} bill{failed.length === 1 ? "" : "s"} need{failed.length === 1 ? "s" : ""} a look.</>}
               {loginNeeded && <> Your login has ended — log in again to upload.</>}
             </span>
-            {queue.length > 0 && <button type="button" onClick={() => setOpen((o) => !o)} className="rounded-[8px] px-2.5 py-1 font-medium underline-offset-2 hover:underline">{open ? "Hide" : "Show"} bills</button>}
+            {queue.length > 0 && <button type="button"onClick={() => setOpen((o) => !o)} className="rounded-[8px] px-2.5 py-1 font-medium">{open ? "Hide": "Show"} bills</button>}
             {online && waiting.length > 0 && (
               <button type="button" onClick={() => void sync()} disabled={syncing} className="inline-flex items-center gap-1.5 rounded-[8px] bg-[#2563eb] px-3 py-1.5 font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-60">
                 {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CloudUpload className="h-4 w-4" />}Upload now

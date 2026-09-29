@@ -188,7 +188,7 @@ export function GstReportView({ report }: { report: GstReport }) {
               <thead className="bg-admin-gray-50"><tr><th className={th}>Invoice</th><th className={th}>Date</th><th className={th}>Customer</th><th className={th}>Sale</th><th className={thr}>Taxable</th><th className={thr}>CGST</th><th className={thr}>SGST</th><th className={thr}>Value</th><th className="print:hidden" /></tr></thead>
               <tbody className="divide-y divide-admin-gray-100">
                 {report.invoices.map((r) => <tr key={r.id}><td className={cn(td, "font-medium")}>{r.number}</td><td className={td}>{dt(r.date)}</td><td className={cn(td, "max-w-[200px] truncate")}>{r.customer}</td><td className={td}>{r.channel}</td><td className={tdr}>{rs(r.taxable)}</td><td className={tdr}>{rs(r.cgst)}</td><td className={tdr}>{rs(r.sgst)}</td><td className={tdr}>{rs(r.value)}</td>
-                  <td className="px-3 py-2 text-right print:hidden"><a href={`/admin/ecommerce/invoice/${r.id}`} target="_blank" rel="noreferrer" title="Tax invoice" className="inline-flex items-center gap-1 text-xs font-medium text-admin-primary hover:underline"><Receipt className="h-3.5 w-3.5" /> Invoice</a></td></tr>)}
+                  <td className="px-3 py-2 text-right print:hidden"><a href={`/admin/ecommerce/invoice/${r.id}`} target="_blank"rel="noreferrer"title="Tax invoice"className="inline-flex items-center gap-1 text-xs font-medium text-admin-primary"><Receipt className="h-3.5 w-3.5"/> Invoice</a></td></tr>)}
                 <Total cols={["", "", "", rs(t.taxable), rs(t.cgst), rs(t.sgst), rs(t.value), ""]} />
               </tbody>
             </table>

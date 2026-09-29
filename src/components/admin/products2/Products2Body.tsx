@@ -607,7 +607,7 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
                 ]}
               />
               {selected.size > 0 && (
-                <button type="button" onClick={() => setSelected(new Set())} className="text-[13px] text-admin-gray-500 hover:text-admin-gray-800 hover:underline">
+                <button type="button"onClick={() => setSelected(new Set())} className="text-[13px] text-admin-gray-500 hover:text-admin-gray-800">
                   Clear selection
                 </button>
               )}
@@ -618,7 +618,7 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
             <button
               type="button"
               onClick={() => setFilters(EMPTY_PRODUCTS2_FILTERS)}
-              className="ml-auto flex items-center gap-1 text-[13px] font-medium text-orange-600 hover:underline"
+              className="ml-auto flex items-center gap-1 text-[13px] font-medium text-orange-600"
             >
               <X className="h-3.5 w-3.5" /> Clear filters
             </button>
@@ -660,7 +660,7 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
                 <tr>
                   <td colSpan={cols.length} className="border border-[#dee2e6] py-12 text-center text-admin-gray-400">
                     {products.length === 0 ? (
-                      <>No products yet. <Link href="/admin/ecommerce/products/add" className="font-semibold text-orange-600 hover:underline">Add your first product</Link></>
+                      <>No products yet. <Link href="/admin/ecommerce/products/add"className="font-semibold text-orange-600">Add your first product</Link></>
                     ) : (
                       <>No products match these filters.</>
                     )}
@@ -708,7 +708,7 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
                       )}
                       {show("p2-c-name") && (
                         <td className="px-2 min-[1500px]:px-3 border border-[#dee2e6]">
-                          <Link href={editHref} title={`Open ${p.name}`} className="block truncate font-medium text-admin-gray-900 hover:text-admin-primary hover:underline">
+                          <Link href={editHref} title={`Open ${p.name}`} className="block truncate font-medium text-admin-gray-900 hover:text-admin-primary">
                             {p.name}
                           </Link>
                           {/* Stock moves under the name only while the Stock column is hidden. */}
@@ -727,7 +727,7 @@ export function Products2Body({ notice }: { notice?: string | null } = {}) {
                               type="button"
                               onClick={() => setFilter("category", String(p.categoryId))}
                               title={`Show only ${p.categoryName}`}
-                              className="block max-w-full truncate text-left text-admin-gray-700 hover:text-[#2563eb] hover:underline"
+                              className="block max-w-full truncate text-left text-admin-gray-700 hover:text-[#2563eb]"
                             >
                               {p.categoryName}
                             </button>

@@ -365,7 +365,7 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
                   <button type="button" disabled={bulkBusy || !bulkAgent} onClick={() => bulk("assign")} className="flex h-9 items-center gap-1.5 rounded-[8px] bg-[#2563eb] px-3 font-semibold text-white hover:bg-[#1d4ed8] disabled:opacity-50"><Truck className="h-4 w-4" />Assign &amp; send out</button>
                 </span>
               )}
-              <button type="button" onClick={() => setPicked(new Set())} className="ml-auto text-[13px] font-medium text-blue-700 hover:underline">Clear</button>
+              <button type="button"onClick={() => setPicked(new Set())} className="ml-auto text-[13px] font-medium text-blue-700">Clear</button>
             </div>
           )}
 
@@ -411,14 +411,14 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
                         )}
                         {show("or2-c-order") && (
                           <td className={td}>
-                            <Link href={`/admin/ecommerce/orders/${r.id}`} className="block truncate font-medium text-[#2563eb] hover:underline">{r.orderNumber}</Link>
+                            <Link href={`/admin/ecommerce/orders/${r.id}`} className="block truncate font-medium text-[#2563eb]">{r.orderNumber}</Link>
                             {dShow("or2-d-date") && <div className="truncate text-xs text-admin-gray-500">{fmtDateTime(r.createdAt)}</div>}
                           </td>
                         )}
                         {show("or2-c-customer") && (
                           <td className={td}>
                             {r.customerId !== null
-                              ? <Link href={`/admin/ecommerce/customers/${r.customerId}`} className="block truncate font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.customerName}</Link>
+                              ? <Link href={`/admin/ecommerce/customers/${r.customerId}`} className="block truncate font-medium text-admin-gray-900 hover:text-[#2563eb]">{r.customerName}</Link>
                               : <span className="block truncate font-medium text-admin-gray-900">{r.customerName}{r.isGuest ? " (guest)" : ""}</span>}
                             {dShow("or2-d-phone") && (
                               <div className="truncate text-xs text-admin-gray-500">
@@ -436,7 +436,7 @@ export function Orders2Body({ data, canEdit, canBill, canDecide = canEdit, agent
                         )}
                         {show("or2-c-items") && (
                           <td className={td}>
-                            <button type="button" onClick={() => setDetails(r)} className="text-left hover:text-[#2563eb] hover:underline" title="See the items">
+                            <button type="button"onClick={() => setDetails(r)} className="text-left hover:text-[#2563eb]"title="See the items">
                               {r.itemCount} item{r.itemCount === 1 ? "" : "s"}
                             </button>
                             {dShow("or2-d-itemname") && (

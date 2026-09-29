@@ -182,7 +182,7 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
                       {on("cp-cols", "cp-c-order") && (
                         <td>
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <Link href={`/admin/ecommerce/orders/${o.id}`} className="font-semibold text-[#2563eb] hover:underline">{o.orderNumber}</Link>
+                            <Link href={`/admin/ecommerce/orders/${o.id}`} className="font-semibold text-[#2563eb]">{o.orderNumber}</Link>
                             {o.orderType === "online"
                               ? <span className="rounded-[5px] bg-violet-50 px-1.5 py-0.5 text-[10.5px] font-bold uppercase text-violet-700">Online</span>
                               : <span className="rounded-[5px] bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-bold uppercase text-amber-700">Store</span>}
@@ -246,7 +246,7 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
                           <li key={i} className="text-xs text-admin-gray-600">
                             <span className="mr-1 rounded bg-admin-gray-100 px-1 font-semibold">{i + 1}×</span>
                             {day(p.createdAt)} · {p.paymentMethod} · {money(p.amount)}
-                            {p.receipt && <> · <Link href={`/admin/ecommerce/payment-receipt/${encodeURIComponent(p.receipt)}`} target="_blank" className="text-blue-600 hover:underline">{p.receipt}</Link></>}
+                            {p.receipt && <> · <Link href={`/admin/ecommerce/payment-receipt/${encodeURIComponent(p.receipt)}`} target="_blank"className="text-blue-600">{p.receipt}</Link></>}
                           </li>
                         ))}
                       </ul>
@@ -393,7 +393,7 @@ function LinkAccounts({ customerId, other, onError }: { customerId: number; othe
     <section className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm text-amber-900 sm:flex-row sm:items-center">
       <Link2 className="hidden h-5 w-5 shrink-0 sm:block" />
       <div className="min-w-0 flex-1">
-        <p className="font-semibold">Same mobile number as {what}: <Link href={`/admin/ecommerce/customers/${other.id}`} className="underline">{other.name}</Link> ({other.orders} order{other.orders === 1 ? "" : "s"})</p>
+        <p className="font-semibold">Same mobile number as {what}: <Link href={`/admin/ecommerce/customers/${other.id}`} className="">{other.name}</Link> ({other.orders} order{other.orders === 1 ? "": "s"})</p>
         <p className="text-xs text-amber-800">{ask
           ? "Only link after checking it's the same person — at the counter or by calling this number. Their store bills, dues and addresses will show in their online account. This can't be undone."
           : "Link them so the customer sees their store bills in their online account."}</p>

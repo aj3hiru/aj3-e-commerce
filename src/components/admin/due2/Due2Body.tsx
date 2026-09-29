@@ -313,12 +313,12 @@ export function Due2Body({ data, filters: range, notice, canEdit }: Props) {
                 <PillButton variant="success" disabled={selectedRows.length === 0} onClick={() => setCollect(selectedRows)}>
                   <HandCoins className="h-3.5 w-3.5" /> Collect{selectedRows.length ? ` (${selectedRows.length})` : ""}
                 </PillButton>
-                {selected.size > 0 && <button type="button" onClick={() => setSelected(new Set())} className="text-[13px] text-admin-gray-500 hover:underline">Clear selection</button>}
+                {selected.size > 0 && <button type="button"onClick={() => setSelected(new Set())} className="text-[13px] text-admin-gray-500">Clear selection</button>}
               </>
             )}
 
             {filtersActive && (
-              <button type="button" onClick={() => { setF(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb] hover:underline">
+              <button type="button"onClick={() => { setF(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb]">
                 <X className="h-3.5 w-3.5" /> Clear filters
               </button>
             )}
@@ -378,17 +378,17 @@ export function Due2Body({ data, filters: range, notice, canEdit }: Props) {
                         {show("due2-c-customer") && (
                           <td className={td}>
                             {r.customerId !== null ? (
-                              <Link href={`/admin/ecommerce/customers/${r.customerId}`} title={`Open ${r.customerName}`} className="block max-w-full truncate font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.customerName}</Link>
+                              <Link href={`/admin/ecommerce/customers/${r.customerId}`} title={`Open ${r.customerName}`} className="block max-w-full truncate font-medium text-admin-gray-900 hover:text-[#2563eb]">{r.customerName}</Link>
                             ) : <span className="block max-w-full truncate font-medium text-admin-gray-900">{r.customerName}</span>}
                             <div className="truncate text-xs text-admin-gray-500">
-                              {r.customerPhone ? <a href={`tel:${r.customerPhone}`} className="hover:underline">{r.customerPhone}</a> : "No phone"}
+                              {r.customerPhone ? <a href={`tel:${r.customerPhone}`} className="">{r.customerPhone}</a> : "No phone"}
                               {r.productNames.length > 0 && <span title={r.productNames.join(", ")}> · {r.productNames.length} item{r.productNames.length === 1 ? "" : "s"}</span>}
                             </div>
                           </td>
                         )}
                         {show("due2-c-order") && (
                           <td className={td}>
-                            <Link href={`/admin/ecommerce/orders/${r.orderId}`} className="block truncate text-[#2563eb] hover:underline">{r.orderNumber ?? `#${r.orderId}`}</Link>
+                            <Link href={`/admin/ecommerce/orders/${r.orderId}`} className="block truncate text-[#2563eb]">{r.orderNumber ?? `#${r.orderId}`}</Link>
                             <div className="truncate text-xs text-admin-gray-500">{r.orderType === "offline" ? "In-store" : "Online"} · {fmtDateTime(r.createdAt).split(",")[0]}</div>
                           </td>
                         )}
@@ -405,7 +405,7 @@ export function Due2Body({ data, filters: range, notice, canEdit }: Props) {
                           <td className={td}>
                             {canEdit ? (
                               <button type="button" onClick={() => setDateEdit(r)} title="Change promise date"
-                                className="block max-w-full truncate text-left text-admin-gray-800 hover:text-[#2563eb] hover:underline">
+                                className="block max-w-full truncate text-left text-admin-gray-800 hover:text-[#2563eb]">
                                 {r.promisedDate ? longDate(r.promisedDate) : <span className="text-admin-gray-400">Set a date</span>}
                               </button>
                             ) : <span>{r.promisedDate ? longDate(r.promisedDate) : "—"}</span>}
@@ -646,7 +646,7 @@ function HistoryDialog({ row, onClose }: { row: Due2Row; onClose: () => void }) 
             {row.payments.map((p, i) => (
               <div key={`${p.receiptNumber}-${i}`} className="flex items-center justify-between gap-3 border-b border-admin-gray-100 px-3.5 py-2.5 text-sm last:border-b-0">
                 <span className="min-w-0">
-                  <Link href={`/admin/ecommerce/payment-receipt/${encodeURIComponent(p.receiptNumber)}`} className="block truncate font-medium text-[#2563eb] hover:underline">{p.receiptNumber}</Link>
+                  <Link href={`/admin/ecommerce/payment-receipt/${encodeURIComponent(p.receiptNumber)}`} className="block truncate font-medium text-[#2563eb]">{p.receiptNumber}</Link>
                   <span className="block text-xs text-admin-gray-500">{fmtDateTime(p.createdAt)} · {p.paymentMethod}{p.createdByName ? ` · by ${p.createdByName}` : ""}</span>
                 </span>
                 <b className="shrink-0 text-emerald-600">{money(p.amount)}</b>

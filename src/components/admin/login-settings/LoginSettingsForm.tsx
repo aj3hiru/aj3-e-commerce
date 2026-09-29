@@ -25,7 +25,7 @@ function parseSnippet(text: string): Partial<AuthSettings["firebase"]> {
 }
 
 const STEPS: { title: string; body: React.ReactNode }[] = [
-  { title: "Create a Firebase project", body: <>Open <a href="https://console.firebase.google.com/" target="_blank" rel="noreferrer" className="font-semibold text-admin-primary underline">console.firebase.google.com</a> → <b>Add project</b> → give it a name (e.g. your store name) → Continue. Google Analytics can be turned off.</> },
+  { title: "Create a Firebase project", body: <>Open <a href="https://console.firebase.google.com/"target="_blank"rel="noreferrer"className="font-semibold text-admin-primary">console.firebase.google.com</a> → <b>Add project</b> → give it a name (e.g. your store name) → Continue. Google Analytics can be turned off.</> },
   { title: "Add a Web app", body: <>In the project: <b>Project settings (⚙)</b> → <b>Your apps</b> → click the <b>&lt;/&gt; Web</b> icon → any nickname → <b>Register app</b>. Firebase shows a <code className="rounded bg-admin-gray-100 px-1">firebaseConfig</code> code block — copy it and paste it below.</> },
   { title: "Turn on Phone sign-in", body: <><b>Build → Authentication</b> → <b>Get started</b> → <b>Sign-in method</b> tab → <b>Phone</b> → Enable → Save.</> },
   { title: "Allow your website", body: <><b>Authentication → Settings → Authorized domains</b> → <b>Add domain</b> → enter your site&rsquo;s domain (e.g. <code className="rounded bg-admin-gray-100 px-1">sriandaltraders.co.in</code>).</> },
@@ -70,7 +70,7 @@ export function LoginSettingsForm({ initial, origin }: { initial: AuthSettings; 
         {on("ls-status") && <div className={cn("flex items-center gap-3 rounded-xl border px-4 py-3", live ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800")}>
           {live ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <CircleAlert className="h-5 w-5 shrink-0" />}
           <p className="flex-1 text-sm font-medium">{live ? "Mobile OTP login is live on your store." : "Customers log in with email/mobile + password. Set up Firebase to turn on OTP login."}</p>
-          <a href={`${origin}/login`} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold underline">Open login page<ExternalLink className="h-3.5 w-3.5" /></a>
+          <a href={`${origin}/login`} target="_blank"rel="noreferrer"className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold">Open login page<ExternalLink className="h-3.5 w-3.5"/></a>
         </div>}
 
         {on("ls-options") && (

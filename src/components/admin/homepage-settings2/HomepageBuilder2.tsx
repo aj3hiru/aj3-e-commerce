@@ -441,7 +441,7 @@ function HeroEditor({ slides, setSlides, notify, refresh }: PanelProps) {
                 <input defaultValue={s.buttonLink} onBlur={(e) => editLink(s.id, e.target.value || "#")} placeholder="Button link" className="h-8 w-full rounded-[0.375rem] border border-admin-gray-200 px-2 text-xs" />
                 <div className="flex items-center gap-2">
                   <button type="button" onClick={() => toggleSlide(s.id)} className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", s.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-admin-gray-100 text-admin-gray-500")}>{s.status === "active" ? "Active" : "Hidden"}</button>
-                  <button type="button" onClick={() => removeSlide(s.id)} className="text-[10px] font-medium text-red-600 hover:underline">Remove</button>
+                  <button type="button"onClick={() => removeSlide(s.id)} className="text-[10px] font-medium text-red-600">Remove</button>
                 </div>
               </div>
             </div>
@@ -521,7 +521,7 @@ function StripEditor({ stripItems, setStripItems, stripMode, setStripMode, strip
             {stripItems.map((it) => (
               <div key={it.id} className="flex items-center justify-between rounded-[0.375rem] border border-admin-gray-100 px-3 py-1.5 text-sm">
                 <span className="text-admin-gray-800">{it.name}</span>
-                <button type="button" onClick={() => removeCategory(it.id)} className="text-xs font-medium text-red-600 hover:underline">Remove</button>
+                <button type="button"onClick={() => removeCategory(it.id)} className="text-xs font-medium text-red-600">Remove</button>
               </div>
             ))}
           </div>
@@ -683,7 +683,7 @@ function ManualItemsEditor({ section: s, products, setSections, notify, refresh 
         {s.items.length === 0 ? <p className="text-xs text-admin-gray-400">No products picked yet.</p> : s.items.map((it) => (
           <div key={it.id} className="flex items-center justify-between rounded-[0.375rem] border border-admin-gray-100 px-3 py-1.5 text-sm">
             <span className="truncate text-admin-gray-800">{it.label}</span>
-            <button type="button" onClick={() => removeItem(it.id)} className="shrink-0 text-xs font-medium text-red-600 hover:underline">Remove</button>
+            <button type="button"onClick={() => removeItem(it.id)} className="shrink-0 text-xs font-medium text-red-600">Remove</button>
           </div>
         ))}
       </div>

@@ -301,7 +301,7 @@ export function Tags2Body({ data, range }: { data: Tags2Data; range: { from: str
               entries
             </label>
             {filtersActive && (
-              <button type="button" onClick={() => { setF(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb] hover:underline">
+              <button type="button"onClick={() => { setF(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb]">
                 <X className="h-3.5 w-3.5" /> Clear filters
               </button>
             )}
@@ -372,7 +372,7 @@ export function Tags2Body({ data, range }: { data: Tags2Data; range: { from: str
                           <td className={td}>
                             {r.products > 0 ? (
                               <Link href={`/admin/ecommerce/products?${r.tagGroup === "badge" ? "badge" : "itemType"}=${encodeURIComponent(r.slug)}`}
-                                className="font-medium text-[#2563eb] hover:underline">{r.products}</Link>
+                                className="font-medium text-[#2563eb]">{r.products}</Link>
                             ) : <span className="text-admin-gray-400">0</span>}
                             <div className="text-xs text-admin-gray-500">{r.activeProducts} active</div>
                           </td>

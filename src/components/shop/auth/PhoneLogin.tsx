@@ -253,7 +253,7 @@ export function PhoneLogin({ firebase, countryCode, passwordLogin, redirectTo, s
         {passwordLogin && mode !== "password" && (
           <button type="button" onClick={() => { abort.current?.abort(); setMode("password"); setError(""); }} className={cn(btnOutline, "h-11 w-full")}><KeyRound className="h-5 w-5" />Login with password instead</button>
         )}
-        <button type="button" onClick={() => { abort.current?.abort(); setMode("staff"); setError(""); }} className="w-full py-1 text-center text-[13px] font-medium text-[#616173] underline-offset-2 hover:underline">
+        <button type="button"onClick={() => { abort.current?.abort(); setMode("staff"); setError(""); }} className="w-full py-1 text-center text-[13px] font-medium text-[#616173]">
           Login with email &amp; password
         </button>
       </div>

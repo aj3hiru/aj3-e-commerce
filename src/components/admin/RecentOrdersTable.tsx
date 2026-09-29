@@ -101,7 +101,7 @@ export function RecentOrdersTable({ orders, rangeLabel }: RecentOrdersTableProps
                     <td>
                       <Link
                         href={`/admin/ecommerce/orders/${o.id}`}
-                        className="text-admin-primary hover:underline"
+                        className="text-admin-primary"
                         title={`Open order ${o.orderNumber}`}
                       >
                         {o.orderNumber}

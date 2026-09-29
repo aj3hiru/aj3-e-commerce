@@ -112,7 +112,7 @@ export function AdminLiveUpdates({ username }: { username: string }) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-admin-gray-900">{t.title}</p>
             <p className="truncate text-xs text-admin-gray-500">{t.body}</p>
-            <Link href={t.href} onClick={() => setToasts((x) => x.filter((y) => y.key !== t.key))} className="mt-1 inline-block text-xs font-semibold text-admin-primary hover:underline">Open</Link>
+            <Link href={t.href} onClick={() => setToasts((x) => x.filter((y) => y.key !== t.key))} className="mt-1 inline-block text-xs font-semibold text-admin-primary">Open</Link>
           </div>
           <button type="button" onClick={() => setToasts((x) => x.filter((y) => y.key !== t.key))} aria-label="Close" className="rounded p-1 text-admin-gray-400 hover:bg-admin-gray-100"><X className="h-4 w-4" /></button>
         </div>

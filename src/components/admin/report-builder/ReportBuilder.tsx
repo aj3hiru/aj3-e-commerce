@@ -104,7 +104,7 @@ function Section<T>({ show, all, icon, title, cols, rows, rowKey, empty, foot }:
         <Table cols={cols} rows={list} rowKey={rowKey} empty={empty} foot={foot} dense />
       </div>
       {!all && rows.length > 10 && (
-        <button type="button" onClick={() => setOpen((o) => !o)} className="rb-noprint mt-2 text-[13px] font-semibold text-[#7c3aed] hover:underline">{open ? "Show less" : `Show all ${rows.length}`}</button>
+        <button type="button"onClick={() => setOpen((o) => !o)} className="rb-noprint mt-2 text-[13px] font-semibold text-[#7c3aed]">{open ? "Show less": `Show all ${rows.length}`}</button>
       )}
     </section>
   );
@@ -121,7 +121,7 @@ function Sheet({ data, all }: { data: ReportData; all: boolean }) {
 
   const tlCols = ([
     { key: "rb-c-time", label: "Time", cell: (r) => <span className="whitespace-nowrap">{fDate(r.at)}<br /><span className="text-[#6b7280]">{fTime(r.at)}</span></span> },
-    { key: "rb-c-order", label: "Order ID", cell: (r) => <Link href={`/admin/ecommerce/orders/${r.orderId}`} className="font-medium text-[#6d28d9] hover:underline">{r.orderNumber}</Link> },
+    { key: "rb-c-order", label: "Order ID", cell: (r) => <Link href={`/admin/ecommerce/orders/${r.orderId}`} className="font-medium text-[#6d28d9]">{r.orderNumber}</Link> },
     { key: "rb-c-channel", label: "Channel", cell: (r) => <span className={cn("whitespace-nowrap rounded-[6px] px-2 py-0.5 text-[12px] font-medium print:px-1 print:text-[9px]", r.channel === "online" ? "bg-[#e8f8ee] text-[#15803d]" : "bg-[#eaf1ff] text-[#1d4ed8]")}>{r.channel === "online" ? "Online" : "In-store"}</span> },
     { key: "rb-c-customer", label: "Customer", cell: (r) => <span><span className="block">{r.customer}</span>{isVisible("rb-c-phone") && <span className="text-[12px] text-[#6b7280] print:text-[9px]">{r.phone ?? "—"}</span>}</span> },
     { key: "rb-c-product", label: "Product", cell: (r) => <span className="font-medium">{r.product}</span> },
@@ -282,7 +282,7 @@ function Sheet({ data, all }: { data: ReportData; all: boolean }) {
           { key: "rb-col-time", label: "Time", cell: (r) => `${fDate(r.at)}, ${fTime(r.at)}`, foot: "Total" },
           { key: "rb-col-receipt", label: "Receipt", cell: (r) => r.receipt },
           { key: "rb-col-customer", label: "Customer", cell: (r) => r.customer },
-          { key: "rb-col-order", label: "Order", cell: (r) => (r.orderId ? <Link href={`/admin/ecommerce/orders/${r.orderId}`} className="text-[#6d28d9] hover:underline">{r.orderNumber}</Link> : "—") },
+          { key: "rb-col-order", label: "Order", cell: (r) => (r.orderId ? <Link href={`/admin/ecommerce/orders/${r.orderId}`} className="text-[#6d28d9]">{r.orderNumber}</Link> : "—") },
           { key: "rb-col-method", label: "Method", cell: (r) => r.method },
           { key: "rb-col-amount", label: "Amount", right: true, cell: (r) => money(r.amount), foot: money(k.collected) },
           { key: "rb-col-by", label: "Received by", cell: (r) => r.by ?? "—" },
@@ -291,7 +291,7 @@ function Sheet({ data, all }: { data: ReportData; all: boolean }) {
       <Section show={isVisible("rb-g-dues")} all={all} icon={AlertTriangle} title="New Dues" rows={data.newDues} rowKey={(r) => r.key} empty="No new dues in this period." foot
         cols={([
           { key: "rb-du-time", label: "Time", cell: (r) => `${fDate(r.at)}, ${fTime(r.at)}`, foot: "Total" },
-          { key: "rb-du-order", label: "Order", cell: (r) => <Link href={`/admin/ecommerce/orders/${r.orderId}`} className="text-[#6d28d9] hover:underline">{r.orderNumber}</Link> },
+          { key: "rb-du-order", label: "Order", cell: (r) => <Link href={`/admin/ecommerce/orders/${r.orderId}`} className="text-[#6d28d9]">{r.orderNumber}</Link> },
           { key: "rb-du-customer", label: "Customer", cell: (r) => r.customer },
           { key: "rb-du-phone", label: "Mobile", cell: (r) => r.phone ?? "—" },
           { key: "rb-du-amount", label: "Due amount", right: true, cell: (r) => money(r.amount), foot: money(k.newDues) },

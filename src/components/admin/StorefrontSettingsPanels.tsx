@@ -140,7 +140,7 @@ function MenuBuilder({ items, onChange, categories, defaults }: {
                 </div>
               ))}
               <button type="button" onClick={() => set(i, { children: [...it.children, { id: newId(), label: "", href: "/" }] })}
-                className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-[#9f2089] hover:underline"><Plus className="h-3.5 w-3.5" /> Add dropdown link</button>
+                className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-[#9f2089]"><Plus className="h-3.5 w-3.5"/> Add dropdown link</button>
             </div>
           )}
         </div>
@@ -224,7 +224,7 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
         {!p.showBell && !p.autoPrompt && (
           <p className="mt-3 flex items-start gap-2 text-[0.8rem] text-amber-700"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />With both off, shoppers have no way to subscribe.</p>
         )}
-        <Link href="/push-notifications/push-manager2" className="mt-4 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-[#9f2089] hover:underline">
+        <Link href="/push-notifications/push-manager2"className="mt-4 inline-flex items-center gap-1.5 text-[0.85rem] font-semibold text-[#9f2089]">
           Send notifications &amp; manage subscribers in Push Manager <ExternalLink className="h-3.5 w-3.5" />
         </Link>
       </SettingsPanel>
@@ -267,7 +267,7 @@ export function StorefrontSettingsPanels({ active, value, onChange, categories, 
                   <button type="button" onClick={() => setCol(i, { links: col.links.filter((_, k) => k !== li) })} aria-label="Remove link" className="rounded p-1.5 text-red-500 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>
                 </div>
               ))}
-              <button type="button" onClick={() => setCol(i, { links: [...col.links, { id: newId(), label: "", href: "/" }] })} className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-[#9f2089] hover:underline"><Plus className="h-3.5 w-3.5" /> Add link</button>
+              <button type="button"onClick={() => setCol(i, { links: [...col.links, { id: newId(), label: "", href: "/"}] })} className="flex items-center gap-1.5 text-[0.8rem] font-semibold text-[#9f2089]"><Plus className="h-3.5 w-3.5"/> Add link</button>
             </div>
           ))}
           {f.columns.length < 3 && (

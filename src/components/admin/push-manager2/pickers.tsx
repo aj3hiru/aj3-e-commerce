@@ -143,7 +143,7 @@ export function ProductPicker({ catalog, origin, selectedId, onPick, onClose }: 
         </div>
       </div>
       <button type="button" onClick={() => { setF({ ...EMPTY_FILTERS, q: f.q }); setPage(1); }} disabled={activeCount === 0}
-        className="flex items-center gap-1.5 text-sm font-medium text-[#2563eb] hover:underline disabled:text-admin-gray-400 disabled:no-underline">
+        className="flex items-center gap-1.5 text-sm font-medium text-[#2563eb] disabled:text-admin-gray-400 disabled:no-underline">
         <RotateCcw className="h-3.5 w-3.5" /> Reset filters
       </button>
     </div>

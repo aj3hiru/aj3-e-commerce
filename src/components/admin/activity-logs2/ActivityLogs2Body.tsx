@@ -132,7 +132,7 @@ export function ActivityLogs2Body({ logs, stats, actions, users, filters, page, 
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search IP address or description…" className={cn(inputCls, "pl-9")} />
             </div>
             {filtersActive && (
-              <button type="button" onClick={() => { setSearch(""); router.push("?"); }} className="flex items-center gap-1 text-sm font-medium text-[#2563eb] hover:underline">
+              <button type="button"onClick={() => { setSearch(""); router.push("?"); }} className="flex items-center gap-1 text-sm font-medium text-[#2563eb]">
                 <X className="h-3.5 w-3.5" /> Clear filters
               </button>
             )}
@@ -352,7 +352,7 @@ function DetailPanel({ log, onClose }: { log: LogRow2; onClose: () => void }) {
                 </div>
                 {log.email && <div className="truncate text-xs text-admin-gray-500">{log.email}</div>}
               </div>
-              <Link href="/admin/user-manager" className="shrink-0 text-xs font-medium text-[#2563eb] hover:underline">View</Link>
+              <Link href="/admin/user-manager"className="shrink-0 text-xs font-medium text-[#2563eb]">View</Link>
             </div>
           )}
           <p className="mt-3 text-[11px] leading-relaxed text-admin-gray-400">

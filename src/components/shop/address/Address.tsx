@@ -148,7 +148,7 @@ export function AddressForm({ initial, defaults, onSaved, onClose }: {
               <iframe title="Pinned location" src={mapSrc} className="h-40 w-full border-0" loading="lazy" />
               <p className="flex items-center gap-1.5 bg-[#e7f8ee] px-3 py-2 text-[12.5px] font-medium text-[#038d63]">
                 <MapPinned className="h-4 w-4" />Location pinned{loc.accuracy !== null && ` (±${loc.accuracy} m)`} · {a.lat?.toFixed(5)}, {a.lng?.toFixed(5)}
-                <button type="button" onClick={() => set({ lat: null, lng: null })} className="ml-auto font-semibold text-[#616173] underline">Remove</button>
+                <button type="button"onClick={() => set({ lat: null, lng: null })} className="ml-auto font-semibold text-[#616173]">Remove</button>
               </p>
             </div>
           )}

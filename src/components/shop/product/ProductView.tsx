@@ -467,7 +467,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
             <ol className="flex flex-wrap items-center gap-y-1 text-[15px] leading-[22px] tracking-[0.15px]">
               {crumbs.map((c) => (
                 <li key={c.href} className="flex items-center">
-                  <Link href={c.href} className="text-[var(--hp-accent)] hover:underline">{c.label}</Link>
+                  <Link href={c.href} className="text-[var(--hp-accent)]">{c.label}</Link>
                   <span aria-hidden className="px-2 text-[#353543]">/</span>
                 </li>
               ))}

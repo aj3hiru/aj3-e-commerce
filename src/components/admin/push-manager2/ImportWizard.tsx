@@ -370,7 +370,7 @@ function Review({ report }: { report: ImportAnalysis }) {
         <div className="rounded-xl border border-admin-gray-200">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-admin-gray-100 px-4 py-2.5">
             <span className="text-sm font-semibold text-admin-gray-900">Rejected rows {report.invalid > 8 && <span className="font-normal text-admin-gray-500">(first 8 of {formatInt(report.invalid)})</span>}</span>
-            <a href={`/api/push2/subscribers/import/rejected?token=${encodeURIComponent(report.token)}`} className="flex items-center gap-1.5 text-sm font-medium text-[#2563eb] hover:underline">
+            <a href={`/api/push2/subscribers/import/rejected?token=${encodeURIComponent(report.token)}`} className="flex items-center gap-1.5 text-sm font-medium text-[#2563eb]">
               <Download className="h-4 w-4" /> Download all (CSV)
             </a>
           </div>
@@ -417,7 +417,7 @@ function KeyNotice({ siteKey, onOpenSettings }: { siteKey: { configured: boolean
         This site&apos;s keys: <b className="font-mono">ID {siteKey.fingerprint}</b>. Import subscribers that signed up with <b>these same keys</b>.
         Coming from another server? Copy that server&apos;s keys into Settings first.
       </span>
-      <button type="button" onClick={onOpenSettings} className="font-semibold text-[#2563eb] hover:underline">Settings →</button>
+      <button type="button"onClick={onOpenSettings} className="font-semibold text-[#2563eb]">Settings →</button>
     </div>
   );
 }
@@ -438,7 +438,7 @@ function KeyCheck({ report, onOpenSettings }: { report: ImportAnalysis; onOpenSe
     <div className={cn("flex flex-wrap items-start gap-3 rounded-xl border px-4 py-3 text-sm", m.cls)}>
       {m.icon}
       <span className="min-w-0 flex-1">{m.text}</span>
-      {report.keyCheck !== "match" && <button type="button" onClick={onOpenSettings} className="text-sm font-semibold underline-offset-2 hover:underline">Open Settings</button>}
+      {report.keyCheck !== "match"&& <button type="button"onClick={onOpenSettings} className="text-sm font-semibold">Open Settings</button>}
     </div>
   );
 }

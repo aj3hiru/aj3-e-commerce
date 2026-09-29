@@ -73,7 +73,7 @@ export function OrderDeskDashboard({ d, canAccept }: { d: Awaited<ReturnType<typ
               {d.newOrders.map((o) => (
                 <li key={o.id} className="flex flex-wrap items-center gap-3 px-2 py-2.5">
                   <div className="min-w-0 flex-1">
-                    <Link href={`/admin/ecommerce/orders/${o.id}`} className="text-sm font-semibold text-admin-primary hover:underline">#{o.number}</Link>
+                    <Link href={`/admin/ecommerce/orders/${o.id}`} className="text-sm font-semibold text-admin-primary">#{o.number}</Link>
                     <span className="text-sm text-admin-gray-700"> · {o.customer || "Customer"}</span>
                     <p className="text-xs text-admin-gray-500">{o.items} item{o.items === 1 ? "" : "s"} · {money(o.total)} · {o.paid ? "Paid" : "Unpaid"} · {ago(o.at)}</p>
                   </div>

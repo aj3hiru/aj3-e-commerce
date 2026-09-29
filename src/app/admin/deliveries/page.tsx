@@ -76,7 +76,7 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
               <tbody className="divide-y divide-admin-gray-100">
                 {onRoad.map((o) => (
                   <tr key={o.id} className="[&>td]:px-3 [&>td]:py-2">
-                    <td><Link href={`/admin/ecommerce/orders/${o.id}`} className="font-semibold text-[#2563eb] hover:underline">{o.number}</Link></td>
+                    <td><Link href={`/admin/ecommerce/orders/${o.id}`} className="font-semibold text-[#2563eb]">{o.number}</Link></td>
                     <td className="font-semibold text-admin-gray-900">{o.agentName}</td>
                     <td><div>{o.customer}</div><div className="max-w-[280px] truncate text-xs text-admin-gray-500" title={o.address}>{o.address.replace(/\n/g, ", ")}</div></td>
                     <td><span className={cn("rounded-md px-2 py-0.5 text-xs font-semibold", o.status === "Out for Delivery" ? "bg-sky-50 text-sky-700" : "bg-amber-50 text-amber-700")}>{o.status === "Out for Delivery" ? "On the way" : "Not picked up"}</span></td>

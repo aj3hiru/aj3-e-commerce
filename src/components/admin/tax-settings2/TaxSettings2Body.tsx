@@ -105,7 +105,7 @@ export function TaxSettings2Body({ rates: initial, orphanProducts }: { rates: Ta
 
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-sm text-admin-gray-400">
-            {rates.length === 0 ? <>No GST slabs yet. <button type="button" onClick={() => setEditing("new")} className="font-semibold text-[#2563eb] hover:underline">Add your first slab</button></> : "No slabs match this search."}
+            {rates.length === 0 ? <>No GST slabs yet. <button type="button"onClick={() => setEditing("new")} className="font-semibold text-[#2563eb]">Add your first slab</button></> : "No slabs match this search."}
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -126,7 +126,7 @@ export function TaxSettings2Body({ rates: initial, orphanProducts }: { rates: Ta
                     <tr key={r.id} className={cn("odd:bg-[#f2f2f2] even:bg-white", isBusy && "opacity-60")}>
                       {show("tx2-c-label") && (
                         <td className={td}>
-                          <button type="button" onClick={() => setEditing(r)} className="font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{r.label}</button>
+                          <button type="button"onClick={() => setEditing(r)} className="font-medium text-admin-gray-900 hover:text-[#2563eb]">{r.label}</button>
                         </td>
                       )}
                       {show("tx2-c-rate") && <td className={td}>{r.rate}%</td>}
@@ -136,7 +136,7 @@ export function TaxSettings2Body({ rates: initial, orphanProducts }: { rates: Ta
                           {r.isDefault ? (
                             <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-600"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> Default</span>
                           ) : (
-                            <button type="button" disabled={isBusy} onClick={() => setDefault(r)} className="text-xs font-medium text-[#2563eb] hover:underline disabled:opacity-50">Set as default</button>
+                            <button type="button"disabled={isBusy} onClick={() => setDefault(r)} className="text-xs font-medium text-[#2563eb] disabled:opacity-50">Set as default</button>
                           )}
                         </td>
                       )}

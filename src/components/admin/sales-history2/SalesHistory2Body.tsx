@@ -352,7 +352,7 @@ function DueTile({ collected, outstanding }: { collected: number; outstanding: n
   return (
     <TileShell icon={Wallet} tone="amber" label="Today's Due Collection" value={money(collected)}>
       {outstanding > 0.004 ? (
-        <Link href="/admin/ecommerce/due" className="text-amber-600 hover:underline">{money(outstanding)} still due</Link>
+        <Link href="/admin/ecommerce/due"className="text-amber-600">{money(outstanding)} still due</Link>
       ) : (
         <span className="text-admin-gray-500">— All collected</span>
       )}
@@ -734,14 +734,14 @@ function SalesLedgerCard({ rows, resetKey }: { rows: LedgerRow[]; resetKey: stri
                     )}
                     {show("sh2-c-order") && (
                       <td className="whitespace-nowrap px-3 py-2">
-                        <Link href={`/admin/ecommerce/orders/${r.id}`} className="text-blue-600 hover:underline">{r.orderNumber}</Link>
+                        <Link href={`/admin/ecommerce/orders/${r.id}`} className="text-blue-600">{r.orderNumber}</Link>
                       </td>
                     )}
                     {show("sh2-c-customer") && (
                       <td className="px-3 py-2">
                         <div className="truncate">
                           {r.customerId ? (
-                            <Link href={`/admin/ecommerce/customers/${r.customerId}`} className="text-blue-600 hover:underline" title={r.customerName}>{r.customerName}</Link>
+                            <Link href={`/admin/ecommerce/customers/${r.customerId}`} className="text-blue-600"title={r.customerName}>{r.customerName}</Link>
                           ) : (
                             <span className="text-admin-gray-900" title={r.customerName}>{r.customerName}</span>
                           )}
@@ -768,7 +768,7 @@ function SalesLedgerCard({ rows, resetKey }: { rows: LedgerRow[]; resetKey: stri
                             type="button"
                             onClick={() => setPayRow(r)}
                             title="Record a due payment"
-                            className="text-xs font-semibold text-red-600 underline underline-offset-2 hover:text-red-700"
+                            className="text-xs font-semibold text-red-600 hover:text-red-700"
                           >
                             Due {money(r.due)}
                           </button>

@@ -447,13 +447,13 @@ export function StockOut2Body({ products: initial, notice }: { products: StockOu
                   ]}
                 />
                 {selected.size > 0 && (
-                  <button type="button" onClick={() => setSelected(new Set())} className="text-[13px] text-admin-gray-500 hover:underline">Clear selection</button>
+                  <button type="button"onClick={() => setSelected(new Set())} className="text-[13px] text-admin-gray-500">Clear selection</button>
                 )}
               </>
             )}
 
             {filtersActive && (
-              <button type="button" onClick={() => { setFilters(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb] hover:underline">
+              <button type="button"onClick={() => { setFilters(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb]">
                 <X className="h-3.5 w-3.5" /> Clear filters
               </button>
             )}
@@ -525,7 +525,7 @@ export function StockOut2Body({ products: initial, notice }: { products: StockOu
                           )}
                           {show("so2-c-name") && (
                             <td className={td}>
-                              <Link href={EDIT_HREF(p.id)} title={`Edit ${p.name}`} className="block max-w-full truncate text-admin-gray-900 hover:text-[#2563eb] hover:underline">{p.name}</Link>
+                              <Link href={EDIT_HREF(p.id)} title={`Edit ${p.name}`} className="block max-w-full truncate text-admin-gray-900 hover:text-[#2563eb]">{p.name}</Link>
                               {(p.brandName || p.sku) && <div className="truncate text-xs text-admin-gray-500">{p.brandName ?? p.sku}</div>}
                             </td>
                           )}
@@ -533,7 +533,7 @@ export function StockOut2Body({ products: initial, notice }: { products: StockOu
                             <td className={td}>
                               {p.categoryName && p.categoryId !== null ? (
                                 <button type="button" onClick={() => setF("category", String(p.categoryId))} title={`Show only ${p.categoryName}`}
-                                  className="block max-w-full truncate text-left hover:text-[#2563eb] hover:underline">{p.categoryName}</button>
+                                  className="block max-w-full truncate text-left hover:text-[#2563eb]">{p.categoryName}</button>
                               ) : <span className="text-admin-gray-400">—</span>}
                             </td>
                           )}

@@ -108,7 +108,7 @@ export function PagesTable({ pages }: { pages: PageRow[] }) {
                   {list.length === 0 && <tr><td colSpan={5} className="py-10 text-center text-admin-gray-400">No pages match.</td></tr>}
                   {list.map((p) => (
                     <tr key={p.id} className="hover:bg-[#f8f9fe]">
-                      {on("pg-table", "pg-c-title") && <td className={cn(td, "font-medium text-admin-gray-900")}><Link href={`/admin/pages/${p.id}`} className="hover:text-[#2563eb] hover:underline">{p.title}</Link></td>}
+                      {on("pg-table", "pg-c-title") && <td className={cn(td, "font-medium text-admin-gray-900")}><Link href={`/admin/pages/${p.id}`} className="hover:text-[#2563eb]">{p.title}</Link></td>}
                       {on("pg-table", "pg-c-slug") && <td className={cn(td, "text-admin-gray-500")}>/{p.slug}</td>}
                       {on("pg-table", "pg-c-status") && <td className={td}><StatusBadge variant={p.status === "published" ? "success" : "secondary"}>{p.status === "published" ? "Published" : "Draft"}</StatusBadge></td>}
                       {on("pg-table", "pg-c-updated") && <td className={cn(td, "text-admin-gray-600")}>{new Date(p.updatedAt).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}</td>}

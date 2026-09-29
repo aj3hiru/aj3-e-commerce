@@ -48,7 +48,7 @@ export function ReceiptsButton({ receipts, title }: { receipts: DueReceipt[]; ti
               <div key={`${r.receiptNumber}-${i}`} className="flex items-center gap-3 border-b border-admin-gray-100 px-3.5 py-2.5 text-sm last:border-b-0">
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-admin-gray-100 text-xs font-bold text-admin-gray-600">{i + 1}×</span>
                 <span className="min-w-0 flex-1">
-                  <Link href={r.url ?? receiptUrl(r.receiptNumber)} target="_blank" className="block truncate font-medium text-[#2563eb] hover:underline">{r.receiptNumber}</Link>
+                  <Link href={r.url ?? receiptUrl(r.receiptNumber)} target="_blank"className="block truncate font-medium text-[#2563eb]">{r.receiptNumber}</Link>
                   <span className="block text-xs text-admin-gray-500">{when(r.createdAt)} · {r.paymentMethod}{r.by ? ` · by ${r.by}` : ""}</span>
                 </span>
                 <b className="shrink-0 text-emerald-600">{money(r.amount)}</b>

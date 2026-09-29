@@ -71,7 +71,7 @@ export function DeliveryBoard({ agents, unassigned, canAssign }: { agents: Agent
                 <li key={o.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                   <div className="min-w-[220px] flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                      <Link href={`/admin/ecommerce/orders/${o.id}`} className="font-semibold text-[#2563eb] hover:underline">#{o.number}</Link>
+                      <Link href={`/admin/ecommerce/orders/${o.id}`} className="font-semibold text-[#2563eb]">#{o.number}</Link>
                       {show("dv-waiting", "dv-w-customer") && <span className="text-admin-gray-800">{o.customer}</span>}
                       {show("dv-waiting", "dv-w-amount") && <span className="font-semibold text-admin-gray-900">{money(o.total)}</span>}
                       {show("dv-waiting", "dv-w-payment") && <span className={cn("rounded-[6px] px-1.5 py-0.5 text-[11px] font-semibold", o.paymentStatus === "Paid" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700")}>{o.paymentStatus === "Paid" ? "Paid" : `Collect · ${o.paymentName}`}</span>}
@@ -130,7 +130,7 @@ export function DeliveryBoard({ agents, unassigned, canAssign }: { agents: Agent
                   {a.orders.map((o) => (
                     <li key={o.id} className="py-2.5">
                       <div className="flex items-center justify-between gap-2">
-                        <Link href={`/admin/ecommerce/orders/${o.id}`} className="text-sm font-semibold text-[#2563eb] hover:underline">#{o.number}</Link>
+                        <Link href={`/admin/ecommerce/orders/${o.id}`} className="text-sm font-semibold text-[#2563eb]">#{o.number}</Link>
                         {show("dv-agents", "dv-a-status") && (
                           <span className={cn("inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 text-[11px] font-semibold", o.status === "Out for Delivery" ? "bg-sky-50 text-sky-700" : "bg-admin-gray-100 text-admin-gray-600")}>
                             {o.status === "Out for Delivery" ? <Truck className="h-3 w-3" /> : <PackageCheck className="h-3 w-3" />}{o.status === "Out for Delivery" ? "On the way" : "To pick up"}

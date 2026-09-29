@@ -431,7 +431,7 @@ function TargetPicker({ noun, items, selected, onChange }: {
       </div>
       <div className="flex items-center justify-between border-t border-admin-gray-100 bg-admin-gray-50 px-3.5 py-2 text-[13px] text-admin-gray-600">
         <span><b className="text-admin-gray-900">{selected.length}</b> of {items.length} {noun} chosen</span>
-        {selected.length > 0 && <button type="button" onClick={() => onChange([])} className="text-[#2563eb] hover:underline">Clear</button>}
+        {selected.length > 0 && <button type="button"onClick={() => onChange([])} className="text-[#2563eb]">Clear</button>}
       </div>
     </div>
   );

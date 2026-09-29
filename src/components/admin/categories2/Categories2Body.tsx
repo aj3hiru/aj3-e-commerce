@@ -359,7 +359,7 @@ export function Categories2Body({ categories: initial }: { categories: Category2
             )}
 
             {filtersActive && (
-              <button type="button" onClick={() => { setFilters(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb] hover:underline">
+              <button type="button"onClick={() => { setFilters(NO_FILTERS); setSearch(""); }} className="flex items-center gap-1 text-[13px] font-medium text-[#2563eb]">
                 <X className="h-3.5 w-3.5" /> Clear filters
               </button>
             )}
@@ -399,7 +399,7 @@ export function Categories2Body({ categories: initial }: { categories: Category2
                 <tbody>
                   {rows.length === 0 ? (
                     <tr><td colSpan={cols.length} className={cn(td, "py-12 text-center text-admin-gray-400")}>
-                      {categories.length === 0 ? <>No categories yet. <button type="button" onClick={() => setEditing("new")} className="font-semibold text-[#2563eb] hover:underline">Add your first category</button></> : "No categories match these filters."}
+                      {categories.length === 0 ? <>No categories yet. <button type="button"onClick={() => setEditing("new")} className="font-semibold text-[#2563eb]">Add your first category</button></> : "No categories match these filters."}
                     </td></tr>
                   ) : rows.map((c) => {
                     const isBusy = busy.has(c.id);
@@ -413,7 +413,7 @@ export function Categories2Body({ categories: initial }: { categories: Category2
                         {show("c2-c-image") && <td className={td}><Thumb src={c.image} name={c.name} /></td>}
                         {show("c2-c-name") && (
                           <td className={td}>
-                            <button type="button" onClick={() => setEditing(c)} title={`Edit ${c.name}`} className="block max-w-full truncate text-left font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">
+                            <button type="button"onClick={() => setEditing(c)} title={`Edit ${c.name}`} className="block max-w-full truncate text-left font-medium text-admin-gray-900 hover:text-[#2563eb]">
                               {c.name}
                             </button>
                           </td>
@@ -422,7 +422,7 @@ export function Categories2Body({ categories: initial }: { categories: Category2
                         {show("c2-c-products") && (
                           <td className={td}>
                             {c.products > 0 ? (
-                              <a href={`/admin/ecommerce/products?q=${encodeURIComponent(c.name)}`} title="See these products" className="hover:text-[#2563eb] hover:underline">{c.products.toLocaleString("en-IN")}</a>
+                              <a href={`/admin/ecommerce/products?q=${encodeURIComponent(c.name)}`} title="See these products"className="hover:text-[#2563eb]">{c.products.toLocaleString("en-IN")}</a>
                             ) : <span>0</span>}
                           </td>
                         )}
@@ -653,7 +653,7 @@ function CategoryModal({ category, onClose, onSaved, onDelete }: {
           {category && category.products > 0 && (
             <div className="flex items-center justify-between rounded-[0.5rem] border border-[#dee2e6] bg-[#f8f9fa] px-3 py-2.5 text-sm text-admin-gray-700">
               <span>{category.products.toLocaleString("en-IN")} product{category.products === 1 ? "" : "s"} in this category · ID #{category.id}</span>
-              <a href={`/admin/ecommerce/products?q=${encodeURIComponent(category.name)}`} className="text-xs font-medium text-[#2563eb] hover:underline">View</a>
+              <a href={`/admin/ecommerce/products?q=${encodeURIComponent(category.name)}`} className="text-xs font-medium text-[#2563eb]">View</a>
             </div>
           )}
           {err && <div role="alert" className="rounded-[0.375rem] border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err.text}</div>}
@@ -689,7 +689,7 @@ function CategoryModal({ category, onClose, onSaved, onDelete }: {
                 {preview && (
                   <button type="button" onClick={() => { if (file) setFile(null); else setRemoveImage(true); }} className="h-9 rounded-[0.375rem] px-2 text-sm font-medium text-red-600 hover:bg-red-50">Remove</button>
                 )}
-                {removeImage && !file && category?.image && <button type="button" onClick={() => setRemoveImage(false)} className="h-9 px-2 text-sm text-[#2563eb] hover:underline">Undo</button>}
+                {removeImage && !file && category?.image && <button type="button"onClick={() => setRemoveImage(false)} className="h-9 px-2 text-sm text-[#2563eb]">Undo</button>}
               </div>
               <input ref={input} type="file" accept="image/*" className="sr-only" aria-label="Category image"
                 onClick={(e) => ((e.target as HTMLInputElement).value = "")}

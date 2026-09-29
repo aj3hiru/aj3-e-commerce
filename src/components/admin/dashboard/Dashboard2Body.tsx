@@ -218,7 +218,7 @@ export function Dashboard2Body({ stats, rangeLabel }: { stats: Dashboard2Stats; 
         icon={faFileAlt}
         title="Recent Orders"
         action={
-          <Link href="/admin/ecommerce/orders" className="flex items-center gap-2 text-[0.875rem] font-medium text-[#7c3aed] hover:underline">
+          <Link href="/admin/ecommerce/orders"className="flex items-center gap-2 text-[0.875rem] font-medium text-[#7c3aed]">
             View All <FontAwesomeIcon icon={faChevronRight} className="text-[0.7rem]" />
           </Link>
         }
@@ -247,7 +247,7 @@ export function Dashboard2Body({ stats, rangeLabel }: { stats: Dashboard2Stats; 
                 {stats.recentOrders.map((o) => (
                   <tr key={o.id} className="border-t border-[#f3f4f6] [&>td]:py-3 [&>td]:pr-4 [&>td]:align-middle">
                     <td>
-                      <Link href={`/admin/ecommerce/orders/${o.id}`} className="whitespace-nowrap font-semibold text-[#7c3aed] hover:underline">{o.orderNumber}</Link>
+                      <Link href={`/admin/ecommerce/orders/${o.id}`} className="whitespace-nowrap font-semibold text-[#7c3aed]">{o.orderNumber}</Link>
                     </td>
                     <td className="max-w-[160px] truncate text-[#374151]" title={o.customerName}>{o.customerName}</td>
                     <td className="whitespace-nowrap font-semibold text-[#111827]">{formatMoney(o.totalAmount)}</td>

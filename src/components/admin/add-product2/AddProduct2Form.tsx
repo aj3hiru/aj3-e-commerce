@@ -910,7 +910,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
                       }
                     </DropZone>
                     {removeImage && product?.image && (
-                      <button type="button" onClick={() => setRemoveImage(false)} className="mt-2 text-xs text-admin-primary hover:underline">Undo remove</button>
+                      <button type="button"onClick={() => setRemoveImage(false)} className="mt-2 text-xs text-admin-primary">Undo remove</button>
                     )}
                   </div>
                 </div>
@@ -1179,7 +1179,7 @@ function BarcodeStatus({ check, blank, editing }: { check: { state: string; by?:
     return (
       <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-red-600">
         <AlertCircle className="h-3.5 w-3.5" /> Already used by “{check.by.name}”.
-        <Link href={`/admin/ecommerce/products/add?edit=${check.by.id}`} className="inline-flex items-center gap-1 font-medium underline"><Link2 className="h-3 w-3" /> Open it</Link>
+        <Link href={`/admin/ecommerce/products/add?edit=${check.by.id}`} className="inline-flex items-center gap-1 font-medium"><Link2 className="h-3 w-3"/> Open it</Link>
       </p>
     );
   }
@@ -1321,7 +1321,7 @@ function QuickAddModal({ kind, category, onClose, onAdded }: {
                 <div className="mt-2 flex items-center gap-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={logoUrl} alt="" className="h-12 w-12 rounded-[0.5rem] border border-admin-gray-200 object-contain" />
-                  <button type="button" onClick={() => setLogo(null)} className="text-xs text-red-600 hover:underline">Remove</button>
+                  <button type="button"onClick={() => setLogo(null)} className="text-xs text-red-600">Remove</button>
                 </div>
               )}
             </div>

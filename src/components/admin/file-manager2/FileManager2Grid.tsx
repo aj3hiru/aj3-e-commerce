@@ -153,7 +153,7 @@ export function FileManager2Grid({ files: initial }: { files: FileAsset[] }) {
         >
           {uploading ? <Loader2 className="h-8 w-8 animate-spin text-[#2563eb]" /> : <UploadCloud className="h-8 w-8 text-[#2563eb]" />}
           <p className="text-sm text-admin-gray-700">
-            {uploading ? "Uploading…" : <>Drag &amp; drop files here or <button type="button" onClick={() => fileInput.current?.click()} className="font-semibold text-[#2563eb] hover:underline">Browse to upload</button></>}
+            {uploading ? "Uploading…": <>Drag &amp; drop files here or <button type="button"onClick={() => fileInput.current?.click()} className="font-semibold text-[#2563eb]">Browse to upload</button></>}
           </p>
           <p className="text-xs text-admin-gray-400">Images, PDFs, Videos, Audio, Docs, ZIPs — max 50MB</p>
           <input ref={fileInput} type="file" multiple className="sr-only" onChange={(e) => { if (e.target.files?.length) uploadFiles(e.target.files); e.target.value = ""; }} />

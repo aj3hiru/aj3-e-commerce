@@ -143,7 +143,7 @@ export function UserManager2Body({ users: initial, currentUserId }: { users: Use
 
         {filtered.length === 0 ? (
           <p className="py-10 text-center text-sm text-admin-gray-400">
-            {users.length === 0 ? <>No users yet. <button type="button" onClick={() => setEditing("new")} className="font-semibold text-[#2563eb] hover:underline">Add your first user</button></> : "No users match these filters."}
+            {users.length === 0 ? <>No users yet. <button type="button"onClick={() => setEditing("new")} className="font-semibold text-[#2563eb]">Add your first user</button></> : "No users match these filters."}
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -172,7 +172,7 @@ export function UserManager2Body({ users: initial, currentUserId }: { users: Use
                               ? <img src={`/${u.avatar}`} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
                               : <Avatar username={u.firstName || u.username} />}
                             <div className="min-w-0">
-                              <button type="button" onClick={() => setEditing(u)} className="block truncate font-medium text-admin-gray-900 hover:text-[#2563eb] hover:underline">{[u.firstName, u.lastName].filter(Boolean).join(" ") || u.username}{isSelf && <span className="ml-1.5 text-xs font-normal text-admin-gray-400">(you)</span>}</button>
+                              <button type="button"onClick={() => setEditing(u)} className="block truncate font-medium text-admin-gray-900 hover:text-[#2563eb]">{[u.firstName, u.lastName].filter(Boolean).join("") || u.username}{isSelf && <span className="ml-1.5 text-xs font-normal text-admin-gray-400">(you)</span>}</button>
                               <div className="truncate text-xs text-admin-gray-400">@{u.username}{u.phone ? ` · ${u.phone}` : ""} · {u.email}</div>
                             </div>
                           </div>

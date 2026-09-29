@@ -25,9 +25,22 @@ export async function adjustProductStock(tx: Prisma.TransactionClient, productId
   }
 }
 
+/** The same for one size (only when that size keeps its own count), never below zero. */
+async function adjustSizeStock(tx: Prisma.TransactionClient, sizeId: number, delta: number): Promise<void> {
+  if (delta > 0) {
+    await tx.ecomProductSize.updateMany({ where: { id: sizeId, stockQty: { not: null } }, data: { stockQty: { increment: delta } } });
+    return;
+  }
+  const taken = await tx.ecomProductSize.updateMany({ where: { id: sizeId, stockQty: { gte: -delta } }, data: { stockQty: { decrement: -delta } } });
+  if (taken.count === 0) await tx.ecomProductSize.updateMany({ where: { id: sizeId, stockQty: { not: null } }, data: { stockQty: 0 } });
+}
+
 /** Puts every line of an order back into stock (sign = 1), or takes it out
  *  again (sign = -1) — used when an order is canceled, un-canceled or deleted. */
 export async function adjustOrderStock(tx: Prisma.TransactionClient, orderId: number, sign: 1 | -1): Promise<void> {
-  const items = await tx.ecomOrderItem.findMany({ where: { orderId }, select: { productId: true, qty: true } });
-  for (const it of items) await adjustProductStock(tx, it.productId, sign * it.qty);
+  const items = await tx.ecomOrderItem.findMany({ where: { orderId }, select: { productId: true, qty: true, sizeId: true } });
+  for (const it of items) {
+    await adjustProductStock(tx, it.productId, sign * it.qty);
+    if (it.sizeId) await adjustSizeStock(tx, it.sizeId, sign * it.qty);
+  }
 }

@@ -11,7 +11,7 @@ interface SalesReportPrintProps {
 }
 
 const fmt = (n: number) => n.toFixed(2);
-const fmtDate = (d: Date) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+const fmtDate = (d: Date) => new Date(d).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" });
 
 /** Verified against the report body in admin/ecommerce/sales-report-print.php:
  *  4 summary boxes, payment-method breakdown, sales table, new-dues table,

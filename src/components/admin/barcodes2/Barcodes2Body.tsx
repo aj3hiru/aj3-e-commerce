@@ -116,6 +116,9 @@ export function Barcodes2Body({ data, templates: initialTemplates = [] }: { data
 
   // The print list. Starts with whatever another page asked for (?ids=), else
   // everything added or changed in the range — usually "today".
+  // The print sheet goes into document.body — only after the page has loaded, so the first render matches the server's.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const [lines, setLines] = useState<Line[]>(() => {
     const source = data.preselected.length ? data.preselected : data.products;
     return source.map((p) => ({ key: `p${p.id}`, product: p, qty: 1 }));
@@ -370,7 +373,7 @@ export function Barcodes2Body({ data, templates: initialTemplates = [] }: { data
           <div className="overflow-x-auto"><Sheet labels={printLabels} options={options} footer={data.footerText} ready={jsBarcodeReady} screen /></div>
         )}
       </section>
-      {typeof document !== "undefined" && lines.length > 0 && createPortal(
+      {mounted && lines.length > 0 && createPortal(
         <div id="bc2-print-root"><Sheet labels={printLabels} options={options} footer={data.footerText} ready={jsBarcodeReady} /></div>,
         document.body
       )}

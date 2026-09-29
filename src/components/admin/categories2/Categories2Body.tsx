@@ -441,7 +441,7 @@ export function Categories2Body({ categories: initial }: { categories: Category2
                         {show("c2-c-updated") && (
                           <td className={cn(td, "text-admin-gray-600")}>
                             {c.updatedAt
-                              ? new Date(c.updatedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })
+                              ? new Date(c.updatedAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })
                               : <span className="text-admin-gray-300">—</span>}
                           </td>
                         )}

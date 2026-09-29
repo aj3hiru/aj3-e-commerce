@@ -138,7 +138,7 @@ export function RecentOrdersTable({ orders, rangeLabel }: RecentOrdersTableProps
                       />
                     </td>
                     <td className="whitespace-nowrap">
-                      {o.createdAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                      {o.createdAt.toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
                     </td>
                   </tr>
                 ))}

@@ -41,7 +41,6 @@ export interface Product2Badge { slug: string; label: string; color: string | nu
 export interface Product2ItemType { slug: string; label: string }
 export interface Product2Category { id: number; name: string }
 
-const PAGE_PATH = "/admin/ecommerce/products";
 
 const money = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const hasSale = (p: Product2Row) => p.salePrice !== null && p.salePrice > 0 && p.salePrice < p.price;
@@ -120,7 +119,7 @@ export function Products2Provider({ products: initial, badges, itemTypes, catego
     if (filters.type !== "all") p.set("type", filters.type);
     if (filters.item !== "all") p.set("item", filters.item);
     const qs = p.toString();
-    window.history.replaceState(window.history.state, "", qs ? `${PAGE_PATH}?${qs}` : PAGE_PATH);
+    window.history.replaceState(window.history.state, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname); // the address the page is on (admin host: /ecommerce/products)
   }, [filters]);
 
   const filtered = useMemo(() => {
@@ -1075,6 +1074,10 @@ function ConfirmDelete({ label, count, onCancel, onConfirm }: { label: string; c
 }
 
 function Toast({ ok, text, onClose }: { ok: boolean; text: string; onClose: () => void }) {
+  // Can be on screen from the first render (the "saved" notice after adding a product), so wait for the browser.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
   return createPortal(
     <div role="status" className={cn("fixed bottom-5 right-5 z-[2100] flex max-w-md items-start gap-3 rounded-xl border px-4 py-3 text-sm shadow-lg", ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800")}>
       {ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}

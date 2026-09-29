@@ -137,7 +137,7 @@ function RevenueOrdersChart({ series }: { series: { date: string; revenue: numbe
   const revPts: [number, number][] = points.map((p, i) => [x(i), yRev(p.revenue)]);
   const ordPts: [number, number][] = points.map((p, i) => [x(i), yOrd(p.orders)]);
   const area = (pts: [number, number][]) => (pts.length < 2 ? "" : `${smoothPath(pts)} L${pts[pts.length - 1][0]},100 L${pts[0][0]},100 Z`);
-  const label = (d: string) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+  const label = (d: string) => new Date(d).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short" });
 
   return (
     <div className={CARD}>

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import type { AgentOrderCard } from "@/lib/agent-data";
 
 const money = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-const time = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) : "");
+const time = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" }) : "");
 
 interface Stats { total: number; delivered: number; remaining: number; cancelled: number; toCollect: number; cash: number; online: number; products: number }
 
@@ -68,7 +68,7 @@ export function AgentToday({ name, active, delivered, cancelled, stats }: { name
         <div className="px-5 pb-4 pt-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-[13px] opacity-85">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</p>
+              <p className="text-[13px] opacity-85">{new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "long" })}</p>
               <p className="mt-0.5 text-[21px] font-bold">{hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening"}, {name.split(" ")[0]}!</p>
             </div>
             <button type="button" onClick={() => { setSpin(true); router.refresh(); setTimeout(() => setSpin(false), 800); }} aria-label="Refresh" className="grid h-9 w-9 place-items-center rounded-full bg-white/15"><RefreshCw className={cn("h-4 w-4", spin && "animate-spin")} /></button>

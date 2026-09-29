@@ -275,7 +275,7 @@ export function Dashboard2Body({ stats, rangeLabel }: { stats: Dashboard2Stats; 
                       )}
                     </td>
                     <td className="whitespace-nowrap text-[#6b7280]">
-                      {o.createdAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                      {o.createdAt.toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}
                     </td>
                   </tr>
                 ))}

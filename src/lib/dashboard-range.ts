@@ -14,7 +14,7 @@ function fmt(d: Date): string {
 }
 
 function formatLabel(d: Date): string {
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" });
 }
 
 /** Verified 1:1 against the $range switch statement in admin/dashboard.php. */

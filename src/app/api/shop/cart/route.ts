@@ -27,17 +27,18 @@ async function sellable(key: string) {
   const k = parseCartKey(key)!;
   const product = (await prisma.ecomProduct.findFirst({
     where: { id: k.productId, status: "active" },
-    select: { id: true, slug: true, name: true, image: true, price: true, salePrice: true, stockQty: true, productType: true, categoryId: true, subcategoryId: true, brandId: true, gstRate: true, hsnCode: true, status: true },
-  })) as CartProduct | null;
+    select: { id: true, slug: true, name: true, image: true, price: true, salePrice: true, stockQty: true, productType: true, categoryId: true, subcategoryId: true, brandId: true, gstRate: true, hsnCode: true, status: true, quantity: true },
+  })) as (CartProduct & { quantity: unknown }) | null;
   if (!product) return { error: "Product not found." } as const;
   const sizeSelect = { id: true, productId: true, label: true, mrp: true, price: true, stockQty: true } as const;
   let size: CartSize | null = null;
   if (k.sizeId) {
     size = (await prisma.ecomProductSize.findFirst({ where: { id: k.sizeId, productId: product.id }, select: sizeSelect })) as CartSize | null;
     if (!size) return { error: "That size is no longer available." } as const;
-  } else {
+  } else if (!(product.quantity !== null && Number(product.quantity) > 0)) {
     // A product sold in sizes, added from a list without choosing one: use its
-    // default size — the one whose price the lists show.
+    // default size — the one whose price the lists show. (A product with its own
+    // Quantity, e.g. 500 Gram at its own price, is itself the first choice: no size.)
     size = (await prisma.ecomProductSize.findFirst({ where: { productId: product.id }, orderBy: [{ isDefault: "desc" }, { sortOrder: "asc" }, { id: "asc" }], select: sizeSelect })) as CartSize | null;
   }
   const { maxQty } = priceLine(product, size, await loadLiveCampaigns().catch(() => []), new Date());

@@ -46,7 +46,7 @@ export function StaffProfile({ me }: { me: StaffProfileData }) {
             <AvatarPicker value={f.avatar} name={f.firstName || f.username} onChange={(avatar) => { set({ avatar }); }} />
             <p className="mt-2 text-[20px] font-bold">{[f.firstName, f.lastName].filter(Boolean).join(" ") || f.username}</p>
             <span className="mt-1 rounded-full px-3 py-0.5 text-[12px] font-semibold" style={{ color, background: `color-mix(in srgb, ${color} 11%, white)` }}>{roleLabel(me.role)}</span>
-            <p className="mt-1.5 text-[12px] text-[#8b8ba3]">Member since {new Date(me.since).toLocaleDateString("en-IN", { month: "long", year: "numeric" })}</p>
+            <p className="mt-1.5 text-[12px] text-[#8b8ba3]">Member since {new Date(me.since).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", month: "long", year: "numeric" })}</p>
           </div>
         </section>
       )}

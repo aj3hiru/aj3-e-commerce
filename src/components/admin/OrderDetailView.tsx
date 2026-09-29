@@ -474,7 +474,7 @@ export function OrderDetailView({ order, items, availableProducts, perms = ALL, 
                           <Link href={`/admin/ecommerce/payment-receipt/${encodeURIComponent(p.receipt)}`} target="_blank" className="font-medium text-blue-600 hover:underline">
                             {p.receipt}
                           </Link>
-                          <span className="text-admin-gray-500">{new Date(p.at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })} · {p.method}</span>
+                          <span className="text-admin-gray-500">{new Date(p.at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short" })} · {p.method}</span>
                           <span className="font-semibold text-admin-gray-800">{money(p.amount)}</span>
                         </li>
                       ))}

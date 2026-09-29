@@ -318,9 +318,9 @@ function CouponCard({ coupon: c, status, busy, onEdit, onPause, onDuplicate, onD
       {(c.startsAt || c.endsAt) && (
         <div className="mb-4 flex items-center gap-1.5 text-sm text-admin-gray-600">
           <Calendar className="h-3.5 w-3.5 text-admin-gray-400" />
-          {c.startsAt ? new Date(c.startsAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "No start date"}
+          {c.startsAt ? new Date(c.startsAt).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" }) : "No start date"}
           {" – "}
-          {c.endsAt ? new Date(c.endsAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "No end date"}
+          {c.endsAt ? new Date(c.endsAt).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" }) : "No end date"}
         </div>
       )}
 

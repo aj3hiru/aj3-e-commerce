@@ -44,11 +44,15 @@ async function handlePOST(req: NextRequest) {
     address = formatAddress(a);
     if (a.lat !== null && a.lng !== null) pin = { lat: a.lat, lng: a.lng };
   }
-  const paymentMethod = (body.paymentMethod ?? "").trim();
-  const couponCode = (body.couponCode ?? "").trim().toUpperCase();
+  const paymentMethod = String(body.paymentMethod ?? "").trim().slice(0, 50);
+  const couponCode = String(body.couponCode ?? "").trim().toUpperCase().slice(0, 50);
 
   if (!address) return NextResponse.json({ success: false, message: "Please enter a delivery address." }, { status: 400 });
   if (!paymentMethod) return NextResponse.json({ success: false, message: "Please select a payment method." }, { status: 400 });
+  // Only a method switched on in Payment Settings (the browser could send anything).
+  if (!(await prisma.ecomPaymentSettings.findFirst({ where: { methodKey: paymentMethod, isEnabled: true }, select: { id: true } }))) {
+    return NextResponse.json({ success: false, message: "That payment method isn't available. Please choose another one." }, { status: 400 });
+  }
 
   // Campaign prices are worked out from the campaigns as they are right now.
   // This is read before the order is opened; if it can't be read the order simply
@@ -162,7 +166,7 @@ async function handlePOST(req: NextRequest) {
         const item = await tx.ecomOrderItem.create({
           data: {
             orderId: order.id, productId: li.product.id, productName: li.name, hsnCode: li.product.hsnCode,
-            qty: li.qty, price: li.unitPrice, gstRate: Number(li.product.gstRate), gstAmount: li.gstAmount!,
+            qty: li.qty, price: li.unitPrice, gstRate: Number(li.product.gstRate), gstAmount: li.gstAmount!, sizeId: li.size?.id ?? null,
           },
           select: { id: true },
         });

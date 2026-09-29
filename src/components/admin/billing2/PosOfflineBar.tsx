@@ -92,7 +92,7 @@ export function PosOfflineBar({ notice, onNoticeDone }: { notice: string | null;
                 <li key={b.ref} className="flex flex-wrap items-center gap-2 px-3 py-2 text-[13px] text-[#374151]">
                   <span className="min-w-[150px] flex-1">
                     <b className="font-semibold">{b.summary.customer}</b> · {b.summary.items} item{b.summary.items === 1 ? "" : "s"} · {money(b.summary.total)}
-                    <span className="block text-[12px] text-[#6b7280]">{new Date(b.soldAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })} · {b.ref.slice(-10).toUpperCase()}{b.lastError ? ` · ${b.lastError}` : ""}</span>
+                    <span className="block text-[12px] text-[#6b7280]">{new Date(b.soldAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: true })} · {b.ref.slice(-10).toUpperCase()}{b.lastError ? ` · ${b.lastError}` : ""}</span>
                   </span>
                   {b.failed && <button type="button" onClick={() => { retryBill(b.ref); void sync(); }} className="inline-flex items-center gap-1 rounded-[8px] border border-[#e5e7eb] bg-white px-2.5 py-1 text-[12.5px] font-medium hover:bg-[#f9fafb]"><RotateCcw className="h-3.5 w-3.5" />Retry</button>}
                   {b.failed && (

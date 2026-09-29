@@ -66,7 +66,7 @@ interface CustomerProfileViewProps {
 }
 
 const money = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" });
 const CARD = "rounded-[10px] border border-admin-gray-200 bg-white shadow-sm";
 
 /** Admin → Customers → one customer: who they are, what they bought, where they live, what they owe. */

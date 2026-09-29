@@ -102,7 +102,9 @@ export function Campaigns2Body({ data, serverNow, filters, isDefaultRange, notic
   const [busy, setBusy] = useState<Set<number>>(new Set());
   const [editor, setEditor] = useState<{ editing: CampaignRowData | null; initial: CampaignFormState } | null>(null);
   const [confirm, setConfirm] = useState<{ kind: "end" | "delete"; c: CampaignRowData } | null>(null);
-  const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(notice ? { ok: true, text: notice } : null);
+  const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
+  // The "saved" notice from the URL: shown once the page is in the browser (the toast needs document.body).
+  useEffect(() => { if (notice) setToast({ ok: true, text: notice }); }, [notice]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 4000);

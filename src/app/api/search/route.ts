@@ -88,7 +88,7 @@ async function handleGET(req: NextRequest) {
       type: "receipt",
       id: r.receiptNumber,
       title: r.receiptNumber,
-      sub: `${r.credit.customerName} · ₹${Number(r.amount).toFixed(2)} · ${r.createdAt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}`,
+      sub: `${r.credit.customerName} · ₹${Number(r.amount).toFixed(2)} · ${r.createdAt.toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" })}`,
       url: `/admin/ecommerce/payment-receipt/${encodeURIComponent(r.receiptNumber)}?return_to=${encodeURIComponent("/admin/dashboard")}`,
     });
   }

@@ -27,7 +27,7 @@ export function AgentHistory({ from, to, preset, orders, totals }: { from: strin
   const chips = [["today", "Today"], ["yesterday", "Yesterday"], ["7d", "Last 7 days"], ["month", "This month"], ["30d", "30 days"]] as const;
   const groups = new Map<string, AgentOrderCard[]>();
   for (const o of orders) {
-    const k = o.deliveredAt ? new Date(o.deliveredAt).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "—";
+    const k = o.deliveredAt ? new Date(o.deliveredAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "—";
     groups.set(k, [...(groups.get(k) ?? []), o]);
   }
   const tiles = [
@@ -54,7 +54,7 @@ export function AgentHistory({ from, to, preset, orders, totals }: { from: strin
         </form>
       </section>
 
-      <p className="flex items-center gap-1.5 px-1 text-[13px] text-[#616173]"><CalendarDays className="h-4 w-4" />{from === to ? new Date(from).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) : `${new Date(from).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(to).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`} · order value {money(totals.value)}</p>
+      <p className="flex items-center gap-1.5 px-1 text-[13px] text-[#616173]"><CalendarDays className="h-4 w-4" />{from === to ? new Date(from).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "long", year: "numeric" }) : `${new Date(from).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} – ${new Date(to).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`} · order value {money(totals.value)}</p>
 
       <section className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
         {tiles.map((t) => (

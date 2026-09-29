@@ -23,7 +23,7 @@ const money = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDi
 
 export function printOfflineReceipt(r: OfflineReceipt) {
   const mm = r.width === "thermal_58" ? 58 : 80;
-  const when = new Date(r.soldAt).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+  const when = new Date(r.soldAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
   const row = (l: string, v: string, bold = false) => `<tr${bold ? ' class="b"' : ""}><td>${l}</td><td class="r">${v}</td></tr>`;
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Receipt</title><style>
     @page { size: ${mm}mm auto; margin: 3mm; }

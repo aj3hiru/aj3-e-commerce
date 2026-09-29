@@ -356,6 +356,8 @@ model EcomOrderItem {
   price       Decimal @db.Decimal(10, 2)    // unit price at sale time (snapshot)
   gstRate     Decimal @map("gst_rate") @db.Decimal(5, 2)
   gstAmount   Decimal @map("gst_amount") @db.Decimal(10, 2)
+  /// The size sold (prisma/order-item-size.sql) — its stock goes back when the order is cancelled.
+  sizeId      Int?    @map("size_id")
 
   order   EcomOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product EcomProduct @relation(fields: [productId], references: [id])

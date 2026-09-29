@@ -6,9 +6,23 @@ import { getShopLayoutData } from "@/lib/shop-layout-data";
 import { getFeedFacets, getShopFeed, parseFeedFilters } from "@/lib/shop-feed";
 import { getCustomerSession } from "@/lib/customer-auth";
 import { prisma } from "@/lib/db";
+import type { Metadata } from "next";
+import { imageUrl, storeSiteOrigin } from "@/lib/seo";
 
 interface CategoryPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export async function generateMetadata({ searchParams }: CategoryPageProps): Promise<Metadata> {
+  const slug = (await searchParams).slug;
+  const c = typeof slug === "string" ? await prisma.ecomCategory.findFirst({ where: { slug, status: "active" }, select: { name: true, slug: true, image: true } }) : null;
+  if (!c) return { title: "Category not found", robots: { index: false } };
+  const image = imageUrl(await storeSiteOrigin(), c.image);
+  const url = `/category?slug=${encodeURIComponent(c.slug)}`;
+  return {
+    title: c.name, description: `Shop ${c.name} online — best prices, Cash on Delivery.`, alternates: { canonical: url },
+    openGraph: { title: c.name, url, ...(image ? { images: [{ url: image }] } : {}) },
+  };
 }
 
 /** Category (Meesho style): the product feed with Sort / Brand / Filters. */

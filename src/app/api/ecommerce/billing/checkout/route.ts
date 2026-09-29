@@ -259,6 +259,7 @@ async function handlePOST(req: NextRequest) {
             price: li.unitPrice,
             gstRate: li.product!.gstRate,
             gstAmount: li.gstAmount!,
+            sizeId: li.sizeId,
           },
           select: { id: true },
         });

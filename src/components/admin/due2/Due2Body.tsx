@@ -88,7 +88,9 @@ export function Due2Body({ data, filters: range, notice, canEdit }: Props) {
   const [collect, setCollect] = useState<Due2Row[] | null>(null);
   const [dateEdit, setDateEdit] = useState<Due2Row | null>(null);
   const [history, setHistory] = useState<Due2Row | null>(null);
-  const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(notice ? { ok: true, text: notice } : null);
+  const [toast, setToast] = useState<{ ok: boolean; text: string } | null>(null);
+  // The "saved" notice from the URL: shown once the page is in the browser (the toast needs document.body).
+  useEffect(() => { if (notice) setToast({ ok: true, text: notice }); }, [notice]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 4000);

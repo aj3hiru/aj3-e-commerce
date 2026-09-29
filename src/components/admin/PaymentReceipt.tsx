@@ -19,8 +19,8 @@ const fmt = (n: number) => n.toFixed(2);
 export function PaymentReceipt({ data, businessName, phone, format, returnTo }: PaymentReceiptProps) {
   const isThermal = format.startsWith("thermal_");
   const width = format === "thermal_58" ? "58mm" : "80mm";
-  const paidAtStr = new Date(data.paidAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  const paidAtShort = new Date(data.paidAt).toLocaleString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+  const paidAtStr = new Date(data.paidAt).toLocaleString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const paidAtShort = new Date(data.paidAt).toLocaleString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
 
   const printBar = (
     <div className="print-bar" style={{ textAlign: "center", margin: "1rem", display: "flex", justifyContent: "center", gap: "0.5rem" }}>

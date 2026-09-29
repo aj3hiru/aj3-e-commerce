@@ -248,7 +248,7 @@ export function FileManager2Grid({ files: initial }: { files: FileAsset[] }) {
                       </td>
                       <td className={cn(td, "text-admin-gray-600")}>{f.categoryLabel}</td>
                       <td className={cn(td, "text-admin-gray-600")}>{formatBytes(f.sizeBytes)}</td>
-                      <td className={cn(td, "text-admin-gray-500")}>{f.createdAt ? new Date(f.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}</td>
+                      <td className={cn(td, "text-admin-gray-500")}>{f.createdAt ? new Date(f.createdAt).toLocaleDateString("en-GB", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric" }) : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -327,7 +327,7 @@ function DetailPanel({ file: f, onClose, onRename, onDelete, onCopyLink, busy }:
         <div className="mb-4 space-y-2 text-sm">
           <Row label="Category" value={f.categoryLabel} />
           <Row label="Size" value={formatBytes(f.sizeBytes)} />
-          {f.createdAt && <Row label="Created" value={new Date(f.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })} />}
+          {f.createdAt && <Row label="Created" value={new Date(f.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })} />}
           <Row label="Location" value={`/${f.relPath}`} mono />
           {f.usedBy && <Row label="Used by" value={f.usedBy} />}
           {f.sizeBytes === null && <p className="rounded-[0.375rem] bg-red-50 px-2.5 py-1.5 text-xs text-red-600">This file is referenced in the database but missing on disk.</p>}

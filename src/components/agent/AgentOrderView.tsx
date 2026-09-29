@@ -12,7 +12,7 @@ import type { AgentOrder } from "@/lib/agent-data";
 import { LiveMap } from "./LiveMap";
 
 const money = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 
 const OTHER = "__other";
 const CANCEL_REASONS = ["Customer refused to take the order", "Customer not answering calls", "Product is damaged", "Wrong / incomplete address", "Customer not at home", "Customer asked to cancel"];

@@ -304,7 +304,7 @@ export function OfferPicker({ origin, onPick, onClose }: { origin: string; onPic
                 <Thumb src={absoluteUrl(o.image, origin)} className="h-[50px] w-[50px]" icon={BadgePercent} />
                 <span className="min-w-0 flex-1">
                   <span className="mb-0.5 block text-sm font-bold leading-tight text-admin-gray-900">{o.name} <span className="text-emerald-600">· {o.offer}</span></span>
-                  <span className="block text-xs text-admin-gray-500">{o.type === "coupon" ? `Code ${o.code}` : "Campaign"} · on {o.appliesTo}{o.upcoming ? " · starts later" : ""}{o.endsAt ? ` · ends ${new Date(o.endsAt).toLocaleDateString("en-IN")}` : ""}</span>
+                  <span className="block text-xs text-admin-gray-500">{o.type === "coupon" ? `Code ${o.code}` : "Campaign"} · on {o.appliesTo}{o.upcoming ? " · starts later" : ""}{o.endsAt ? ` · ends ${new Date(o.endsAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}` : ""}</span>
                 </span>
               </button>
             </li>

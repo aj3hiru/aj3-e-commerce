@@ -291,7 +291,7 @@ function LogsTable({ logs, show, selectedId, onSelect }: { logs: LogRow2[]; show
                       </td>
                     )}
                     {show("al2-c-severity") && <td className={td}><span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", SEVERITY_META[sev].cls)}>{SEVERITY_META[sev].label}</span></td>}
-                    {show("al2-c-date") && <td className={cn(td, "whitespace-nowrap text-xs text-admin-gray-500")}>{new Date(l.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}</td>}
+                    {show("al2-c-date") && <td className={cn(td, "whitespace-nowrap text-xs text-admin-gray-500")}>{new Date(l.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true })}</td>}
                   </tr>
                 );
               })}
@@ -333,7 +333,7 @@ function DetailPanel({ log, onClose }: { log: LogRow2; onClose: () => void }) {
         <>
           <Row label="Action" value={<span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold uppercase", ACTION_COLOR(log.actionType))}>{log.actionType}</span>} />
           <Row label="Severity" value={<span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", SEVERITY_META[sev].cls)}>{SEVERITY_META[sev].label}</span>} />
-          <Row label="Date & Time" value={dt.toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true })} />
+          <Row label="Date & Time" value={dt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true })} />
           <Row label="IP Address" value={log.ipAddress ?? "Not recorded"} />
           <Row label="Browser / OS" value={`${ua.browser} · ${ua.os}`} />
 

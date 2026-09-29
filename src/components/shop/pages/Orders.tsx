@@ -7,7 +7,7 @@ import { StatusPill, rupees } from "@/components/shop/ui/Meesho";
 export const ORDER_STEPS = ["Pending", "In Progress", "Out for Delivery", "Delivered"];
 export const STEP_LABEL: Record<string, string> = { Pending: "Ordered", "In Progress": "Processing", "Out for Delivery": "Out for Delivery", Delivered: "Delivered" };
 export const fmtDate = (iso: string, time = false) =>
-  new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", ...(time ? { hour: "numeric", minute: "2-digit" } : {}) });
+  new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric", ...(time ? { hour: "numeric", minute: "2-digit" } : {}) });
 
 /** Small four-dot progress line for an order card. */
 function MiniTrack({ status }: { status: string }) {

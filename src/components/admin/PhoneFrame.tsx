@@ -18,7 +18,7 @@ const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayout
 function useClock() {
   const [now, setNow] = useState("");
   useEffect(() => {
-    const tick = () => setNow(new Date().toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true }).replace(/\s?[ap]m$/i, ""));
+    const tick = () => setNow(new Date().toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true }).replace(/\s?[ap]m$/i, ""));
     tick();
     const t = setInterval(tick, 30_000);
     return () => clearInterval(t);

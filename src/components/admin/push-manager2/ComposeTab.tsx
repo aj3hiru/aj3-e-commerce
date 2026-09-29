@@ -113,7 +113,7 @@ function templatesFor(kind: Kind, t: Target | null, shop: string): Template[] {
   if (t.type === "offer") {
     const o = t.offer;
     const on = o.appliesTo === "everything" ? "on everything" : `on ${o.appliesTo}`;
-    const ends = o.endsAt ? ` Ends ${new Date(o.endsAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}.` : "";
+    const ends = o.endsAt ? ` Ends ${new Date(o.endsAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" })}.` : "";
     if (o.type === "coupon") {
       return [
         { id: "code", label: "🎟️ Coupon code", title: `🎟️ ${o.offer} ${on} — use ${o.code}`, body: `Apply code ${o.code} at checkout on ${shop}.${ends}` },
@@ -425,7 +425,7 @@ function TargetCard({ target, origin, onChange, onClear }: { target: Target; ori
   } else if (target.type === "offer") {
     const o = target.offer;
     icon = BadgePercent; kicker = o.type === "coupon" ? `Coupon · ${o.code}` : "Campaign offer"; name = `${o.name} — ${o.offer}`;
-    meta = <span className="text-xs text-admin-gray-500">On {o.appliesTo}{o.endsAt ? ` · ends ${new Date(o.endsAt).toLocaleDateString("en-IN")}` : ""}{o.upcoming ? " · not started yet" : ""}</span>;
+    meta = <span className="text-xs text-admin-gray-500">On {o.appliesTo}{o.endsAt ? ` · ends ${new Date(o.endsAt).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}` : ""}{o.upcoming ? " · not started yet" : ""}</span>;
   }
   return (
     <div className="mt-3 flex items-center gap-3 rounded-[0.5rem] border border-admin-gray-200 bg-admin-gray-50 p-2.5">
@@ -457,8 +457,8 @@ function PhonePreview({ appName, title, body, image }: { appName: string; title:
   const [imgOk, setImgOk] = useState(true);
   useEffect(() => setImgOk(true), [image]);
 
-  const time = now ? now.toLocaleTimeString("en-GB", { hour: "numeric", minute: "2-digit", hour12: true }).replace(/\s?[ap]m$/i, "") : "";
-  const date = now ? now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }) : "";
+  const time = now ? now.toLocaleTimeString("en-GB", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true }).replace(/\s?[ap]m$/i, "") : "";
+  const date = now ? now.toLocaleDateString("en-US", { timeZone: "Asia/Kolkata", weekday: "long", month: "long", day: "numeric" }) : "";
 
   return (
     <PhoneFrame width={292} height={592} status="light" overlay>

@@ -70,7 +70,7 @@ enum SyncPhase { idle, sending, receiving }
 
 /// Data behind the app's versions of the website's other admin pages (`/api/app/v1/page/<name>`).
 /// All of them are downloaded in the background, so every page opens at once — also offline.
-const kPageNames = ['brands', 'tags', 'reviews', 'campaigns', 'coupons', 'pages', 'files', 'activity', 'push', 'business', 'customizer', 'cache', 'backups', 'deliveries', 'dues_paid', 'addresses', 'customer_orders', 'coupon_activity', 'sales_ledger'];
+const kPageNames = ['brands', 'tags', 'reviews', 'campaigns', 'coupons', 'pages', 'files', 'activity', 'push', 'business', 'customizer', 'cache', 'backups', 'deliveries', 'dues_paid', 'addresses', 'customer_orders', 'coupon_activity', 'sales_ledger', 'payments'];
 
 /// The app's shared state: who is signed in, the data kept on the device,
 /// the outbox, and the sync engine that keeps them in step with the server.
@@ -686,6 +686,16 @@ class AppState extends ChangeNotifier {
       case 'set_row_delete':
         final ids = (e['ids'] as List).toSet();
         (sets['${e['set']}'] as List?)?.removeWhere((r) => r is Map && ids.contains(r['id']));
+        break;
+      // A row of a page list found by its 'key' (payment methods).
+      case 'page_row_key':
+        final page = pageData[e['page']];
+        final rows = page?['data'];
+        if (page == null || rows is! List) break;
+        for (var i = 0; i < rows.length; i++) {
+          if (rows[i] is Map && rows[i]['key'] == e['key']) rows[i] = {...Map<String, dynamic>.from(rows[i]), ...Map<String, dynamic>.from(e['fields'])};
+        }
+        pageData[e['page']] = {...page};
         break;
       // One value inside a page's data (e.g. business → tax → pricesIncludeTax).
       case 'page_set':

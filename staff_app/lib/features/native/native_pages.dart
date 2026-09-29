@@ -6,6 +6,7 @@ import '../../desktop/catalog_web.dart';
 import '../../desktop/offers_web.dart';
 import '../../desktop/push_web.dart';
 import '../../desktop/stock_out_web.dart';
+import '../../desktop/system_web.dart';
 import '../../desktop/tax_web.dart';
 import '../../desktop/sales_history_web.dart';
 import '../../widgets/web.dart' show Responsive;
@@ -29,10 +30,10 @@ Widget Function()? nativePageFor(String href) => switch (href) {
       '/push-notifications/push-manager2' => () => const Responsive(phone: PushPage(), desktop: PushWeb()),
       '/admin/ecommerce/business-settings' => () => const Responsive(phone: BusinessSettingsPage(), desktop: BusinessWeb()),
       '/admin/ecommerce/tax-settings' => () => const Responsive(phone: BusinessSettingsPage(section: 'tax'), desktop: TaxWeb()),
-      '/admin/pages' => () => const StaticPagesPage(),
-      '/admin/file-manager' => () => const FilesPage(),
-      '/admin/activity-logs' => () => const ActivityPage(),
-      '/admin/cache-manager' => () => const CachePage(),
+      '/admin/pages' => () => const Responsive(phone: StaticPagesPage(), desktop: StaticPagesWeb()),
+      '/admin/file-manager' => () => const Responsive(phone: FilesPage(), desktop: FilesWeb()),
+      '/admin/activity-logs' => () => const Responsive(phone: ActivityPage(), desktop: ActivityWeb()),
+      '/admin/cache-manager' => () => const Responsive(phone: CachePage(), desktop: CacheWeb()),
       '/admin/backup' => () => const BackupPage(),
       '/admin/staff-app' => () => const StaffAppPage(),
       '/admin/customizer' || '/admin/customizer?tab=home' => () => const CustomizerPage(),

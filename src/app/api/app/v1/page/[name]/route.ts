@@ -22,6 +22,8 @@ import { loadDeliveryHistory } from "@/lib/delivery-history";
 import { getCouponActivity } from "@/lib/coupons2-activity";
 import { paidDues } from "@/lib/app-sync";
 import { getInvoiceSetup } from "@/lib/invoice-settings";
+import { PAYMENT_METHODS } from "@/lib/payment-methods";
+import { getAuthSettings } from "@/lib/auth-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -86,8 +88,8 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ name
     }
     case "activity": {
       if (!hasPermission(p, "security", "view_logs")) return deny();
-      const rows = await prisma.activityLog.findMany({ orderBy: { createdAt: "desc" }, take: 400, include: { user: { select: { username: true } } } });
-      return ok(rows.map((l) => ({ id: l.id, user: l.user?.username ?? null, action: l.actionType, text: l.description, ip: l.ipAddress, at: l.createdAt.toISOString() })));
+      const rows = await prisma.activityLog.findMany({ orderBy: { createdAt: "desc" }, take: 2000, include: { user: { select: { username: true } } } });
+      return ok(rows.map((l) => ({ id: l.id, user: l.user?.username ?? null, action: l.actionType, text: l.description, ip: l.ipAddress, ua: l.userAgent, at: l.createdAt.toISOString() })));
     }
     case "push": {
       if (!hasPermission(p, "push_notifications", "send")) return deny();
@@ -114,13 +116,13 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ name
     }
     case "business": {
       if (!hasPermission(p, "ecommerce", "manage_payment")) return deny();
-      const [b, delivery, tax, gst, invoice] = await Promise.all([
+      const [b, delivery, tax, gst, invoice, auth] = await Promise.all([
         prisma.ecomBusinessSettings.findFirst({ orderBy: { id: "asc" } }),
         getDeliverySettings(), getTaxMode(),
         prisma.ecomGstRate.findMany({ orderBy: { rate: "asc" }, select: { id: true, label: true, rate: true, isDefault: true } }),
-        getInvoiceSetup(),
+        getInvoiceSetup(), getAuthSettings(),
       ]);
-      return ok({ business: b, delivery, tax, gstRates: gst.map((g) => ({ ...g, rate: Number(g.rate) })), invoice: invoice.settings });
+      return ok({ business: b, delivery, tax, gstRates: gst.map((g) => ({ ...g, rate: Number(g.rate) })), invoice: invoice.settings, auth });
     }
     case "customizer": {
       if (!hasPermission(p, "ecommerce", "manage_homepage")) return deny();
@@ -181,6 +183,22 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ name
         items: o.items.map((i) => ({ productId: i.productId, name: i.productName, qty: i.qty, price: Number(i.price), gstRate: Number(i.gstRate), gst: Number(i.gstAmount) })),
         pays: o.payments.map((x) => ({ method: x.paymentMethod, amount: Number(x.amount) })),
       })));
+    }
+    case "payments": {
+      // Payment Methods: which are on / default / set up. Saved credentials are never sent — only whether each field is filled.
+      if (!hasPermission(p, "ecommerce", "manage_payment")) return deny();
+      const rows = await prisma.ecomPaymentSettings.findMany();
+      const byKey = new Map(rows.map((r) => [r.methodKey, r]));
+      return ok(PAYMENT_METHODS.map((def) => {
+        const row = byKey.get(def.key);
+        const config = (row?.config as Record<string, string> | null) ?? {};
+        const filled = Object.fromEntries(def.fields.map((f) => [f.key, (config[f.key] ?? "").trim() !== ""]));
+        return {
+          key: def.key, label: def.label, text: row?.text ?? "", isEnabled: row?.isEnabled ?? false, isDefault: row?.isDefault ?? false,
+          fields: def.fields.map((f) => ({ key: f.key, label: f.label, type: f.type ?? "text", options: f.options ?? null })), filled,
+          configured: def.fields.length === 0 || def.fields.every((f) => filled[f.key]),
+        };
+      }));
     }
     case "backups": {
       if (s.role !== "admin") return deny();

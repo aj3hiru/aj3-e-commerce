@@ -19,9 +19,15 @@ export async function savePaymentMethod2(methodKey: string, form: FormData) {
   const text = String(form.get("text") ?? "").trim();
   const isEnabled = form.get("is_enabled") === "1";
 
+  // The staff app never downloads saved credentials, so it sends keep_blank=1: a blank field keeps what is saved.
+  const keepBlank = form.get("keep_blank") === "1";
+  const saved = keepBlank
+    ? (((await prisma.ecomPaymentSettings.findUnique({ where: { methodKey }, select: { config: true } }))?.config as Record<string, string> | null) ?? {})
+    : {};
   const config: Record<string, string> = {};
   for (const field of methodDef.fields) {
-    config[field.key] = String(form.get(`field_${field.key}`) ?? "").trim();
+    const typed = String(form.get(`field_${field.key}`) ?? "").trim();
+    config[field.key] = typed || (keepBlank ? String(saved[field.key] ?? "") : "");
   }
   // A gateway can't be turned on with required fields still blank —
   // COD has no fields at all, so it's always considered configured.

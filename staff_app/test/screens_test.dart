@@ -33,6 +33,7 @@ import 'package:sri_staff/desktop/catalog_web.dart';
 import 'package:sri_staff/desktop/categories_web.dart';
 import 'package:sri_staff/desktop/offers_web.dart';
 import 'package:sri_staff/desktop/push_web.dart';
+import 'package:sri_staff/desktop/system_web.dart';
 import 'package:sri_staff/desktop/tax_web.dart';
 import 'package:sri_staff/desktop/sales_history_web.dart';
 import 'package:sri_staff/desktop/stock_out_web.dart';
@@ -178,6 +179,22 @@ void main() {
     await _page('business', {'at': at, 'data': {'business': {'businessName': 'Sri Andal Traders', 'tagline': 'Puja & grocery', 'address': 'Ward 4, Narkatiaganj', 'contactNumbers': ['7632096003', '9876543210'], 'invoiceContactNumbers': ['7632096003'], 'socialMediaJson': [{'platform': 'facebook', 'url': 'https://facebook.com/sri'}]}, 'delivery': {}, 'invoice': {'defaultPrint': 'ask', 'thermalTemplate': 'classic', 'thermalWidth': '80mm', 'thermalFont': 'md', 'accent': '#9f2089', 'title': 'Tax Invoice', 'showName': true, 'showLogo': true, 'logoWidth': 120, 'showInvoiceNo': true, 'showDate': true, 'address': {'show': true, 'value': ''}, 'extraIds': [], 'footerNote': 'Thank you, visit again!'}, 'tax': {'pricesIncludeTax': true}, 'gstRates': [
       {'id': 1, 'label': 'GST 0%', 'rate': 0, 'isDefault': true}, {'id': 2, 'label': 'GST 5%', 'rate': 5, 'isDefault': false}, {'id': 3, 'label': 'GST 18%', 'rate': 18, 'isDefault': false},
     ]}});
+    await _page('pages', {'at': at, 'data': [{'id': 1, 'title': 'About Us', 'slug': 'about-us', 'content': 'Hello', 'status': 'published', 'updatedAt': at}, {'id': 2, 'title': 'Return Policy', 'slug': 'return-policy', 'content': '', 'status': 'draft', 'updatedAt': at}]});
+    await _page('files', {'at': at, 'data': [
+      {'id': 'media:1', 'name': 'banner.jpg', 'relPath': 'uploads/media/banner.jpg', 'fileType': 'image', 'sizeBytes': 204800, 'category': 'media', 'categoryLabel': 'Media Library', 'usedBy': null, 'editable': true, 'createdAt': at},
+      {'id': 'product:2', 'name': 'ghee.webp', 'relPath': 'uploads/ecommerce/products/ghee.webp', 'fileType': 'image', 'sizeBytes': 51200, 'category': 'product', 'categoryLabel': 'Product Image', 'usedBy': 'Pure Cow Ghee 1L', 'editable': false, 'createdAt': at},
+      {'id': 'media:3', 'name': 'price-list.pdf', 'relPath': 'uploads/media/price-list.pdf', 'fileType': 'pdf', 'sizeBytes': 90000, 'category': 'media', 'categoryLabel': 'Media Library', 'usedBy': null, 'editable': true, 'createdAt': at},
+    ]});
+    await _page('activity', {'at': at, 'data': [
+      {'id': 1, 'user': 'arjun', 'action': 'login_success', 'text': 'Logged in', 'ip': '103.1.2.3', 'ua': 'Mozilla/5.0 (Windows NT 10.0) Chrome/120', 'at': at},
+      {'id': 2, 'user': 'arjun', 'action': 'ecom_product_delete', 'text': 'Deleted product: Old soap', 'ip': '103.1.2.3', 'ua': null, 'at': at},
+      {'id': 3, 'user': null, 'action': 'login_denied', 'text': 'Wrong password for ravi', 'ip': '45.6.7.8', 'ua': 'Mozilla/5.0 (Linux; Android 14) Chrome/120', 'at': at},
+    ]});
+    await _page('cache', {'at': at, 'data': {'cacheSizeBytes': 5242880, 'totalClears': 4, 'lastCleared': {'at': at, 'by': 'arjun', 'section': 'Homepage'}, 'history': [{'id': 1, 'at': at, 'by': 'arjun', 'description': 'Cleared Homepage cache'}], 'redis': {'configured': false, 'connected': false}}});
+    await _page('payments', {'at': at, 'data': [
+      {'key': 'cod', 'label': 'Cash On Delivery', 'text': '', 'isEnabled': true, 'isDefault': true, 'fields': [], 'filled': {}, 'configured': true},
+      {'key': 'razorpay', 'label': 'Razorpay', 'text': '', 'isEnabled': false, 'isDefault': false, 'fields': [{'key': 'key', 'label': 'Razorpay Key'}, {'key': 'secret', 'label': 'Razorpay Secret'}], 'filled': {'key': false, 'secret': false}, 'configured': false},
+    ]});
     await _page('customizer', {'at': at, 'data': {
       'canStore': true, 'unpublished': false, 'header': {'showLocation': true, 'showDeliveryInfo': true, 'deliveryLabel': "We're open", 'deliveryTimeText': '', 'searchPlaceholder': 'Search for products'},
       'store': {'headerMenu': [{'id': 'h1', 'label': 'Home', 'href': '/', 'icon': 'home', 'visibility': 'all', 'enabled': true, 'newTab': false, 'autoCategories': false, 'children': []}], 'sidebarMenu': [], 'menuDesign': {'accent': '#9f2089', 'showIcons': true, 'dividers': true}, 'push': {'showBell': true, 'autoPrompt': true}, 'footer': {'columns': []}},
@@ -260,6 +277,12 @@ void main() {
   testWidgets('native tax web', (t) => _shot(t, 'n_tax_web', const TaxWeb(), size: wideSize));
   testWidgets('native business web', (t) => _shot(t, 'n_business_web', const BusinessWeb(), size: wideSize));
   testWidgets('native invoice settings web', (t) => _shot(t, 'n_invoice_web', const BusinessWeb(section: 'invoice'), size: wideSize));
+  testWidgets('native pages web', (t) => _shot(t, 'n_pages_web', const StaticPagesWeb(), size: wideSize));
+  testWidgets('native files web', (t) => _shot(t, 'n_files_web', const FilesWeb(), size: wideSize));
+  testWidgets('native activity web', (t) => _shot(t, 'n_activity_web', const ActivityWeb(), size: wideSize));
+  testWidgets('native cache web', (t) => _shot(t, 'n_cache_web', const CacheWeb(), size: wideSize));
+  testWidgets('native payments web', (t) => _shot(t, 'n_payments_web', const BusinessWeb(section: 'payment'), size: wideSize));
+  testWidgets('native login settings web', (t) => _shot(t, 'n_login_web', const BusinessWeb(section: 'login'), size: wideSize));
   testWidgets('native sales history web', (t) => _shot(t, 'n_sales_web', const SalesHistoryWeb(), size: wideSize, after: (t) async {
         await t.tap(find.text('This Month').first);
         await t.pump(const Duration(milliseconds: 300));

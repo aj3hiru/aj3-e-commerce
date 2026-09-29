@@ -8,11 +8,14 @@ import 'package:provider/provider.dart';
 import '../core/app_state.dart';
 import '../core/display_defs.dart';
 import '../core/format.dart';
+import '../ds/adaptive.dart';
+import '../ds/dialog.dart';
 import '../ds/display_options.dart';
 import '../ds/field.dart';
 import '../features/native/kit.dart';
 import '../widgets/common.dart';
 import '../widgets/web.dart';
+import 'list_kit.dart';
 import 'tax_web.dart';
 
 /// "Business Settings" as on the website: a menu of sections on the left — Business Identity,
@@ -222,6 +225,10 @@ class _BizState extends State<_Biz> {
         return _panel(LucideIcons.barcode, 'Barcode Label & Order ID Format', [
           _two(_field('barcodeFooterText', 'Barcode Footer Text', help: 'Printed under each barcode label.'), _field('orderIdPrefix', 'Order ID Prefix', upper: true, help: 'Order numbers are this prefix plus a running sequence.')),
         ]);
+      case 'payment':
+        return const _Payments();
+      case 'login':
+        return _Login(data: Map<String, dynamic>.from((widget.data['auth'] as Map?) ?? const {}), reload: widget.reload);
       case 'delivery':
         return _Delivery(data: Map<String, dynamic>.from((widget.data['delivery'] as Map?) ?? const {}), reload: widget.reload);
       default:
@@ -423,10 +430,12 @@ class _BizState extends State<_Biz> {
       if (m('pos')) ('pos', 'POS Shortcuts', LucideIcons.keyboard),
       if (m('orders')) ('orders', 'Barcode & Orders', LucideIcons.barcode),
       ('delivery', 'Delivery Charge', LucideIcons.truck),
+      if (m('payment')) ('payment', 'Payment Methods', LucideIcons.creditCard),
       if (m('gst')) ('gst', 'GST / Tax Rates', LucideIcons.percent),
+      if (m('login')) ('login', 'Login & OTP', LucideIcons.shieldCheck),
     ];
     if (!menu.any((x) => x.$1 == _active) && menu.isNotEmpty) _active = menu.first.$1;
-    final showSave = _active != 'delivery';
+    final showSave = !const ['delivery', 'payment', 'login'].contains(_active);
 
     return WebPage(
       title: 'Business Settings',
@@ -528,5 +537,296 @@ class _DeliveryState extends State<_Delivery> {
                 )),
           ),
         ]),
+      );
+}
+
+/* ───────────────────────── Payment methods ───────────────────────── */
+
+/// Payment Methods (website's Payment Settings): on / off, default at checkout, and each gateway's
+/// details. Saved credentials never come to this computer — a blank field keeps what is saved.
+class _Payments extends StatelessWidget {
+  const _Payments();
+  @override
+  Widget build(BuildContext context) => NativeData(
+        name: 'payments',
+        builder: (context, data, reload) {
+          final prefs = DisplayPrefs(displayDefs['ecom_payment_settings2_display']!.key);
+          final methods = ((data as List?) ?? const []).cast<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+          final def = methods.where((m) => m['isDefault'] == true).firstOrNull;
+          Future<void> toggle(Map m) async {
+            if (m['isEnabled'] != true && m['configured'] != true) return configure(context, m, reload);
+            await nativeSend(context, OutboxItem(id: newId(), method: 'PATCH', path: '/api/ecommerce/payment-settings2/${m['key']}', label: '${m['label']}: ${m['isEnabled'] == true ? 'off' : 'on'}', body: {'isEnabled': m['isEnabled'] != true},
+                effect: {'kind': 'page_row_key', 'page': 'payments', 'key': m['key'], 'fields': {'isEnabled': m['isEnabled'] != true, if (m['isEnabled'] == true) 'isDefault': false}}), reload: reload, done: '${m['label']} ${m['isEnabled'] == true ? 'turned off' : 'turned on'}.');
+          }
+
+          Future<void> setDefault(Map m) => nativeSend(context, OutboxItem(id: newId(), method: 'POST', path: '/api/ecommerce/payment-settings2/${m['key']}/default', label: 'Default payment ${m['label']}'), reload: reload, done: '${m['label']} is now the default.');
+          IconData icon(String k) => switch (k) { 'cod' => LucideIcons.banknote, 'bank_transfer' => LucideIcons.landmark, _ => LucideIcons.creditCard };
+          return ListenableBuilder(
+            listenable: prefs,
+            builder: (context, _) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(color: const Color(0xFFF0FDF4), border: Border.all(color: const Color(0xFFBBF7D0)), borderRadius: BorderRadius.circular(10)),
+                child: const Row(children: [Icon(LucideIcons.shieldCheck, size: 16, color: Color(0xFF047857)), SizedBox(width: 8), Text('Credentials are stored server-side and never shown to customers.', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Color(0xFF047857)))]),
+              ),
+              const SizedBox(height: 12),
+              ...webCardsRow(columns: 3, [
+                if (prefs.on('pm2-cards', 'pm2-k-enabled')) WebMetric(icon: LucideIcons.circleCheck, color: const Color(0xFF059669), value: '${methods.where((m) => m['isEnabled'] == true).length}', label: 'Enabled Methods'),
+                if (prefs.on('pm2-cards', 'pm2-k-configured')) WebMetric(icon: LucideIcons.settings2, color: const Color(0xFF2563EB), value: '${methods.where((m) => m['configured'] == true).length}', label: 'Configured Methods'),
+                if (prefs.on('pm2-cards', 'pm2-k-default')) WebMetric(icon: LucideIcons.shieldCheck, color: const Color(0xFF7C3AED), value: def == null ? 'None set' : '${def['label']}', label: 'Default Method'),
+              ]),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: WebCard(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      const Text('Payment Methods', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: W.g900)),
+                      const Text('Turn methods on and configure their gateway credentials.', style: TextStyle(fontSize: 12.5, color: W.g500)),
+                      const SizedBox(height: 8),
+                      for (final m in methods)
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: const BoxDecoration(border: Border(top: BorderSide(color: W.g100))),
+                          child: Row(children: [
+                            Container(width: 42, height: 42, decoration: BoxDecoration(color: W.g50, borderRadius: BorderRadius.circular(8)), child: Icon(icon('${m['key']}'), size: 19, color: W.g600)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Wrap(spacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                                  Text('${m['label']}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: W.g900)),
+                                  if (m['isDefault'] == true) const WebBadge('Default', color: Color(0xFF6D28D9), bg: Color(0xFFF5F3FF)),
+                                  if (m['isEnabled'] == true && m['configured'] != true) const WebBadge('Needs setup', color: Color(0xFFB45309), bg: Color(0xFFFFFBEB)),
+                                ]),
+                                Text('${m['text'] ?? ''}'.isEmpty ? _payBlurb['${m['key']}'] ?? '' : '${m['text']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: W.g500)),
+                              ]),
+                            ),
+                            Switch(value: m['isEnabled'] == true, onChanged: (_) => toggle(m)),
+                            SizedBox(width: 64, child: Text(m['isEnabled'] == true ? 'Active' : 'Inactive', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: W.g700))),
+                            WebButton('Configure', icon: LucideIcons.settings2, onPressed: () => configure(context, m, reload)),
+                          ]),
+                        ),
+                    ]),
+                  ),
+                ),
+                if (prefs.on('pm2-default', 'pm2-default-panel')) ...[
+                  const SizedBox(width: 16),
+                  SizedBox(
+                    width: 300,
+                    child: WebCard(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                        const Text('Default Payment Method', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: W.g900)),
+                        const Text('Pre-selected at checkout. Customers can still choose another.', style: TextStyle(fontSize: 12.5, color: W.g500)),
+                        const SizedBox(height: 10),
+                        for (final m in methods)
+                          InkWell(
+                            onTap: m['isEnabled'] == true && m['isDefault'] != true ? () => setDefault(m) : null,
+                            child: Opacity(
+                              opacity: m['isEnabled'] == true ? 1 : .5,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Row(children: [
+                                  Icon(m['isDefault'] == true ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, size: 18, color: m['isDefault'] == true ? const Color(0xFF2563EB) : W.g400),
+                                  const SizedBox(width: 10),
+                                  Expanded(child: Text('${m['label']}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500))),
+                                  if (m['isEnabled'] != true) const Text('Disabled', style: TextStyle(fontSize: 12, color: W.g400)),
+                                ]),
+                              ),
+                            ),
+                          ),
+                      ]),
+                    ),
+                  ),
+                ],
+              ]),
+            ]),
+          );
+        },
+      );
+
+  static Future<void> configure(BuildContext context, Map m, Future<void> Function() reload) async {
+    final fields = ((m['fields'] as List?) ?? const []).cast<Map>();
+    final filled = Map<String, dynamic>.from((m['filled'] as Map?) ?? const {});
+    final text = TextEditingController(text: '${m['text'] ?? ''}');
+    final ctl = {for (final f in fields) '${f['key']}': TextEditingController()};
+    var enable = m['isEnabled'] == true;
+    final ok = await showAppDialog<bool>(
+      context,
+      title: 'Configure ${m['label']}',
+      icon: LucideIcons.settings2,
+      width: 520,
+      builder: (d) => StatefulBuilder(
+        builder: (d, set) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          DTextField(controller: text, label: 'Text shown at checkout', labelHint: 'optional', maxLines: 2, minLines: 2),
+          for (final f in fields) ...[
+            const SizedBox(height: 12),
+            f['options'] is List
+                ? WebSelect<String>(label: '${f['label']}', value: ctl['${f['key']}']!.text.isEmpty ? '' : ctl['${f['key']}']!.text, options: [('', filled['${f['key']}'] == true ? 'Keep saved value' : 'Choose…'), for (final o in (f['options'] as List)) ('$o', '$o')], onChanged: (v) => set(() => ctl['${f['key']}']!.text = v))
+                : DTextField(controller: ctl['${f['key']}'], label: '${f['label']}', hint: filled['${f['key']}'] == true ? '•••••• saved — leave blank to keep' : 'Not set'),
+          ],
+          const SizedBox(height: 8),
+          DSwitchRow(label: 'Enable this method', value: enable, onChanged: (v) => set(() => enable = v)),
+        ]),
+      ),
+      actions: [const DAction.cancel(), DAction('Save', primary: true, onPressed: () async {
+        final missing = fields.where((f) => filled['${f['key']}'] != true && ctl['${f['key']}']!.text.trim().isEmpty).toList();
+        if (enable && missing.isNotEmpty) return toast(context, 'Fill in every field before enabling this method.', error: true);
+        popDialog(context, true);
+      })],
+    );
+    if (ok != true || !context.mounted) return;
+    await nativeSend(
+      context,
+      OutboxItem(
+        id: newId(), method: 'PUT', path: '/api/ecommerce/payment-settings2/${m['key']}', label: 'Payment ${m['label']}', multipart: true,
+        fields: {'name': '${m['label']}', 'text': text.text.trim(), 'is_enabled': enable ? '1' : '0', 'keep_blank': '1', for (final e in ctl.entries) 'field_${e.key}': e.value.text.trim()},
+        effect: {'kind': 'page_row_key', 'page': 'payments', 'key': m['key'], 'fields': {'text': text.text.trim(), 'isEnabled': enable, 'configured': fields.every((f) => filled['${f['key']}'] == true || ctl['${f['key']}']!.text.trim().isNotEmpty)}},
+      ),
+      reload: reload,
+      done: '${m['label']} settings saved.',
+    );
+  }
+}
+
+const _payBlurb = {
+  'cod': 'Customer pays in cash when the order is delivered — no gateway credentials needed.',
+  'paytm': 'Accept UPI, wallet and card payments through the Paytm gateway.',
+  'phonepe': 'Accept UPI and card payments through the PhonePe gateway.',
+  'razorpay': 'Accept UPI, cards, netbanking and wallets through Razorpay.',
+  'bank_transfer': 'Customer transfers directly to your bank account — you confirm payment manually.',
+};
+
+/* ───────────────────────── Login & OTP ───────────────────────── */
+
+class _Login extends StatefulWidget {
+  final Map<String, dynamic> data;
+  final Future<void> Function() reload;
+  const _Login({required this.data, required this.reload});
+  @override
+  State<_Login> createState() => _LoginState();
+}
+
+class _LoginState extends State<_Login> {
+  static final _prefs = DisplayPrefs(displayDefs['ecom_login_settings_display']!.key);
+  late bool _otp = widget.data['otpEnabled'] == true, _pw = widget.data['passwordLogin'] != false;
+  late final _cc = TextEditingController(text: '${widget.data['countryCode'] ?? '+91'}');
+  late final Map<String, TextEditingController> _fb = {
+    for (final k in const ['apiKey', 'authDomain', 'projectId', 'appId', 'messagingSenderId']) k: TextEditingController(text: '${(widget.data['firebase'] as Map?)?[k] ?? ''}'),
+  };
+  final _paste = TextEditingController();
+
+  bool get _configured => ['apiKey', 'authDomain', 'projectId', 'appId'].every((k) => _fb[k]!.text.trim().isNotEmpty);
+
+  void _applyPaste(String v) {
+    for (final k in _fb.keys) {
+      final m = RegExp('$k\\s*:\\s*["\']([^"\']+)["\']').firstMatch(v);
+      if (m != null) _fb[k]!.text = m.group(1)!;
+    }
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: _prefs,
+        builder: (context, _) {
+          bool on(String k) => _prefs.on('ls-sections', k);
+          final live = _otp && _configured;
+          Widget row(IconData i, String title, String sub, Widget trailing) => Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: const BoxDecoration(border: Border(top: BorderSide(color: W.g100))),
+                child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Icon(i, size: 18, color: W.g500),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: W.g800)), Text(sub, style: const TextStyle(fontSize: 12, color: W.g500))])),
+                  trailing,
+                ]),
+              );
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (on('ls-status')) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: live ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB), border: Border.all(color: live ? const Color(0xFFA7F3D0) : const Color(0xFFFDE68A)), borderRadius: BorderRadius.circular(10)),
+                child: Row(children: [
+                  Icon(live ? LucideIcons.circleCheck : LucideIcons.circleAlert, size: 18, color: live ? const Color(0xFF047857) : const Color(0xFF92400E)),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(live ? 'Mobile OTP login is live on your store.' : 'Customers log in with email/mobile + password. Set up Firebase to turn on OTP login.', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: live ? const Color(0xFF065F46) : const Color(0xFF92400E)))),
+                ]),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (on('ls-options')) ...[
+              WebCard(
+                padding: const EdgeInsets.all(20),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  const Text('Login options', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: W.g900)),
+                  const SizedBox(height: 8),
+                  row(LucideIcons.smartphone, 'Mobile OTP login & sign-up', 'Customers enter their mobile number and verify with an OTP. New numbers get an account and then fill in their name, email and addresses.', Switch(value: _otp, onChanged: (v) => setState(() => _otp = v))),
+                  row(LucideIcons.keyRound, 'Allow password login for customers', 'Customers who have set a password can log in with mobile/email + password. Staff login is never affected.', Switch(value: _pw, onChanged: (v) => setState(() => _pw = v))),
+                  row(LucideIcons.messageSquareText, 'Country code', 'Added in front of the number customers type.', SizedBox(width: 90, child: DTextField(controller: _cc, textAlign: TextAlign.center))),
+                ]),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (on('ls-firebase')) ...[
+              WebCard(
+                padding: const EdgeInsets.all(20),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Row(children: [
+                    const Expanded(child: Text('Firebase web config', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: W.g900))),
+                    _configured ? const WebBadge('Filled', color: Color(0xFF047857), bg: Color(0xFFECFDF5)) : const WebBadge('Not set', color: W.g500, bg: W.g100),
+                  ]),
+                  const Text('These values identify your Firebase project; they are public (they go to the browser) — no secret key is needed.', style: TextStyle(fontSize: 12, color: W.g500)),
+                  const SizedBox(height: 12),
+                  DTextField(controller: _paste, label: 'Quick fill: paste the whole firebaseConfig code here', maxLines: 3, minLines: 3, hint: 'const firebaseConfig = { apiKey: "AIza…", authDomain: "…", projectId: "…", appId: "1:…" };', onChanged: _applyPaste),
+                  const SizedBox(height: 12),
+                  Row(children: [Expanded(child: DTextField(controller: _fb['apiKey'], label: 'API key', hint: 'AIzaSy…', onChanged: (_) => setState(() {}))), const SizedBox(width: 12), Expanded(child: DTextField(controller: _fb['authDomain'], label: 'Auth domain', hint: 'your-project.firebaseapp.com', onChanged: (_) => setState(() {})))]),
+                  const SizedBox(height: 12),
+                  Row(children: [Expanded(child: DTextField(controller: _fb['projectId'], label: 'Project ID', hint: 'your-project', onChanged: (_) => setState(() {}))), const SizedBox(width: 12), Expanded(child: DTextField(controller: _fb['appId'], label: 'App ID', hint: '1:1234567890:web:abc123', onChanged: (_) => setState(() {})))]),
+                  const SizedBox(height: 12),
+                  DTextField(controller: _fb['messagingSenderId'], label: 'Messaging sender ID', labelHint: 'optional', hint: '1234567890'),
+                ]),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (on('ls-steps')) ...[
+              WebCard(
+                padding: const EdgeInsets.all(20),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  const Text('How to set up Firebase OTP', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: W.g900)),
+                  const Text('About 10 minutes, one time.', style: TextStyle(fontSize: 12, color: W.g500)),
+                  const SizedBox(height: 10),
+                  for (final (i, t) in const [
+                    'Open console.firebase.google.com and create a project (any name).',
+                    'Add a Web app (the </> icon) and copy its firebaseConfig.',
+                    'Build → Authentication → Sign-in method → turn on Phone.',
+                    'Authentication → Settings → Authorized domains → add your shop domain.',
+                    'Paste the config above, turn on Mobile OTP login and Save.',
+                  ].indexed)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Container(width: 22, height: 22, alignment: Alignment.center, decoration: const BoxDecoration(color: Color(0xFF9F2089), shape: BoxShape.circle), child: Text('${i + 1}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white))),
+                        const SizedBox(width: 10),
+                        Expanded(child: Text(t, style: const TextStyle(fontSize: 13, color: W.g700))),
+                      ]),
+                    ),
+                ]),
+              ),
+              const SizedBox(height: 12),
+            ],
+            WebCard(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: Row(children: [
+                const Spacer(),
+                WebButton('Save Settings', icon: LucideIcons.save, color: const Color(0xFF9F2089), onPressed: () {
+                  if (_otp && !_configured) return toast(context, 'Fill in the Firebase config first, or keep OTP login off.', error: true);
+                  final body = {'otpEnabled': _otp, 'passwordLogin': _pw, 'countryCode': _cc.text.trim(), 'firebase': {for (final e in _fb.entries) e.key: e.value.text.trim()}};
+                  nativeSend(context, OutboxItem(id: newId(), method: 'POST', path: '/api/ecommerce/auth-settings', label: 'Login settings', body: body, effect: {'kind': 'page_set', 'page': 'business', 'path': ['auth'], 'value': body}),
+                      reload: widget.reload, done: "Saved — the store's login page uses these settings now.");
+                }),
+              ]),
+            ),
+          ]);
+        },
       );
 }

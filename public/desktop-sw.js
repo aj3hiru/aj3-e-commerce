@@ -14,7 +14,7 @@
  *    sent in order when the internet is back. Each carries the
  *    Idempotency-Key the page gave it, so the server applies it exactly once.
  */
-const V = "v3";
+const V = "v4";
 const PAGES = `dsk-pages-${V}`;
 const DATA = `dsk-data-${V}`;
 const ASSETS = `dsk-assets-${V}`;
@@ -128,7 +128,13 @@ async function flush() {
 const pageKey = (url) => url.origin + url.pathname + url.search;
 /** "Page data" (Next.js RSC) for one page, as seen from one screen (the router tree it was asked from). */
 function hash(s) { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
-const rscKey = (url, tree) => `${url.origin}${url.pathname}${url.search.replace(/[?&]_rsc=[^&]*/, "").replace(/^&/, "?")}#rsc-${hash(tree || "")}`;
+// (A query mark, not "#…": the Cache API ignores the part after "#", which made page data overwrite the page.)
+function rscKey(url, tree, prefetch) {
+  const u = new URL(url.href);
+  u.searchParams.delete("_rsc");
+  u.searchParams.set("__dsk_rsc", hash(tree || "") + (prefetch ? "p" : ""));
+  return u.href;
+}
 /** A saved copy, stamped with when it was saved, without the "came through a redirect" mark (a browser refuses those for pages). */
 async function stamp(res) {
   const headers = new Headers(res.headers);
@@ -310,7 +316,7 @@ self.addEventListener("fetch", (e) => {
   if (req.headers.get("rsc") === "1") {
     const prefetch = req.headers.get("next-router-prefetch") === "1";
     const path = url.pathname;
-    const key = rscKey(url, req.headers.get("next-router-state-tree")) + (prefetch ? "-p" : "");
+    const key = rscKey(url, req.headers.get("next-router-state-tree"), prefetch);
     e.respondWith((async () => {
       const cache = await caches.open(PAGES);
       const hit = await cache.match(key, { ignoreVary: true });

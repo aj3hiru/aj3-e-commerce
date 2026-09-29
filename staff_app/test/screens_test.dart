@@ -26,10 +26,14 @@ import 'package:sri_staff/features/orders/orders_screen.dart';
 import 'package:sri_staff/features/products/product_edit_screen.dart';
 import 'package:sri_staff/features/products/products_screen.dart';
 import 'package:sri_staff/features/shell/shell.dart';
+import 'package:sri_staff/desktop/analytics_web.dart';
 import 'package:sri_staff/desktop/barcodes_web.dart';
+import 'package:sri_staff/desktop/business_web.dart';
 import 'package:sri_staff/desktop/catalog_web.dart';
 import 'package:sri_staff/desktop/categories_web.dart';
 import 'package:sri_staff/desktop/offers_web.dart';
+import 'package:sri_staff/desktop/push_web.dart';
+import 'package:sri_staff/desktop/tax_web.dart';
 import 'package:sri_staff/desktop/sales_history_web.dart';
 import 'package:sri_staff/desktop/stock_out_web.dart';
 
@@ -164,6 +168,16 @@ void main() {
       {'id': 2, 'code': 'DIWALI50', 'title': 'Diwali', 'discountType': 'fixed', 'discountValue': 50, 'appliesTo': 'category', 'target': 'Pooja Items', 'limit': 50, 'used': 0, 'status': 'active', 'paused': true, 'startsAt': '2026-10-20T00:00:00.000Z', 'endsAt': '2026-11-02T18:29:00.000Z', 'createdAt': at},
     ]});
     await _page('coupon_activity', {'at': at, 'data': [{'id': 1, 'action': 'create', 'description': 'Created coupon WELCOME10', 'byUsername': 'arjun', 'createdAt': at}]});
+    await _page('push', {'at': at, 'data': {
+      'configured': true, 'subscribers': 42, 'campaigns': 2, 'sent': 70, 'failed': 4, 'canManage': true, 'newThisWeek': 5,
+      'breakdown': [{'browser': 'chrome', 'label': 'Chrome / Android', 'count': 38}, {'browser': 'firefox', 'label': 'Firefox', 'count': 3}, {'browser': 'safari', 'label': 'Safari / iOS', 'count': 1}, {'browser': 'edge', 'label': 'Edge (legacy)', 'count': 0}, {'browser': 'other', 'label': 'Other', 'count': 0}],
+      'subscriberRows': [{'id': 9, 'host': 'fcm.googleapis.com', 'browser': 'chrome', 'browserLabel': 'Chrome / Android', 'createdAt': at}],
+      'history': [{'id': 2, 'title': '🔥 Navratri Sale is live', 'body': 'Prices already dropped', 'image': null, 'url': 'https://sriandaltraders.co.in/', 'status': 'processing', 'totalSubscribers': 42, 'sent': 30, 'failed': 1, 'createdAt': at}],
+      'keys': {'publicKey': 'BExamplePublicKey', 'subject': 'mailto:shop@example.com', 'hasPrivateKey': true, 'publicFingerprint': 'a1b2c3', 'privateFingerprint': 'd4e5f6'},
+    }});
+    await _page('business', {'at': at, 'data': {'business': {'businessName': 'Sri Andal Traders', 'tagline': 'Puja & grocery', 'address': 'Ward 4, Narkatiaganj', 'contactNumbers': ['7632096003', '9876543210'], 'invoiceContactNumbers': ['7632096003'], 'socialMediaJson': [{'platform': 'facebook', 'url': 'https://facebook.com/sri'}]}, 'delivery': {}, 'invoice': {'defaultPrint': 'ask', 'thermalTemplate': 'classic', 'thermalWidth': '80mm', 'thermalFont': 'md', 'accent': '#9f2089', 'title': 'Tax Invoice', 'showName': true, 'showLogo': true, 'logoWidth': 120, 'showInvoiceNo': true, 'showDate': true, 'address': {'show': true, 'value': ''}, 'extraIds': [], 'footerNote': 'Thank you, visit again!'}, 'tax': {'pricesIncludeTax': true}, 'gstRates': [
+      {'id': 1, 'label': 'GST 0%', 'rate': 0, 'isDefault': true}, {'id': 2, 'label': 'GST 5%', 'rate': 5, 'isDefault': false}, {'id': 3, 'label': 'GST 18%', 'rate': 18, 'isDefault': false},
+    ]}});
     await _page('customizer', {'at': at, 'data': {
       'canStore': true, 'unpublished': false, 'header': {'showLocation': true, 'showDeliveryInfo': true, 'deliveryLabel': "We're open", 'deliveryTimeText': '', 'searchPlaceholder': 'Search for products'},
       'store': {'headerMenu': [{'id': 'h1', 'label': 'Home', 'href': '/', 'icon': 'home', 'visibility': 'all', 'enabled': true, 'newTab': false, 'autoCategories': false, 'children': []}], 'sidebarMenu': [], 'menuDesign': {'accent': '#9f2089', 'showIcons': true, 'dividers': true}, 'push': {'showBell': true, 'autoPrompt': true}, 'footer': {'columns': []}},
@@ -234,6 +248,18 @@ void main() {
         await t.tap(find.text('Coupons').first);
         await t.pump(const Duration(milliseconds: 300));
       }));
+  testWidgets('native push web', (t) => _shot(t, 'n_push_web', const PushWeb(), size: wideSize, after: (t) async {
+        await t.enterText(find.byType(TextField).at(1), '✨ New arrival: Pure Cow Ghee 1L');
+        await t.pump(const Duration(milliseconds: 300));
+      }));
+  testWidgets('native push history web', (t) => _shot(t, 'n_push_history_web', const PushWeb(), size: wideSize, after: (t) async {
+        await t.tap(find.text('History').first);
+        await t.pump(const Duration(milliseconds: 300));
+      }));
+  testWidgets('native analytics web', (t) => _shot(t, 'n_analytics_web', const AnalyticsWeb(), size: wideSize));
+  testWidgets('native tax web', (t) => _shot(t, 'n_tax_web', const TaxWeb(), size: wideSize));
+  testWidgets('native business web', (t) => _shot(t, 'n_business_web', const BusinessWeb(), size: wideSize));
+  testWidgets('native invoice settings web', (t) => _shot(t, 'n_invoice_web', const BusinessWeb(section: 'invoice'), size: wideSize));
   testWidgets('native sales history web', (t) => _shot(t, 'n_sales_web', const SalesHistoryWeb(), size: wideSize, after: (t) async {
         await t.tap(find.text('This Month').first);
         await t.pump(const Duration(milliseconds: 300));

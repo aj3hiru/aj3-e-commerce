@@ -5,6 +5,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_state.dart';
+import '../../core/display_defs.dart';
+import '../../ds/display_options.dart';
 import '../../core/nav.dart';
 import '../../core/format.dart';
 import '../../core/local_store.dart';
@@ -32,29 +34,48 @@ class _ReportsScreenState extends State<ReportsScreen> {
   bool _loading = false;
   String? _error;
 
+  final _prefs = DisplayPrefs(displayDefs['ecom_report_builder_display']!.key);
+
   @override
   void initState() {
     super.initState();
-    LocalStore.instance.read('report').then((v) {
-      if (v is Map && mounted && _r == null) setState(() => _r = Map<String, dynamic>.from(v));
-    });
+    _prefs.addListener(_redraw);
     _load();
   }
 
+  void _redraw() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _prefs.removeListener(_redraw);
+    super.dispose();
+  }
+
+  /// Every report made is kept on this computer (and today / yesterday / this and last month are
+  /// downloaded in the background), so it opens at once — also without internet.
   Future<void> _load() async {
     final s = context.read<AppState>();
+    final params = Map<String, String>.from(_params);
+    final saved = await LocalStore.instance.read(AppState.reportKey(params)) ?? (params.length == 1 && params['range'] == 'today' ? await LocalStore.instance.read('report') : null);
+    if (!mounted) return;
     setState(() {
-      _loading = true;
+      if (saved is Map) _r = Map<String, dynamic>.from(saved);
+      _loading = saved is! Map;
       _error = null;
     });
-    final r = await s.api.get('/api/app/v1/report', query: _params);
-    if (!mounted) return;
+    final r = await s.api.get('/api/app/v1/report', query: params);
+    if (!mounted || params.toString() != _params.toString()) return;
     setState(() => _loading = false);
     if (r.ok) {
       setState(() => _r = Map<String, dynamic>.from(r.data['report']));
+      LocalStore.instance.write(AppState.reportKey(params), _r);
       LocalStore.instance.write('report', _r);
-    } else {
-      setState(() => _error = r.outcome == ApiOutcome.offline ? 'Reports need the internet. Showing the last report you opened.' : r.message);
+    } else if (r.outcome != ApiOutcome.offline && r.outcome != ApiOutcome.busy) {
+      setState(() => _error = r.message);
+    } else if (saved is! Map) {
+      setState(() => _r = null);
     }
   }
 

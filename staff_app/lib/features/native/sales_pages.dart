@@ -15,6 +15,15 @@ import '../reports/report_export.dart';
 import 'kit.dart';
 
 /// A sale: every store bill, and online orders once delivered (never cancelled).
+/// Every order for reports: the last ~15 months (downloaded in the background) with the fresher
+/// 60-day list on top, so any period opens offline.
+List<Map<String, dynamic>> allOrders(AppState s) {
+  final recent = s.list('orders');
+  final ids = {for (final o in recent) o['id']};
+  final older = ((s.pageData['sales_ledger']?['data'] as List?) ?? const []).cast<Map>().where((o) => !ids.contains(o['id'])).map((e) => Map<String, dynamic>.from(e));
+  return [...older, ...recent];
+}
+
 bool isSale(Map o) => o['status'] != 'Canceled' && (o['type'] != 'online' || o['status'] == 'Delivered');
 
 class _RangeChips extends StatelessWidget {
@@ -57,7 +66,7 @@ class _SalesHistoryPageState extends State<SalesHistoryPage> {
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final q = _q.trim().toLowerCase();
-    final list = s.list('orders').where((o) => isSale(o) && _range.contains(o['createdAt']) && (_channel == 'all' || o['type'] == _channel) &&
+    final list = allOrders(s).where((o) => isSale(o) && _range.contains(o['createdAt']) && (_channel == 'all' || o['type'] == _channel) &&
         (q.isEmpty || '${o['number']} ${o['customer']} ${((o['items'] as List?) ?? const []).map((i) => (i as Map)['name']).join(' ')}'.toLowerCase().contains(q))).toList()
       ..sort((a, b) => '${b['createdAt']}'.compareTo('${a['createdAt']}'));
     final total = list.fold<double>(0, (t, o) => t + toDouble(o['total']));
@@ -244,7 +253,7 @@ class GstReportPage extends StatefulWidget {
 class _GstReportPageState extends State<GstReportPage> {
   String _period = 'month';
   DateRange _range = DateRange.preset('this_month');
-  String _tab = 'rate';
+  String _tab = 'rate', _channel = 'all';
 
   DateRange _periodRange(String p) {
     final t = DateRange.preset('today').to;
@@ -267,7 +276,7 @@ class _GstReportPageState extends State<GstReportPage> {
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
     final products = {for (final p in s.list('products')) toInt(p['id']): p};
-    final orders = s.list('orders').where((o) => isSale(o) && _range.contains(o['createdAt'])).toList()..sort((a, b) => '${a['createdAt']}'.compareTo('${b['createdAt']}'));
+    final orders = allOrders(s).where((o) => isSale(o) && (_channel == 'all' || o['type'] == _channel) && _range.contains(o['createdAt'])).toList()..sort((a, b) => '${a['createdAt']}'.compareTo('${b['createdAt']}'));
     final byRate = <double, List<double>>{}; // taxable, tax, value
     final byHsn = <String, List<double>>{}; // qty, taxable, tax
     final hsnName = <String, String>{};
@@ -312,7 +321,10 @@ class _GstReportPageState extends State<GstReportPage> {
     return NativeScreen(
       title: 'GST Report',
       subtitle: 'Tax on your sales — by rate, HSN, product and invoice',
-      onRefresh: () => s.syncNow(only: const ['orders', 'products']),
+      onRefresh: () async {
+        await s.syncNow(only: const ['orders', 'products']);
+        await s.reloadPage('sales_ledger');
+      },
       actions: [NativeAction('Export sheet', LucideIcons.fileSpreadsheet, () => exportTable(context, 'GST ${_tab.toUpperCase()} ${_range.label}', head, rows))],
       children: [
         Wrap(spacing: 6, runSpacing: 6, children: [
@@ -321,6 +333,10 @@ class _GstReportPageState extends State<GstReportPage> {
                   _period = k;
                   _range = _periodRange(k);
                 })),
+          const SizedBox(width: 12),
+          for (final (k, l) in const [('all', 'All sales'), ('offline', 'Store'), ('online', 'Online')])
+            ChoiceChip(label: Text(l), selected: _channel == k, onSelected: (_) => setState(() => _channel = k)),
+          const SizedBox(width: 12),
           ActionChip(
             avatar: const Icon(Icons.date_range_rounded, size: 16),
             label: Text(_period == 'custom' ? _range.label : 'Custom dates…'),
@@ -345,7 +361,7 @@ class _GstReportPageState extends State<GstReportPage> {
         NFilters(hint: '', onSearch: (_) {}, tabs: const [('rate', 'Rate-wise'), ('hsn', 'HSN-wise'), ('product', 'Product-wise'), ('invoice', 'Invoice-wise')], tab: _tab, onTab: (v) => setState(() => _tab = v)),
         NList(
           cols: [for (var i = 0; i < head.length; i++) WebCol(head[i], flex: i == 0 || (head[i] == 'Description' || head[i] == 'Product' || head[i] == 'Customer') ? 1.6 : 1, right: i > 0 && rows.isNotEmpty && rows.first[i] is num)],
-          empty: 'No sales in this period (only sales kept on this device are counted — last 60 days).',
+          empty: 'No sales in this period.',
           rows: [
             for (final r in rows)
               NRow(

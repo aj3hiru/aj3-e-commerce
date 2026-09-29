@@ -34,6 +34,9 @@ Future<void> _deliver(BuildContext context, Uint8List bytes, String name, String
   await SharePlus.instance.share(ShareParams(files: [XFile(f.path, mimeType: mime)], subject: name));
 }
 
+/// Saves any file the same way (Windows: save dialog; Android: share sheet).
+Future<void> saveFile(BuildContext context, Uint8List bytes, String name, String mime) => _deliver(context, bytes, name, mime);
+
 Future<void> exportReportPdf(BuildContext context, Map<String, dynamic> r) async {
   final regular = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Regular.ttf'));
   final bold = pw.Font.ttf(await rootBundle.load('assets/fonts/Inter-Bold.ttf'));

@@ -20,11 +20,17 @@ class DisplayDef {
   const DisplayDef(this.key, this.groups, this.standalone);
 }
 
+/// Parts the website keeps hidden until switched on (e.g. RB_DEFAULT_HIDDEN).
+const kDefaultHidden = <String, List<String>>{
+  'ecom_report_builder_display': ['rb-c-category', 'rb-c-gst', 'rb-c-status', 'rb-c-staff', 'rb-p-category', 'rb-du-phone', 'rb-k-avg', 'rb-k-discount', 'rb-k-gst'],
+};
+
 /// What one page hides, kept on this computer (like the website keeps it in the browser).
 class DisplayPrefs extends ChangeNotifier {
   static final _all = <String, DisplayPrefs>{};
   factory DisplayPrefs(String key) => _all.putIfAbsent(key, () => DisplayPrefs._(key));
   DisplayPrefs._(this.key) {
+    _hidden.addAll(kDefaultHidden[key] ?? const []);
     LocalStore.instance.read('display:$key').then((v) {
       if (v is List) {
         _hidden

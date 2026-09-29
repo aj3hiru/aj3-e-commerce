@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../desktop/analytics_web.dart';
+import '../../desktop/business_web.dart';
 import '../../desktop/catalog_web.dart';
 import '../../desktop/offers_web.dart';
+import '../../desktop/push_web.dart';
 import '../../desktop/stock_out_web.dart';
+import '../../desktop/tax_web.dart';
 import '../../desktop/sales_history_web.dart';
 import '../../widgets/web.dart' show Responsive;
 
@@ -19,12 +23,12 @@ Widget Function()? nativePageFor(String href) => switch (href) {
       '/admin/ecommerce/product-reviews' => () => const Responsive(phone: ReviewsPage(), desktop: ReviewsWeb()),
       '/admin/ecommerce/barcode-print' => () => const BarcodePrintPage(),
       '/admin/ecommerce/sales-history' => () => const Responsive(phone: SalesHistoryPage(), desktop: SalesHistoryWeb()),
-      '/admin/ecommerce/analytics' => () => const AnalyticsPage(),
+      '/admin/ecommerce/analytics' => () => const Responsive(phone: AnalyticsPage(), desktop: AnalyticsWeb()),
       '/admin/ecommerce/gst-report' => () => const GstReportPage(),
       '/admin/ecommerce/offers' => () => const Responsive(phone: OffersPage(), desktop: OffersWeb()),
-      '/push-notifications/push-manager2' => () => const PushPage(),
-      '/admin/ecommerce/business-settings' => () => const BusinessSettingsPage(),
-      '/admin/ecommerce/tax-settings' => () => const BusinessSettingsPage(section: 'tax'),
+      '/push-notifications/push-manager2' => () => const Responsive(phone: PushPage(), desktop: PushWeb()),
+      '/admin/ecommerce/business-settings' => () => const Responsive(phone: BusinessSettingsPage(), desktop: BusinessWeb()),
+      '/admin/ecommerce/tax-settings' => () => const Responsive(phone: BusinessSettingsPage(section: 'tax'), desktop: TaxWeb()),
       '/admin/pages' => () => const StaticPagesPage(),
       '/admin/file-manager' => () => const FilesPage(),
       '/admin/activity-logs' => () => const ActivityPage(),

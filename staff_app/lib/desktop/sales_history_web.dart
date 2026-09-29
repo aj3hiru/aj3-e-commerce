@@ -8,7 +8,7 @@ import '../core/display_defs.dart';
 import '../core/format.dart';
 import '../ds/display_options.dart';
 import '../features/dues/collect_sheet.dart';
-import '../features/native/sales_pages.dart' show isSale;
+import '../features/native/sales_pages.dart' show allOrders, isSale;
 import '../features/orders/order_actions.dart';
 import '../features/orders/order_detail_screen.dart';
 import '../features/reports/report_export.dart';
@@ -56,7 +56,7 @@ class _SalesHistoryWebState extends State<SalesHistoryWeb> {
   Widget _build(BuildContext context) {
     final s = context.watch<AppState>();
     final on = _prefs.on;
-    final orders = s.list('orders');
+    final orders = allOrders(s);
     final sales = orders.where(isSale).toList();
     final dues = s.list('dues');
     final paidDues = ((s.pageData['dues_paid']?['data'] as List?) ?? const []).cast<Map>().map((e) => Map<String, dynamic>.from(e)).toList();

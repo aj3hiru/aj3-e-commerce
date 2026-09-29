@@ -70,7 +70,7 @@ enum SyncPhase { idle, sending, receiving }
 
 /// Data behind the app's versions of the website's other admin pages (`/api/app/v1/page/<name>`).
 /// All of them are downloaded in the background, so every page opens at once — also offline.
-const kPageNames = ['brands', 'tags', 'reviews', 'campaigns', 'coupons', 'pages', 'files', 'activity', 'push', 'business', 'customizer', 'cache', 'backups', 'deliveries', 'dues_paid', 'addresses', 'customer_orders', 'coupon_activity'];
+const kPageNames = ['brands', 'tags', 'reviews', 'campaigns', 'coupons', 'pages', 'files', 'activity', 'push', 'business', 'customizer', 'cache', 'backups', 'deliveries', 'dues_paid', 'addresses', 'customer_orders', 'coupon_activity', 'sales_ledger'];
 
 /// The app's shared state: who is signed in, the data kept on the device,
 /// the outbox, and the sync engine that keeps them in step with the server.
@@ -470,6 +470,7 @@ class AppState extends ChangeNotifier {
       }
       if (!off) await _loadProductDetails();
       if (!off) await _loadOrderHistories();
+      if (!off) await _loadReports();
       _lastPages = DateTime.now();
     } finally {
       _pagesBusy = false;
@@ -507,6 +508,19 @@ class AppState extends ChangeNotifier {
       final r = await api.get('/api/app/v1/orders/$id');
       if (r.outcome == ApiOutcome.offline) return;
       if (r.ok) await _store.write('order:$id', {'rev': o['rev'], 'order': r.data['order']});
+    }
+  }
+
+  /// Where a report (Report Builder) for these filters is kept on the device.
+  static String reportKey(Map<String, String> p) => 'report:${(p.keys.toList()..sort()).map((k) => '$k=${p[k]}').join('&')}';
+
+  /// Report Builder's common ranges, downloaded in the background so they open offline.
+  Future<void> _loadReports() async {
+    if (!perms.ordersAdmin && !perms.billing) return;
+    for (final range in const ['today', 'yesterday', 'this_month', 'prev_month']) {
+      final r = await api.get('/api/app/v1/report', query: {'range': range});
+      if (r.outcome == ApiOutcome.offline) return;
+      if (r.ok) await _store.write(reportKey({'range': range}), r.data['report']);
     }
   }
 
@@ -672,6 +686,20 @@ class AppState extends ChangeNotifier {
       case 'set_row_delete':
         final ids = (e['ids'] as List).toSet();
         (sets['${e['set']}'] as List?)?.removeWhere((r) => r is Map && ids.contains(r['id']));
+        break;
+      // One value inside a page's data (e.g. business → tax → pricesIncludeTax).
+      case 'page_set':
+        final page = pageData[e['page']];
+        if (page == null) break;
+        final path = (e['path'] as List).cast<String>();
+        final data = page['data'];
+        if (data is! Map || path.isEmpty) break;
+        Map cur = data;
+        for (final k in path.take(path.length - 1)) {
+          cur = (cur[k] is Map) ? cur[k] as Map : (cur[k] = <String, dynamic>{});
+        }
+        cur[path.last] = e['value'];
+        pageData[e['page']] = {...page};
         break;
       case 'customer_new':
         final nc = Map<String, dynamic>.from(e['customer']);

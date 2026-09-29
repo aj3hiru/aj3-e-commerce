@@ -21,6 +21,7 @@ import { getShopHeaderSettings } from "@/lib/header-settings";
 import { loadDeliveryHistory } from "@/lib/delivery-history";
 import { getCouponActivity } from "@/lib/coupons2-activity";
 import { paidDues } from "@/lib/app-sync";
+import { getInvoiceSetup } from "@/lib/invoice-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -113,12 +114,13 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ name
     }
     case "business": {
       if (!hasPermission(p, "ecommerce", "manage_payment")) return deny();
-      const [b, delivery, tax, gst] = await Promise.all([
+      const [b, delivery, tax, gst, invoice] = await Promise.all([
         prisma.ecomBusinessSettings.findFirst({ orderBy: { id: "asc" } }),
         getDeliverySettings(), getTaxMode(),
         prisma.ecomGstRate.findMany({ orderBy: { rate: "asc" }, select: { id: true, label: true, rate: true, isDefault: true } }),
+        getInvoiceSetup(),
       ]);
-      return ok({ business: b, delivery, tax, gstRates: gst.map((g) => ({ ...g, rate: Number(g.rate) })) });
+      return ok({ business: b, delivery, tax, gstRates: gst.map((g) => ({ ...g, rate: Number(g.rate) })), invoice: invoice.settings });
     }
     case "customizer": {
       if (!hasPermission(p, "ecommerce", "manage_homepage")) return deny();

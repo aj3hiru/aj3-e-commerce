@@ -329,6 +329,14 @@ self.addEventListener("fetch", (e) => {
         e.waitUntil(net().catch(() => {}));
         return hit;
       }
+      // Not saved from this screen, but the page itself is: open the saved page directly (an error makes
+      // Next.js do a normal page load, which the page cache answers in a few milliseconds) and save this
+      // page data in the background for next time.
+      if (!hit && !prefetch && !forceNet.has(path)) {
+        const u = new URL(url.href); u.searchParams.delete("_rsc");
+        const page = (await cache.match(pageKey(u), { ignoreVary: true })) || (await cache.match(u.origin + u.pathname, { ignoreVary: true }));
+        if (page) { e.waitUntil(net().catch(() => {})); return Response.error(); }
+      }
       forceNet.delete(path);
       try {
         return await withTimeout(net(), hit ? 2500 : NET_TIMEOUT);

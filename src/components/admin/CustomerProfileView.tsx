@@ -170,7 +170,7 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
                 <thead>
                   <tr className="border-b border-admin-gray-200 text-left text-xs uppercase tracking-wide text-admin-gray-500 [&>th]:px-2 [&>th]:py-2.5 [&>th]:font-semibold">
                     {on("cp-cols", "cp-c-order") && <th>Order</th>}{on("cp-cols", "cp-c-date") && <th>Date</th>}{on("cp-cols", "cp-c-total") && <th className="text-right">Total</th>}
-                    {on("cp-cols", "cp-c-payment") && <th>Payment</th>}{on("cp-cols", "cp-c-status") && <th>Status</th>}<th>Due / Receipts</th>{on("cp-cols", "cp-c-view") && <th />}
+                    {on("cp-cols", "cp-c-payment") && <th>Payment</th>}{on("cp-cols", "cp-c-status") && <th>Status</th>}<th>Due / Receipts</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -197,7 +197,6 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
                           {!o.due && !(o.receipts ?? []).length && <span className="text-admin-gray-300">—</span>}
                         </div>
                       </td>
-                      {on("cp-cols", "cp-c-view") && <td className="text-right"><Link href={`/admin/ecommerce/orders/${o.id}`} className="inline-grid h-8 w-8 place-items-center rounded-[8px] text-admin-gray-500 hover:bg-admin-gray-100" title="Open order"><Eye className="h-4 w-4" /></Link></td>}
                     </tr>
                   ))}
                 </tbody>

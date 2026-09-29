@@ -21,6 +21,8 @@ export interface PosProduct {
   quantity?: number | null;
   /** Products sharing this are variants of each other (billing can switch between them). */
   variantGroup?: number | null;
+  /** Sizes / Units of this product (billing sells one of them, like a variant). */
+  sizes?: { id: number; label: string; mrp: number; price: number | null; stockQty: number | null; isDefault: boolean }[];
 }
 
 export interface PosCoupon {
@@ -53,6 +55,8 @@ export interface CartLine {
   unit?: string | null;
   sku?: string | null;
   image?: string | null;
+  /** The size of the product on this line (priced from it). */
+  sizeId?: number | null;
 }
 
 export interface PaymentRow {

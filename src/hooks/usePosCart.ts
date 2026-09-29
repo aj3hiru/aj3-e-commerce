@@ -14,6 +14,37 @@ function effectivePrice(p: PosProduct): number {
 
 let paymentRowId = 0;
 
+type Size = NonNullable<PosProduct["sizes"]>[number];
+/** The size a product is sold in by default (its default Sizes / Units row), if it has sizes. */
+export const defaultSize = (p: PosProduct): Size | null => p.sizes?.find((z) => z.isDefault) ?? p.sizes?.[0] ?? null;
+export const sizePrice = (z: Size) => (z.price !== null && z.price > 0 && z.price < z.mrp ? z.price : z.mrp);
+
+/** A new bill line for a product (in one of its sizes when it has them). */
+function newLine(product: PosProduct, size: Size | null, qty: number): CartLine {
+  return {
+    productId: product.id, name: product.name, unitPrice: size ? sizePrice(size) : effectivePrice(product), qty,
+    stockQty: size?.stockQty ?? product.stockQty, productType: product.productType, categoryId: product.categoryId,
+    subcategoryId: product.subcategoryId, gstRate: product.gstRate, unit: size ? size.label : packLabel(product.quantity, product.unit),
+    sku: product.sku, image: product.image ?? null, sizeId: size?.id ?? null,
+  };
+}
+
+function addLine(setCart: React.Dispatch<React.SetStateAction<CartLine[]>>, product: PosProduct, qty: number, checkStock: boolean) {
+  const size = defaultSize(product);
+  setCart((prev) => {
+    const same = (c: CartLine) => c.productId === product.id && (c.sizeId ?? null) === (size?.id ?? null);
+    const existing = prev.find(same);
+    if (existing) {
+      if (checkStock && existing.productType === "physical" && existing.stockQty !== null && existing.qty + qty > existing.stockQty) {
+        alert(`Only ${existing.stockQty} in stock for "${product.name}".`);
+        return prev;
+      }
+      return prev.map((c) => (same(c) ? { ...c, qty: c.qty + qty } : c));
+    }
+    return [...prev, newLine(product, size, qty)];
+  });
+}
+
 /** `pricesIncludeTax`: GST / Tax Settings — GST is inside the prices instead of added on top. */
 export function usePosCart(pricesIncludeTax = false) {
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -24,35 +55,7 @@ export function usePosCart(pricesIncludeTax = false) {
   ]);
   const userEditedPayments = useRef(false);
 
-  const addToCart = useCallback((product: PosProduct) => {
-    setCart((prev) => {
-      const existing = prev.find((c) => c.productId === product.id);
-      if (existing) {
-        if (product.productType === "physical" && product.stockQty !== null && existing.qty + 1 > product.stockQty) {
-          alert(`Only ${product.stockQty} in stock for "${product.name}".`);
-          return prev;
-        }
-        return prev.map((c) => (c.productId === product.id ? { ...c, qty: c.qty + 1 } : c));
-      }
-      return [
-        ...prev,
-        {
-          productId: product.id,
-          name: product.name,
-          unitPrice: effectivePrice(product),
-          qty: 1,
-          stockQty: product.stockQty,
-          productType: product.productType,
-          categoryId: product.categoryId,
-          subcategoryId: product.subcategoryId,
-          gstRate: product.gstRate,
-          unit: packLabel(product.quantity, product.unit),
-          sku: product.sku,
-          image: product.image ?? null,
-        },
-      ];
-    });
-  }, []);
+  const addToCart = useCallback((product: PosProduct) => addLine(setCart, product, 1, true), []);
 
   /**
    * Same as `addToCart`, but for a line that starts at a chosen quantity
@@ -60,32 +63,7 @@ export function usePosCart(pricesIncludeTax = false) {
    * spot, not scanned) is entered with its quantity already known, so the
    * cashier isn't left tapping "+" repeatedly right after adding it.
    */
-  const addToCartWithQty = useCallback((product: PosProduct, qty: number) => {
-    const safeQty = Math.max(1, Math.floor(qty) || 1);
-    setCart((prev) => {
-      const existing = prev.find((c) => c.productId === product.id);
-      if (existing) {
-        return prev.map((c) => (c.productId === product.id ? { ...c, qty: c.qty + safeQty } : c));
-      }
-      return [
-        ...prev,
-        {
-          productId: product.id,
-          name: product.name,
-          unitPrice: effectivePrice(product),
-          qty: safeQty,
-          stockQty: product.stockQty,
-          productType: product.productType,
-          categoryId: product.categoryId,
-          subcategoryId: product.subcategoryId,
-          gstRate: product.gstRate,
-          unit: packLabel(product.quantity, product.unit),
-          sku: product.sku,
-          image: product.image ?? null,
-        },
-      ];
-    });
-  }, []);
+  const addToCartWithQty = useCallback((product: PosProduct, qty: number) => addLine(setCart, product, Math.max(1, Math.floor(qty) || 1), false), []);
 
   const changeQty = useCallback((idx: number, delta: number) => {
     setCart((prev) => {
@@ -125,20 +103,19 @@ export function usePosCart(pricesIncludeTax = false) {
   }, []);
 
   /** Switches a line to another variant of the product (same quantity; merges if that variant is already in the cart). */
-  const swapProduct = useCallback((idx: number, product: PosProduct) => {
+  /** Switches a line to another variant or size (same quantity; merges if that one is already on the bill). */
+  const swapProduct = useCallback((idx: number, product: PosProduct, sizeId?: number | null) => {
     setCart((prev) => {
       const item = prev[idx];
-      if (!item || item.productId === product.id) return prev;
-      const other = prev.findIndex((c) => c.productId === product.id);
+      if (!item) return prev;
+      const size = sizeId === undefined ? defaultSize(product) : product.sizes?.find((z) => z.id === sizeId) ?? null;
+      const next = newLine(product, size, item.qty);
+      if (item.productId === next.productId && (item.sizeId ?? null) === (next.sizeId ?? null)) return prev;
+      const other = prev.findIndex((c, i) => i !== idx && c.productId === next.productId && (c.sizeId ?? null) === (next.sizeId ?? null));
       if (other !== -1) {
         return prev.map((c, i) => (i === other ? { ...c, qty: c.qty + item.qty } : c)).filter((_, i) => i !== idx);
       }
-      return prev.map((c, i) => (i === idx ? {
-        ...c,
-        productId: product.id, name: product.name, unitPrice: effectivePrice(product), priceOverridden: false, stockQty: product.stockQty,
-        productType: product.productType, categoryId: product.categoryId, subcategoryId: product.subcategoryId, gstRate: product.gstRate,
-        unit: packLabel(product.quantity, product.unit), sku: product.sku, image: product.image ?? null,
-      } : c));
+      return prev.map((c, i) => (i === idx ? next : c));
     });
   }, []);
 

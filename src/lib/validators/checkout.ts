@@ -15,6 +15,8 @@ export const checkoutItemSchema = z.object({
   // Optional sold-by unit chosen at the counter (Billing2). When present it is
   // recorded on the order line as "Name (Unit)" so the invoice shows it.
   unit: z.string().trim().max(40).optional(),
+  // One of the product's Sizes / Units (priced from that size, like the shop).
+  size_id: z.coerce.number().int().positive().nullable().optional(),
 });
 
 export const checkoutSchema = z.object({

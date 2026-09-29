@@ -663,15 +663,18 @@ class _BackupPageState extends State<BackupPage> {
                     child: LinearProgressIndicator(minHeight: 10, value: toInt(_job!['percent']) / 100, color: _job!['status'] == 'failed' ? const Color(0xFFDC2626) : _job!['status'] == 'done' ? const Color(0xFF16A34A) : DS.primary, backgroundColor: W.g100),
                   ),
                   const SizedBox(height: 10),
-                  Container(
-                    height: 220,
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(8)),
-                    child: ListView(reverse: true, children: [
-                      for (final l in _log.reversed)
-                        Text('${timeOnly(l['at'])}  ${l['text']}', style: TextStyle(fontFamily: 'monospace', fontSize: 11.5, color: l['level'] == 'ok' ? const Color(0xFF34D399) : l['level'] == 'error' ? const Color(0xFFF87171) : l['level'] == 'warn' ? const Color(0xFFFCD34D) : const Color(0xFFCBD5E1))),
-                    ]),
-                  ),
+                  // Latest steps, newest first.
+                  for (final l in _log.reversed.take(6))
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Icon(l['level'] == 'ok' ? Icons.check_circle_rounded : l['level'] == 'error' ? Icons.cancel_rounded : Icons.circle, size: l['level'] == 'ok' || l['level'] == 'error' ? 16 : 7,
+                            color: l['level'] == 'ok' ? const Color(0xFF16A34A) : l['level'] == 'error' ? const Color(0xFFDC2626) : W.g400),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text('${l['text']}'.trim(), style: TextStyle(fontSize: 12.5, color: l['level'] == 'error' ? const Color(0xFFDC2626) : W.g700))),
+                        Text(timeOnly(l['at']), style: const TextStyle(fontSize: 11, color: W.g400)),
+                      ]),
+                    ),
                 ]),
               ),
             NList(

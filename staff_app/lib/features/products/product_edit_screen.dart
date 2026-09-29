@@ -33,6 +33,8 @@ class ProductEditScreen extends StatefulWidget {
 class _SizeRow {
   final label = TextEditingController(), mrp = TextEditingController(), price = TextEditingController(), stock = TextEditingController();
   bool isDefault = false;
+  /// null = follows the product's unit; '' = no unit; else its own unit.
+  String? unit;
   _SizeRow([Map? z]) {
     if (z == null) return;
     label.text = '${z['label'] ?? ''}';
@@ -65,11 +67,6 @@ String _withUnit(String label, String unit) {
   return unit.isNotEmpty && RegExp(r'^\d+(\.\d+)?$').hasMatch(t) ? '$t $unit' : t;
 }
 
-String _withoutUnit(String label, String unit) {
-  if (unit.isEmpty) return label;
-  final m = RegExp(r'^(\d+(?:\.\d+)?)\s*(.+)$').firstMatch(label.trim());
-  return m != null && m.group(2)!.toLowerCase() == unit.toLowerCase() ? m.group(1)! : label;
-}
 
 const _defaultUnits = ['KG', 'Gram', 'Liter', 'ml', 'cm', 'Meter', 'Piece'];
 
@@ -211,7 +208,18 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       _sizes = sz.isEmpty ? [_SizeRow()..isDefault = true] : [for (final z in sz) _SizeRow(z)];
       // The unit is added automatically, so show just the number ("250 Gram" → "250").
       for (final z in _sizes) {
-        z.label.text = _withoutUnit(z.label.text, _unitValue);
+        final m = RegExp(r'^(\d+(?:\.\d+)?)\s*(.+)$').firstMatch(z.label.text.trim());
+        if (m == null) continue;
+        final u = m.group(2)!;
+        final preset = _units.where((x) => x.toLowerCase() == u.toLowerCase()).firstOrNull;
+        if (_unitValue.isNotEmpty && u.toLowerCase() == _unitValue.toLowerCase()) {
+          z.label.text = m.group(1)!;
+        } else if (preset != null) {
+          z.label.text = m.group(1)!;
+          z.unit = preset;
+        } else {
+          z.unit = '';
+        }
       }
       final sp = ((x['specs'] as List?) ?? const []).cast<Map>();
       _specs = sp.isEmpty ? [_SpecRow()] : [for (final z in sp) _SpecRow(z)];
@@ -280,7 +288,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       'campaign_price': _campaignPrice.text.trim(),
       'quantity': _qty.text.trim(),
       'variant_ids': _variantIds.join(','),
-      'sizes': jsonEncode([for (final z in sizes) {...z.toJson(), 'label': _withUnit(z.label.text, _unitValue)}]),
+      'sizes': jsonEncode([for (final z in sizes) {...z.toJson(), 'label': _withUnit(z.label.text, z.unit ?? _unitValue)}]),
       'specs': jsonEncode([for (final x in _specs) if (x.name.text.trim().isNotEmpty && x.value.text.trim().isNotEmpty) {'name': x.name.text.trim(), 'value': x.value.text.trim()}]),
       if (_removePhoto && _photo == null) 'remove_image': '1',
       if (_removedGallery.isNotEmpty) 'removed_gallery_ids': _removedGallery.join(','),
@@ -609,11 +617,20 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
                 Expanded(
                   child: tf(
                     controller: _sizes[i].label,
-                    keyboardType: _unitValue.isEmpty ? null : const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: (_sizes[i].unit ?? _unitValue).isEmpty ? null : const TextInputType.numberWithOptions(decimal: true),
                     validator: (v) => _sizes[i].empty ? null : req(v),
-                    // The unit from Categorization is added automatically — type just the number.
-                    label: dec('Size / Unit', hint: _unitValue.isEmpty ? 'e.g. 500 g' : 'e.g. 500',
-                        suffix: _unitValue.isEmpty ? null : Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), child: Text(_unitValue, style: const TextStyle(color: AppColors.muted)))),
+                    label: dec('Size', hint: (_sizes[i].unit ?? _unitValue).isEmpty ? 'e.g. 500 g' : 'e.g. 500'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Unit of this size: starts as the product's unit, can be changed per size.
+                SizedBox(
+                  width: 120,
+                  child: AppSelect<String>(
+                    label: 'Unit',
+                    value: _sizes[i].unit ?? '__main',
+                    options: [('__main', _unitValue.isEmpty ? 'No unit' : _unitValue), for (final u in _units.where((u) => u != _unitValue)) (u, u), if (_unitValue.isNotEmpty) ('', 'No unit'), if (_sizes[i].unit != null && _sizes[i].unit!.isNotEmpty && !_units.contains(_sizes[i].unit)) (_sizes[i].unit!, _sizes[i].unit!)],
+                    onChanged: (v) => setState(() => _sizes[i].unit = v == '__main' ? null : v),
                   ),
                 ),
                 IconButton(

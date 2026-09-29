@@ -59,13 +59,15 @@ async function buildProducts() {
   const rows = await prisma.ecomProduct.findMany({
     orderBy: { name: "asc" },
     select: { id: true, name: true, slug: true, sku: true, barcode: true, hsnCode: true, price: true, salePrice: true, gstRate: true, stockQty: true, unit: true, image: true,
-      categoryId: true, brandId: true, status: true, productType: true, updatedAt: true, quantity: true, variantGroup: true },
+      categoryId: true, brandId: true, status: true, productType: true, updatedAt: true, quantity: true, variantGroup: true,
+      sizes: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, label: true, mrp: true, price: true, stockQty: true, isDefault: true } } },
   });
   const campaign = await campaignSalePrices(rows.filter((r) => r.status === "active"));
   return rows.map((r) => ({
     id: r.id, name: r.name, slug: r.slug, sku: r.sku, barcode: r.barcode, hsn: r.hsnCode, price: Number(r.price),
     salePrice: campaign.get(r.id) ?? num(r.salePrice), gstRate: Number(r.gstRate), stock: r.stockQty, unit: r.unit, image: r.image,
     quantity: num(r.quantity), variantGroup: r.variantGroup, pack: packLabel(num(r.quantity), r.unit),
+    sizes: r.sizes.map((z) => ({ id: z.id, label: z.label, mrp: Number(z.mrp), price: num(z.price), stock: z.stockQty, isDefault: z.isDefault })),
     categoryId: r.categoryId, brandId: r.brandId, status: r.status, type: r.productType, updatedAt: iso(r.updatedAt),
   }));
 }
@@ -142,7 +144,7 @@ async function buildDues() {
 /** Tables each set is built from — any write to them rebuilds the set (lib/cache.ts). */
 const DEPS: Record<SetName, string[]> = {
   settings: ["EcomBusinessSettings"],
-  products: ["EcomProduct", "EcomCampaign", "EcomCampaignTarget"],
+  products: ["EcomProduct", "EcomProductSize", "EcomCampaign", "EcomCampaignTarget"],
   categories: ["EcomCategory"],
   brands: ["EcomBrand"],
   customers: ["EcomCustomer", "EcomCredit", "EcomCreditPayment", "EcomOrder"],

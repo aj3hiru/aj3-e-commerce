@@ -132,7 +132,7 @@ export function Billing2Screen({
     const customerName = isGuest ? "" : customer.name.trim();
     const paid = payments.map((p) => ({ method: p.method, amount: parseFloat(p.amount) || 0 }));
     const body = {
-      items: cart.map((c) => ({ product_id: c.productId, qty: c.qty, price_override: c.priceOverridden ? c.unitPrice : null, unit: c.unit ?? "" })),
+      items: cart.map((c) => ({ product_id: c.productId, qty: c.qty, price_override: c.priceOverridden ? c.unitPrice : null, unit: c.unit ?? "", size_id: c.sizeId ?? null })),
       customer_id: isGuest ? 0 : customer.customerId ?? 0,
       customer_name: customerName,
       customer_phone: isGuest ? "" : customer.phone.trim(),
@@ -158,7 +158,7 @@ export function Billing2Screen({
         ref, soldAt,
         body: {
           ...body,
-          items: cart.map((c) => ({ product_id: c.productId, qty: c.qty, price_override: c.unitPrice, unit: c.unit ?? "" })),
+          items: cart.map((c) => ({ product_id: c.productId, qty: c.qty, price_override: c.unitPrice, unit: c.unit ?? "", size_id: c.sizeId ?? null })),
           offline: true, sold_at: soldAt, offline_discount: totals.discount,
         },
         summary: { customer: isGuest ? "Guest" : customerName || customer.phone.trim() || "Walk-in Customer", total: totals.grandTotal, items: cart.length },
@@ -415,8 +415,10 @@ export function Billing2Screen({
                         {(() => {
                           const p = byId.get(c.productId);
                           const group = p?.variantGroup ? variantGroups.get(p.variantGroup) : undefined;
-                          if (p && group && group.length > 1) {
-                            return <VariantPicker current={p} options={group} name={c.name} onPick={(v) => swapProduct(idx, v)} />;
+                          // Linked variants and this product's own sizes, all in one list.
+                          const opts = p ? (group && group.length > 1 ? group : [p]).flatMap((v): { product: PosProduct; size: NonNullable<PosProduct["sizes"]>[number] | null }[] => (v.sizes?.length ? v.sizes.map((z) => ({ product: v, size: z })) : [{ product: v, size: null }])) : [];
+                          if (p && opts.length > 1) {
+                            return <VariantPicker value={`${c.productId}:${c.sizeId ?? 0}`} options={opts} name={c.name} onPick={(v, size) => swapProduct(idx, v, size)} />;
                           }
                           return <UnitPicker value={c.unit ?? ""} name={c.name} onChange={(u) => setUnit(idx, u)} />;
                         })()}
@@ -837,27 +839,34 @@ function QtyStepper({
   );
 }
 
-/** Unit column for a product with variants: shows its pack (1 KG) and switches the line to another size. */
-function VariantPicker({ current, options, name, onPick }: { current: PosProduct; options: PosProduct[]; name: string; onPick: (p: PosProduct) => void }) {
-  const price = (p: PosProduct) => (p.salePrice && p.salePrice > 0 && p.salePrice < p.price ? p.salePrice : p.price);
+/** Unit column for a product with variants or sizes: shows the chosen size (1 KG) and switches the line to another. */
+function VariantPicker({ value, options, name, onPick }: {
+  value: string; name: string;
+  options: { product: PosProduct; size: NonNullable<PosProduct["sizes"]>[number] | null }[];
+  onPick: (p: PosProduct, sizeId: number | null) => void;
+}) {
+  const price = (p: PosProduct, z: NonNullable<PosProduct["sizes"]>[number] | null) =>
+    z ? (z.price !== null && z.price > 0 && z.price < z.mrp ? z.price : z.mrp) : p.salePrice && p.salePrice > 0 && p.salePrice < p.price ? p.salePrice : p.price;
   return (
     <div className="relative">
       <select
         aria-label={`Size of ${name}`}
         title="Switch to another size of this product"
-        value={current.id}
+        value={value}
         onChange={(e) => {
-          const next = options.find((o) => o.id === Number(e.target.value));
-          if (next) onPick(next);
+          const o = options.find((x) => `${x.product.id}:${x.size?.id ?? 0}` === e.target.value);
+          if (o) onPick(o.product, o.size?.id ?? null);
         }}
         className="h-8 w-full appearance-none rounded-md border border-[#F3B6A6] bg-[#FFF8F6] pl-2 pr-6 text-sm font-semibold text-admin-gray-900 focus:border-[#EE6A4D] focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/15"
       >
-        {options.map((o) => {
-          const label = variantLabel({ quantity: o.quantity ?? null, unit: o.unit, name: o.name });
-          const out = o.productType === "physical" && o.stockQty !== null && o.stockQty <= 0;
+        {options.map(({ product: o, size: z }) => {
+          const key = `${o.id}:${z?.id ?? 0}`;
+          const label = z ? z.label : variantLabel({ quantity: o.quantity ?? null, unit: o.unit, name: o.name });
+          const stock = z?.stockQty ?? o.stockQty;
+          const out = o.productType === "physical" && stock !== null && stock <= 0;
           return (
-            <option key={o.id} value={o.id} disabled={out && o.id !== current.id}>
-              {label} · {fmt(price(o))}{out ? " · out of stock" : ""}
+            <option key={key} value={key} disabled={out && key !== value}>
+              {label} · {fmt(price(o, z))}{out ? " · out of stock" : ""}
             </option>
           );
         })}

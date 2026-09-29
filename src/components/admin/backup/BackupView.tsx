@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, CloudUpload, DatabaseBackup, Download, HardDriveDownload, Loader2, RotateCcw, ShieldCheck, Terminal, Trash2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, CloudUpload, DatabaseBackup, Download, HardDriveDownload, Loader2, RotateCcw, ShieldCheck, Trash2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BackupFile { name: string; size: number; createdAt: string; kind: "manual" | "safety" | "uploaded" }
@@ -22,7 +22,7 @@ export function BackupView({ initial, runningJob }: { initial: BackupFile[]; run
   const [confirmFile, setConfirmFile] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
   const [validated, setValidated] = useState<Record<string, boolean>>({});
-  const logBox = useRef<HTMLDivElement>(null);
+  const [showAll, setShowAll] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const refreshList = useCallback(async () => {
@@ -56,7 +56,6 @@ export function BackupView({ initial, runningJob }: { initial: BackupFile[]; run
     return () => { stop = true; };
   }, [jobId, refreshList]);
 
-  useEffect(() => { logBox.current?.scrollTo({ top: logBox.current.scrollHeight }); }, [log]);
 
   async function act(body: Record<string, unknown>) {
     setError(null);
@@ -110,7 +109,7 @@ export function BackupView({ initial, runningJob }: { initial: BackupFile[]; run
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-admin-primary-lighter text-admin-primary"><DatabaseBackup className="h-5 w-5" /></span>
             <div className="flex-1">
               <h2 className="text-[15px] font-semibold text-admin-gray-900">Create a backup</h2>
-              <p className="mt-0.5 text-sm text-admin-gray-500">Every table of the database (products, orders, customers, settings…) and all uploaded images, in one file.</p>
+              <p className="mt-0.5 text-sm text-admin-gray-500">A complete, secure copy of your store — products, orders, customers, payments, settings and every uploaded image — saved as a single file you can download or restore at any time.</p>
             </div>
           </div>
           <button type="button" disabled={busy} onClick={() => act({ action: "backup" })}
@@ -124,7 +123,7 @@ export function BackupView({ initial, runningJob }: { initial: BackupFile[]; run
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-600"><CloudUpload className="h-5 w-5" /></span>
             <div className="flex-1">
               <h2 className="text-[15px] font-semibold text-admin-gray-900">Upload a backup</h2>
-              <p className="mt-0.5 text-sm text-admin-gray-500">Bring a backup file from your computer. It is scanned for damage and unsafe files before it can be restored.</p>
+              <p className="mt-0.5 text-sm text-admin-gray-500">Restore your store from a backup saved on your computer. Every file is checked for damage and unsafe content before it can be used.</p>
             </div>
           </div>
           <input ref={fileInput} type="file" accept=".gz,.tgz,application/gzip" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void uploadFile(f); }} />
@@ -156,15 +155,22 @@ export function BackupView({ initial, runningJob }: { initial: BackupFile[]; run
               {job.status === "running" && <span className="absolute inset-0 animate-[bk-stripes_1s_linear_infinite] bg-[length:24px_24px] bg-[linear-gradient(45deg,rgba(255,255,255,.28)_25%,transparent_25%,transparent_50%,rgba(255,255,255,.28)_50%,rgba(255,255,255,.28)_75%,transparent_75%)]" />}
             </div>
           </div>
-          <div className="mt-4 flex items-center gap-2 border-t border-admin-gray-100 bg-[#0f172a] px-4 py-2 text-xs font-semibold text-slate-300"><Terminal className="h-3.5 w-3.5" /> Live log</div>
-          <div ref={logBox} className="max-h-[320px] overflow-y-auto bg-[#0f172a] px-4 pb-4 font-mono text-[12px] leading-5">
-            {log.map((l, i) => (
-              <div key={i} className={cn(l.level === "ok" ? "text-emerald-400" : l.level === "error" ? "text-red-400" : l.level === "warn" ? "text-amber-300" : "text-slate-300")}>
-                <span className="text-slate-500">{new Date(l.at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour12: false })} </span>{l.text}
-              </div>
+          {/* Latest steps (newest first); the full record opens below — no scrolling box inside the page. */}
+          <ul className="mt-4 space-y-1.5 border-t border-admin-gray-100 px-5 py-4">
+            {(showAll ? [...log].reverse() : [...log].reverse().slice(0, 5)).map((l, i) => (
+              <li key={`${l.at}-${i}`} className="flex items-start gap-2.5 text-[13px]">
+                <span className={cn("mt-[3px] grid h-4 w-4 shrink-0 place-items-center rounded-full",
+                  l.level === "ok" ? "bg-emerald-100 text-emerald-600" : l.level === "error" ? "bg-red-100 text-red-600" : l.level === "warn" ? "bg-amber-100 text-amber-600" : "bg-admin-gray-100 text-admin-gray-500")}>
+                  {l.level === "ok" ? <CheckCircle2 className="h-3 w-3" /> : l.level === "error" ? <XCircle className="h-3 w-3" /> : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
+                </span>
+                <span className={cn("min-w-0 flex-1 break-words", l.level === "error" ? "text-red-700" : l.level === "ok" ? "text-admin-gray-900" : "text-admin-gray-600")}>{l.text.trim()}</span>
+                <span className="shrink-0 text-xs tabular-nums text-admin-gray-400">{new Date(l.at).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}</span>
+              </li>
             ))}
-            {job.status === "running" && <div className="animate-pulse text-slate-500">▍</div>}
-          </div>
+            {log.length > 5 && (
+              <li><button type="button" onClick={() => setShowAll((v) => !v)} className="text-xs font-semibold text-admin-primary hover:underline">{showAll ? "Show fewer steps" : `Show all ${log.length} steps`}</button></li>
+            )}
+          </ul>
           <style>{"@keyframes bk-stripes{from{background-position:0 0}to{background-position:24px 0}}"}</style>
         </section>
       )}

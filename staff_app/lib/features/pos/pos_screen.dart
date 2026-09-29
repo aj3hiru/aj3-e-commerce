@@ -197,7 +197,7 @@ class _PosScreenState extends State<PosScreen> {
     final soldAt = DateTime.now().toUtc();
     final pays = cart.effectivePayments.map((p) => {'method': p.method, 'amount': double.tryParse(p.amount) ?? 0}).toList();
     final body = {
-      'items': [for (final l in cart.lines) {'product_id': l.productId, 'qty': l.qty, 'price_override': l.overridden ? l.unitPrice : null, 'unit': l.unit ?? ''}],
+      'items': [for (final l in cart.lines) {'product_id': l.productId, 'qty': l.qty, 'price_override': l.overridden ? l.unitPrice : null, 'unit': l.unit ?? '', 'size_id': l.sizeId}],
       'customer_id': cart.guest ? 0 : toInt(cart.customer?['id']),
       'customer_name': cart.guest ? '' : cart.customerName.trim(),
       'customer_phone': cart.guest ? '' : cart.customerPhone.trim(),
@@ -221,7 +221,7 @@ class _PosScreenState extends State<PosScreen> {
       body: {
         ...body,
         // What was charged at the counter is what gets saved, even if prices change before it uploads.
-        'items': [for (final l in cart.lines) {'product_id': l.productId, 'qty': l.qty, 'price_override': l.unitPrice, 'unit': l.unit ?? ''}],
+        'items': [for (final l in cart.lines) {'product_id': l.productId, 'qty': l.qty, 'price_override': l.unitPrice, 'unit': l.unit ?? '', 'size_id': l.sizeId}],
         'offline': true, 'sold_at': soldAt.toIso8601String(), 'offline_discount': cart.discount,
       },
       effect: {
@@ -377,10 +377,10 @@ class _PosScreenState extends State<PosScreen> {
                           Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
                             InkWell(
                               onTap: () => _editPrice(l),
-                              child: Text('${money(l.unitPrice)}${l.unit != null && variantsOf(context.read<AppState>(), l.product).isEmpty ? ' / ${l.unit}' : ''}${l.overridden ? ' · edited' : ''}',
+                              child: Text('${money(l.unitPrice)}${l.unit != null && lineChoices(context.read<AppState>(), l.product).length < 2 ? ' / ${l.unit}' : ''}${l.overridden ? ' · edited' : ''}',
                                   style: TextStyle(color: l.overridden ? AppColors.amber : AppColors.muted, fontSize: 12.5, decoration: TextDecoration.underline, decorationStyle: TextDecorationStyle.dotted)),
                             ),
-                            if (variantsOf(context.read<AppState>(), l.product).isNotEmpty) LineUnit(cart: cart, line: l),
+                            if (lineChoices(context.read<AppState>(), l.product).length > 1) LineUnit(cart: cart, line: l),
                           ]),
                         ]),
                       ),

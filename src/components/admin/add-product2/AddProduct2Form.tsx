@@ -13,7 +13,7 @@ import slugify from "slugify";
 import { cn } from "@/lib/utils";
 import { fetchWithRetry } from "@/lib/fetch-retry";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
-import { packLabel, variantPrices, withUnit, withoutUnit, type VariantProduct } from "@/lib/product-variants-shared";
+import { packLabel, variantPrices, withUnit, type VariantProduct } from "@/lib/product-variants-shared";
 
 /* ───────────────────────── types ───────────────────────── */
 
@@ -58,10 +58,20 @@ export interface AP2Product {
 }
 
 /** Editable rows (strings while typing). `k` is a stable React key. */
-interface SizeRowS { k: number; label: string; mrp: string; price: string; stock: string; isDefault: boolean }
+/** `unit`: null = follows the product's unit (Pricing & Stock); "" = no unit; else its own unit. */
+interface SizeRowS { k: number; label: string; unit: string | null; mrp: string; price: string; stock: string; isDefault: boolean }
 interface SpecRowS { k: number; name: string; value: string }
 let rowKey = 0;
-const newSize = (isDefault = false): SizeRowS => ({ k: ++rowKey, label: "", mrp: "", price: "", stock: "", isDefault });
+const newSize = (isDefault = false): SizeRowS => ({ k: ++rowKey, label: "", unit: null, mrp: "", price: "", stock: "", isDefault });
+
+/** "250 Gram" → number 250 with its own unit (null when it is the product's unit), else the text as is. */
+function splitSize(label: string, productUnit: string): { label: string; unit: string | null } {
+  const m = label.trim().match(/^(\d+(?:\.\d+)?)\s*(.+)$/);
+  if (!m) return { label, unit: null };
+  if (productUnit && m[2].toLowerCase() === productUnit.toLowerCase()) return { label: m[1], unit: null };
+  const preset = UNIT_PRESETS.find((u) => u.toLowerCase() === m[2].toLowerCase());
+  return preset ? { label: m[1], unit: preset } : { label, unit: "" };
+}
 const newSpec = (): SpecRowS => ({ k: ++rowKey, name: "", value: "" });
 const sizeFilled = (z: SizeRowS) => !!(z.label.trim() || z.mrp.trim() || z.price.trim() || z.stock.trim());
 type QuickKind = "brand" | "category" | "subcategory" | "item_type";
@@ -166,7 +176,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
   // Sizes / Units and Specifications (always at least one blank row to type in).
   const [sizes, setSizes] = useState<SizeRowS[]>(() =>
     product?.sizes.length
-      ? product.sizes.map((z) => ({ k: ++rowKey, label: withoutUnit(z.label, product.unit ?? ""), mrp: String(z.mrp), price: num(z.price), stock: num(z.stockQty), isDefault: z.isDefault }))
+      ? product.sizes.map((z) => ({ k: ++rowKey, ...splitSize(z.label, product.unit ?? ""), mrp: String(z.mrp), price: num(z.price), stock: num(z.stockQty), isDefault: z.isDefault }))
       : [newSize(true)]
   );
   const [specs, setSpecs] = useState<SpecRowS[]>(() =>
@@ -330,7 +340,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
   function validateSizes(): string | null {
     const seen = new Set<string>();
     for (const [i, z] of filledSizes.entries()) {
-      const label = withUnit(z.label, unitValue);
+      const label = withUnit(z.label, z.unit ?? unitValue);
       if (!label) return `Size / Unit row ${i + 1}: enter the size, e.g. 500 g.`;
       const key = label.toLowerCase().replace(/\s+/g, " ");
       if (seen.has(key)) return `Size / Unit “${label}” is added twice.`;
@@ -424,7 +434,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
     if (s.showOnHome) fd.set("show_on_home", "on");
     if (s.isCampaign) fd.set("is_campaign", "on");
     fd.set("campaign_price", s.campaignPrice);
-    fd.set("sizes", JSON.stringify(filledSizes.map((z) => ({ label: withUnit(z.label, unitValue), mrp: z.mrp, price: z.price, stock: z.stock, isDefault: z.isDefault }))));
+    fd.set("sizes", JSON.stringify(filledSizes.map((z) => ({ label: withUnit(z.label, z.unit ?? unitValue), mrp: z.mrp, price: z.price, stock: z.stock, isDefault: z.isDefault }))));
     fd.set("specs", JSON.stringify(specs.map((x) => ({ name: x.name, value: x.value }))));
     if (imageFile) fd.set("image", imageFile);
     if (removeImage) fd.set("remove_image", "1");
@@ -789,13 +799,21 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
                             />
                           </label>
                         )}
-                        {/* The unit from Categorization is added automatically — type just the number. */}
-                        <div className="relative">
-                          <input value={z.label} onChange={(e) => updateSize(z.k, { label: e.target.value })} placeholder={unitValue ? "e.g. 500" : "e.g. 500 g"} maxLength={50} aria-label={`Size ${i + 1}`}
-                            className={cn(inputCls(false), unitValue && /^\d+(\.\d+)?$/.test(z.label.trim()) && "pr-16")} />
-                          {unitValue && /^\d+(\.\d+)?$/.test(z.label.trim()) && (
-                            <span className="pointer-events-none absolute right-3 top-1/2 max-w-[56px] -translate-y-1/2 truncate text-sm text-admin-gray-400">{unitValue}</span>
-                          )}
+                        {/* Number + unit: the unit starts as the product's unit (Pricing & Stock) and can be changed per size. */}
+                        <div className="flex gap-1.5">
+                          <input value={z.label} onChange={(e) => updateSize(z.k, { label: e.target.value })} placeholder={(z.unit ?? unitValue) ? "e.g. 500" : "e.g. 500 g"} maxLength={50} aria-label={`Size ${i + 1}`}
+                            className={cn(inputCls(false), "min-w-0 flex-1")} />
+                          <div className="relative w-[96px] shrink-0">
+                            <select value={z.unit === null ? "__main" : z.unit} aria-label={`Unit for size ${i + 1}`}
+                              onChange={(e) => updateSize(z.k, { unit: e.target.value === "__main" ? null : e.target.value })}
+                              className={cn(inputCls(false), "cursor-pointer appearance-none pr-6 text-[13px]")}>
+                              <option value="__main">{unitValue ? unitValue : "No unit"}</option>
+                              {UNIT_PRESETS.filter((u) => u !== unitValue).map((u) => <option key={u} value={u}>{u}</option>)}
+                              {unitValue && <option value="">No unit</option>}
+                              {z.unit && !UNIT_PRESETS.includes(z.unit) && <option value={z.unit}>{z.unit}</option>}
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-gray-500" />
+                          </div>
                         </div>
                         <button type="button" onClick={() => removeSize(z.k)} aria-label={`Remove size ${i + 1}`} title="Remove" className={cn(iconBtnCls, "border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 md:order-last")}>
                           <X className="h-4 w-4" />

@@ -65,6 +65,7 @@ async function handlePOST(req: NextRequest) {
         lineTotal: number;
         gstAmount?: number;
         campaign: CampaignPrice | null;
+        sizeId: number | null;
       }[] = [];
       let subtotal = 0;
 
@@ -84,6 +85,20 @@ async function handlePOST(req: NextRequest) {
         );
         if (campaign) unitPrice = campaign.unitPrice;
 
+        // A chosen size is priced from its own MRP / selling price (a campaign still lowers it).
+        let sizeId: number | null = null;
+        if (it.size_id) {
+          const size = await tx.ecomProductSize.findFirst({ where: { id: it.size_id, productId: product.id } });
+          if (size) {
+            sizeId = size.id;
+            const mrp = Number(size.mrp);
+            const sp = size.price === null ? null : Number(size.price);
+            const sale = sp !== null && sp > 0 && sp < mrp ? sp : null;
+            campaign = campaignPriceFor({ id: product.id, categoryId: product.categoryId, brandId: product.brandId, price: mrp, salePrice: sale }, liveCampaigns, now);
+            unitPrice = campaign ? campaign.unitPrice : sale ?? mrp;
+          }
+        }
+
         // Staff override honored ONLY here (authenticated admin billing screen),
         // exactly matching the trust boundary in the PHP version. A price the
         // cashier typed in is theirs, not the campaign's, so it isn't counted as a campaign sale.
@@ -93,7 +108,7 @@ async function handlePOST(req: NextRequest) {
         }
 
         const lineTotal = unitPrice * it.qty;
-        lineItems.push({ product, qty: it.qty, unit: it.unit ?? "", unitPrice, lineTotal, campaign });
+        lineItems.push({ product, qty: it.qty, unit: it.unit ?? "", unitPrice, lineTotal, campaign, sizeId });
         subtotal += lineTotal;
       }
 
@@ -229,6 +244,7 @@ async function handlePOST(req: NextRequest) {
         if (li.product!.productType === "physical" && li.product!.stockQty !== null) {
           await tx.$executeRaw`UPDATE ecom_products SET stock_qty = GREATEST(stock_qty - ${li.qty}, 0) WHERE id = ${li.product!.id}`;
         }
+        if (li.sizeId) await tx.$executeRaw`UPDATE ecom_product_sizes SET stock_qty = GREATEST(stock_qty - ${li.qty}, 0) WHERE id = ${li.sizeId} AND stock_qty IS NOT NULL`;
       }
 
       const campaignSales: CampaignSaleInput[] = [];

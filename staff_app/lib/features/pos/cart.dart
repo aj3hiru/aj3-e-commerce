@@ -8,15 +8,31 @@ class CartLine {
   double unitPrice;
   bool overridden;
   String? unit;
-  CartLine(this.product, {this.qty = 1})
-      : unitPrice = CartLine.shelfPrice(product),
+  /// One of the product's Sizes / Units (priced from it), when it has sizes.
+  final Map<String, dynamic>? size;
+  CartLine(this.product, {this.qty = 1, Map<String, dynamic>? size})
+      : size = size ?? defaultSize(product),
+        unitPrice = (size ?? defaultSize(product)) != null ? sizePrice((size ?? defaultSize(product))!) : CartLine.shelfPrice(product),
         overridden = false,
-        unit = (product['pack'] ?? product['unit']) as String?;
+        unit = (size ?? defaultSize(product))?['label'] as String? ?? (product['pack'] ?? product['unit']) as String?;
 
+  static List<Map<String, dynamic>> sizesOf(Map p) => ((p['sizes'] as List?) ?? const []).cast<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  static Map<String, dynamic>? defaultSize(Map p) {
+    final l = sizesOf(p);
+    return l.where((z) => z['isDefault'] == true).firstOrNull ?? l.firstOrNull;
+  }
+
+  static double sizePrice(Map z) {
+    final mrp = toDouble(z['mrp']);
+    final p = z['price'] == null ? 0.0 : toDouble(z['price']);
+    return p > 0 && p < mrp ? p : mrp;
+  }
+
+  int? get sizeId => size == null ? null : toInt(size!['id']);
   int get productId => toInt(product['id']);
   String get name => product['name'] ?? '';
   double get gstRate => toDouble(product['gstRate']);
-  int? get stock => product['stock'] == null ? null : toInt(product['stock']);
+  int? get stock => size != null && size!['stock'] != null ? toInt(size!['stock']) : product['stock'] == null ? null : toInt(product['stock']);
   bool get tracked => product['type'] == 'physical' && stock != null;
   double get total => unitPrice * qty;
 
@@ -50,7 +66,8 @@ class PosCart extends ChangeNotifier {
 
   /// Adds one; returns a message when stock stops it.
   String? add(Map<String, dynamic> product, {int qty = 1}) {
-    final i = lines.indexWhere((l) => l.productId == toInt(product['id']));
+    final ds = CartLine.defaultSize(product);
+    final i = lines.indexWhere((l) => l.productId == toInt(product['id']) && l.sizeId == (ds == null ? null : toInt(ds['id'])));
     if (product['status'] == 'inactive') return '"${product['name']}" is inactive.';
     if (i >= 0) {
       final l = lines[i];
@@ -90,13 +107,15 @@ class PosCart extends ChangeNotifier {
   }
 
   /// Switches a line to another variant (same quantity; merges into that variant's line if it's already on the bill).
-  String? swap(CartLine l, Map<String, dynamic> product) {
+  String? swap(CartLine l, Map<String, dynamic> product, {Map<String, dynamic>? size}) {
     final id = toInt(product['id']);
-    if (l.productId == id) return null;
+    size ??= CartLine.defaultSize(product);
+    final sid = size == null ? null : toInt(size['id']);
+    if (l.productId == id && l.sizeId == sid) return null;
     final at = lines.indexOf(l);
     if (at < 0) return null;
-    final other = lines.indexWhere((x) => x.productId == id);
-    final next = CartLine(product, qty: other >= 0 ? lines[other].qty + l.qty : l.qty);
+    final other = lines.indexWhere((x) => x != l && x.productId == id && x.sizeId == sid);
+    final next = CartLine(product, qty: other >= 0 ? lines[other].qty + l.qty : l.qty, size: size);
     if (next.tracked && next.qty > next.stock!) return next.stock! <= 0 ? '"${next.name}" is out of stock.' : 'Only ${next.stock} of "${next.name}" in stock.';
     if (other >= 0) {
       lines[other].qty = next.qty;

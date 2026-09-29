@@ -45,55 +45,63 @@ String? packFromName(String name) {
 /// Short size of a variant: quantity + unit, else the size in its name.
 String variantName(Map v) => (v['quantity'] != null ? packOf(v) : null) ?? packFromName('${v['name']}') ?? packOf(v) ?? '${v['name']}';
 
-String _optionLabel(Map<String, dynamic> v) {
-  final stock = v['type'] == 'physical' && v['stock'] != null ? toInt(v['stock']) : null;
-  return '${variantName(v)}  ·  ${money(CartLine.shelfPrice(v))}${stock != null && stock <= 0 ? '  ·  out of stock' : ''}';
+
+/// Choices for a bill line: linked variants and each product's own sizes (a size works like a variant).
+List<(Map<String, dynamic>, Map<String, dynamic>?)> lineChoices(AppState s, Map<String, dynamic> product) {
+  final vs = variantsOf(s, product);
+  final products = vs.isEmpty ? [product] : vs;
+  return [
+    for (final p in products)
+      if (CartLine.sizesOf(p).isNotEmpty) for (final z in CartLine.sizesOf(p)) (p, z) else (p, null),
+  ];
 }
 
-/// Unit cell of a bill line: shows the pack (1 KG); when the product has
-/// variants it is a dropdown that switches the line to another size.
+String _choiceLabel((Map<String, dynamic>, Map<String, dynamic>?) c) {
+  final (p, z) = c;
+  final price = z != null ? CartLine.sizePrice(z) : CartLine.shelfPrice(p);
+  return '${z != null ? '${z['label']}' : variantName(p)}  ·  ${money(price)}';
+}
+
+/// Unit cell of a bill line: shows the size (1 KG); when the product has
+/// variants or sizes it is a dropdown that switches the line to another one.
 class LineUnit extends StatelessWidget {
   final PosCart cart;
   final CartLine line;
-  final VoidCallback? onEdit; // no variants: tap edits price / unit as before
+  final VoidCallback? onEdit; // no choices: tap edits price / unit as before
   final TextStyle? style;
   const LineUnit({super.key, required this.cart, required this.line, this.onEdit, this.style});
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AppState>();
-    final vs = variantsOf(s, line.product);
-    if (vs.isEmpty) {
+    final choices = lineChoices(s, line.product);
+    if (choices.length < 2) {
       return InkWell(onTap: onEdit, child: Text(line.unit ?? '—', style: style ?? DS.body.copyWith(color: DS.text2)));
     }
-    void pick(int id) {
-      final next = vs.firstWhere((v) => toInt(v['id']) == id);
-      final msg = cart.swap(line, next);
+    String key((Map<String, dynamic>, Map<String, dynamic>?) c) => '${toInt(c.$1['id'])}:${c.$2 == null ? 0 : toInt(c.$2!['id'])}';
+    final current = '${line.productId}:${line.sizeId ?? 0}';
+    void pick(String k) {
+      final c = choices.firstWhere((x) => key(x) == k);
+      final msg = cart.swap(line, c.$1, size: c.$2);
       if (msg != null) toast(context, msg, error: true);
     }
 
     if (desktop(context)) {
-      return DSelect<int>(
-        small: true,
-        menuWidth: 240,
-        value: line.productId,
-        options: [for (final v in vs) (toInt(v['id']), _optionLabel(v))],
-        onChanged: pick,
-      );
+      return DSelect<String>(small: true, menuWidth: 240, value: current, options: [for (final c in choices) (key(c), _choiceLabel(c))], onChanged: pick);
     }
     return InkWell(
       borderRadius: BorderRadius.circular(6),
       onTap: () async {
-        final id = await showAppSheet<int>(context, title: 'Choose size — ${line.name}', builder: (c) => ListView(shrinkWrap: true, children: [
-              for (final v in vs)
+        final k = await showAppSheet<String>(context, title: 'Choose size — ${line.name}', builder: (c) => ListView(shrinkWrap: true, children: [
+              for (final ch in choices)
                 AppChoice(
-                  title: variantName(v),
-                  subtitle: '${money(CartLine.shelfPrice(v))} · ${v['name']}',
-                  selected: toInt(v['id']) == line.productId,
-                  onTap: () => popDialog(c, toInt(v['id'])),
+                  title: ch.$2 != null ? '${ch.$2!['label']}' : variantName(ch.$1),
+                  subtitle: money(ch.$2 != null ? CartLine.sizePrice(ch.$2!) : CartLine.shelfPrice(ch.$1)),
+                  selected: key(ch) == current,
+                  onTap: () => popDialog(c, key(ch)),
                 ),
             ]));
-        if (id != null) pick(id);
+        if (k != null) pick(k);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

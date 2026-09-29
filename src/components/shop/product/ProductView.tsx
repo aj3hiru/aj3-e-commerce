@@ -532,23 +532,19 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
               <h2 className="text-[18px] font-semibold leading-6">{cfg.sizes.title}</h2>
               {selected && <span className="truncate text-[13px] text-[#8b8ba3]">Selected: <b className="font-semibold text-[#353543]">{selected}</b></span>}
             </div>
-            {/* Linked variants are separate products — each card opens that product's page. */}
-            {d.variants.length > 0 && (
-              <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2 shop:grid-cols-[repeat(auto-fill,minmax(104px,1fr))]">
-                {d.variants.map((v) => (
-                  <PackCard key={v.id} label={v.label} mrp={v.mrp} final={v.final} off={v.discountPct} out={v.stock === "out"} on={v.current}
-                    showPrice={cfg.sizes.showPrice} href={v.current ? undefined : `/product?slug=${encodeURIComponent(v.slug)}`} />
-                ))}
-              </div>
-            )}
-            {d.sizes.length > 0 && (
-              <div className={cn("grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2 shop:grid-cols-[repeat(auto-fill,minmax(104px,1fr))]", d.variants.length > 0 ? "mt-2.5" : "mt-3")}>
-                {d.sizes.map((z) => (
-                  <PackCard key={z.id} label={z.label} mrp={z.mrp} final={z.final} off={z.discountPct} out={z.stock === "out"} on={z.id === sizeId}
-                    showPrice={cfg.sizes.showPrice} onClick={() => setSizeId(z.id)} />
-                ))}
-              </div>
-            )}
+            {/* One row of choices: other products linked as variants (each opens its own page) and this
+                product's own sizes, in the place of this product — they all work the same for the shopper. */}
+            <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2 shop:grid-cols-[repeat(auto-fill,minmax(104px,1fr))]">
+              {(d.variants.length ? d.variants : [{ id: d.product.id, current: true } as (typeof d.variants)[number]]).flatMap((v) =>
+                v.current && d.sizes.length
+                  ? d.sizes.map((z) => (
+                      <PackCard key={`s${z.id}`} label={z.label} mrp={z.mrp} final={z.final} off={z.discountPct} out={z.stock === "out"} on={z.id === sizeId}
+                        showPrice={cfg.sizes.showPrice} onClick={() => setSizeId(z.id)} />
+                    ))
+                  : [<PackCard key={`v${v.id}`} label={v.label} mrp={v.mrp} final={v.final} off={v.discountPct} out={v.stock === "out"} on={v.current}
+                      showPrice={cfg.sizes.showPrice} href={v.current ? undefined : `/product?slug=${encodeURIComponent(v.slug)}`} />],
+              )}
+            </div>
           </div>
           {specsCard}
           </>

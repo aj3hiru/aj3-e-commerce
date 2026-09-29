@@ -15,6 +15,7 @@ import { useCart } from "@/hooks/useCart";
 import type { ProductPageData } from "@/lib/product-page-data";
 import { deliveryChargeFor } from "@/lib/delivery-charge-shared";
 import type { AssuranceIcon, PPSectionKey, ProductPageConfig, TrustIcon } from "@/types/product-page";
+import { NotifyIcon, useNotifyMe } from "@/components/shop/NotifyMe";
 
 const rupees = (n: number) => `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 const src = (img: string) => (/^https:/.test(img) ? img : `/${img}`);
@@ -176,19 +177,21 @@ function Stars({ value, onChange }: { value: number; onChange: (n: number) => vo
   );
 }
 
-function WriteReview({ productId, loggedIn, slug }: { productId: number; loggedIn: boolean; slug: string }) {
+/** Shown only to a signed-in customer who bought the product and has a purchase left to review. */
+function WriteReview({ productId, loggedIn }: { productId: number; loggedIn: boolean }) {
+  const [can, setCan] = useState(false);
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(5);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  if (!loggedIn) {
-    return (
-      <Link href={`/login?redirect=${encodeURIComponent(`/product?slug=${slug}`)}`} className="block py-3 text-[14px] font-medium text-[var(--hp-accent)]">
-        Login to write a review
-      </Link>
-    );
-  }
+  useEffect(() => {
+    if (!loggedIn) return;
+    let live = true;
+    fetch(`/api/shop/reviews?productId=${productId}`, { cache: "no-store" }).then((r) => r.json()).then((r) => { if (live) setCan(!!r?.canReview); }).catch(() => {});
+    return () => { live = false; };
+  }, [loggedIn, productId]);
+  if (!can && !msg) return null;
   if (!open) return <button type="button" onClick={() => setOpen(true)} className="py-3 text-[14px] font-bold uppercase text-[var(--hp-accent)]">Write a review</button>;
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -197,7 +200,7 @@ function WriteReview({ productId, loggedIn, slug }: { productId: number; loggedI
       .then((r) => r.json()).catch(() => null);
     setBusy(false);
     setMsg({ ok: !!res?.success, text: res?.message || "Couldn't submit — please try again." });
-    if (res?.success) setText("");
+    if (res?.success) { setText(""); setCan(false); }
   }
   return (
     <form onSubmit={submit} className="space-y-3 py-4">
@@ -213,6 +216,42 @@ function WriteReview({ productId, loggedIn, slug }: { productId: number; loggedI
   );
 }
 
+/**
+ * Computer screens only: small product cards beside the reviews, filling that
+ * space. The grid has as many rows as fit the reviews' height (at least one);
+ * cards that don't fit are left out rather than cut in half.
+ */
+function SideProducts({ title, products }: { title: string; products: ProductPageData["side"] }) {
+  return (
+    <aside className="hidden min-h-[196px] flex-col border-l border-[#eaeaf2] pl-8 shop:flex" aria-label={title}>
+      <h2 className="text-[16px] font-semibold leading-6">{title}</h2>
+      <div className="relative mt-3 flex-1">
+        <ul className="absolute inset-0 grid grid-cols-3 gap-x-3 gap-y-3 overflow-hidden [grid-auto-rows:0] [grid-template-rows:repeat(auto-fill,156px)] min-[1200px]:grid-cols-4">
+          {products.map((p) => (
+            <li key={p.id} className="min-w-0">
+              <Link href={`/product?slug=${encodeURIComponent(p.slug)}`} prefetch={false} className="group block h-[156px] overflow-hidden rounded-lg border border-[#eaeaf2] bg-white hover:border-[#cfcedc]">
+                <span className="grid h-[92px] place-items-center bg-white p-1.5">
+                  {p.image
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={src(p.image)} alt="" loading="lazy" className={cn("max-h-full max-w-full object-contain transition group-hover:scale-[1.03]", p.stock === "out" && "opacity-50 grayscale")} />
+                    : <ImageIcon className="h-7 w-7 text-[#cfcedc]" />}
+                </span>
+                <span className="block px-2 pt-1">
+                  <span className="block truncate text-[12px] leading-4 text-[#616173]">{p.name}</span>
+                  <span className="mt-1 flex items-baseline gap-1.5">
+                    <b className="text-[14px] font-bold text-[#353543]">{rupees(p.finalPrice)}</b>
+                    {p.discountPct > 0 && <span className="truncate text-[11px] font-semibold text-[#038d63]">{p.discountPct}% off</span>}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </aside>
+  );
+}
+
 const BARS: { label: string; star: number; color: string }[] = [
   { label: "Excellent", star: 5, color: "#038d63" }, { label: "Very Good", star: 4, color: "#23bb75" }, { label: "Good", star: 3, color: "#f4b619" },
   { label: "Average", star: 2, color: "#f28c28" }, { label: "Poor", star: 1, color: "#e5485f" },
@@ -222,9 +261,10 @@ function Reviews({ d, cfg, loggedIn }: { d: ProductPageData; cfg: ProductPageCon
   const [all, setAll] = useState(false);
   const max = Math.max(1, ...d.rating.dist);
   const list = all ? d.reviews : d.reviews.slice(0, cfg.perPage);
+  const side = cfg.side && d.side.length > 0;
   const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   return (
-    <div className="px-4 pt-5 shop:grid shop:grid-cols-[260px_minmax(0,1fr)] shop:gap-x-10 shop:px-5 shop:pb-4" id="reviews">
+    <div className={cn("px-4 pt-5 shop:grid shop:gap-x-10 shop:px-5 shop:pb-4", side ? "shop:grid-cols-[260px_minmax(0,1fr)_minmax(0,1.1fr)]" : "shop:grid-cols-[260px_minmax(0,1fr)]")} id="reviews">
       <div>
       <h2 className="text-[18px] font-semibold leading-6">{cfg.title}</h2>
       {d.rating.count === 0 ? (
@@ -272,9 +312,10 @@ function Reviews({ d, cfg, loggedIn }: { d: ProductPageData; cfg: ProductPageCon
           {all ? "Show fewer reviews" : "View all reviews"}<ChevronRight className={cn("h-4 w-4 transition-transform", all && "-rotate-90")} strokeWidth={2.5} />
         </button>
       )}
-      {cfg.allowWrite && <WriteReview productId={d.product.id} loggedIn={loggedIn} slug={d.product.slug} />}
+      {cfg.allowWrite && <WriteReview productId={d.product.id} loggedIn={loggedIn} />}
       <div className="h-3" />
       </div>
+      {side && <SideProducts title={cfg.sideTitle} products={d.side} />}
     </div>
   );
 }
@@ -312,6 +353,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
   const discountPct = size?.discountPct ?? d.price.discountPct;
   const stock = size?.stock ?? d.stock;
   const out = stock === "out";
+  const notify = useNotifyMe(d.product.id, sizeId || null, setToast);
 
   // The bottom bar sticks until its own place on the page (below the
   // assurance badges) scrolls into view, then sits there like Meesho's.
@@ -382,9 +424,14 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
 
   const buttons = (
     <div className="flex gap-2 px-4 py-3">
-      {out ? (
+      {out ? (ui.notify ? (
+        <button type="button" onClick={() => void notify.request()} disabled={notify.busy} aria-pressed={notify.done}
+          className="flex h-10 flex-1 items-center justify-center gap-2 rounded-[4px] bg-[var(--hp-accent)] text-[16px] font-medium text-white disabled:opacity-60 aria-pressed:border aria-pressed:border-[var(--hp-accent)] aria-pressed:bg-white aria-pressed:text-[var(--hp-accent)]">
+          <NotifyIcon done={notify.done} busy={notify.busy} className="h-5 w-5" />{notify.done ? "We'll notify you" : ui.notifyLabel}
+        </button>
+      ) : (
         <button type="button" disabled className="h-10 flex-1 rounded-[4px] bg-[#cfcedc] text-[16px] font-medium text-white">Out of Stock</button>
-      ) : <>
+      )) : <>
         {cfg.actions.showCart && inCart > 0 && ui.stepper ? (
           <div className="grid h-10 flex-1 grid-cols-[44px_1fr_44px] items-center overflow-hidden rounded-[4px] border border-[var(--hp-accent)] text-[var(--hp-accent)]">
             <button type="button" onClick={() => changeQty(inCart - 1)} disabled={adding} aria-label="Decrease quantity" className="grid h-full place-items-center active:bg-[var(--hp-accent)]/10 disabled:opacity-50"><Minus className="h-[18px] w-[18px]" strokeWidth={2.5} /></button>
@@ -468,7 +515,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
                 </button>
               )}
             </div>
-            {description && <Description text={description} />}
+            {i.showDescription && description && <Description text={description} />}
             <div className="mt-2 flex flex-wrap items-baseline gap-x-2">
               <span className="text-[24px] font-bold leading-8">{rupees(final)}</span>
               {discountPct > 0 && <><s className="text-[14px] text-[#8b8ba3]">{rupees(mrp)}</s><span className="text-[14px]">{discountPct}% off</span></>}
@@ -488,8 +535,8 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
                 {i.deliveryStrike && <s className="text-[12px] text-[#8b8ba3]">{i.deliveryStrike}</s>}
               </div>
             )}
-            {i.showStock && (stock === "low" || out) && (
-              <p className={cn("mt-2 text-[13px] font-medium", out ? "text-[#e5485f]" : "text-[#f16b24]")}>{out ? "Out of stock" : "Only a few left — order soon"}</p>
+            {(out || (i.showStock && stock === "low")) && (
+              <p className={cn("mt-2 text-[13px] font-medium", out ? "text-[#e5485f]" : "text-[#f16b24]")}>{out ? "Out of stock" : ui.lowStockText}</p>
             )}
             {i.showRating && d.rating.count > 0 && d.rating.avg !== null && (
               <a href="#reviews" className="mt-3 flex items-center gap-2">

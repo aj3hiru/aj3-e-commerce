@@ -27,7 +27,7 @@ export default async function CustomerProfilePage({ params, searchParams }: Cust
   if (!customer) notFound();
 
   const [orders, credits, addressRows] = await Promise.all([
-    prisma.ecomOrder.findMany({ where: { customerId }, orderBy: { createdAt: "desc" } }),
+    prisma.ecomOrder.findMany({ where: { customerId }, orderBy: { createdAt: "desc" }, include: { payments: { orderBy: { createdAt: "asc" } } } }),
     prisma.ecomCredit.findMany({
       where: { customerId },
       include: { order: { select: { orderNumber: true } }, payments: { orderBy: { createdAt: "asc" } } },
@@ -66,9 +66,17 @@ export default async function CustomerProfilePage({ params, searchParams }: Cust
           paymentStatus: o.paymentStatus, orderStatus: o.orderStatus, createdAt: o.createdAt.toISOString(),
           orderType: o.orderType,
           // Due receipts on this order (×2, ×3 when it was paid in parts) and what is still owed.
-          receipts: credits.filter((c: (typeof credits)[number]) => c.orderId === o.id).flatMap((c: (typeof credits)[number]) => c.payments.map((p: (typeof c.payments)[number]) => ({
-            receiptNumber: p.receiptNumber, amount: Number(p.amount), paymentMethod: p.paymentMethod, createdAt: p.createdAt.toISOString(),
-          }))),
+          // Everything paid on it: what was paid with the bill (opens the invoice), then each due payment receipt.
+          receipts: [
+            ...(o.payments.length
+              ? o.payments.map((p: (typeof o.payments)[number]) => ({
+                  receiptNumber: `Bill ${o.orderNumber}`, amount: Number(p.amount), paymentMethod: `${p.paymentMethod} · paid with the bill`, createdAt: p.createdAt.toISOString(), url: `/admin/ecommerce/invoice/${o.id}`,
+                }))
+              : [{ receiptNumber: `Bill ${o.orderNumber}`, amount: 0, paymentMethod: "Invoice · nothing paid with the bill", createdAt: o.createdAt.toISOString(), url: `/admin/ecommerce/invoice/${o.id}` }]),
+            ...credits.filter((c: (typeof credits)[number]) => c.orderId === o.id).flatMap((c: (typeof credits)[number]) => c.payments.map((p: (typeof c.payments)[number]) => ({
+              receiptNumber: p.receiptNumber, amount: Number(p.amount), paymentMethod: `${p.paymentMethod} · due payment`, createdAt: p.createdAt.toISOString(),
+            }))),
+          ],
           due: (() => {
             const c = credits.find((x: (typeof credits)[number]) => x.orderId === o.id && Number(x.amount) - Number(x.amountPaid) > 0.004);
             return c ? { creditId: c.id, balance: Math.round((Number(c.amount) - Number(c.amountPaid)) * 100) / 100 } : null;

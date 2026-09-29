@@ -833,6 +833,22 @@ model PushSubscription {
   @@map("push_subscriptions")
 }
 
+/// "Notify me" on an out-of-stock product (prisma/stock-alerts.sql). The stock-alert worker sends one
+/// push when it is back in stock, to the browser that asked and the signed-in customer's browsers.
+model EcomStockAlert {
+  id         Int       @id @default(autoincrement())
+  productId  Int       @map("product_id")
+  sizeId     Int?      @map("size_id")
+  endpoint   String?   @db.VarChar(768)
+  customerId Int?      @map("customer_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  notifiedAt DateTime? @map("notified_at")
+
+  @@index([notifiedAt, productId], map: "ecom_stock_alerts_pending_idx")
+  @@index([productId], map: "ecom_stock_alerts_product_idx")
+  @@map("ecom_stock_alerts")
+}
+
 model PushCampaign {
   id               Int      @id @default(autoincrement())
   postId           Int?     @map("post_id") // push-manager2 — see prisma/push-manager2.sql

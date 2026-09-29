@@ -109,7 +109,7 @@ export function BackupView({ initial, runningJob }: { initial: BackupFile[]; run
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-admin-primary-lighter text-admin-primary"><DatabaseBackup className="h-5 w-5" /></span>
             <div className="flex-1">
               <h2 className="text-[15px] font-semibold text-admin-gray-900">Create a backup</h2>
-              <p className="mt-0.5 text-sm text-admin-gray-500">A complete, secure copy of your store — products, orders, customers, payments, settings and every uploaded image — saved as a single file you can download or restore at any time.</p>
+              <p className="mt-0.5 text-sm text-admin-gray-500">A complete, secure copy of your store — products, orders, customers, payments, staff, settings, push notification subscribers and keys, and every uploaded image — saved as a single file you can download or restore at any time.</p>
             </div>
           </div>
           <button type="button" disabled={busy} onClick={() => act({ action: "backup" })}

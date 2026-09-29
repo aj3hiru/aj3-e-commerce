@@ -179,6 +179,9 @@ async function createBackup(j: Job, prefix: string, by: string, from = 0, to = 1
       log(j, `✓ ${t.replace(/^ecom_/, "").replace(/_/g, " ")} — ${n.toLocaleString("en-IN")} record${n === 1 ? "" : "s"}`);
     }
 
+    const pushSubs = counts.push_subscriptions ?? 0;
+    log(j, `✓ Push notifications: ${pushSubs.toLocaleString("en-IN")} subscriber${pushSubs === 1 ? "" : "s"}, sending keys and history included`, "ok");
+    log(j, `✓ Customers ${counts.ecom_customers ?? 0} · Orders ${counts.ecom_orders ?? 0} · Products ${counts.ecom_products ?? 0} · Staff ${counts.users ?? 0}`, "ok");
     step(j, span(72), "Checking uploaded files");
     const files = await walk(UPLOADS);
     let bytes = 0;

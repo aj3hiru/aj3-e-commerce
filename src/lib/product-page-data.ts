@@ -7,6 +7,7 @@ import { LOW_STOCK_LIMIT } from "@/components/admin/products2/filters";
 import type { ProductPageConfig } from "@/types/product-page";
 import { packLabel, packSortKey, sizeLabelKey, variantLabel } from "@/lib/product-variants-shared";
 import { getDeliverySettings, type DeliverySettings } from "@/lib/delivery-charge";
+import { cached } from "@/lib/cache";
 
 /** Everything the Meesho-style product page shows, already priced and serialisable. */
 export interface ProductPageData {
@@ -27,9 +28,31 @@ export interface ProductPageData {
   reviews: { id: number; name: string; rating: number; text: string | null; date: string }[];
   offer: { price: number; count: number; codes: { code: string; title: string; label: string }[] } | null;
   related: FeedProduct[];
+  /** Computer screens: best sellers / newest beside the reviews (Customizer → Ratings & reviews). */
+  side: FeedProduct[];
   store: { name: string; rating: number | null; count: number };
   /** Business Settings → Delivery Charge, so the page says “Free Delivery” only when this price really ships free. */
   delivery: DeliverySettings;
+}
+
+/** Active products, best sellers of the last 60 days first (then the newest), as ids — refreshed every 10 minutes. */
+function sideProductIds(source: "trending" | "latest"): Promise<number[]> {
+  return cached(`pp:side:${source}`, ["EcomOrder", "EcomProduct"], 10 * 60_000, async () => {
+    const ids: number[] = [];
+    if (source === "trending") {
+      const top = await prisma.ecomOrderItem.groupBy({
+        by: ["productId"], where: { order: { createdAt: { gte: new Date(Date.now() - 60 * 86_400_000) }, orderStatus: { not: "Canceled" } } },
+        _sum: { qty: true }, orderBy: { _sum: { qty: "desc" } }, take: 40,
+      });
+      const active = new Set((await prisma.ecomProduct.findMany({ where: { id: { in: top.map((t) => t.productId) }, status: "active" }, select: { id: true } })).map((p) => p.id));
+      ids.push(...top.map((t) => t.productId).filter((id) => active.has(id)));
+    }
+    if (ids.length < 24) {
+      const latest = await prisma.ecomProduct.findMany({ where: { status: "active", id: { notIn: ids } }, orderBy: { createdAt: "desc" }, take: 24 - ids.length, select: { id: true } });
+      ids.push(...latest.map((p) => p.id));
+    }
+    return ids;
+  });
 }
 
 const pct = (mrp: number, final: number) => (mrp > 0 && final < mrp ? Math.min(final > 0 ? 99 : 100, Math.round(((mrp - final) / mrp) * 100)) : 0);
@@ -141,6 +164,16 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
     : [];
 
   const related = relatedRows.length ? publicProducts(await enrichProducts(relatedRows as FeedRow[])) : [];
+  let side: FeedProduct[] = [];
+  if (cfg.reviews.side && !hidden.has("reviews")) {
+    const skip = new Set([p.id, ...related.map((r) => r.id)]);
+    const ids = (await sideProductIds(cfg.reviews.sideSource).catch(() => [] as number[])).filter((id) => !skip.has(id)).slice(0, 12);
+    if (ids.length) {
+      const rows = await prisma.ecomProduct.findMany({ where: { id: { in: ids }, status: "active" }, select: FEED_SELECT });
+      const at = new Map(ids.map((id, i) => [id, i]));
+      side = publicProducts(await enrichProducts(rows as FeedRow[])).sort((a, b) => (at.get(a.id) ?? 0) - (at.get(b.id) ?? 0));
+    }
+  }
   const images = [p.image, ...p.images.map((i) => i.image)].filter((x): x is string => !!x);
 
   return {
@@ -161,6 +194,7 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
       .map((r) => ({ id: r.id, name: r.customerName, rating: r.rating, text: r.reviewText, date: r.createdAt.toISOString() })),
     offer,
     related,
+    side,
     delivery,
     store: {
       name: biz?.businessName ?? "Our Store",

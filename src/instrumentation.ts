@@ -13,5 +13,8 @@ export async function register() {
     setTimeout(() => void kickPushQueueIfWaiting(), 10_000);
     setInterval(() => void kickPushQueueIfWaiting(), 30_000).unref();
     console.log("[push-queue] resume timer started (checks every 30s)");
+    // "Notify me": back-in-stock pushes, whatever brought the stock back.
+    const { checkStockAlerts } = await import("@/lib/stock-alerts");
+    setInterval(() => void checkStockAlerts(), 60_000).unref();
   }
 }

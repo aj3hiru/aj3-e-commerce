@@ -252,7 +252,9 @@ class _BodyState extends State<_Body> {
       _card('Price area', [
         _switch(m('info'), 'showOffer', 'Coupons under the price'),
         _switch(m('info'), 'showDeal', 'Deal timer'),
-        _switch(m('info'), 'showStock', '“Only a few left”'),
+        _switch(m('info'), 'showDescription', 'Description (2 lines, then “See more”)'),
+        _switch(m('info'), 'showStock', '“Only a few left” when stock is low'),
+        _text(m('cart'), 'lowStockText', 'Low stock text (also on product cards)', hint: 'Only a few left — order soon'),
         _switch(m('info'), 'showRating', 'Rating'),
         _switch(m('info'), 'showWishlist', 'Wishlist'),
         _switch(m('info'), 'showShare', 'Share'),
@@ -266,13 +268,24 @@ class _BodyState extends State<_Body> {
         _text(m('actions'), 'buyLabel', 'Buy Now text'),
         _switch(m('actions'), 'sticky', 'Keep the buttons at the bottom of the screen'),
       ]),
-      _card('Reviews', [_text(m('reviews'), 'title', 'Title'), _switch(m('reviews'), 'allowWrite', 'Customers can write reviews'), _num(m('reviews'), 'perPage', 'Reviews shown')]),
+      _card('Reviews', [
+        _text(m('reviews'), 'title', 'Title'),
+        _switch(m('reviews'), 'allowWrite', 'Customers who bought it can review (one per purchase)'),
+        _num(m('reviews'), 'perPage', 'Reviews shown'),
+        _switch(m('reviews'), 'side', 'Computer screens: products beside the reviews'),
+        _text(m('reviews'), 'sideTitle', 'Title of those products', hint: 'Trending now'),
+        SwitchListTile(contentPadding: EdgeInsets.zero, dense: true, title: const Text('Show newest products (off = best sellers)'),
+          value: m('reviews')['sideSource'] == 'latest', onChanged: (v) => _touch(() => m('reviews')['sideSource'] = v ? 'latest' : 'trending')),
+      ]),
       _card('Related products', [_text(m('related'), 'title', 'Title'), _num(m('related'), 'limit', 'How many')]),
       _card('Cart (whole shop)', [
         _switch(m('cart'), 'tileButton', 'Add to Cart button on product cards'),
         _switch(m('cart'), 'stepper', '− / + quantity after adding'),
         _switch(m('cart'), 'floatingBar', 'Floating “View Cart” bar'),
         _text(m('cart'), 'barLabel', 'View Cart bar text'),
+        _switch(m('cart'), 'tileLowStock', '“Only a few left” on product cards'),
+        _switch(m('cart'), 'notify', 'Out of stock: “Notify me” button instead of Add to Cart'),
+        _text(m('cart'), 'notifyLabel', 'Notify button text', hint: 'Notify me'),
       ]),
     ];
   }

@@ -9,7 +9,8 @@ import { Modal } from "@/components/admin/campaigns2/ui";
 import { PillButton } from "@/components/admin/ui/buttons";
 
 /** One payment taken against a due, with its receipt number. */
-export interface DueReceipt { receiptNumber: string; amount: number; paymentMethod: string; createdAt: string; by?: string | null }
+/** `url`: where it opens (a due receipt, or the bill itself for money paid at the sale). */
+export interface DueReceipt { receiptNumber: string; amount: number; paymentMethod: string; createdAt: string; by?: string | null; url?: string }
 
 const money = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "2-digit", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
@@ -34,8 +35,8 @@ export function ReceiptsButton({ receipts, title }: { receipts: DueReceipt[]; ti
           onClose={() => setOpen(false)}
           footer={
             <>
-              <span className="mr-auto text-sm text-admin-gray-600">Collected <b className="text-emerald-600">{money(total)}</b> in {receipts.length} part{receipts.length === 1 ? "" : "s"}</span>
-              <button type="button" onClick={() => receipts.forEach((r) => window.open(`${receiptUrl(r.receiptNumber)}?print=1`, "_blank"))}
+              <span className="mr-auto text-sm text-admin-gray-600">Paid so far <b className="text-emerald-600">{money(total)}</b></span>
+              <button type="button" onClick={() => receipts.forEach((r) => window.open(r.url ?? `${receiptUrl(r.receiptNumber)}?print=1`, "_blank"))}
                 className="flex h-10 items-center gap-2 rounded-[0.375rem] bg-[#2563eb] px-4 text-sm font-semibold text-white hover:bg-[#1d4ed8]">
                 <Printer className="h-4 w-4" /> Open all
               </button>
@@ -47,11 +48,11 @@ export function ReceiptsButton({ receipts, title }: { receipts: DueReceipt[]; ti
               <div key={`${r.receiptNumber}-${i}`} className="flex items-center gap-3 border-b border-admin-gray-100 px-3.5 py-2.5 text-sm last:border-b-0">
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-admin-gray-100 text-xs font-bold text-admin-gray-600">{i + 1}×</span>
                 <span className="min-w-0 flex-1">
-                  <Link href={receiptUrl(r.receiptNumber)} target="_blank" className="block truncate font-medium text-[#2563eb] hover:underline">{r.receiptNumber}</Link>
+                  <Link href={r.url ?? receiptUrl(r.receiptNumber)} target="_blank" className="block truncate font-medium text-[#2563eb] hover:underline">{r.receiptNumber}</Link>
                   <span className="block text-xs text-admin-gray-500">{when(r.createdAt)} · {r.paymentMethod}{r.by ? ` · by ${r.by}` : ""}</span>
                 </span>
                 <b className="shrink-0 text-emerald-600">{money(r.amount)}</b>
-                <Link href={receiptUrl(r.receiptNumber)} target="_blank" aria-label={`Open ${r.receiptNumber}`} className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-admin-gray-500 hover:bg-admin-gray-100"><ExternalLink className="h-4 w-4" /></Link>
+                <Link href={r.url ?? receiptUrl(r.receiptNumber)} target="_blank" aria-label={`Open ${r.receiptNumber}`} className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-admin-gray-500 hover:bg-admin-gray-100"><ExternalLink className="h-4 w-4" /></Link>
               </div>
             ))}
           </div>

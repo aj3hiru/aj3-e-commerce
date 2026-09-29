@@ -9,14 +9,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
-  Card, ColorInput, EditorToolbar, IconBtn, ImageField, INPUT, Label, LinkInput, Preview, Segmented, Text, Thumb, Toast, Toggle, rid, useDraftEditor,
+  Card, ColorInput, EditorToolbar, IconBtn, ImageField, INPUT, Label, Preview, Segmented, Text, Thumb, Toast, Toggle, rid, useDraftEditor,
   type PickCategory, type PickProduct,
 } from "./ui";
 import {
-  ASSURANCE_ICONS, PP_SECTION_HINT, PP_SECTION_LABEL, TRUST_ICONS,
+  ASSURANCE_ICONS, PP_RETIRED, PP_SECTION_HINT, PP_SECTION_LABEL, TRUST_ICONS,
   type AssuranceIcon, type PPSectionKey, type ProductPageConfig, type TrustIcon,
 } from "@/types/product-page";
-import { isSafeHref } from "@/types/storefront";
 
 const SECTION_ICON: Record<PPSectionKey, typeof Box> = {
   breadcrumb: Navigation, gallery: Images, trust: BadgeInfo, thumbs: LayoutGrid, info: FileText, sizes: Ruler, soldBy: Store,
@@ -24,9 +23,6 @@ const SECTION_ICON: Record<PPSectionKey, typeof Box> = {
 };
 const TRUST_ICON: Record<TrustIcon, typeof Box> = { check: BadgeCheck, box: Box, star: Star, shield: ShieldCheck, truck: Truck, tag: Tag, award: Award, leaf: Leaf };
 const ASSURE_ICON: Record<AssuranceIcon, typeof Box> = { price: BadgePercent, cod: Banknote, returns: RotateCcw, truck: Truck, shield: ShieldCheck, support: Headphones, quality: Award, gift: Gift };
-/** Autosave pauses while this returns a message. */
-const checkProductPage = (c: ProductPageConfig) =>
-  c.soldBy.showViewShop && !isSafeHref(c.soldBy.viewShopUrl) ? "The View Shop link isn't valid." : "";
 const ACCENTS = ["#9f2089", "#7c3aed", "#e11d48", "#ea580c", "#16a34a", "#0284c7", "#353543"];
 
 function IconPicker<T extends string>({ value, options, icons, onChange }: { value: T; options: readonly T[]; icons: Record<T, typeof Box>; onChange: (v: T) => void }) {
@@ -51,7 +47,7 @@ function Num({ label, value, onChange, min, max, hint }: { label: string; value:
   );
 }
 
-export function ProductPageCustomizer({ initialDraft, initialLive, products, categories }: {
+export function ProductPageCustomizer({ initialDraft, initialLive, products }: {
   initialDraft: ProductPageConfig; initialLive: ProductPageConfig; products: (PickProduct & { slug: string })[]; categories: PickCategory[];
 }) {
   const showOpt = useOptionalWidgetVisible();
@@ -63,7 +59,7 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
   const [pq, setPq] = useState("");
   const [picking, setPicking] = useState(false);
 
-  const ed = useDraftEditor<ProductPageConfig>(initialDraft, initialLive, "/api/ecommerce/product-page-customizer", checkProductPage);
+  const ed = useDraftEditor<ProductPageConfig>(initialDraft, initialLive, "/api/ecommerce/product-page-customizer", () => "");
   const c = ed.config;
   const update = (fn: (c: ProductPageConfig) => ProductPageConfig) => ed.setConfig(fn);
   const setPart = <K extends keyof ProductPageConfig>(k: K, p: Partial<ProductPageConfig[K]>) =>
@@ -75,6 +71,8 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
     const n = [...prev.order]; const [x] = n.splice(from, 1); n.splice(to, 0, x);
     return { ...prev, order: n };
   });
+  /** The next section shown in the list above (-1) or below (1), skipping retired ones; -1 when none. */
+  const near = (i: number, dir: -1 | 1) => { for (let j = i + dir; j >= 0 && j < c.order.length; j += dir) if (!PP_RETIRED.includes(c.order[j])) return j; return -1; };
   function toggle(key: string) {
     const next = open === key ? null : key;
     setOpen(next);
@@ -134,15 +132,18 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
             <Toggle on={c.info.showWishlist} onChange={(v) => setPart("info", { showWishlist: v })}>Wishlist button</Toggle>
             <Toggle on={c.info.showShare} onChange={(v) => setPart("info", { showShare: v })}>Share button</Toggle>
             <Toggle on={c.info.showDeal} onChange={(v) => setPart("info", { showDeal: v })}>Deal countdown (live campaigns)</Toggle>
-            <Toggle on={c.info.showStock} onChange={(v) => setPart("info", { showStock: v })}>&ldquo;Only a few left&rdquo; / out of stock</Toggle>
+            <Toggle on={c.info.showDescription} onChange={(v) => setPart("info", { showDescription: v })}>Description (2 lines, then &ldquo;… See more&rdquo;)</Toggle>
+            <Toggle on={c.info.showStock} onChange={(v) => setPart("info", { showStock: v })}>&ldquo;{c.cart.lowStockText}&rdquo; when stock is low</Toggle>
             <Toggle on={c.info.showRating} onChange={(v) => setPart("info", { showRating: v })}>Rating pill &amp; counts</Toggle>
             <Toggle on={c.info.showOffer} onChange={(v) => setPart("info", { showOffer: v })}>&ldquo;₹x with N Special Offers&rdquo; (coupons)</Toggle>
           </div>
           {c.info.showOffer && <p className="flex gap-1.5 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800"><Info className="mt-px h-3.5 w-3.5 shrink-0" />Shoppers will see the codes of your active coupons that apply to the product.</p>}
+          {c.info.showStock && <Text label="Low stock text (also on product cards)" value={c.cart.lowStockText} onChange={(v) => setPart("cart", { lowStockText: v })} max={40} placeholder="Only a few left — order soon" />}
           <div className="grid grid-cols-2 gap-3">
             <Text label="Delivery line" value={c.info.deliveryText} onChange={(v) => setPart("info", { deliveryText: v })} max={40} placeholder="Free Delivery" hint="Blank = hide" />
             <Text label="Struck-out text" value={c.info.deliveryStrike} onChange={(v) => setPart("info", { deliveryStrike: v })} max={20} placeholder="₹70" hint="Optional" />
           </div>
+          <p className="text-xs text-admin-gray-500">The delivery line shows only when the price ships free under Business Settings → Delivery Charge. &ldquo;Out of stock&rdquo; always shows when nothing is left.</p>
         </>;
       case "sizes":
         return <>
@@ -150,43 +151,21 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
           <Toggle on={c.sizes.showPrice} onChange={(v) => setPart("sizes", { showPrice: v })}>Show the price in each chip (when sizes cost differently)</Toggle>
           <p className="text-xs text-admin-gray-500">Only shown for products with Sizes / Units. The chosen size goes into the cart with its own price and stock.</p>
         </>;
-      case "soldBy":
-        return <>
-          <div className="grid grid-cols-2 gap-3">
-            <Text label="Title" value={c.soldBy.title} onChange={(v) => setPart("soldBy", { title: v })} max={40} />
-            <Text label="Store name" value={c.soldBy.name} onChange={(v) => setPart("soldBy", { name: v })} max={80} placeholder="Business name" hint="Blank = business name" />
-          </div>
-          <Toggle on={c.soldBy.showRating} onChange={(v) => setPart("soldBy", { showRating: v })}>Store rating (all product reviews)</Toggle>
-          <Toggle on={c.soldBy.showViewShop} onChange={(v) => setPart("soldBy", { showViewShop: v })}>View Shop button</Toggle>
-          {c.soldBy.showViewShop && <div className="grid grid-cols-2 gap-3">
-            <Text label="Button text" value={c.soldBy.viewShopLabel} onChange={(v) => setPart("soldBy", { viewShopLabel: v })} max={24} />
-            <LinkInput label="Button link" value={c.soldBy.viewShopUrl} onChange={(v) => setPart("soldBy", { viewShopUrl: v })} categories={categories} />
-          </div>}
-        </>;
-      case "highlights":
-        return <>
-          <div className="grid grid-cols-2 gap-3">
-            <Text label="Title" value={c.highlights.title} onChange={(v) => setPart("highlights", { title: v })} max={40} />
-            <Text label="Description heading" value={c.highlights.detailsTitle} onChange={(v) => setPart("highlights", { detailsTitle: v })} max={40} />
-          </div>
-          <div>
-            <Label>Show in the grid (plus the product&rsquo;s Specifications)</Label>
-            <div className="divide-y divide-admin-gray-100 rounded-lg border border-admin-gray-200 px-2">
-              <Toggle on={c.highlights.showBrand} onChange={(v) => setPart("highlights", { showBrand: v })}>Brand</Toggle>
-              <Toggle on={c.highlights.showCategory} onChange={(v) => setPart("highlights", { showCategory: v })}>Category</Toggle>
-              <Toggle on={c.highlights.showUnit} onChange={(v) => setPart("highlights", { showUnit: v })}>Unit (Sold by)</Toggle>
-              <Toggle on={c.highlights.showSku} onChange={(v) => setPart("highlights", { showSku: v })}>SKU</Toggle>
-            </div>
-          </div>
-          <Toggle on={c.highlights.showCopy} onChange={(v) => setPart("highlights", { showCopy: v })}>COPY button</Toggle>
-          <Toggle on={c.highlights.detailsOpen} onChange={(v) => setPart("highlights", { detailsOpen: v })}>Description open by default</Toggle>
-        </>;
       case "reviews":
         return <>
           <Text label="Title" value={c.reviews.title} onChange={(v) => setPart("reviews", { title: v })} max={50} />
           <Num label="Reviews shown before “View all”" value={c.reviews.perPage} onChange={(n) => setPart("reviews", { perPage: n })} min={1} max={20} />
           <Toggle on={c.reviews.showBars} onChange={(v) => setPart("reviews", { showBars: v })}>Rating summary with bars</Toggle>
-          <Toggle on={c.reviews.allowWrite} onChange={(v) => setPart("reviews", { allowWrite: v })}>&ldquo;Write a review&rdquo; for logged-in shoppers</Toggle>
+          <Toggle on={c.reviews.allowWrite} onChange={(v) => setPart("reviews", { allowWrite: v })}>&ldquo;Write a review&rdquo; for customers who bought it</Toggle>
+          <p className="text-xs text-admin-gray-500">Only a signed-in customer who bought the product (delivered order or store bill) sees the form — one review for each purchase.</p>
+          <div className="space-y-3 rounded-lg border border-admin-gray-200 p-2.5">
+            <Toggle on={c.reviews.side} onChange={(v) => setPart("reviews", { side: v })}>Computer screens: products beside the reviews</Toggle>
+            {c.reviews.side && <>
+              <Text label="Title" value={c.reviews.sideTitle} onChange={(v) => setPart("reviews", { sideTitle: v })} max={40} placeholder="Trending now" />
+              <Segmented value={c.reviews.sideSource} onChange={(v) => setPart("reviews", { sideSource: v })} options={[{ v: "trending", label: "Best sellers" }, { v: "latest", label: "Newest products" }]} />
+              <p className="text-xs text-admin-gray-500">Fills the empty space next to the reviews — as many products as fit. Phones don&rsquo;t show it.</p>
+            </>}
+          </div>
         </>;
       case "assurance":
         return <>
@@ -222,8 +201,8 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
             <div className="space-y-2"><Toggle on={c.actions.showBuy} onChange={(v) => setPart("actions", { showBuy: v })}>Buy Now</Toggle>
               <Text label="Text" value={c.actions.buyLabel} onChange={(v) => setPart("actions", { buyLabel: v })} max={24} /></div>
           </div>
-          <Toggle on={c.actions.sticky} onChange={(v) => setPart("actions", { sticky: v })}>Stick to the bottom until this spot is reached</Toggle>
-          <p className="text-xs text-admin-gray-500">Drag this section to choose where the buttons settle — like Meesho, right after the assurance badges.</p>
+          <Toggle on={c.actions.sticky} onChange={(v) => setPart("actions", { sticky: v })}>Stick to the bottom until this spot is reached (phones)</Toggle>
+          <p className="text-xs text-admin-gray-500">Drag this section to choose where the buttons settle — like Meesho, right after the assurance badges. When the product is out of stock they turn into the &ldquo;{c.cart.notifyLabel}&rdquo; button (Cart buttons card).</p>
         </>;
       case "related":
         return <>
@@ -262,23 +241,27 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
           <ColorInput label="Buttons, links, selected size" value={c.accent} onChange={(v) => update((p) => ({ ...p, accent: v }))} swatches={ACCENTS} />
         </Card>
 
-        <Card icon={ShoppingCart} title="Cart buttons & floating bar" subtitle="Add to Cart on product cards · − / + · View Cart bar" open={open === "cart"} onToggle={() => toggle("cart")}>
+        <Card icon={ShoppingCart} title="Cart buttons & floating bar" subtitle="Add to Cart on cards · − / + · View Cart bar · Notify me" open={open === "cart"} onToggle={() => toggle("cart")}>
           <p className="-mt-1 text-xs text-admin-gray-500">Applies across the store — homepage, product page and every product grid.</p>
           <div className="divide-y divide-admin-gray-100 rounded-lg border border-admin-gray-200 px-2">
             <Toggle on={c.cart.tileButton} onChange={(v) => setPart("cart", { tileButton: v })}>Add to Cart button on product cards</Toggle>
             <Toggle on={c.cart.stepper} onChange={(v) => setPart("cart", { stepper: v })}>Turn it into − qty + after adding</Toggle>
             <Toggle on={c.cart.floatingBar} onChange={(v) => setPart("cart", { floatingBar: v })}>Floating View Cart bar (items &amp; total)</Toggle>
+            <Toggle on={c.cart.tileLowStock} onChange={(v) => setPart("cart", { tileLowStock: v })}>&ldquo;{c.cart.lowStockText}&rdquo; on product cards</Toggle>
+            <Toggle on={c.cart.notify} onChange={(v) => setPart("cart", { notify: v })}>Out of stock: &ldquo;{c.cart.notifyLabel}&rdquo; button instead of Add to Cart</Toggle>
           </div>
+          {c.cart.notify && <p className="flex gap-1.5 rounded-md bg-sky-50 px-3 py-2 text-xs text-sky-800"><Info className="mt-px h-3.5 w-3.5 shrink-0" />The shopper allows notifications and gets one as soon as the product is back in stock.</p>}
           <div className="grid grid-cols-2 gap-3">
             <Text label="Card button text" value={c.cart.tileLabel} onChange={(v) => setPart("cart", { tileLabel: v })} max={20} />
             <Text label="Bar button text" value={c.cart.barLabel} onChange={(v) => setPart("cart", { barLabel: v })} max={20} />
+            {c.cart.notify && <Text label="Notify button text" value={c.cart.notifyLabel} onChange={(v) => setPart("cart", { notifyLabel: v })} max={20} />}
           </div>
           <ColorInput label="Floating bar colour" value={c.cart.barColor} onChange={(v) => setPart("cart", { barColor: v })} swatches={["#9f2089", "#16a34a", "#7c3aed", "#0284c7", "#ea580c", "#353543"]} />
           <p className="text-xs text-admin-gray-500">The live preview shows these after you Publish on the homepage; the product page preview shows them straight away.</p>
         </Card>
 
         <p className="px-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-admin-gray-400">Page sections · drag to reorder · switch to hide</p>
-        {c.order.map((k, i) => (
+        {c.order.map((k, i) => PP_RETIRED.includes(k) ? null : (
           <div key={k} draggable={open !== k}
             onDragStart={(e) => { setDrag(i); e.dataTransfer.effectAllowed = "move"; }}
             onDragOver={(e) => { e.preventDefault(); if (drag !== null && drag !== i) { move(drag, i); setDrag(i); } }}
@@ -289,8 +272,8 @@ export function ProductPageCustomizer({ initialDraft, initialLive, products, cat
               enabled={!hidden.has(k)} onEnabled={(v) => setShown(k, v)} tone={hidden.has(k) ? "muted" : "default"}>
               {editor(k)}
               <div className="flex gap-1 border-t border-admin-gray-100 pt-3">
-                <IconBtn label="Move up" disabled={i === 0} onClick={() => move(i, i - 1)}><ArrowUp /></IconBtn>
-                <IconBtn label="Move down" disabled={i === c.order.length - 1} onClick={() => move(i, i + 1)}><ArrowDown /></IconBtn>
+                <IconBtn label="Move up" disabled={near(i, -1) < 0} onClick={() => move(i, near(i, -1))}><ArrowUp /></IconBtn>
+                <IconBtn label="Move down" disabled={near(i, 1) < 0} onClick={() => move(i, near(i, 1))}><ArrowDown /></IconBtn>
               </div>
             </Card>
           </div>

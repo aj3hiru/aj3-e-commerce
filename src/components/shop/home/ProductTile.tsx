@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { NotifyIcon, useNotifyMe } from "@/components/shop/NotifyMe";
 import { BadgeCheck, Check, Heart, ImageIcon, Loader2, Minus, Plus, ShoppingCart, Star, Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FeedProduct } from "@/lib/shop-feed-shared";
@@ -39,7 +40,23 @@ export function TileCartButton({ p }: { p: FeedProduct }) {
   const { items, ui } = useCart();
   const { addToCart, setQty } = useAddToCart();
   const [busy, setBusy] = useState(false);
-  if (!ui.tileButton || p.stock === "out") return null;
+  const [msg, setMsg] = useState("");
+  const notify = useNotifyMe(p.id, null, setMsg);
+  useEffect(() => { if (!msg) return; const t = setTimeout(() => setMsg(""), 2600); return () => clearTimeout(t); }, [msg]);
+  if (p.stock === "out") {
+    if (!ui.notify) return null;
+    return (
+      <div className="relative">
+        <button type="button" onClick={() => void notify.request()} disabled={notify.busy} aria-pressed={notify.done}
+          className={cn("flex h-[34px] w-full items-center justify-center gap-1.5 rounded-[4px] border border-[var(--hp-accent)] text-[14px] font-medium transition active:scale-[0.98]",
+            notify.done ? "bg-white text-[var(--hp-accent)]" : "bg-[var(--hp-accent)] text-white")}>
+          <NotifyIcon done={notify.done} busy={notify.busy} className="h-[15px] w-[15px]" />{notify.done ? "We'll notify you" : ui.notifyLabel}
+        </button>
+        {msg && <p role="status" className="absolute inset-x-0 bottom-full z-10 mb-1 rounded-md bg-[#353543] px-2 py-1.5 text-center text-[11.5px] leading-4 text-white shadow">{msg}</p>}
+      </div>
+    );
+  }
+  if (!ui.tileButton) return null;
   const keys = productKeys(items, p.id);
   const qty = keys.reduce((n, k) => n + (items[k] ?? 0), 0);
   const run = async (fn: () => Promise<unknown>) => { if (busy) return; setBusy(true); try { await fn(); } finally { setBusy(false); } };
@@ -79,6 +96,7 @@ export function ProductTile({ p, wished, onWish, priority, lines = true }: {
 }) {
   const router = useRouter();
   const { card } = useHomeTheme();
+  const { ui } = useCart();
   const [busy, setBusy] = useState(false);
   const [imgOk, setImgOk] = useState(true);
   const out = p.stock === "out";
@@ -140,7 +158,7 @@ export function ProductTile({ p, wished, onWish, priority, lines = true }: {
             <span className="text-[13px] text-[#353543]">{p.discountPct}% off</span>
           </>}
         </div>
-        {p.stock === "low" && <p className="mt-0.5 text-[12.5px] font-medium text-[#038d63]">Only a few left — order soon</p>}
+        {p.stock === "low" && ui.tileLowStock && <p className="mt-0.5 text-[12.5px] font-medium text-[#038d63]">{ui.lowStockText}</p>}
         {card.showRating && p.rating !== null && (
           <div className="mt-2 flex items-center gap-1.5">
             <span className="inline-flex h-[22px] items-center gap-1 rounded-full px-2 text-[13px] font-bold leading-none text-white" style={{ background: ratingBg(p.rating) }}>

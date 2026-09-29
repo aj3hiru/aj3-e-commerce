@@ -58,6 +58,7 @@ export function sanitizeProductPage(input: unknown): ProductPageConfig {
       showOffer: bool(inf.showOffer, D.info.showOffer), showDeal: bool(inf.showDeal, D.info.showDeal),
       showStock: bool(inf.showStock, D.info.showStock), showRating: bool(inf.showRating, D.info.showRating),
       deliveryText: str(inf.deliveryText, 40, D.info.deliveryText), deliveryStrike: str(inf.deliveryStrike, 20, D.info.deliveryStrike),
+      showDescription: bool(inf.showDescription, D.info.showDescription),
     },
     sizes: { title: str(sz.title, 40, D.sizes.title) || D.sizes.title, showPrice: bool(sz.showPrice, D.sizes.showPrice) },
     soldBy: {
@@ -74,6 +75,8 @@ export function sanitizeProductPage(input: unknown): ProductPageConfig {
     reviews: {
       title: str(rv.title, 50, D.reviews.title) || D.reviews.title, showBars: bool(rv.showBars, D.reviews.showBars),
       perPage: int(rv.perPage, 1, 20, D.reviews.perPage), allowWrite: bool(rv.allowWrite, D.reviews.allowWrite),
+      side: bool(rv.side, D.reviews.side), sideTitle: str(rv.sideTitle, 40, D.reviews.sideTitle) || D.reviews.sideTitle,
+      sideSource: rv.sideSource === "latest" ? "latest" : "trending",
     },
     assurance: {
       bg: color(as.bg, D.assurance.bg),
@@ -91,6 +94,8 @@ export function sanitizeProductPage(input: unknown): ProductPageConfig {
       tileButton: bool(ct.tileButton, D.cart.tileButton), tileLabel: str(ct.tileLabel, 20, D.cart.tileLabel) || D.cart.tileLabel,
       stepper: bool(ct.stepper, D.cart.stepper), floatingBar: bool(ct.floatingBar, D.cart.floatingBar),
       barLabel: str(ct.barLabel, 20, D.cart.barLabel) || D.cart.barLabel, barColor: color(ct.barColor, D.cart.barColor),
+      tileLowStock: bool(ct.tileLowStock, D.cart.tileLowStock), lowStockText: str(ct.lowStockText, 40, D.cart.lowStockText) || D.cart.lowStockText, notify: bool(ct.notify, D.cart.notify),
+      notifyLabel: str(ct.notifyLabel, 20, D.cart.notifyLabel) || D.cart.notifyLabel,
     },
   };
 }

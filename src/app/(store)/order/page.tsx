@@ -36,6 +36,11 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
             ? <Empty icon={PackageSearch} title="No orders yet" text="When you place an order, you can track it here."
                 action={<Link href="/" className={cn(btnPrimary, "w-56")}>Start Shopping</Link>} />
             : orders.map((o) => <OrderCard key={o.id} o={o} />)}
+          {!orders.some((o) => o.store) && (
+            <p className="px-4 py-4 text-center text-[12.5px] leading-[18px] text-[#8b8ba3]">
+              Also buy at our store? Show this mobile number at the counter — we&rsquo;ll add your store bills here.
+            </p>
+          )}
         </Page>
       </ShopLayout>
     );
@@ -50,10 +55,13 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
     },
   });
   if (!order) notFound();
-  const [products, payment] = await Promise.all([
+  const [products, payment, credit] = await Promise.all([
     prisma.ecomProduct.findMany({ where: { id: { in: order.items.map((i) => i.productId) } }, select: { id: true, slug: true, image: true } }),
     prisma.ecomPaymentSettings.findFirst({ where: { methodKey: order.paymentMethod }, select: { name: true } }),
+    order.orderType === "offline" ? prisma.ecomCredit.findFirst({ where: { orderId: order.id }, select: { amount: true, amountPaid: true } }) : null,
   ]);
+  // A store bill paid partly: what is still owed on it (its due record), and so what has been paid.
+  const due = credit ? Math.max(0, Math.round((Number(credit.amount) - Number(credit.amountPaid)) * 100) / 100) : 0;
   const prod = new Map(products.map((p) => [p.id, p]));
 
   return (
@@ -68,6 +76,7 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
         stepTimes: Object.fromEntries(order.events.filter((e) => e.toValue).map((e) => [e.toValue!, e.createdAt.toISOString()])),
         agentName: order.deliveryAgent ? order.deliveryAgent.username.split(/[\s._-]/)[0] : null,
         cancelReason: order.cancelReason,
+        store: order.orderType === "offline", due, paid: Math.max(0, Number(order.totalAmount) - due),
       }} />
     </ShopLayout>
   );

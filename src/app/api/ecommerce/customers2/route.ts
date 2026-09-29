@@ -4,6 +4,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { parseCustomerInput } from "@/lib/customer2-save";
 import { withApiErrors } from "@/lib/api-errors";
+import { customersWithPhone } from "@/lib/customer-phone";
 
 /** POST /api/ecommerce/customers2 — create a customer (Customer List 2). */
 async function handlePOST(req: NextRequest) {
@@ -15,6 +16,11 @@ async function handlePOST(req: NextRequest) {
   const parsed = parseCustomerInput(await req.json().catch(() => null));
   if (!parsed.ok) return NextResponse.json({ success: false, message: parsed.message, field: parsed.field }, { status: 400 });
   const c = parsed.value;
+  // One customer per mobile number (a second one would split their bills and account).
+  if (c.phone && (await customersWithPhone(c.phone)).length) {
+    const same = (await customersWithPhone(c.phone))[0];
+    return NextResponse.json({ success: false, message: `${same.name || "Another customer"} (ID ${same.id}) already has this mobile number.`, field: "phone" }, { status: 409 });
+  }
 
   try {
     const created = await prisma.ecomCustomer.create({ data: c, select: { id: true } });

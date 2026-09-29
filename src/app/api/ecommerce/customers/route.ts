@@ -1,3 +1,4 @@
+import { customersWithPhone } from "@/lib/customer-phone";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
@@ -21,6 +22,12 @@ async function handlePOST(req: NextRequest) {
 
   if (!name || !email) {
     return NextResponse.json({ success: false, message: "Name and email are required." }, { status: 400 });
+  }
+
+  // One customer per mobile number (a second one would split their bills and account).
+  if (phone && (await customersWithPhone(phone)).length) {
+    const same = (await customersWithPhone(phone))[0];
+    return NextResponse.json({ success: false, message: `${same.name || "Another customer"} (ID ${same.id}) already has this mobile number.`, field: "phone" }, { status: 409 });
   }
 
   try {

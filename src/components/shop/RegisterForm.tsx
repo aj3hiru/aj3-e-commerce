@@ -51,8 +51,8 @@ export function RegisterForm({ storeName = "our store" }: { storeName?: string }
       {error && <div className="mb-4"><Notice tone="error">{error}</Notice></div>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Full Name">{iconInput(UserRound, <input type="text" required autoComplete="name" value={form.name} onChange={set("name")} placeholder="Your name" className={cn(inputCls, "h-12 pl-10")} />)}</Field>
-        <Field label="Email">{iconInput(Mail, <input type="email" required autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" className={cn(inputCls, "h-12 pl-10")} />)}</Field>
-        <Field label="Mobile Number" hint="Optional">{iconInput(Phone, <input type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set("phone")} placeholder="10-digit mobile number" className={cn(inputCls, "h-12 pl-10")} />)}</Field>
+        <Field label="Mobile Number" hint="Used to log in · can't be changed later">{iconInput(Phone, <input type="tel" inputMode="tel" required autoComplete="tel" pattern="[+0-9 -]{10,16}" title="10-digit mobile number" value={form.phone} onChange={set("phone")} placeholder="10-digit mobile number" className={cn(inputCls, "h-12 pl-10")} />)}</Field>
+        <Field label="Email" hint="Optional">{iconInput(Mail, <input type="email" autoComplete="email" value={form.email} onChange={set("email")} placeholder="you@example.com" className={cn(inputCls, "h-12 pl-10")} />)}</Field>
         <Field label="Password" hint="At least 6 characters">
           <PasswordInput required minLength={6} autoComplete="new-password" value={form.password} onChange={set("password")} placeholder="Create a password" />
         </Field>

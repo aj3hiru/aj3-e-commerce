@@ -49,11 +49,11 @@ export function LoginForm({ redirectTo, storeName = "our store", bare = false }:
     <>
       {error && <div className="mb-4"><Notice tone="error">{error}</Notice></div>}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Field label="Email, Mobile or Username">
+        <Field label="Mobile Number or Email">
           <div className="relative">
             <UserRound className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#a7a9b6]" strokeWidth={1.8} />
             <input type="text" required autoFocus autoComplete="username" value={identity} onChange={(e) => setIdentity(e.target.value)}
-              placeholder="you@example.com" className={cn(inputCls, "h-12 pl-10")} />
+              placeholder="10-digit mobile number or email" className={cn(inputCls, "h-12 pl-10")} />
           </div>
         </Field>
         <Field label="Password">

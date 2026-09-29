@@ -10,6 +10,7 @@ import { checkoutSchema } from "@/lib/validators/checkout";
 import type { Prisma } from "@prisma/client";
 import { getTaxMode, itemsTotal, lineTax } from "@/lib/tax-mode";
 import { findRedeemableCoupon, consumeCouponUse } from "@/lib/coupon-redeem";
+import { findCustomerByPhone, normalizeMobile } from "@/lib/customer-phone";
 import { campaignPriceFor, type CampaignPrice } from "@/lib/campaign-core";
 import { loadLiveCampaigns, recordCampaignSales, type CampaignSaleInput } from "@/lib/campaign-pricing";
 import { withApiErrors } from "@/lib/api-errors";
@@ -180,10 +181,18 @@ async function handlePOST(req: NextRequest) {
           customerName = customerName || "Walk-in Customer";
         }
       } else if (customerName !== "") {
-        const created = await tx.ecomCustomer.create({
-          data: { name: customerName, phone: customerPhone || null, customerType: "offline", status: "active" },
-        });
-        customerId = created.id;
+        // A mobile number that is already a customer (store or online account) is that customer — no duplicate,
+        // so the bill shows in their online account too. Staff see the person at the counter.
+        const known = normalizeMobile(customerPhone) ? await findCustomerByPhone(customerPhone) : null;
+        if (known) {
+          customerId = known.id;
+          customerName = known.name.trim() || customerName;
+        } else {
+          const created = await tx.ecomCustomer.create({
+            data: { name: customerName, phone: normalizeMobile(customerPhone) ?? (customerPhone || null), customerType: "offline", status: "active" },
+          });
+          customerId = created.id;
+        }
       } else {
         customerName = "Walk-in Customer";
       }

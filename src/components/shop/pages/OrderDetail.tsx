@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Check, CircleX, ClipboardCheck, Headphones, House, ImageIcon, MapPin, PackageCheck, Truck } from "lucide-react";
+import { Check, CircleX, ClipboardCheck, Headphones, House, ImageIcon, MapPin, PackageCheck, Store, Truck } from "lucide-react";
 import { Page, PriceRow, Section, StatusPill, btnOutline, btnPrimary, rupees } from "@/components/shop/ui/Meesho";
-import { ORDER_STEPS, STEP_LABEL, fmtDate } from "@/components/shop/pages/Orders";
+import { ORDER_STEPS, STEP_LABEL, StoreTag, fmtDate } from "@/components/shop/pages/Orders";
 import { cn } from "@/lib/utils";
 
 const STEP_ICON = [ClipboardCheck, PackageCheck, Truck, House];
@@ -21,6 +21,10 @@ export interface OrderDetail {
   stepTimes?: Record<string, string>;
   agentName?: string | null;
   cancelReason?: string | null;
+  /** A bill from the store counter: no delivery timeline or address; what was paid and what is still due. */
+  store?: boolean;
+  paid?: number;
+  due?: number;
 }
 
 /** One order: success banner (just placed), tracking timeline, items, prices, address, help. */
@@ -44,14 +48,21 @@ export function OrderDetailView({ o }: { o: OrderDetail }) {
         <Section>
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[15px] font-semibold">Order #{o.number}</p>
-              <p className="text-[12px] text-[#8b8ba3]">Placed on {fmtDate(o.createdAt, true)}</p>
+              <p className="flex items-center gap-1.5 text-[15px] font-semibold">Order #{o.number}{o.store && <StoreTag />}</p>
+              <p className="text-[12px] text-[#8b8ba3]">{o.store ? "Bought at the store on" : "Placed on"} {fmtDate(o.createdAt, true)}</p>
             </div>
-            <StatusPill status={o.status} />
+            {!(o.store && !canceled) && <StatusPill status={o.status} />}
           </div>
         </Section>
 
-        <Section title="Order Status">
+        {o.store && !canceled ? (
+          <Section>
+            <div className="flex items-center gap-3 rounded-[6px] bg-[#fff8ec] px-3.5 py-3 text-[#8a5a00]">
+              <Store className="h-6 w-6 shrink-0" />
+              <div><p className="text-[14px] font-semibold">Bought at {o.storeName}</p><p className="text-[12.5px] opacity-90">Bill from our store counter, added to your account.</p></div>
+            </div>
+          </Section>
+        ) : <Section title="Order Status">
           {canceled ? (
             <div className="flex items-center gap-3 rounded-[6px] bg-[#fdecee] px-3.5 py-3 text-[#d0263a]">
               <CircleX className="h-6 w-6 shrink-0" /><div><p className="text-[14px] font-semibold">Order cancelled</p><p className="text-[12.5px] opacity-90">{o.cancelReason ? `Reason: ${o.cancelReason}. ` : ""}Any payment made will be refunded.</p></div>
@@ -77,7 +88,7 @@ export function OrderDetailView({ o }: { o: OrderDetail }) {
               })}
             </ol>
           )}
-        </Section>
+        </Section>}
 
         <Section title={`Items (${o.items.reduce((n, i) => n + i.qty, 0)})`}>
           <ul className="divide-y divide-[#eaeaf2]">
@@ -109,16 +120,20 @@ export function OrderDetailView({ o }: { o: OrderDetail }) {
           {(o.deliveryCharge ?? 0) > 0 && <PriceRow label="Delivery charge" value={`+ ${rupees(o.deliveryCharge ?? 0)}`} />}
           <div className="my-1.5 border-t border-dashed border-[#dcdce6]" />
           <PriceRow label="Order Total" value={rupees(o.total)} bold />
+          {o.store && (o.due ?? 0) > 0.004 && <>
+            <PriceRow label="Paid" value={rupees(o.paid ?? 0)} tone="green" />
+            <PriceRow label="Still to pay (due)" value={rupees(o.due ?? 0)} bold />
+          </>}
           <div className="mt-3 flex items-center justify-between rounded-[6px] bg-[#f5f5f8] px-3 py-2.5 text-[13.5px]">
             <span className="text-[#616173]">Paid by <b className="font-semibold text-[#353543]">{o.paymentName}</b></span>
             <span className={cn("rounded-full px-2.5 py-0.5 text-[12px] font-semibold", o.paymentStatus === "Paid" ? "bg-[#e7f8ee] text-[#038d63]" : "bg-[#fff4e0] text-[#c77700]")}>{o.paymentStatus}</span>
           </div>
         </Section>
 
-        <Section title={<span className="flex items-center gap-2"><MapPin className="h-[18px] w-[18px] text-[var(--hp-accent)]" />Delivery Address</span>}>
+        {!o.store && <Section title={<span className="flex items-center gap-2"><MapPin className="h-[18px] w-[18px] text-[var(--hp-accent)]" />Delivery Address</span>}>
           <p className="text-[14px] font-semibold">{o.customerName}{o.customerPhone && <span className="font-normal text-[#616173]"> · {o.customerPhone}</span>}</p>
           <p className="mt-1 whitespace-pre-line text-[14px] leading-5 text-[#616173]">{o.address || "—"}</p>
-        </Section>
+        </Section>}
 
         <div className="grid grid-cols-2 gap-2 bg-white px-4 py-4">
           <Link href="/order" className={btnOutline}>All Orders</Link>

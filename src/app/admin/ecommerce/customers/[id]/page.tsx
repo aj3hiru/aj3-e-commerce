@@ -5,6 +5,7 @@ import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { formatAddress, toAddress } from "@/lib/customer-addresses";
 import { DisplayOptionsPanel } from "@/components/admin/DisplayOptionsPanel";
+import { linkCandidates } from "@/lib/customer-link";
 import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { CUSTPROFILE_GROUPS, CUSTPROFILE_PREF_KEY, CUSTPROFILE_STANDALONE } from "@/components/admin/customers2/profileDisplayOptions";
 
@@ -26,7 +27,7 @@ export default async function CustomerProfilePage({ params, searchParams }: Cust
   const customer = await prisma.ecomCustomer.findUnique({ where: { id: customerId } });
   if (!customer) notFound();
 
-  const [orders, credits, addressRows] = await Promise.all([
+  const [orders, credits, addressRows, linkable] = await Promise.all([
     prisma.ecomOrder.findMany({ where: { customerId }, orderBy: { createdAt: "desc" }, include: { payments: { orderBy: { createdAt: "asc" } } } }),
     prisma.ecomCredit.findMany({
       where: { customerId },
@@ -34,6 +35,7 @@ export default async function CustomerProfilePage({ params, searchParams }: Cust
       orderBy: { createdAt: "desc" },
     }),
     prisma.ecomCustomerAddress.findMany({ where: { customerId }, orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }] }),
+    linkCandidates(customerId),
   ]);
   const addresses = addressRows.map(toAddress).map((a) => ({
     id: a.id, name: a.name, phone: a.phone, text: formatAddress(a), type: a.type, isDefault: a.isDefault,
@@ -90,6 +92,7 @@ export default async function CustomerProfilePage({ params, searchParams }: Cust
         totalSpent={totalSpent}
         totalOrders={orders.length}
         addresses={addresses}
+        linkable={linkable}
         login={{ hasPassword: !!customer.password, email: !!customer.email, phone: !!customer.phone && customer.customerType === "online" }}
       />
     </AdminShell>

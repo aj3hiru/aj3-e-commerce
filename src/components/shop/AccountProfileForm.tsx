@@ -12,8 +12,8 @@ async function post(url: string, body: unknown) {
 }
 
 /** "Edit Profile" — a collapsible section on the account page. */
-export function AccountProfileForm({ name: initialName, email: initialEmail, phone: initialPhone, phoneLocked, open: startOpen = false }: {
-  name: string; email: string; phone: string; phoneLocked: boolean; open?: boolean;
+export function AccountProfileForm({ name: initialName, email: initialEmail, phone: initialPhone, phoneLocked, phoneVerified = false, open: startOpen = false }: {
+  name: string; email: string; phone: string; phoneLocked: boolean; phoneVerified?: boolean; open?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(startOpen);
@@ -43,10 +43,10 @@ export function AccountProfileForm({ name: initialName, email: initialEmail, pho
         <form onSubmit={handleSubmit} className="space-y-3.5 border-t border-[#eaeaf2] px-4 pb-5 pt-4">
           {notice && <Notice tone={notice.ok ? "success" : "error"}>{notice.text}</Notice>}
           <Field label="Full Name"><input required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className={cn(inputCls, "h-11")} /></Field>
-          <Field label="Mobile Number" hint={phoneLocked ? "Verified — used to log in" : undefined}>
+          <Field label="Mobile Number" hint={phoneVerified ? "Verified — used to log in" : phoneLocked ? "Used to log in — can't be changed" : "Add it once — it can't be changed later"}>
             <div className="relative">
               <input type="tel" inputMode="tel" value={phone} disabled={phoneLocked} onChange={(e) => setPhone(e.target.value)} placeholder="10-digit mobile number" className={cn(inputCls, "h-11", phoneLocked && "pr-10")} />
-              {phoneLocked && <BadgeCheck className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#038d63]" />}
+              {phoneVerified && <BadgeCheck className="absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[#038d63]" />}
             </div>
           </Field>
           <Field label="Email" hint="Optional"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" placeholder="you@example.com" className={cn(inputCls, "h-11")} /></Field>

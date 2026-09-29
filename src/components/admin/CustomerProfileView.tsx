@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CalendarDays, Eye, EyeOff, ExternalLink, HandCoins, IndianRupee, KeyRound, Loader2, Mail, MapPin, MessageCircle, Pencil, Phone,
-  Receipt, Save, ShoppingBag, ShoppingCart, Smartphone, TrendingUp, UserRound, X,
+  Link2, Receipt, Save, ShoppingBag, ShoppingCart, Smartphone, TrendingUp, UserRound, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AvatarPicker } from "@/components/staff/AvatarPicker";
@@ -57,6 +57,8 @@ interface CustomerProfileViewProps {
   customer: CustomerProfileData;
   addresses?: CustomerAddressRow[];
   login?: { hasPassword: boolean; email: boolean; phone: boolean };
+  /** A store customer / online account with the same mobile number, that staff can link with this one. */
+  linkable?: { id: number; name: string; online: boolean; orders: number }[];
   orders: CustomerOrderRow[];
   credits: CustomerCreditRow[];
   totalSpent: number;
@@ -70,7 +72,7 @@ const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { timeZon
 const CARD = "rounded-[10px] border border-admin-gray-200 bg-white shadow-sm";
 
 /** Admin → Customers → one customer: who they are, what they bought, where they live, what they owe. */
-export function CustomerProfileView({ customer, orders, credits, totalSpent, totalOrders, addresses = [], login, startEditing }: CustomerProfileViewProps) {
+export function CustomerProfileView({ customer, orders, credits, totalSpent, totalOrders, addresses = [], login, linkable = [], startEditing }: CustomerProfileViewProps) {
   const router = useRouter();
   const { isVisible, loaded } = useDashboardWidgetPrefs();
   const on = (g: string, k: string) => isVisible(g) && isVisible(k);
@@ -100,6 +102,7 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
 
   return (
     <div className={cn("space-y-5", !loaded && "invisible")}>
+      {linkable.map((l) => <LinkAccounts key={l.id} customerId={customer.id} other={l} onError={(text) => setToast({ ok: false, text })} />)}
       {/* Header */}
       {isVisible("cp-header") && <section className={cn(CARD, "overflow-hidden")}>
         <div className="h-16 bg-[linear-gradient(120deg,#ede9fe,#fce7f3)]" />
@@ -364,5 +367,47 @@ function EditCustomer({ customer, onClose, onSaved }: { customer: CustomerProfil
         </div>
       </form>
     </div>
+  );
+}
+
+/**
+ * Same mobile number as a store customer / online account: staff confirm it's the same person
+ * (at the counter or by calling that number), then link — store bills, dues and addresses show in
+ * the customer's online account. Never automatic: a typed mobile number alone proves nothing.
+ */
+function LinkAccounts({ customerId, other, onError }: { customerId: number; other: { id: number; name: string; online: boolean; orders: number }; onError: (m: string) => void }) {
+  const router = useRouter();
+  const [ask, setAsk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  async function link() {
+    setBusy(true);
+    const res = await fetch(`/api/ecommerce/customers/${customerId}/link`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ with: other.id }) })
+      .then((r) => r.json()).catch(() => null);
+    setBusy(false);
+    if (!res?.success) { setAsk(false); onError(res?.message || "Couldn't link the accounts. Please try again."); return; }
+    router.replace(`/admin/ecommerce/customers/${res.id}`);
+    router.refresh();
+  }
+  const what = other.online ? "an online account" : "a store customer";
+  return (
+    <section className="flex flex-col gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm text-amber-900 sm:flex-row sm:items-center">
+      <Link2 className="hidden h-5 w-5 shrink-0 sm:block" />
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold">Same mobile number as {what}: <Link href={`/admin/ecommerce/customers/${other.id}`} className="underline">{other.name}</Link> ({other.orders} order{other.orders === 1 ? "" : "s"})</p>
+        <p className="text-xs text-amber-800">{ask
+          ? "Only link after checking it's the same person — at the counter or by calling this number. Their store bills, dues and addresses will show in their online account. This can't be undone."
+          : "Link them so the customer sees their store bills in their online account."}</p>
+      </div>
+      {ask ? (
+        <div className="flex shrink-0 gap-2">
+          <button type="button" onClick={() => setAsk(false)} className="h-9 rounded-md border border-amber-300 bg-white px-3 font-medium">Cancel</button>
+          <button type="button" onClick={link} disabled={busy} className="flex h-9 items-center gap-1.5 rounded-md bg-amber-600 px-3 font-semibold text-white hover:bg-amber-700 disabled:opacity-60">
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}Yes, same person — link
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setAsk(true)} className="flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-amber-600 px-3 font-semibold text-white hover:bg-amber-700"><Link2 className="h-4 w-4" />Link accounts</button>
+      )}
+    </section>
   );
 }

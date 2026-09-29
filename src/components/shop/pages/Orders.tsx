@@ -9,6 +9,11 @@ export const STEP_LABEL: Record<string, string> = { Pending: "Ordered", "In Prog
 export const fmtDate = (iso: string, time = false) =>
   new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric", ...(time ? { hour: "numeric", minute: "2-digit" } : {}) });
 
+/** Small "Store" label on bills from the store counter. */
+export function StoreTag() {
+  return <span className="inline-flex h-[18px] shrink-0 items-center rounded-[4px] bg-[#fff4e0] px-1.5 text-[10.5px] font-bold uppercase tracking-wide text-[#c77700]">Store</span>;
+}
+
 /** Small four-dot progress line for an order card. */
 function MiniTrack({ status }: { status: string }) {
   const at = ORDER_STEPS.indexOf(status);
@@ -36,10 +41,10 @@ export function OrderCard({ o }: { o: OrderSummary }) {
     <Link href={`/order?id=${o.id}`} className="mb-2 block bg-white px-4 py-4 transition active:bg-[#fafafc]">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate text-[14px] font-semibold">Order #{o.number}</p>
-          <p className="text-[12px] text-[#8b8ba3]">Placed on {fmtDate(o.date)}</p>
+          <p className="flex items-center gap-1.5 truncate text-[14px] font-semibold">Order #{o.number}{o.store && <StoreTag />}</p>
+          <p className="text-[12px] text-[#8b8ba3]">{o.store ? "Bought at the store on" : "Placed on"} {fmtDate(o.date)}</p>
         </div>
-        <StatusPill status={o.status} />
+        {!o.store && <StatusPill status={o.status} />}
       </div>
       <div className="mt-3 flex items-center gap-3">
         <div className="flex -space-x-3">
@@ -58,7 +63,7 @@ export function OrderCard({ o }: { o: OrderSummary }) {
         </div>
         <ChevronRight className="h-5 w-5 shrink-0 text-[#a7a9b6]" />
       </div>
-      <MiniTrack status={o.status} />
+      {!o.store && <MiniTrack status={o.status} />}
     </Link>
   );
 }

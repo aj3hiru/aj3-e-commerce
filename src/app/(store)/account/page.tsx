@@ -36,7 +36,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
   return (
     <ShopLayout {...layoutData}>
       <AccountView a={{
-        name, email: full?.email ?? "", phone: prettyPhone(full?.phone), phoneLocked: otpReady(auth) && !!full?.phone, hasPassword: !!full?.password,
+        name, email: full?.email ?? "", phone: prettyPhone(full?.phone), phoneLocked: !!full?.phone, phoneVerified: otpReady(auth) && !!full?.phone, hasPassword: !!full?.password,
         banner: setup === "done" ? { kind: "done", store: layoutData.business.businessName } : welcome ? { kind: "welcome", store: layoutData.business.businessName } : null,
         setup: !name ? { next: safeNext(next) } : null,
         orders, orderCount, wishCount, cartCount: layoutData.cartCount, addresses,

@@ -8,7 +8,7 @@ import type { OrderSummary } from "@/lib/customer-orders";
 import type { SavedAddress } from "@/lib/customer-addresses";
 
 export interface AccountData {
-  name: string; email: string; phone: string; phoneLocked: boolean; hasPassword: boolean;
+  name: string; email: string; phone: string; phoneLocked: boolean; phoneVerified?: boolean; hasPassword: boolean;
   /** "welcome" (email sign-up), "done" (finished OTP profile setup) or null. */
   banner: { kind: "welcome" | "done"; store: string } | null;
   /** Just signed up with OTP and hasn't given a name yet → only the setup form. */
@@ -42,7 +42,7 @@ export function AccountView({ a }: { a: AccountData }) {
           <div className="min-w-0 flex-1">
             <p className="truncate text-[18px] font-semibold">{a.name}</p>
             <p className="flex items-center gap-1 truncate text-[13px] text-[#8b8ba3]">
-              {a.phone}{a.phoneLocked && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[#038d63]" />}{a.phone && a.email && " · "}{a.email}
+              {a.phone}{a.phoneVerified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[#038d63]" />}{a.phone && a.email && " · "}{a.email}
             </p>
           </div>
         </div>
@@ -67,7 +67,7 @@ export function AccountView({ a }: { a: AccountData }) {
 
       <AddressBook initial={a.addresses} defaults={{ name: a.name, phone: a.phone }} />
 
-      <AccountProfileForm name={a.name} email={a.email} phone={a.phone} phoneLocked={a.phoneLocked} />
+      <AccountProfileForm name={a.name} email={a.email} phone={a.phone} phoneLocked={a.phoneLocked} phoneVerified={a.phoneVerified} />
       <PasswordCard hasPassword={a.hasPassword} hasEmail={!!a.email} />
 
       <section className="mb-2 bg-white">

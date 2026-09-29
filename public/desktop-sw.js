@@ -11,7 +11,7 @@
  *    sent in order when the internet is back. Each carries the
  *    Idempotency-Key the page gave it, so the server applies it exactly once.
  */
-const V = "v1";
+const V = "v2";
 const PAGES = `dsk-pages-${V}`;
 const DATA = `dsk-data-${V}`;
 const ASSETS = `dsk-assets-${V}`;
@@ -134,8 +134,8 @@ async function warm(urls) {
         const final = new URL(res.url || u);
         if (!res.ok || res.type !== "basic" || final.origin !== self.location.origin) continue;
         const html = await res.clone().text();
-        await pages.put(pageKey(final), res.clone());
-        if (pageKey(final) !== pageKey(new URL(u))) await pages.put(pageKey(new URL(u)), res);
+        await pages.put(pageKey(final), await clean(res.clone()));
+        if (pageKey(final) !== pageKey(new URL(u))) await pages.put(pageKey(new URL(u)), await clean(res));
         // The scripts and styles that page needs, so it also works (not just shows) offline.
         const found = new Set(html.match(/\/_next\/static\/[^"'\s)\\]+/g) || []);
         for (const a of found) {
@@ -169,6 +169,8 @@ self.addEventListener("message", (e) => {
 /* ───────── fetch handling ───────── */
 
 const pageKey = (url) => url.origin + url.pathname + url.search;
+/** A saved copy without the "came through a redirect" mark — a browser refuses to show such a response for a page. */
+const clean = async (res) => new Response(await res.blob(), { status: res.status, statusText: res.statusText, headers: res.headers });
 const isAsset = (url) => url.pathname.startsWith("/_next/static/") || /\.(woff2?|ttf)$/.test(url.pathname);
 const isMedia = (url) => url.pathname.startsWith("/uploads/") || url.pathname.startsWith("/files/");
 const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", "X-Desktop-Offline": "1" } });
@@ -283,7 +285,7 @@ self.addEventListener("fetch", (e) => {
       }
       try {
         const res = await withTimeout(fetch(req), NAV_TIMEOUT);
-        if (res.ok && !res.redirected && res.type === "basic") cache.put(pageKey(url), res.clone());
+        if (res.ok && !res.redirected && res.type === "basic") cache.put(pageKey(url), await clean(res.clone()));
         return res;
       } catch (_) {
         return (await saved()) || new Response(OFFLINE_PAGE, { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } });

@@ -16,6 +16,9 @@ import 'package:sri_staff/core/perms.dart';
 import 'package:sri_staff/core/theme.dart';
 import 'package:sri_staff/features/customers/customers_screen.dart';
 import 'package:sri_staff/features/deliveries/my_deliveries_screen.dart';
+import 'package:sri_staff/features/native/catalog_pages.dart';
+import 'package:sri_staff/features/native/customizer_page.dart';
+import 'package:sri_staff/features/native/sales_pages.dart';
 import 'package:sri_staff/features/dues/dues_screen.dart';
 import 'package:sri_staff/features/login/login_screen.dart';
 import 'package:sri_staff/features/orders/order_detail_screen.dart';
@@ -117,6 +120,18 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     await _fonts();
     final now = DateTime.now().toUtc().toIso8601String();
+    final at = DateTime.now().toUtc().toIso8601String();
+    await LocalStore.instance.write('page:brands', {'at': at, 'data': [
+      {'id': 1, 'name': 'Patanjali', 'slug': 'patanjali', 'logo': null, 'isPopular': true, 'status': 'active', 'products': 30},
+      {'id': 2, 'name': 'Dabur', 'slug': 'dabur', 'logo': null, 'isPopular': false, 'status': 'inactive', 'products': 0},
+    ]});
+    await LocalStore.instance.write('page:customizer', {'at': at, 'data': {
+      'canStore': true, 'unpublished': false, 'header': {'showLocation': true, 'showDeliveryInfo': true, 'deliveryLabel': "We're open", 'deliveryTimeText': '', 'searchPlaceholder': 'Search for products'},
+      'store': {'headerMenu': [{'id': 'h1', 'label': 'Home', 'href': '/', 'icon': 'home', 'visibility': 'all', 'enabled': true, 'newTab': false, 'autoCategories': false, 'children': []}], 'sidebarMenu': [], 'menuDesign': {'accent': '#9f2089', 'showIcons': true, 'dividers': true}, 'push': {'showBell': true, 'autoPrompt': true}, 'footer': {'columns': []}},
+      'product': {'accent': '#9f2089', 'order': ['gallery', 'info', 'sizes', 'reviews', 'actions', 'related'], 'hidden': [], 'info': {}, 'sizes': {'title': 'Select Size', 'showPrice': true}, 'actions': {}, 'reviews': {}, 'related': {}, 'cart': {}},
+      'home': {'accent': '#9f2089', 'bottomNav': true, 'promo': {'enabled': true, 'title': 'Extra 10% Off', 'subtitle': 'Online Order Acceptable'}, 'strip': {'enabled': true, 'text': 'Free delivery above ₹500', 'href': '/'}, 'card': {'showWishlist': true, 'showRating': true},
+        'blocks': [{'id': 'b1', 'type': 'categories', 'enabled': true, 'source': 'all', 'slugs': [], 'limit': 12, 'showAllButton': true}, {'id': 'b2', 'type': 'feed', 'enabled': true, 'title': 'Products For You', 'showSort': true, 'showCategory': true, 'showBrand': true, 'showFilters': true}]},
+    }});
     await LocalStore.instance.write('report', {
       'rangeLabel': '26 Sep 2026', 'generatedAt': now,
       'business': {'name': 'Sri Andal Traders'},
@@ -168,6 +183,17 @@ void main() {
   testWidgets('product edit desktop', (t) => _shot(t, 'product_edit_desktop', ProductEditScreen(product: _state().list('products').first), size: desktop));
   testWidgets('customer profile phone', (t) => _shot(t, 'customer_profile_phone', const CustomerProfile(id: 2)));
   testWidgets('dues phone', (t) => _shot(t, 'dues_phone', const DuesScreen()));
+  const wideSize = Size(1440, 900);
+  testWidgets('native stock out web', (t) => _shot(t, 'n_stockout_web', const StockOutPage(), size: wideSize));
+  testWidgets('native brands web', (t) => _shot(t, 'n_brands_web', const BrandsPage(), size: wideSize));
+  testWidgets('native sales history web', (t) => _shot(t, 'n_sales_web', const SalesHistoryPage(), size: wideSize, after: (t) async {
+        await t.tap(find.text('This Month').first);
+        await t.pump(const Duration(milliseconds: 300));
+      }));
+  testWidgets('native gst web', (t) => _shot(t, 'n_gst_web', const GstReportPage(), size: wideSize));
+  testWidgets('native analytics phone', (t) => _shot(t, 'n_analytics_phone', const AnalyticsPage()));
+  testWidgets('native customizer web', (t) => _shot(t, 'n_customizer_web', const CustomizerPage(), size: wideSize));
+  testWidgets('native brands phone', (t) => _shot(t, 'n_brands_phone', const BrandsPage()));
   testWidgets('agent phone', (t) => _shot(t, 'agent_home_phone', const Shell(), state: _state(role: 'delivery_agent', perms: {'delivery': {'deliver': true}, 'dashboard_access': true})));
   Future<void> tapTab(WidgetTester t, String label) async {
     await t.tap(find.text(label).last);

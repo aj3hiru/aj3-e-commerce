@@ -44,6 +44,7 @@ import '../staff/staff_screen.dart';
 import '../web/web_page.dart';
 import 'menu.dart';
 import '../agent/agent_app.dart';
+import '../native/native_pages.dart';
 
 class Section {
   final String id;
@@ -70,7 +71,7 @@ List<Section> sectionsFor(Perms p, [List<Map<String, dynamic>> menu = const []])
       if (p.seesReports) Section('reports', 'Reports', 'Insights', Icons.insert_chart_outlined_rounded, Icons.insert_chart_rounded, () => const ReportsScreen()),
       Section('account', 'Profile', 'Account', Icons.person_outline_rounded, Icons.person_rounded, () => const Responsive(phone: AccountScreen(), desktop: ProfileWeb())),
       // Every other website menu item opens that website page inside the app.
-      for (final l in webLinks(parseMenu(menu))) Section('web:${l.href}', l.label, 'Website', faIcon(l.icon).data, faIcon(l.icon).data, () => WebPageScreen(path: l.href, title: l.label, section: true)),
+      for (final l in webLinks(parseMenu(menu))) Section('web:${l.href}', l.label, 'Website', faIcon(l.icon).data, faIcon(l.icon).data, nativePageFor(l.href) ?? () => WebPageScreen(path: l.href, title: l.label, section: true)),
     ];
 
 /// Badge counts shown on menu items (new orders, deliveries to do, low stock…).

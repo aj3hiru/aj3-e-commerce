@@ -53,17 +53,17 @@ export interface EcommerceAnalyticsData {
  */
 export async function getEcommerceAnalytics(range: RangeResult, orderTypeFilter: "all" | "online" | "offline" = "all"): Promise<EcommerceAnalyticsData> {
   const { rangeStart, rangeEnd } = range;
-  const typeWhere = orderTypeFilter === "all" ? {} : { orderType: orderTypeFilter };
+  // Cancelled orders are not sales (same as the dashboard and reports).
+  const typeWhere = { orderStatus: { not: "Canceled" }, ...(orderTypeFilter === "all" ? {} : { orderType: orderTypeFilter }) };
 
   const orderWhere = { ...typeWhere, createdAt: { gte: rangeStart, lte: rangeEnd } };
 
-  const [orderItems, orders, allProducts, lowStock, customersInRange] = await Promise.all([
+  const [orderItems, orders, lowStock, customersInRange] = await Promise.all([
     prisma.ecomOrderItem.findMany({
       where: { order: orderWhere },
       include: { product: { select: { id: true, name: true, image: true, categoryId: true, category: { select: { name: true } } } } },
     }),
     prisma.ecomOrder.findMany({ where: orderWhere, select: { id: true, totalAmount: true, createdAt: true, customerId: true } }),
-    prisma.ecomProduct.count(),
     prisma.ecomProduct.findMany({
       where: { productType: "physical", status: "active", OR: [{ stockQty: { lte: 5 } }] },
       orderBy: { stockQty: "asc" },

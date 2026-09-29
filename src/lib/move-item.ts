@@ -1,4 +1,3 @@
-import { prisma } from "./db";
 
 type Row = { id: number; sortOrder: number };
 

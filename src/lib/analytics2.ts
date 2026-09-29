@@ -41,7 +41,8 @@ const METHOD_META: Record<string, { label: string; color: string }> = {
  * the total still reconciles to the period's net sales.
  */
 async function getPaymentMethodBreakdown(rangeStart: Date, rangeEnd: Date, orderTypeFilter: "all" | "online" | "offline") {
-  const typeWhere = orderTypeFilter === "all" ? {} : { orderType: orderTypeFilter };
+  // Cancelled orders are not sales (same as the dashboard and reports).
+  const typeWhere = { orderStatus: { not: "Canceled" }, ...(orderTypeFilter === "all" ? {} : { orderType: orderTypeFilter }) };
   const orders = await prisma.ecomOrder.findMany({
     where: { ...typeWhere, createdAt: { gte: rangeStart, lte: rangeEnd } },
     select: { id: true, totalAmount: true, paymentMethod: true, payments: { select: { paymentMethod: true, amount: true } } },
@@ -90,7 +91,8 @@ export async function getAnalytics2Data(range: Analytics2Range, orderTypeFilter:
 }
 
 async function computeAnalytics2Data(range: Analytics2Range, orderTypeFilter: "all" | "online" | "offline"): Promise<Analytics2Data> {
-  const typeWhere = orderTypeFilter === "all" ? {} : { orderType: orderTypeFilter };
+  // Cancelled orders are not sales (same as the dashboard and reports).
+  const typeWhere = { orderStatus: { not: "Canceled" }, ...(orderTypeFilter === "all" ? {} : { orderType: orderTypeFilter }) };
 
   const grossSelect = { subtotalAmount: true, gstAmount: true } as const;
   const [current, previous, grossRows, prevGrossRows, payment] = await Promise.all([

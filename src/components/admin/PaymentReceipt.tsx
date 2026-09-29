@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, ArrowLeft, Printer, Receipt } from "lucide-react";
+import { CheckCircle2, ArrowLeft, Printer } from "lucide-react";
 import type { ReceiptData } from "@/lib/receipt-data";
 
 interface PaymentReceiptProps {

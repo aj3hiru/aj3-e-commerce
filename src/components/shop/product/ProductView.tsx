@@ -583,7 +583,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
         return (
           <div>
             <h2 className="px-4 pb-4 pt-5 text-[20px] font-semibold leading-7">{cfg.related.title}</h2>
-            <div className={cn("grid grid-cols-2 border-t border-[#eaeaf2] shop:grid-cols-3", tileGridClass(card.gap))}>
+            <div className={cn("grid grid-cols-2 border-t border-[#eaeaf2] shop:grid-cols-4 min-[1200px]:grid-cols-5", tileGridClass(card.gap))}>
               {d.related.map((p) => <ProductTile key={p.id} p={p} wished={wish.has(p.id)} onWish={onWish} />)}
             </div>
           </div>

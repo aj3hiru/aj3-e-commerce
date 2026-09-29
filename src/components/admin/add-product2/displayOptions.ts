@@ -26,6 +26,7 @@ export const ADD2_GROUPS: readonly WidgetGroup[] = [
       { key: "ap2-sale", label: "Sale Price" },
       { key: "ap2-stock", label: "Stock Quantity" },
       { key: "ap2-gst", label: "GST Rate" },
+      { key: "ap2-qty", label: "Quantity" },
     ],
   },
   {
@@ -36,6 +37,11 @@ export const ADD2_GROUPS: readonly WidgetGroup[] = [
       { key: "ap2-brand", label: "Brand" },
       { key: "ap2-unit", label: "Unit" },
     ],
+  },
+  {
+    group: "ap2-variants",
+    groupLabel: "Variants",
+    items: [{ key: "ap2-var-help", label: "Help text" }],
   },
   {
     group: "ap2-sizes",

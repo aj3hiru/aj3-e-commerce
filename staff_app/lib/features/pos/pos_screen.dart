@@ -19,6 +19,7 @@ import '../products/product_edit_screen.dart';
 import 'cart.dart';
 import 'receipt.dart';
 import 'scanner.dart';
+import 'variants.dart';
 
 part 'pos_web.dart';
 
@@ -346,7 +347,7 @@ class _PosScreenState extends State<PosScreen> {
           },
           title: Text('${p['name']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5)),
           subtitle: Text(
-            [p['sku'] != null && '${p['sku']}'.isNotEmpty ? 'SKU: ${p['sku']}' : 'No SKU', if (p['unit'] != null && '${p['unit']}'.isNotEmpty) '${p['unit']}', if (stock != null) out ? 'Out of stock' : 'Stock: $stock'].join(' · '),
+            [p['sku'] != null && '${p['sku']}'.isNotEmpty ? 'SKU: ${p['sku']}' : 'No SKU', if (packOf(p) != null) packOf(p)!, if (stock != null) out ? 'Out of stock' : 'Stock: $stock'].join(' · '),
             style: TextStyle(fontSize: 12.5, color: out ? AppColors.red : AppColors.muted),
           ),
           trailing: Text(money(CartLine.shelfPrice(p)), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
@@ -372,11 +373,14 @@ class _PosScreenState extends State<PosScreen> {
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text(l.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          InkWell(
-                            onTap: () => _editPrice(l),
-                            child: Text('${money(l.unitPrice)}${l.unit != null ? ' / ${l.unit}' : ''}${l.overridden ? ' · edited' : ''}',
-                                style: TextStyle(color: l.overridden ? AppColors.amber : AppColors.muted, fontSize: 12.5, decoration: TextDecoration.underline, decorationStyle: TextDecorationStyle.dotted)),
-                          ),
+                          Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                            InkWell(
+                              onTap: () => _editPrice(l),
+                              child: Text('${money(l.unitPrice)}${l.unit != null && variantsOf(context.read<AppState>(), l.product).isEmpty ? ' / ${l.unit}' : ''}${l.overridden ? ' · edited' : ''}',
+                                  style: TextStyle(color: l.overridden ? AppColors.amber : AppColors.muted, fontSize: 12.5, decoration: TextDecoration.underline, decorationStyle: TextDecorationStyle.dotted)),
+                            ),
+                            if (variantsOf(context.read<AppState>(), l.product).isNotEmpty) LineUnit(cart: cart, line: l),
+                          ]),
                         ]),
                       ),
                       _Stepper(value: l.qty, onChanged: (v) {

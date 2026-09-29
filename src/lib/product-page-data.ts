@@ -5,17 +5,22 @@ import { loadLiveCampaigns } from "@/lib/campaign-pricing";
 import { priceLine, type CartProduct, type CartSize } from "@/lib/cart-lines";
 import { LOW_STOCK_LIMIT } from "@/components/admin/products2/filters";
 import type { ProductPageConfig } from "@/types/product-page";
+import { packLabel, packSortKey } from "@/lib/product-variants-shared";
 
 /** Everything the Meesho-style product page shows, already priced and serialisable. */
 export interface ProductPageData {
   product: {
     id: number; slug: string; name: string; description: string | null; sku: string | null; unit: string | null; badge: string;
+    /** "1 KG" — quantity with the unit (or just the unit). */
+    pack: string | null;
     brand: string | null; category: { name: string; slug: string } | null; subcategory: { name: string; slug: string } | null; images: string[];
   };
   price: { mrp: number; final: number; discountPct: number; dealEndsAt: string | null };
   stock: "in" | "low" | "out" | "untracked";
   stockQty: number | null;
   sizes: { id: number; label: string; mrp: number; final: number; discountPct: number; stock: "in" | "low" | "out" | "untracked"; isDefault: boolean }[];
+  /** Other products linked as variants (this one included, flagged `current`); each opens its own page. */
+  variants: { id: number; slug: string; label: string; mrp: number; final: number; discountPct: number; stock: "in" | "low" | "out" | "untracked"; current: boolean }[];
   specs: { name: string; value: string }[];
   rating: { avg: number | null; count: number; withText: number; dist: [number, number, number, number, number] };
   reviews: { id: number; name: string; rating: number; text: string | null; date: string }[];
@@ -43,7 +48,7 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
 
   const now = new Date();
   const hidden = new Set(cfg.hidden);
-  const [campaigns, reviewRows, dist, storeAgg, biz, relatedRows] = await Promise.all([
+  const [campaigns, reviewRows, dist, storeAgg, biz, relatedRows, variantRows] = await Promise.all([
     loadLiveCampaigns().catch(() => []),
     hidden.has("reviews") ? Promise.resolve([]) : prisma.ecomProductReview.findMany({ where: { productId: p.id, status: "approved" }, orderBy: { createdAt: "desc" }, take: 200 }),
     prisma.ecomProductReview.groupBy({ by: ["rating"], where: { productId: p.id, status: "approved" }, _count: { _all: true } }),
@@ -53,6 +58,9 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
       where: { status: "active", id: { not: p.id }, ...(cfg.related.source === "category" && p.categoryId ? { categoryId: p.categoryId } : {}) },
       orderBy: { createdAt: "desc" }, take: cfg.related.limit, select: FEED_SELECT,
     }),
+    p.variantGroup
+      ? prisma.ecomProduct.findMany({ where: { variantGroup: p.variantGroup, status: "active" }, include: { sizes: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }] } }, take: 40 })
+      : Promise.resolve([]),
   ]);
 
   // Main price: the default size when the product is sold in sizes.
@@ -101,12 +109,30 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
     }
   }
 
+  // Each variant priced like its own page (default size, live campaigns).
+  type VRow = { id: number; slug: string; name: string; quantity: unknown; unit: string | null; productType: string; sizes: { isDefault: boolean }[] };
+  const variants = (variantRows as VRow[]).length > 1
+    ? (variantRows as VRow[])
+        .map((v) => {
+          const vd = v.sizes.find((z) => z.isDefault) ?? v.sizes[0] ?? null;
+          const pr = priceLine(v as unknown as CartProduct, (vd as unknown as CartSize) ?? null, campaigns, now);
+          const q = v.quantity === null || v.quantity === undefined ? null : Number(v.quantity);
+          return {
+            id: v.id, slug: v.slug, label: packLabel(q, v.unit) ?? v.name, mrp: pr.mrp, final: pr.unitPrice, discountPct: pct(pr.mrp, pr.unitPrice),
+            stock: stockOf(v.productType === "physical", pr.maxQty), current: v.id === p.id, q, unit: v.unit,
+          };
+        })
+        .sort((a, b) => packSortKey(a.q, a.unit) - packSortKey(b.q, b.unit) || a.final - b.final)
+        .map((v) => ({ id: v.id, slug: v.slug, label: v.label, mrp: v.mrp, final: v.final, discountPct: v.discountPct, stock: v.stock, current: v.current }))
+    : [];
+
   const related = relatedRows.length ? publicProducts(await enrichProducts(relatedRows as FeedRow[])) : [];
   const images = [p.image, ...p.images.map((i) => i.image)].filter((x): x is string => !!x);
 
   return {
     product: {
       id: p.id, slug: p.slug, name: p.name, description: p.description, sku: p.sku, unit: p.unit, badge: p.badgeTag,
+      pack: packLabel(p.quantity === null ? null : Number(p.quantity), p.unit),
       brand: p.brand?.name ?? null, category: p.category && p.category.status === "active" ? { name: p.category.name, slug: p.category.slug } : null,
       subcategory: p.subcategory && p.subcategory.status === "active" ? { name: p.subcategory.name, slug: p.subcategory.slug } : null, images: [...new Set(images)],
     },
@@ -114,6 +140,7 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
     stock: stockOf(physical, main.maxQty),
     stockQty: main.maxQty,
     sizes,
+    variants,
     specs: p.specs.map((s) => ({ name: s.name, value: s.value })),
     rating: { avg: count ? Math.round((sum / count) * 10) / 10 : null, count, withText: (reviewRows as { reviewText: string | null }[]).filter((r) => r.reviewText).length, dist: d },
     reviews: (reviewRows as { id: number; customerName: string; rating: number; reviewText: string | null; createdAt: Date }[])

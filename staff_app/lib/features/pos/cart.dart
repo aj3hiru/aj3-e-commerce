@@ -11,7 +11,7 @@ class CartLine {
   CartLine(this.product, {this.qty = 1})
       : unitPrice = CartLine.shelfPrice(product),
         overridden = false,
-        unit = product['unit'] as String?;
+        unit = (product['pack'] ?? product['unit']) as String?;
 
   int get productId => toInt(product['id']);
   String get name => product['name'] ?? '';
@@ -85,6 +85,25 @@ class PosCart extends ChangeNotifier {
   void setUnit(CartLine l, String? unit) {
     l.unit = unit == null || unit.trim().isEmpty ? null : unit.trim();
     notifyListeners();
+  }
+
+  /// Switches a line to another variant (same quantity; merges into that variant's line if it's already on the bill).
+  String? swap(CartLine l, Map<String, dynamic> product) {
+    final id = toInt(product['id']);
+    if (l.productId == id) return null;
+    final at = lines.indexOf(l);
+    if (at < 0) return null;
+    final other = lines.indexWhere((x) => x.productId == id);
+    final next = CartLine(product, qty: other >= 0 ? lines[other].qty + l.qty : l.qty);
+    if (next.tracked && next.qty > next.stock!) return next.stock! <= 0 ? '"${next.name}" is out of stock.' : 'Only ${next.stock} of "${next.name}" in stock.';
+    if (other >= 0) {
+      lines[other].qty = next.qty;
+      lines.removeAt(at);
+    } else {
+      lines[at] = next;
+    }
+    notifyListeners();
+    return null;
   }
 
   void remove(CartLine l) {

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { generateSlug } from "@/lib/slug";
 import { deleteUploadedImage, saveUploadedImage } from "@/lib/upload";
+import { setVariants } from "@/lib/product-variants";
 
 /**
  * Save logic for /admin/ecommerce/products/add (create + edit), following
@@ -112,6 +113,10 @@ async function parse(form: FormData, editId: number | null) {
   gallery.forEach((f) => checkImage(f, `Gallery image “${f.name}”`));
   if (gallery.length > 20) throw new SaveError("You can add up to 20 gallery images at a time.", "gallery");
 
+  const qtyRaw = text(form, "quantity");
+  const quantity = qtyRaw === "" ? null : Number(qtyRaw);
+  if (quantity !== null && (!Number.isFinite(quantity) || quantity <= 0 || quantity > 9999999)) throw new SaveError("Enter a valid quantity, e.g. 1 or 250.", "quantity");
+
   const isCampaign = form.get("is_campaign") === "on";
   const campaignRaw = text(form, "campaign_price");
   const campaignPrice = isCampaign && campaignRaw !== "" ? Number(campaignRaw) : null;
@@ -141,6 +146,7 @@ async function parse(form: FormData, editId: number | null) {
       sku: text(form, "sku") || null,
       hsnCode: text(form, "hsn_code") || null,
       unit: text(form, "unit") || null,
+      quantity,
       productType,
       price,
       salePrice,
@@ -163,6 +169,8 @@ async function parse(form: FormData, editId: number | null) {
     sizes,
     specs,
     removeImage: form.get("remove_image") === "1",
+    // Linked variant product ids; absent = leave the variant group as it is (older app versions).
+    variantIds: form.has("variant_ids") ? text(form, "variant_ids").split(",").map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0) : null,
     // One value per id (website form) or a comma list (staff app).
     removedGalleryIds: form.getAll("removed_gallery_ids").flatMap((v) => String(v).split(",")).map((v) => Number(v)).filter((n) => Number.isInteger(n) && n > 0),
   };
@@ -287,6 +295,7 @@ export async function createProduct2(form: FormData): Promise<{ id: number; name
     }
     await saveSizesAndSpecs(created.id, p.sizes, p.specs, false);
     await addGallery(created.id, p.gallery);
+    if (p.variantIds?.length) await setVariants(created.id, p.variantIds);
     return created;
   } catch (e) {
     await deleteUploadedImage(image);
@@ -321,6 +330,7 @@ export async function updateProduct2(id: number, form: FormData): Promise<{ id: 
     }
     await saveSizesAndSpecs(id, p.sizes, p.specs, true);
     await addGallery(id, p.gallery);
+    if (p.variantIds) await setVariants(id, p.variantIds);
     return updated;
   } catch (e) {
     await deleteUploadedImage(newImage);

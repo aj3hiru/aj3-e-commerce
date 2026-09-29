@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo, useRef } from "react";
 import type { CartLine, PaymentRow, PosCoupon, PosProduct } from "@/types/pos";
+import { packLabel } from "@/lib/product-variants-shared";
 
 /** Same effectivePrice(p) logic from billing.php: use sale_price only if it's
  *  a real positive number strictly less than the regular price. */
@@ -43,7 +44,7 @@ export function usePosCart() {
           categoryId: product.categoryId,
           subcategoryId: product.subcategoryId,
           gstRate: product.gstRate,
-          unit: product.unit,
+          unit: packLabel(product.quantity, product.unit),
           sku: product.sku,
           image: product.image ?? null,
         },
@@ -76,7 +77,7 @@ export function usePosCart() {
           categoryId: product.categoryId,
           subcategoryId: product.subcategoryId,
           gstRate: product.gstRate,
-          unit: product.unit,
+          unit: packLabel(product.quantity, product.unit),
           sku: product.sku,
           image: product.image ?? null,
         },
@@ -119,6 +120,24 @@ export function usePosCart() {
   /** Change the sold-by unit on one cart line (Billing2's editable Unit column). */
   const setUnit = useCallback((idx: number, unit: string) => {
     setCart((prev) => prev.map((c, i) => (i === idx ? { ...c, unit: unit || null } : c)));
+  }, []);
+
+  /** Switches a line to another variant of the product (same quantity; merges if that variant is already in the cart). */
+  const swapProduct = useCallback((idx: number, product: PosProduct) => {
+    setCart((prev) => {
+      const item = prev[idx];
+      if (!item || item.productId === product.id) return prev;
+      const other = prev.findIndex((c) => c.productId === product.id);
+      if (other !== -1) {
+        return prev.map((c, i) => (i === other ? { ...c, qty: c.qty + item.qty } : c)).filter((_, i) => i !== idx);
+      }
+      return prev.map((c, i) => (i === idx ? {
+        ...c,
+        productId: product.id, name: product.name, unitPrice: effectivePrice(product), priceOverridden: false, stockQty: product.stockQty,
+        productType: product.productType, categoryId: product.categoryId, subcategoryId: product.subcategoryId, gstRate: product.gstRate,
+        unit: packLabel(product.quantity, product.unit), sku: product.sku, image: product.image ?? null,
+      } : c));
+    });
   }, []);
 
   const removeFromCart = useCallback((idx: number) => {
@@ -222,6 +241,7 @@ export function usePosCart() {
     setQty,
     setPrice,
     setUnit,
+    swapProduct,
     removeFromCart,
     appliedCoupon,
     couponMessage,

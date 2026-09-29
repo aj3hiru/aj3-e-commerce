@@ -7,11 +7,12 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   Info, FolderTree, IndianRupee, ImageIcon, Images, SlidersHorizontal, Barcode, Printer, Upload, X, Plus, Loader2,
-  CheckCircle2, AlertCircle, ChevronDown, Save, RotateCcw, Link2, Pencil, ExternalLink, Scale, ListChecks,
+  CheckCircle2, AlertCircle, ChevronDown, Save, RotateCcw, Link2, Pencil, ExternalLink, Scale, ListChecks, Layers, Search, Copy,
 } from "lucide-react";
 import slugify from "slugify";
 import { cn } from "@/lib/utils";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
+import { packLabel, variantPrices, withUnit, withoutUnit, type VariantProduct } from "@/lib/product-variants-shared";
 
 /* ───────────────────────── types ───────────────────────── */
 
@@ -32,6 +33,7 @@ export interface AP2Product {
   subcategoryId: number | null;
   brandId: number | null;
   unit: string | null;
+  quantity: number | null;
   productType: string;
   price: number;
   salePrice: number | null;
@@ -50,6 +52,8 @@ export interface AP2Product {
   gallery: { id: number; image: string }[];
   sizes: { label: string; mrp: number; price: number | null; stockQty: number | null; isDefault: boolean }[];
   specs: { name: string; value: string }[];
+  /** Other products in this product's variant group. */
+  variants: VariantProduct[];
 }
 
 /** Editable rows (strings while typing). `k` is a stable React key. */
@@ -66,6 +70,7 @@ const UNIT_PRESETS = ["KG", "Gram", "Liter", "ml", "cm", "Meter", "Piece"];
 const LIST_PATH = "/admin/ecommerce/products";
 /** Four fields in one row; 2 × 2 while the form shares the screen with the side column on laptops (1280–1439px). */
 const ROW4 = "grid items-start gap-4 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-2 min-[1440px]:grid-cols-4";
+const ROW5 = "grid items-start gap-4 sm:grid-cols-2 md:grid-cols-5 xl:grid-cols-3 min-[1440px]:grid-cols-5";
 const FORM_ID = "add-product2-form";
 
 const makeSlug = (s: string) => slugify(s, { lower: true, strict: true, trim: true });
@@ -84,6 +89,7 @@ interface State {
   brandId: string;
   unitChoice: string; // "" | preset | "custom"
   unitCustom: string;
+  quantity: string;
   price: string;
   salePrice: string;
   stock: string;
@@ -115,6 +121,7 @@ function initialState(p: AP2Product | null, defaultGst: number): State {
     brandId: num(p?.brandId),
     unitChoice: preset ? unit : "custom",
     unitCustom: preset ? "" : unit,
+    quantity: num(p?.quantity),
     price: num(p?.price),
     salePrice: num(p?.salePrice),
     stock: p ? num(p.stockQty ?? 0) : "0",
@@ -159,13 +166,15 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
   // Sizes / Units and Specifications (always at least one blank row to type in).
   const [sizes, setSizes] = useState<SizeRowS[]>(() =>
     product?.sizes.length
-      ? product.sizes.map((z) => ({ k: ++rowKey, label: z.label, mrp: String(z.mrp), price: num(z.price), stock: num(z.stockQty), isDefault: z.isDefault }))
+      ? product.sizes.map((z) => ({ k: ++rowKey, label: withoutUnit(z.label, product.unit ?? ""), mrp: String(z.mrp), price: num(z.price), stock: num(z.stockQty), isDefault: z.isDefault }))
       : [newSize(true)]
   );
   const [specs, setSpecs] = useState<SpecRowS[]>(() =>
     product?.specs.length ? product.specs.map((x) => ({ k: ++rowKey, name: x.name, value: x.value })) : [newSpec()]
   );
   const [itemTypes, setItemTypes] = useState(initialItemTypes);
+  // Other real products linked as variants of this one (both ways, saved as one group).
+  const [variants, setVariants] = useState<VariantProduct[]>(() => product?.variants ?? []);
 
   // Images
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -291,6 +300,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
   const discount = s.salePrice !== "" && s.price !== "" && sale > 0 && sale < price ? Math.round(((price - sale) / price) * 100) : null;
   const saleError = s.salePrice !== "" && s.price !== "" && sale > 0 && sale >= price;
 
+  const unitValue = s.unitChoice === "custom" ? s.unitCustom.trim() : s.unitChoice;
   const filledSizes = sizes.filter(sizeFilled);
   const hasSizes = filledSizes.length > 0;
 
@@ -320,7 +330,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
   function validateSizes(): string | null {
     const seen = new Set<string>();
     for (const [i, z] of filledSizes.entries()) {
-      const label = z.label.trim();
+      const label = withUnit(z.label, unitValue);
       if (!label) return `Size / Unit row ${i + 1}: enter the size, e.g. 500 g.`;
       const key = label.toLowerCase().replace(/\s+/g, " ");
       if (seen.has(key)) return `Size / Unit “${label}” is added twice.`;
@@ -342,6 +352,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
     if (sizeErr) return { message: sizeErr, field: "sizes" };
     if (saleError) return { message: "Sale price should be lower than the price (leave it empty for no sale).", field: "sale_price" };
     if (isPhysical && (s.stock !== "" && (!Number.isInteger(Number(s.stock)) || Number(s.stock) < 0))) return { message: "Stock must be a whole number, 0 or more.", field: "stock_qty" };
+    if (s.quantity !== "" && (!Number.isFinite(Number(s.quantity)) || Number(s.quantity) <= 0)) return { message: "Enter a valid quantity, e.g. 1 or 250 (or leave it empty).", field: "quantity" };
     if (s.unitChoice === "custom" && !s.unitCustom.trim()) return { message: "Type the custom unit, or pick one from the list.", field: "unit" };
     if (barcodeCheck.state === "taken") return { message: `This barcode is already used by “${barcodeCheck.by?.name}”.`, field: "barcode" };
     return null;
@@ -361,7 +372,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
     setS((prev) => ({
       ...initialState(null, defaultGst),
       categoryId: prev.categoryId, subcategoryId: prev.subcategoryId, brandId: prev.brandId,
-      unitChoice: prev.unitChoice, unitCustom: prev.unitCustom, gst: prev.gst,
+      unitChoice: prev.unitChoice, unitCustom: prev.unitCustom, gst: prev.gst, hsn: prev.hsn, description: prev.description,
       badge: prev.badge, itemType: prev.itemType, status: prev.status,
     }));
     setImageFile(null);
@@ -397,6 +408,8 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
     fd.set("subcategory_id", ""); // sub-categories are no longer used
     fd.set("brand_id", s.brandId);
     fd.set("unit", s.unitChoice === "custom" ? s.unitCustom.trim() : s.unitChoice);
+    fd.set("quantity", s.quantity);
+    fd.set("variant_ids", variants.map((v) => v.id).join(","));
     fd.set("product_type", productType);
     fd.set("price", s.price);
     fd.set("sale_price", s.salePrice);
@@ -411,7 +424,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
     if (s.showOnHome) fd.set("show_on_home", "on");
     if (s.isCampaign) fd.set("is_campaign", "on");
     fd.set("campaign_price", s.campaignPrice);
-    fd.set("sizes", JSON.stringify(filledSizes.map((z) => ({ label: z.label, mrp: z.mrp, price: z.price, stock: z.stock, isDefault: z.isDefault }))));
+    fd.set("sizes", JSON.stringify(filledSizes.map((z) => ({ label: withUnit(z.label, unitValue), mrp: z.mrp, price: z.price, stock: z.stock, isDefault: z.isDefault }))));
     fd.set("specs", JSON.stringify(specs.map((x) => ({ name: x.name, value: x.value }))));
     if (imageFile) fd.set("image", imageFile);
     if (removeImage) fd.set("remove_image", "1");
@@ -431,7 +444,15 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
         return;
       }
       if (mode === "another") {
-        setToast(`“${data.name}” created. Add the next product.`);
+        // The next product (e.g. the next size) stays linked to the same variants plus this one.
+        const u = s.unitChoice === "custom" ? s.unitCustom.trim() : s.unitChoice;
+        setVariants((list) => [
+          ...list,
+          { id: data.id, name: data.name, slug: "", image: null, quantity: s.quantity === "" ? null : Number(s.quantity), unit: u || null,
+            price: Number(s.price) || 0, salePrice: s.salePrice === "" ? null : Number(s.salePrice), stockQty: s.stock === "" ? null : Number(s.stock),
+            barcode: s.barcode || null, status: s.status, brand: brands.find((b) => String(b.id) === s.brandId)?.name ?? null },
+        ]);
+        setToast(`“${data.name}” created and linked as a variant. Add the next one.`);
         resetForAnother();
         setSaving(null);
         router.refresh();
@@ -445,7 +466,56 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
     }
   }
 
-  const unitValue = s.unitChoice === "custom" ? s.unitCustom : s.unitChoice;
+  /** Fills this form from another product (a variant): text fields, specifications and photos. */
+  async function copyFrom(id: number) {
+    const res = await fetch(`/api/ecommerce/products2/${id}`).then((r) => r.json()).catch(() => null);
+    if (!res?.success) {
+      setError({ message: res?.message || "Could not load that product." });
+      return;
+    }
+    const p = res.product as {
+      name: string; description: string | null; categoryId: number | null; brandId: number | null; unit: string | null; quantity: number | null;
+      hsnCode: string | null; gstRate: number; price: number; salePrice: number | null; badgeTag: string; itemType: string; image: string | null; gallery: string[];
+      specs: { name: string; value: string }[];
+    };
+    const preset = !p.unit || UNIT_PRESETS.includes(p.unit);
+    setS((prev) => ({
+      ...prev,
+      name: prev.name || p.name,
+      slug: prev.slugTouched ? prev.slug : makeSlug(prev.name || p.name),
+      description: p.description ?? prev.description,
+      categoryId: p.categoryId ? String(p.categoryId) : prev.categoryId,
+      brandId: p.brandId ? String(p.brandId) : prev.brandId,
+      unitChoice: preset ? p.unit ?? "" : "custom",
+      unitCustom: preset ? "" : p.unit ?? "",
+      hsn: p.hsnCode ?? prev.hsn,
+      gst: String(p.gstRate),
+      price: prev.price || String(p.price),
+      salePrice: prev.price ? prev.salePrice : p.salePrice === null ? "" : String(p.salePrice),
+      badge: p.badgeTag,
+      itemType: p.itemType,
+    }));
+    if (p.specs.length) setSpecs(p.specs.map((x) => ({ k: ++rowKey, name: x.name, value: x.value })));
+    // Photos are copied as new files, so this product keeps them even if the other one changes.
+    const asFile = async (path: string) => {
+      const blob = await fetch(`/${path}`).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
+      return blob && blob.type.startsWith("image/") ? new File([blob], path.split("/").pop() || "image.webp", { type: blob.type }) : null;
+    };
+    if (p.image && !imageFile && !(product?.image && !removeImage)) {
+      const f = await asFile(p.image);
+      if (f) {
+        setImageFile(f);
+        setImagePreview(URL.createObjectURL(f));
+      }
+    }
+    if (p.gallery.length && gallery.length === 0 && newGallery.length === 0) {
+      const files = (await Promise.all(p.gallery.slice(0, 12).map(asFile))).filter((f): f is File => f !== null);
+      setNewGallery(files.map((file) => ({ file, url: URL.createObjectURL(file) })));
+    }
+    setDirty(true);
+    setToast(`Details copied from “${p.name}”. Change the size, price and barcode for this one.`);
+  }
+
   const currentImage = imagePreview ?? (removeImage ? null : product?.image ? `/${product.image}` : null);
   const fieldErr = (f: string) => error?.field === f;
 
@@ -559,8 +629,18 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
           </Card>
 
           <Card icon={IndianRupee} title={isPhysical ? "Pricing & Stock" : "Pricing"}>
-            {/* Price · Sale Price · Stock · GST in one row (2 × 2 on narrower screens). */}
-            <div className={ROW4}>
+            {/* Quantity · Price · Sale Price · Stock · GST in one row. */}
+            <div className={show("ap2-price", "ap2-qty") ? ROW5 : ROW4}>
+              {show("ap2-price", "ap2-qty") && (
+                <Field label="Quantity" field="quantity" error={fieldErr("quantity")}
+                  hint={unitValue ? (s.quantity !== "" && Number(s.quantity) > 0 ? `= ${packLabel(s.quantity, unitValue)}` : undefined) : "Pick a unit below"} hintGood={!!unitValue && s.quantity !== ""}>
+                  <div className="relative">
+                    <input type="number" min={0} step="any" inputMode="decimal" value={s.quantity} onChange={(e) => set("quantity", e.target.value)}
+                      onWheel={(e) => (e.target as HTMLInputElement).blur()} placeholder="e.g. 1" aria-label="Pack quantity" className={cn(inputCls(fieldErr("quantity")), unitValue && "pr-16")} />
+                    {unitValue && <span className="pointer-events-none absolute right-3 top-1/2 max-w-[56px] -translate-y-1/2 truncate text-sm text-admin-gray-400">{unitValue}</span>}
+                  </div>
+                </Field>
+              )}
               <Field label="Price (₹)" required={!hasSizes} hint={hasSizes && s.price === "" ? "From default size" : undefined} field="price" error={fieldErr("price")}>
                 <MoneyInput value={s.price} onChange={(v) => set("price", v)} error={fieldErr("price")} />
               </Field>
@@ -661,6 +741,19 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
           )}
 
 
+          {isVisible("ap2-variants") && (
+            <VariantsCard
+              productId={product?.id ?? null}
+              brandId={s.brandId}
+              brands={brands}
+              categories={categories}
+              value={variants}
+              help={isVisible("ap2-var-help")}
+              onChange={(v) => { setVariants(v); setDirty(true); }}
+              onCopy={copyFrom}
+            />
+          )}
+
           {isVisible("ap2-sizes") && (() => {
             // Columns follow Display Options (Selling Price / Stock / Default can be hidden;
             // hidden values are kept and saved unchanged).
@@ -696,7 +789,14 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
                             />
                           </label>
                         )}
-                        <input value={z.label} onChange={(e) => updateSize(z.k, { label: e.target.value })} placeholder="e.g. 500 g" maxLength={50} aria-label={`Size ${i + 1}`} className={inputCls(false)} />
+                        {/* The unit from Categorization is added automatically — type just the number. */}
+                        <div className="relative">
+                          <input value={z.label} onChange={(e) => updateSize(z.k, { label: e.target.value })} placeholder={unitValue ? "e.g. 500" : "e.g. 500 g"} maxLength={50} aria-label={`Size ${i + 1}`}
+                            className={cn(inputCls(false), unitValue && /^\d+(\.\d+)?$/.test(z.label.trim()) && "pr-16")} />
+                          {unitValue && /^\d+(\.\d+)?$/.test(z.label.trim()) && (
+                            <span className="pointer-events-none absolute right-3 top-1/2 max-w-[56px] -translate-y-1/2 truncate text-sm text-admin-gray-400">{unitValue}</span>
+                          )}
+                        </div>
                         <button type="button" onClick={() => removeSize(z.k)} aria-label={`Remove size ${i + 1}`} title="Remove" className={cn(iconBtnCls, "border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 md:order-last")}>
                           <X className="h-4 w-4" />
                         </button>
@@ -1219,5 +1319,199 @@ function QuickAddModal({ kind, category, onClose, onAdded }: {
       </div>
     </div>,
     document.body
+  );
+}
+
+/* ───────────────────────── variants ───────────────────────── */
+
+/**
+ * Variants: other real products that are sizes of this one (Clinic+ 80 ml /
+ * 175 ml / 340 ml). Each keeps its own price, stock, photos and page; linking
+ * is both ways, so every product in the group shows all the others.
+ * Search by name, product ID, barcode or SKU; filtered to this brand by default.
+ */
+function VariantsCard({ productId, brandId, brands, categories, value, help, onChange, onCopy }: {
+  productId: number | null;
+  brandId: string;
+  brands: AP2Option[];
+  categories: AP2Option[];
+  value: VariantProduct[];
+  help: boolean;
+  onChange: (v: VariantProduct[]) => void;
+  onCopy: (id: number) => Promise<void>;
+}) {
+  const [q, setQ] = useState("");
+  const [brand, setBrand] = useState(brandId);
+  const [brandTouched, setBrandTouched] = useState(false);
+  const [cat, setCat] = useState("");
+  const [results, setResults] = useState<VariantProduct[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [copying, setCopying] = useState<number | null>(null);
+  const [active, setActive] = useState(0);
+
+  // Follows the product's brand until a brand is picked here.
+  useEffect(() => {
+    if (!brandTouched) setBrand(brandId);
+  }, [brandId, brandTouched]);
+
+  const open = q.trim() !== "" || results !== null;
+  useEffect(() => {
+    const term = q.trim();
+    if (!term && !brandTouched && !cat) return;
+    const ctl = new AbortController();
+    const t = setTimeout(async () => {
+      setLoading(true);
+      const sp = new URLSearchParams({ q: term });
+      if (brand) sp.set("brand", brand);
+      if (cat) sp.set("category", cat);
+      if (productId) sp.set("exclude", String(productId));
+      try {
+        const r = await fetch(`/api/ecommerce/products2/variants?${sp}`, { signal: ctl.signal }).then((x) => x.json());
+        if (r.success) {
+          setResults(r.items);
+          setActive(0);
+        }
+      } catch {
+        /* aborted / offline */
+      }
+      setLoading(false);
+    }, 220);
+    return () => {
+      clearTimeout(t);
+      ctl.abort();
+    };
+  }, [q, brand, cat, productId, brandTouched]);
+
+  const linked = new Set(value.map((v) => v.id));
+  function add(v: VariantProduct) {
+    if (linked.has(v.id) || v.id === productId) return;
+    onChange([...value, v]);
+  }
+  const list = results ?? [];
+
+  return (
+    <Card icon={Layers} title="Variants" note="(optional)"
+      aside={value.length > 0 ? <span className="rounded-full bg-admin-primary-lighter px-2 py-0.5 text-xs font-semibold text-admin-primary">{value.length} linked</span> : undefined}>
+      {help && (
+        <p className="-mt-1 text-[13px] text-admin-gray-500">
+          Link the other sizes of this product that you sell as separate products (e.g. Clinic+ 80 ml, 175 ml, 340 ml). Customers and billing can switch between them; the link shows on every linked product.
+        </p>
+      )}
+      <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="relative" data-field="variants">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-400" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => Math.min(a + 1, list.length - 1)); }
+              else if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
+              else if (e.key === "Enter") {
+                // Scanners press Enter after a barcode: add the match instead of submitting the form.
+                e.preventDefault();
+                const hit = list[active];
+                if (hit) { add(hit); setQ(""); }
+              } else if (e.key === "Escape") { setQ(""); setResults(null); }
+            }}
+            placeholder="Search name, product ID or scan barcode…"
+            autoComplete="off"
+            aria-label="Find a product to link"
+            className={cn(inputCls(false), "pl-9")}
+          />
+          {loading && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-admin-gray-400" />}
+        </div>
+        <SelectBox value={brand} onChange={(v) => { setBrand(v); setBrandTouched(true); }}>
+          <option value="">All brands</option>
+          {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+        </SelectBox>
+        <SelectBox value={cat} onChange={setCat}>
+          <option value="">All categories</option>
+          {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </SelectBox>
+      </div>
+
+      {open && (
+        <div className="max-h-[300px] overflow-y-auto rounded-[0.5rem] border border-admin-gray-200" role="listbox" aria-label="Products to link">
+          {list.length === 0 ? (
+            <p className="px-3 py-4 text-center text-[13px] text-admin-gray-500">{loading ? "Searching…" : "No products found. Try another name, the product ID or a barcode."}</p>
+          ) : (
+            list.map((v, i) => {
+              const { sell } = variantPrices(v);
+              const isLinked = linked.has(v.id);
+              return (
+                <div key={v.id} role="option" aria-selected={i === active} onMouseEnter={() => setActive(i)}
+                  className={cn("flex items-center gap-3 border-b border-admin-gray-100 px-3 py-2 last:border-b-0", i === active && "bg-admin-gray-50")}>
+                  <VariantThumb src={v.image} />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] font-medium text-admin-gray-900">{v.name}</div>
+                    <div className="truncate text-xs text-admin-gray-500">
+                      #{v.id}{packLabel(v.quantity, v.unit) ? ` · ${packLabel(v.quantity, v.unit)}` : ""}{v.brand ? ` · ${v.brand}` : ""}{v.barcode ? ` · ${v.barcode}` : ""}
+                    </div>
+                  </div>
+                  <span className="text-[13px] font-semibold text-admin-gray-900">₹{sell.toLocaleString("en-IN")}</span>
+                  {isLinked ? (
+                    <span className="flex h-8 items-center gap-1 px-2 text-xs font-medium text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> Linked</span>
+                  ) : (
+                    <button type="button" onClick={() => add(v)} className={outlineBtnCls}><Plus className="h-4 w-4" /> Link</button>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {value.length > 0 && (
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {value.map((v) => {
+            const { mrp, sell, off } = variantPrices(v);
+            return (
+              <div key={v.id} className="flex items-center gap-3 rounded-[0.5rem] border border-admin-gray-200 px-3 py-2">
+                <VariantThumb src={v.image} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13px] font-semibold text-admin-gray-900">{packLabel(v.quantity, v.unit) ?? "No quantity set"}</div>
+                  <div className="truncate text-xs text-admin-gray-500" title={v.name}>{v.name}</div>
+                  <div className="text-xs">
+                    <span className="font-semibold text-admin-gray-900">₹{sell.toLocaleString("en-IN")}</span>
+                    {off > 0 && <><span className="ml-1.5 text-admin-gray-400 line-through">₹{mrp.toLocaleString("en-IN")}</span><span className="ml-1.5 font-medium text-emerald-600">{off}% off</span></>}
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-col gap-1">
+                  <div className="flex gap-1">
+                    <button type="button" title="Copy its details (description, specifications, photos) into this form" aria-label={`Copy details from ${v.name}`}
+                      disabled={copying !== null}
+                      onClick={async () => { setCopying(v.id); await onCopy(v.id); setCopying(null); }}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-admin-gray-200 text-admin-gray-500 hover:text-admin-primary disabled:opacity-50">
+                      {copying === v.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                    <a href={`/admin/ecommerce/products/add?edit=${v.id}`} target="_blank" rel="noreferrer" title="Open this product" aria-label={`Open ${v.name}`}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-admin-gray-200 text-admin-gray-500 hover:text-admin-primary">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                    <button type="button" title="Unlink" aria-label={`Unlink ${v.name}`} onClick={() => onChange(value.filter((x) => x.id !== v.id))}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-red-200 text-red-500 hover:bg-red-50">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function VariantThumb({ src }: { src: string | null }) {
+  return (
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border border-admin-gray-200 bg-admin-gray-50">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src.startsWith("blob:") || src.startsWith("http") ? src : `/${src}`} alt="" className="h-full w-full object-contain" />
+      ) : (
+        <ImageIcon className="h-4 w-4 text-admin-gray-300" />
+      )}
+    </span>
   );
 }

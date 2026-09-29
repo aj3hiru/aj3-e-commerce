@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { packLabel } from "@/lib/product-variants-shared";
 import { prisma } from "@/lib/db";
 import { getBusinessRow } from "@/lib/business-row";
 import { campaignSalePrices } from "@/lib/campaign-pricing";
@@ -56,12 +57,13 @@ async function buildProducts() {
   const rows = await prisma.ecomProduct.findMany({
     orderBy: { name: "asc" },
     select: { id: true, name: true, sku: true, barcode: true, hsnCode: true, price: true, salePrice: true, gstRate: true, stockQty: true, unit: true, image: true,
-      categoryId: true, brandId: true, status: true, productType: true, updatedAt: true },
+      categoryId: true, brandId: true, status: true, productType: true, updatedAt: true, quantity: true, variantGroup: true },
   });
   const campaign = await campaignSalePrices(rows.filter((r) => r.status === "active"));
   return rows.map((r) => ({
     id: r.id, name: r.name, sku: r.sku, barcode: r.barcode, hsn: r.hsnCode, price: Number(r.price),
     salePrice: campaign.get(r.id) ?? num(r.salePrice), gstRate: Number(r.gstRate), stock: r.stockQty, unit: r.unit, image: r.image,
+    quantity: num(r.quantity), variantGroup: r.variantGroup, pack: packLabel(num(r.quantity), r.unit),
     categoryId: r.categoryId, brandId: r.brandId, status: r.status, type: r.productType, updatedAt: iso(r.updatedAt),
   }));
 }

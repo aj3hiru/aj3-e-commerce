@@ -143,6 +143,12 @@ model EcomProduct {
   // product has no unit (sold as a plain countable item, the pre-existing
   // behavior for every product created before this field existed).
   unit          String?
+  // Pack size in `unit`, e.g. 1 + "KG" = "1 KG", 250 + "Gram" = "250 Gram".
+  quantity      Decimal? @db.Decimal(10, 3)
+  // Products with the same variant_group are variants of each other (Clinic+
+  // 80 ml / 175 ml / 340 ml…): each is a real product with its own price,
+  // stock, images and page; the product page and billing let you switch.
+  variantGroup  Int?     @map("variant_group")
   image         String?
   description   String?  @db.Text
   badgeTag      String   @default("none") @map("badge_tag") // "none" | "new" | "best" | "hot" | "featured"
@@ -173,6 +179,7 @@ model EcomProduct {
   homeSectionItems EcomHomeSectionItem[]
   coupons     EcomCoupon[]     @relation("CouponProduct")
 
+  @@index([variantGroup])
   @@map("ecom_products")
 }
 

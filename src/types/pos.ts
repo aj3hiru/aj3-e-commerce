@@ -17,6 +17,10 @@ export interface PosProduct {
   /** Relative image path (rendered as `/${image}`), shown as the cart-row
    *  thumbnail on Billing2. Optional so screens that don't load it still type-check. */
   image?: string | null;
+  /** Pack size in `unit` (1 + KG = "1 KG"). */
+  quantity?: number | null;
+  /** Products sharing this are variants of each other (billing can switch between them). */
+  variantGroup?: number | null;
 }
 
 export interface PosCoupon {

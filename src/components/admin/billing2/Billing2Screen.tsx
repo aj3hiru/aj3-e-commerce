@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Search, ShoppingCart, Trash2, Tag, CreditCard, PackagePlus, Phone, User, CheckCircle2,
   Info, Lock, ArrowRight, ScanBarcode, Banknote, Smartphone, Wallet, ChevronDown, Plus, Minus, X,
@@ -15,6 +15,7 @@ import { enqueueBill, newBillRef, postJson } from "@/lib/pos-offline";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { PosProduct, PosCoupon, PosCustomer, BusinessPosSettings, PaymentRow } from "@/types/pos";
 import { cn } from "@/lib/utils";
+import { packLabel, packSortKey } from "@/lib/product-variants-shared";
 
 /** ₹1,934.30 — Indian digit grouping, always two decimals, like the mockup. */
 const fmt = (n: number) =>
@@ -54,7 +55,7 @@ export function Billing2Screen({
   const [products, setProducts] = useState(allProducts);
 
   const {
-    cart, addToCart, addToCartWithQty, changeQty, setQty, setPrice, setUnit, removeFromCart,
+    cart, addToCart, addToCartWithQty, changeQty, setQty, setPrice, setUnit, swapProduct, removeFromCart,
     appliedCoupon, couponMessage, applyCoupon, totals,
     payments, addPaymentRow, removePaymentRow, updatePaymentRow,
     resetForNextSale,
@@ -67,6 +68,14 @@ export function Billing2Screen({
   const due = Math.max(0, totals.grandTotal - paidTotal);
 
   const scan = useProductScan(products, addToCart);
+  // Variant groups (Clinic+ 80 ml / 175 ml / 340 ml…) for the Unit column's switcher, small → large.
+  const byId = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+  const variantGroups = useMemo(() => {
+    const m = new Map<number, PosProduct[]>();
+    for (const p of products) if (p.variantGroup) m.set(p.variantGroup, [...(m.get(p.variantGroup) ?? []), p]);
+    for (const list of m.values()) list.sort((a, b) => packSortKey(a.quantity ?? null, a.unit) - packSortKey(b.quantity ?? null, b.unit) || a.price - b.price);
+    return m;
+  }, [products]);
   const customer = useCustomerSearch(allCustomers);
 
   const [isGuest, setIsGuest] = useState(false);
@@ -305,7 +314,7 @@ export function Billing2Screen({
                       <span className="block truncate text-sm font-medium text-admin-gray-900">{p.name}</span>
                       <span className="block truncate text-xs text-admin-gray-400">
                         {p.sku ? `SKU: ${p.sku}` : "No SKU"}
-                        {p.unit ? ` · ${p.unit}` : ""}
+                        {packLabel(p.quantity, p.unit) ? ` · ${packLabel(p.quantity, p.unit)}` : ""}
                         {p.stockQty !== null ? ` · Stock: ${p.stockQty}` : ""}
                       </span>
                     </span>
@@ -403,7 +412,14 @@ export function Billing2Screen({
                       )}
                       {col.unit && (
                       <td className="py-2 pl-3">
-                        <UnitPicker value={c.unit ?? ""} name={c.name} onChange={(u) => setUnit(idx, u)} />
+                        {(() => {
+                          const p = byId.get(c.productId);
+                          const group = p?.variantGroup ? variantGroups.get(p.variantGroup) : undefined;
+                          if (p && group && group.length > 1) {
+                            return <VariantPicker current={p} options={group} name={c.name} onPick={(v) => swapProduct(idx, v)} />;
+                          }
+                          return <UnitPicker value={c.unit ?? ""} name={c.name} onChange={(u) => setUnit(idx, u)} />;
+                        })()}
                       </td>
                       )}
                       {col.subtotal && (
@@ -817,6 +833,36 @@ function QtyStepper({
       <button type="button" onClick={onInc} aria-label={`Increase quantity of ${name}`} className={btn}>
         <Plus className="h-3.5 w-3.5" />
       </button>
+    </div>
+  );
+}
+
+/** Unit column for a product with variants: shows its pack (1 KG) and switches the line to another size. */
+function VariantPicker({ current, options, name, onPick }: { current: PosProduct; options: PosProduct[]; name: string; onPick: (p: PosProduct) => void }) {
+  const price = (p: PosProduct) => (p.salePrice && p.salePrice > 0 && p.salePrice < p.price ? p.salePrice : p.price);
+  return (
+    <div className="relative">
+      <select
+        aria-label={`Size of ${name}`}
+        title="Switch to another size of this product"
+        value={current.id}
+        onChange={(e) => {
+          const next = options.find((o) => o.id === Number(e.target.value));
+          if (next) onPick(next);
+        }}
+        className="h-8 w-full appearance-none rounded-md border border-[#F3B6A6] bg-[#FFF8F6] pl-2 pr-6 text-sm font-semibold text-admin-gray-900 focus:border-[#EE6A4D] focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/15"
+      >
+        {options.map((o) => {
+          const label = packLabel(o.quantity, o.unit) ?? o.name;
+          const out = o.productType === "physical" && o.stockQty !== null && o.stockQty <= 0;
+          return (
+            <option key={o.id} value={o.id} disabled={out && o.id !== current.id}>
+              {label} · {fmt(price(o))}{out ? " · out of stock" : ""}
+            </option>
+          );
+        })}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-admin-gray-400" />
     </div>
   );
 }

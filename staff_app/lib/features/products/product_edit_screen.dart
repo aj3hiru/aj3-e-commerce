@@ -15,6 +15,8 @@ import '../../ds/ds.dart';
 import '../../widgets/common.dart';
 import '../../widgets/web.dart';
 import '../pos/scanner.dart';
+import '../pos/variants.dart' show packOf;
+import '../pos/cart.dart' show CartLine;
 
 /// Add or edit a product with every field of the website's product form:
 /// basic info, description, photo + gallery, pricing & stock, GST, category / brand / unit,
@@ -57,6 +59,18 @@ String _num(dynamic v) {
   return d == d.roundToDouble() ? d.toInt().toString() : d.toStringAsFixed(2);
 }
 
+/// Sizes typed as a bare number get the product's unit: "250" + Gram → "250 Gram".
+String _withUnit(String label, String unit) {
+  final t = label.trim();
+  return unit.isNotEmpty && RegExp(r'^\d+(\.\d+)?$').hasMatch(t) ? '$t $unit' : t;
+}
+
+String _withoutUnit(String label, String unit) {
+  if (unit.isEmpty) return label;
+  final m = RegExp(r'^(\d+(?:\.\d+)?)\s*(.+)$').firstMatch(label.trim());
+  return m != null && m.group(2)!.toLowerCase() == unit.toLowerCase() ? m.group(1)! : label;
+}
+
 const _defaultUnits = ['KG', 'Gram', 'Liter', 'ml', 'cm', 'Meter', 'Piece'];
 
 class _ProductEditScreenState extends State<ProductEditScreen> {
@@ -67,7 +81,8 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
   final _name = TextEditingController(), _slug = TextEditingController(), _sku = TextEditingController(), _hsn = TextEditingController();
   final _barcode = TextEditingController(), _desc = TextEditingController();
   final _price = TextEditingController(), _sale = TextEditingController(), _stock = TextEditingController(text: '0');
-  final _unitCustom = TextEditingController(), _campaignPrice = TextEditingController();
+  final _unitCustom = TextEditingController(), _campaignPrice = TextEditingController(), _qty = TextEditingController();
+  List<int> _variantIds = []; // other products linked as variants (sizes) of this one
   String _gst = '0';
   String _unit = ''; // '' = no unit, 'custom' = typed
   int? _category, _brand;
@@ -114,6 +129,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     _stock.text = p['stock'] == null ? '' : '${p['stock']}';
     _gst = _num(p['gstRate'] ?? 0);
     _setUnit(p['unit'] as String?);
+    _qty.text = _num(p['quantity']);
     _category = p['categoryId'] == null ? null : toInt(p['categoryId']);
     _brand = p['brandId'] == null ? null : toInt(p['brandId']);
     _status = p['status'] == 'inactive' ? 'inactive' : 'active';
@@ -178,6 +194,8 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       _stock.text = x['stock'] == null ? '' : '${x['stock']}';
       _gst = _num(x['gstRate'] ?? 0);
       _setUnit(x['unit'] as String?);
+      _qty.text = _num(x['quantity']);
+      _variantIds = ((x['variantIds'] as List?) ?? const []).map(toInt).toList();
       _category = x['categoryId'] == null ? null : toInt(x['categoryId']);
       _brand = x['brandId'] == null ? null : toInt(x['brandId']);
       _status = x['status'] == 'inactive' ? 'inactive' : 'active';
@@ -191,6 +209,10 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       _gallery = ((x['gallery'] as List?) ?? const []).cast<Map>().map((g) => Map<String, dynamic>.from(g)).toList();
       final sz = ((x['sizes'] as List?) ?? const []).cast<Map>();
       _sizes = sz.isEmpty ? [_SizeRow()..isDefault = true] : [for (final z in sz) _SizeRow(z)];
+      // The unit is added automatically, so show just the number ("250 Gram" → "250").
+      for (final z in _sizes) {
+        z.label.text = _withoutUnit(z.label.text, _unitValue);
+      }
       final sp = ((x['specs'] as List?) ?? const []).cast<Map>();
       _specs = sp.isEmpty ? [_SpecRow()] : [for (final z in sp) _SpecRow(z)];
     });
@@ -256,7 +278,9 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       if (_home) 'show_on_home': 'on',
       if (_campaign) 'is_campaign': 'on',
       'campaign_price': _campaignPrice.text.trim(),
-      'sizes': jsonEncode([for (final z in sizes) z.toJson()]),
+      'quantity': _qty.text.trim(),
+      'variant_ids': _variantIds.join(','),
+      'sizes': jsonEncode([for (final z in sizes) {...z.toJson(), 'label': _withUnit(z.label.text, _unitValue)}]),
       'specs': jsonEncode([for (final x in _specs) if (x.name.text.trim().isNotEmpty && x.value.text.trim().isNotEmpty) {'name': x.name.text.trim(), 'value': x.value.text.trim()}]),
       if (_removePhoto && _photo == null) 'remove_image': '1',
       if (_removedGallery.isNotEmpty) 'removed_gallery_ids': _removedGallery.join(','),
@@ -298,7 +322,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
               'kind': 'product', 'id': p['id'],
               'fields': {
                 'name': name, 'price': double.tryParse(_price.text.trim()), 'salePrice': double.tryParse(_sale.text.trim()), 'stock': int.tryParse(_stock.text.trim()),
-                'unit': _unitValue, 'sku': _sku.text.trim(), 'barcode': _barcode.text.trim(), 'categoryId': _category, 'brandId': _brand, 'status': _status,
+                'unit': _unitValue, 'quantity': double.tryParse(_qty.text.trim()), 'sku': _sku.text.trim(), 'barcode': _barcode.text.trim(), 'categoryId': _category, 'brandId': _brand, 'status': _status,
                 'gstRate': double.tryParse(_gst) ?? 0,
               },
             },
@@ -312,6 +336,9 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     final offline = !r.ok;
     toast(context, offline ? 'Saved offline — it will be sent when you are online.' : (_isNew ? 'Product added.' : 'Saved.'));
     if (another) {
+      // The next product (usually the next size) stays linked to these variants plus the one just made.
+      final newId = r.ok ? r.data['id'] : null;
+      if (newId != null) _variantIds = [..._variantIds, toInt(newId)];
       _resetForNext();
     } else {
       Navigator.pop(context);
@@ -330,6 +357,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
     diff('gstRate', double.tryParse(_gst) ?? 0, toDouble(p['gstRate']));
     if (p['stock'] != null) diff('stock', int.tryParse(_stock.text.trim()), p['stock']);
     diff('unit', _unitValue, p['unit'] ?? '');
+    diff('quantity', double.tryParse(_qty.text.trim()), p['quantity'] == null ? null : toDouble(p['quantity']));
     diff('sku', _sku.text.trim(), p['sku'] ?? '');
     diff('barcode', _barcode.text.trim(), p['barcode'] ?? '');
     diff('hsn', _hsn.text.trim(), p['hsn'] ?? '');
@@ -356,7 +384,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
   /// "Save & add another": keep the choices people repeat (category, brand, unit, GST, tags, status).
   void _resetForNext() {
     setState(() {
-      for (final c in [_name, _slug, _sku, _hsn, _barcode, _desc, _price, _sale, _campaignPrice]) {
+      for (final c in [_name, _slug, _sku, _barcode, _price, _sale, _campaignPrice, _qty]) {
         c.clear();
       }
       _stock.text = '0';
@@ -534,6 +562,16 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
         ),
         AppSelect<String>(label: 'GST Rate', helper: 'Auto in bills', value: _gst, options: [for (final i in gstItems) (i.value!, (i.child as Text).data!)], onChanged: (v) => setState(() => _gst = v)),
       ),
+      two(
+        tf(
+          controller: _qty,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          validator: (v) => v == null || v.trim().isEmpty ? null : ((double.tryParse(v.trim()) ?? 0) <= 0 ? 'Enter a number like 1 or 250' : null),
+          label: dec('Quantity', hint: 'e.g. 1', helper: _unitValue.isEmpty ? 'Pick a unit below' : 'Pack size, e.g. 1 $_unitValue',
+              suffix: _unitValue.isEmpty ? null : Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), child: Text(_unitValue, style: const TextStyle(color: AppColors.muted)))),
+        ),
+        const SizedBox(),
+      ),
     ]);
 
     final categorization = _Section(icon: LucideIcons.listTree, title: 'Categorization', children: [
@@ -568,7 +606,16 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
                     _sizes[i].isDefault = true;
                   }),
                 ),
-                Expanded(child: tf(controller: _sizes[i].label, label: dec('Size / Unit', hint: 'e.g. 500 g'), validator: (v) => _sizes[i].empty ? null : req(v))),
+                Expanded(
+                  child: tf(
+                    controller: _sizes[i].label,
+                    keyboardType: _unitValue.isEmpty ? null : const TextInputType.numberWithOptions(decimal: true),
+                    validator: (v) => _sizes[i].empty ? null : req(v),
+                    // The unit from Categorization is added automatically — type just the number.
+                    label: dec('Size / Unit', hint: _unitValue.isEmpty ? 'e.g. 500 g' : 'e.g. 500',
+                        suffix: _unitValue.isEmpty ? null : Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), child: Text(_unitValue, style: const TextStyle(color: AppColors.muted)))),
+                  ),
+                ),
                 IconButton(
                   onPressed: () => setState(() => _sizes.length == 1 ? _sizes = [_SizeRow()..isDefault = true] : _sizes.removeAt(i)),
                   icon: const Icon(Icons.close_rounded, color: AppColors.red),
@@ -600,6 +647,39 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
             ]),
           ),
         Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(onPressed: () => setState(() => _sizes.add(_SizeRow())), icon: const Icon(Icons.add_rounded, size: 18), label: const Text('Add Size / Unit'))),
+      ],
+    );
+
+    final byId = {for (final x in s.list('products')) toInt(x['id']): x};
+    final variants = _Section(
+      icon: LucideIcons.layers,
+      title: 'Variants',
+      optional: true,
+      locked: lockExtra,
+      children: [
+        const Text('Link the other sizes you sell as separate products (e.g. Clinic+ 80 ml, 175 ml, 340 ml). Billing and the shop can switch between them; the link shows on every linked product.',
+            style: TextStyle(color: AppColors.muted, fontSize: 13)),
+        for (final id in _variantIds)
+          () {
+            final v = byId[id];
+            return Container(
+              padding: const EdgeInsets.fromLTRB(8, 6, 4, 6),
+              decoration: BoxDecoration(border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(desktop(context) ? 6 : 10)),
+              child: Row(children: [
+                NetImage(v?['image'], size: 36, radius: 6),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(v == null ? 'Product #$id' : (packOf(v) ?? 'No quantity set'), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    Text(v == null ? 'Not in this device yet — sync to see it' : '${v['name']} · ${money(CartLine.shelfPrice(v))}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.muted, fontSize: 12)),
+                  ]),
+                ),
+                IconButton(tooltip: 'Copy its details into this form', icon: const Icon(LucideIcons.copy, size: 16), onPressed: () => _copyFrom(id)),
+                IconButton(tooltip: 'Unlink', icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.red), onPressed: () => setState(() => _variantIds.remove(id))),
+              ]),
+            );
+          }(),
+        Align(alignment: Alignment.centerLeft, child: OutlinedButton.icon(onPressed: _pickVariant, icon: const Icon(Icons.add_link_rounded, size: 18), label: const Text('Link a product'))),
       ],
     );
 
@@ -677,14 +757,14 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
         ? ListView(padding: const EdgeInsets.all(24), children: [
             ...notes,
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(flex: 13, child: Column(children: [basic, pricing, categorization, sizes, specs])),
+              Expanded(flex: 13, child: Column(children: [basic, pricing, categorization, variants, sizes, specs])),
               const SizedBox(width: 20),
               Expanded(flex: 7, child: Column(children: [images, organization])),
             ]),
             buttons,
             const SizedBox(height: 30),
           ])
-        : ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 30), children: [...notes, basic, images, pricing, categorization, sizes, specs, organization, buttons]);
+        : ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 30), children: [...notes, basic, images, pricing, categorization, variants, sizes, specs, organization, buttons]);
 
     return Scaffold(
       backgroundColor: wide ? W.g50 : null,
@@ -693,6 +773,80 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
           : AppBar(title: Text(_isNew ? 'Add product' : 'Edit product')),
       body: Form(key: _form, child: body),
     );
+  }
+
+  /// Pick a product to link: search name / ID / barcode in the synced list (works offline), filtered to a brand.
+  Future<void> _pickVariant() async {
+    final s = context.read<AppState>();
+    final all = s.list('products');
+    final brands = s.list('brands');
+    int? brand = _brand;
+    String q = '';
+    final picked = await showAppSheet<int>(
+      context,
+      title: 'Link a variant',
+      width: 560,
+      scrollControlled: true,
+      builder: (c) => StatefulBuilder(builder: (c, set) {
+        final words = q.trim().toLowerCase().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+        final code = q.trim().isEmpty ? null : findByCode(all, q.trim());
+        final list = all.where((x) {
+          final id = toInt(x['id']);
+          if (id == toInt(p['id']) || _variantIds.contains(id)) return false;
+          if (brand != null && toInt(x['brandId']) != brand) return false;
+          if (code != null) return id == toInt(code['id']);
+          return words.every('${x['name']} ${x['id']} ${x['sku'] ?? ''}'.toLowerCase().contains);
+        }).take(60).toList();
+        return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppField(label: 'Search', hint: 'Name, product ID or barcode', autofocus: true, prefixIcon: Icons.search_rounded, onChanged: (v) => set(() => q = v)),
+          const AppGap(),
+          AppSelect<int?>(label: 'Brand', value: brand, options: [(null, 'All brands'), for (final b in brands) (toInt(b['id']), '${b['name']}')], onChanged: (v) => set(() => brand = v)),
+          const AppGap(),
+          SizedBox(
+            height: 320,
+            child: list.isEmpty
+                ? const Center(child: Text('No products found.', style: TextStyle(color: AppColors.muted)))
+                : ListView(children: [
+                    for (final x in list)
+                      AppChoice(
+                        leading: NetImage(x['image'], size: 32, radius: 6),
+                        title: '${x['name']}',
+                        subtitle: ['#${x['id']}', ?packOf(x), money(CartLine.shelfPrice(x))].join(' · '),
+                        onTap: () => popDialog(c, toInt(x['id'])),
+                      ),
+                  ]),
+          ),
+        ]);
+      }),
+    );
+    if (picked != null && mounted) setState(() => _variantIds = [..._variantIds, picked]);
+  }
+
+  /// Fill this form from a linked variant (description, category, brand, unit, GST, specs…).
+  Future<void> _copyFrom(int id) async {
+    final s = context.read<AppState>();
+    final r = await s.api.get('/api/app/v1/products/$id');
+    if (!mounted) return;
+    final x = r.ok ? Map<String, dynamic>.from(r.data['product']) : s.list('products').where((e) => toInt(e['id']) == id).firstOrNull;
+    if (x == null) return toast(context, r.message, error: true);
+    setState(() {
+      if (_name.text.trim().isEmpty) _name.text = '${x['name'] ?? ''}';
+      if (x['description'] != null) _desc.text = '${x['description']}';
+      if (x['hsn'] != null) _hsn.text = '${x['hsn']}';
+      if (x['categoryId'] != null) _category = toInt(x['categoryId']);
+      if (x['brandId'] != null) _brand = toInt(x['brandId']);
+      _setUnit(x['unit'] as String?);
+      _gst = _num(x['gstRate'] ?? 0);
+      if (_price.text.trim().isEmpty) {
+        _price.text = _num(x['price']);
+        _sale.text = _num(x['salePrice']);
+      }
+      if (x['badgeTag'] != null) _badge = '${x['badgeTag']}';
+      if (x['itemType'] != null) _itemType = '${x['itemType']}';
+      final sp = ((x['specs'] as List?) ?? const []).cast<Map>();
+      if (sp.isNotEmpty) _specs = [for (final z in sp) _SpecRow(z)];
+    });
+    toast(context, r.ok ? 'Details copied. Change the size, price and barcode for this one.' : 'Offline — copied the basic details only.');
   }
 
   Future<void> _galleryPick() async {

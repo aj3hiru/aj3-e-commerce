@@ -68,7 +68,7 @@ class _CustomersWebState extends State<CustomersWeb> {
       onRefresh: () => s.syncNow(only: const ['customers', 'dues']),
       actions: [
         WebButton('Export', icon: LucideIcons.download, onPressed: () => exportTable(context, 'Customers', const ['Name', 'Mobile', 'Email', 'Type', 'Orders', 'Total spent', 'Due', 'Status', 'Joined'], [
-              for (final c in list) [c['name'], c['phone'], c['email'], walkIn(c) ? 'Walk-in' : 'Online', orders(c), spent(c), toDouble(c['due']), c['status'], dateShort(c['since'])],
+              for (final c in list) [c['name'], c['phone'], c['email'], walkIn(c) ? 'Store' : 'Online', orders(c), spent(c), toDouble(c['due']), c['status'], dateShort(c['since'])],
             ])),
         if (s.perms.customers) WebButton('Add Customer', icon: LucideIcons.plus, color: W.blue, onPressed: () => editCustomer(context, null)),
       ],
@@ -84,7 +84,7 @@ class _CustomersWebState extends State<CustomersWeb> {
                     _dues = 'all';
                   })),
               _KeyMetric(icon: LucideIcons.shoppingBag, color: W.blue, label: 'Online Customers', value: '${all.where((c) => !walkIn(c)).length}', sub: 'signed up on the shop', selected: _type == 'online', onTap: () => _set(() => _type = 'online')),
-              _KeyMetric(icon: LucideIcons.store, color: W.blue, label: 'Walk-in Customers', value: '${all.where(walkIn).length}', sub: 'added at the counter', selected: _type == 'offline', onTap: () => _set(() => _type = 'offline')),
+              _KeyMetric(icon: LucideIcons.store, color: W.blue, label: 'Store Customers', value: '${all.where(walkIn).length}', sub: 'added at the counter', selected: _type == 'offline', onTap: () => _set(() => _type = 'offline')),
               _KeyMetric(icon: LucideIcons.wallet, color: const Color(0xFFF59E0B), label: 'With Dues', value: '${withDue.length}', sub: '${money(withDue.fold<double>(0, (t, c) => t + toDouble(c['due'])))} outstanding', selected: _dues == 'with', onTap: () => _set(() => _dues = 'with')),
             ]),
           ]),
@@ -95,7 +95,7 @@ class _CustomersWebState extends State<CustomersWeb> {
         WebCard(
           padding: const EdgeInsets.all(14),
           child: WebGrid(columns: 5, gap: 12, minWidth: 170, children: [
-            WebSelect<String>(icon: LucideIcons.users, label: 'Customer Type', value: _type, options: const [('all', 'All customers'), ('online', 'Online'), ('offline', 'Walk-in')], onChanged: (v) => _set(() => _type = v)),
+            WebSelect<String>(icon: LucideIcons.users, label: 'Customer Type', value: _type, options: const [('all', 'All customers'), ('online', 'Online'), ('offline', 'Store')], onChanged: (v) => _set(() => _type = v)),
             WebSelect<String>(icon: LucideIcons.circleCheck, label: 'Status', value: _status, options: const [('all', 'All status'), ('active', 'Active'), ('inactive', 'Inactive')], onChanged: (v) => _set(() => _status = v)),
             WebSelect<String>(icon: LucideIcons.wallet, label: 'Dues', value: _dues, options: const [('all', 'All'), ('with', 'With dues'), ('none', 'No dues')], onChanged: (v) => _set(() => _dues = v)),
             WebSelect<String>(icon: LucideIcons.shoppingBag, label: 'Buying', value: _buying, options: const [('all', 'All'), ('buyers', 'Has ordered'), ('never', 'Never ordered')], onChanged: (v) => _set(() => _buying = v)),
@@ -135,7 +135,7 @@ class _CustomersWebState extends State<CustomersWeb> {
                       ]),
                     ]),
                     walkIn(c)
-                        ? const WebBadge('Walk-in', color: Color(0xFFB45309), bg: Color(0xFFFEF3C7))
+                        ? const WebBadge('Store', color: Color(0xFFB45309), bg: Color(0xFFFEF3C7))
                         : const WebBadge('Online', color: W.primary, bg: W.primaryLighter),
                     Text('${orders(c)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                     Text(money(spent(c)), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),

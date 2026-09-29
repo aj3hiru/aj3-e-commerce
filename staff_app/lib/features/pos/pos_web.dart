@@ -99,7 +99,7 @@ extension _PosWeb on _PosScreenState {
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('${p['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: W.g900)),
                           Text(
-                            [p['sku'] != null && '${p['sku']}'.isNotEmpty ? 'SKU: ${p['sku']}' : 'No SKU', if (p['unit'] != null && '${p['unit']}'.isNotEmpty) '${p['unit']}', if (p['stock'] != null) 'Stock: ${p['stock']}'].join(' · '),
+                            [p['sku'] != null && '${p['sku']}'.isNotEmpty ? 'SKU: ${p['sku']}' : 'No SKU', if (packOf(p) != null) packOf(p)!, if (p['stock'] != null) 'Stock: ${p['stock']}'].join(' · '),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(fontSize: 12, color: W.g400),
@@ -181,7 +181,7 @@ extension _PosWeb on _PosScreenState {
                       if (m != null) toast(context, m, error: true);
                     }),
                   ),
-                  InkWell(onTap: () => _editPrice(l), child: Text(l.unit ?? '—', style: const TextStyle(fontSize: 13, color: W.g600))),
+                  Align(alignment: Alignment.centerLeft, child: LineUnit(cart: cart, line: l, onEdit: () => _editPrice(l), style: const TextStyle(fontSize: 13, color: W.g600))),
                   Text(money(l.total), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: W.g900)),
                   IconButton(onPressed: () => cart.remove(l), icon: const Icon(LucideIcons.trash2, size: 16, color: Color(0xFFEF4444)), tooltip: 'Remove'),
                 ]),

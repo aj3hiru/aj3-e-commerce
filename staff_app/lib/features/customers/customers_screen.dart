@@ -182,7 +182,7 @@ Future<void> editCustomer(BuildContext context, Map<String, dynamic>? c) async {
         const AppGap(),
         AppField(controller: address, label: 'Address', maxLines: 2),
         const AppGap(),
-        AppSegmented<String>(options: const [('offline', 'Store customer'), ('online', 'Online')], value: type, onChanged: (v) => set(() => type = v)),
+        AppSegmented<String>(options: const [('offline', 'Store'), ('online', 'Online')], value: type, onChanged: (v) => set(() => type = v)),
       ]),
     ),
     actions: [

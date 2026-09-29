@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Award, Banknote, BadgeCheck, BadgePercent, Box, Check, ChevronRight, FastForward, Gift, Headphones, Heart, ImageIcon, Leaf, Loader2, Minus, Plus,
+  Award, Banknote, BadgeCheck, BadgePercent, Box, ChevronRight, FastForward, Gift, Headphones, Heart, ImageIcon, Leaf, Loader2, Minus, Plus,
   PackageCheck, RotateCcw, Share2, ShieldCheck, ShoppingCart, Star, Tag, Timer, Truck, User, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -472,8 +472,8 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
                 <span className="text-[12px] text-[#8b8ba3]">{d.rating.count} Ratings, {d.rating.withText} Reviews</span>
               </a>
             )}
-            {d.product.unit && d.sizes.length === 0 && (
-              <p className="mt-2.5 text-[14px] text-[#616173]">Unit: <b className="font-semibold text-[#353543]">{d.product.unit}</b></p>
+            {d.product.pack && d.sizes.length === 0 && d.variants.length === 0 && (
+              <p className="mt-2.5 text-[14px] text-[#616173]">{d.product.pack.match(/^\d/) ? "Quantity" : "Unit"}: <b className="font-semibold text-[#353543]">{d.product.pack}</b></p>
             )}
           </div>
         );
@@ -495,37 +495,33 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
             </div>
           </div>
         ) : null;
-        if (d.sizes.length === 0) return specsCard;
-        // Cards with price when sizes cost differently; simple pills when they don't.
-        const priced = cfg.sizes.showPrice && d.sizes.some((x) => x.final !== d.sizes[0].final || x.mrp !== d.sizes[0].mrp);
+        if (d.sizes.length === 0 && d.variants.length === 0) return specsCard;
+        const current = d.variants.find((v) => v.current);
+        const selected = size?.label ?? current?.label ?? null;
         return (
           <>
           <div className="px-4 pb-5 pt-5">
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="text-[18px] font-semibold leading-6">{cfg.sizes.title}</h2>
-              {size && <span className="truncate text-[13px] text-[#8b8ba3]">Selected: <b className="font-semibold text-[#353543]">{size.label}</b></span>}
+              {selected && <span className="truncate text-[13px] text-[#8b8ba3]">Selected: <b className="font-semibold text-[#353543]">{selected}</b></span>}
             </div>
-            <div className={cn("mt-4", priced ? "grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2.5" : "flex flex-wrap gap-2.5")}>
-              {d.sizes.map((z) => {
-                const on = z.id === sizeId, no = z.stock === "out";
-                return (
-                  <button key={z.id} type="button" onClick={() => setSizeId(z.id)} aria-pressed={on}
-                    className={cn("relative border text-center transition active:scale-[0.97]",
-                      priced ? "flex flex-col items-center gap-0.5 rounded-xl px-2 py-2.5" : "h-9 min-w-[64px] rounded-full px-4",
-                      on ? "border-[1.5px] border-[var(--hp-accent)] shadow-[0_2px_10px_-4px_var(--hp-accent)]" : "border-[#dcdce6] hover:border-[#b9b9c9]",
-                      no && "border-dashed")}
-                    style={on ? { background: "color-mix(in srgb, var(--hp-accent) 7%, white)" } : undefined}>
-                    <span className={cn("block truncate text-[14px] font-semibold leading-5", on ? "text-[var(--hp-accent)]" : "text-[#353543]", no && "text-[#b8b8c8]")}>{z.label}</span>
-                    {priced && <>
-                      <span className={cn("text-[14px] font-bold leading-5", no ? "text-[#b8b8c8]" : "text-[#353543]")}>{rupees(z.final)}</span>
-                      {z.discountPct > 0 && !no && <span className="text-[11px] leading-4 text-[#8b8ba3]"><s>{rupees(z.mrp)}</s> <span className="font-semibold text-[#038d63]">{z.discountPct}% off</span></span>}
-                    </>}
-                    {no && <span className={cn("block text-[10.5px] font-medium leading-4 text-[#e5485f]", !priced && "absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-1")}>Out of stock</span>}
-                    {on && priced && <Check className="absolute right-1.5 top-1.5 h-3.5 w-3.5 text-[var(--hp-accent)]" strokeWidth={3} />}
-                  </button>
-                );
-              })}
-            </div>
+            {/* Linked variants are separate products — each card opens that product's page. */}
+            {d.variants.length > 0 && (
+              <div className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2 shop:grid-cols-[repeat(auto-fill,minmax(104px,1fr))]">
+                {d.variants.map((v) => (
+                  <PackCard key={v.id} label={v.label} mrp={v.mrp} final={v.final} off={v.discountPct} out={v.stock === "out"} on={v.current}
+                    showPrice={cfg.sizes.showPrice} href={v.current ? undefined : `/product?slug=${encodeURIComponent(v.slug)}`} />
+                ))}
+              </div>
+            )}
+            {d.sizes.length > 0 && (
+              <div className={cn("grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-2 shop:grid-cols-[repeat(auto-fill,minmax(104px,1fr))]", d.variants.length > 0 ? "mt-2.5" : "mt-3")}>
+                {d.sizes.map((z) => (
+                  <PackCard key={z.id} label={z.label} mrp={z.mrp} final={z.final} off={z.discountPct} out={z.stock === "out"} on={z.id === sizeId}
+                    showPrice={cfg.sizes.showPrice} onClick={() => setSizeId(z.id)} />
+                ))}
+              </div>
+            )}
           </div>
           {specsCard}
           </>
@@ -617,4 +613,35 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
       {toast}
     </div>
   );
+}
+
+/**
+ * One size / variant: size on top, then MRP with % off, then the price —
+ * compact like Amazon's size tiles. A variant (another product) is a link.
+ */
+function PackCard({ label, mrp, final, off, out, on, showPrice, href, onClick }: {
+  label: string; mrp: number; final: number; off: number; out: boolean; on: boolean; showPrice: boolean; href?: string; onClick?: () => void;
+}) {
+  const cls = cn(
+    "relative flex min-w-0 flex-col items-start rounded-lg border px-2.5 py-1.5 text-left transition active:scale-[0.98]",
+    on ? "border-[1.5px] border-[var(--hp-accent)]" : "border-[#dcdce6] hover:border-[#9d9db0]",
+    out && "border-dashed",
+  );
+  const style = on ? { background: "color-mix(in srgb, var(--hp-accent) 7%, white)" } : undefined;
+  const body = (
+    <>
+      <span className={cn("w-full truncate text-[13px] font-semibold leading-5", on ? "text-[var(--hp-accent)]" : "text-[#353543]", out && "text-[#b8b8c8]")}>{label}</span>
+      {showPrice && (
+        <>
+          <span className="flex h-4 w-full items-baseline gap-1 truncate text-[11px] leading-4">
+            {off > 0 ? <><s className="text-[#8b8ba3]">{rupees(mrp)}</s><span className="font-semibold text-[#038d63]">{off}% off</span></> : <span className="text-[#8b8ba3]">MRP</span>}
+          </span>
+          <span className={cn("text-[14px] font-bold leading-5", out ? "text-[#b8b8c8]" : "text-[#353543]")}>{rupees(final)}</span>
+        </>
+      )}
+      {out && <span className="text-[10.5px] font-medium leading-4 text-[#e5485f]">Out of stock</span>}
+    </>
+  );
+  if (href) return <Link href={href} className={cls} style={style} prefetch={false}>{body}</Link>;
+  return <button type="button" onClick={onClick} aria-pressed={on} className={cls} style={style}>{body}</button>;
 }

@@ -8,6 +8,7 @@ import { ADD2_GROUPS, ADD2_PREF_KEY, ADD2_STANDALONE } from "@/components/admin/
 import { DashboardWidgetPrefsProvider } from "@/hooks/useDashboardWidgetPrefs";
 import { getAdminSession, hasPermission } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
+import { variantsOf } from "@/lib/product-variants";
 
 /**
  * Pages that open Edit Product 2 and want to be returned to after saving.
@@ -77,7 +78,7 @@ export default async function AddProduct2Page({ searchParams }: AddProduct2PageP
 
   type Found = {
     id: number; name: string; slug: string; sku: string | null; hsnCode: string | null; barcode: string | null; description: string | null;
-    categoryId: number | null; subcategoryId: number | null; brandId: number | null; unit: string | null; productType: string;
+    categoryId: number | null; subcategoryId: number | null; brandId: number | null; unit: string | null; quantity: unknown; productType: string;
     price: unknown; salePrice: unknown; gstRate: unknown; stockQty: number | null; image: string | null; badgeTag: string; itemType: string;
     status: string; downloadLink: string | null; licenseKey: string | null; affiliateUrl: string | null; isCampaign: boolean;
     campaignPrice: unknown; showOnHome: boolean; images: { id: number; image: string }[];
@@ -87,17 +88,19 @@ export default async function AddProduct2Page({ searchParams }: AddProduct2PageP
   };
   const f = found as Found | null;
   const optNum = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  const variants = f ? (await variantsOf(f.id)).filter((v) => v.id !== f.id) : [];
 
   const product: AP2Product | null = f
     ? {
         id: f.id, name: f.name, slug: f.slug, sku: f.sku, hsnCode: f.hsnCode, barcode: f.barcode, description: f.description,
-        categoryId: f.categoryId, subcategoryId: f.subcategoryId, brandId: f.brandId, unit: f.unit, productType: f.productType,
+        categoryId: f.categoryId, subcategoryId: f.subcategoryId, brandId: f.brandId, unit: f.unit, quantity: optNum(f.quantity), productType: f.productType,
         price: Number(f.price), salePrice: optNum(f.salePrice), gstRate: Number(f.gstRate), stockQty: f.stockQty, image: f.image,
         badgeTag: f.badgeTag, itemType: f.itemType, status: f.status, downloadLink: f.downloadLink, licenseKey: f.licenseKey,
         affiliateUrl: f.affiliateUrl, isCampaign: f.isCampaign, campaignPrice: optNum(f.campaignPrice), showOnHome: f.showOnHome,
         gallery: f.images,
         sizes: f.sizes.map((z) => ({ label: z.label, mrp: Number(z.mrp), price: optNum(z.price), stockQty: z.stockQty, isDefault: z.isDefault })),
         specs: f.specs,
+        variants,
       }
     : null;
 

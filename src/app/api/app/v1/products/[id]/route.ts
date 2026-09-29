@@ -4,6 +4,7 @@ import { appSession } from "@/lib/app-api";
 import { hasPermission } from "@/lib/admin-auth";
 import { logActivity } from "@/lib/activity-log";
 import { withApiErrors } from "@/lib/api-errors";
+import { variantsOf } from "@/lib/product-variants";
 
 /**
  * Quick product edit from the staff app: only the fields sent are changed
@@ -55,6 +56,11 @@ async function handlePATCH(req: NextRequest, { params }: { params: Promise<{ id:
   if (b.stockAdd !== undefined && cur.productType === "physical") {
     const q = Number(b.stockAdd); if (!Number.isInteger(q) || q < 0 || q > 1_000_000) return bad("Enter how many were received.", "stock"); data.stockQty = { increment: q };
   }
+  if (b.quantity !== undefined) {
+    const q = b.quantity === null || b.quantity === "" ? null : Number(b.quantity);
+    if (q !== null && (!Number.isFinite(q) || q <= 0 || q > 9999999)) return bad("Enter a valid quantity, e.g. 1 or 250.", "quantity");
+    data.quantity = q;
+  }
   if (b.status !== undefined) data.status = b.status === "inactive" ? "inactive" : "active";
   for (const [k, col, model] of [["categoryId", "categoryId", "ecomCategory"], ["brandId", "brandId", "ecomBrand"]] as const) {
     if (b[k] === undefined) continue;
@@ -92,17 +98,19 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ id: 
     : null;
   if (!p) return NextResponse.json({ success: false, message: "This product no longer exists." }, { status: 404 });
   const n = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  const variants = (await variantsOf(p.id)).filter((v) => v.id !== p.id);
   return NextResponse.json({
     success: true,
     product: {
       id: p.id, name: p.name, slug: p.slug, sku: p.sku, hsn: p.hsnCode, barcode: p.barcode, description: p.description,
-      categoryId: p.categoryId, brandId: p.brandId, unit: p.unit, type: p.productType, price: n(p.price), salePrice: n(p.salePrice),
+      categoryId: p.categoryId, brandId: p.brandId, unit: p.unit, quantity: n(p.quantity), type: p.productType, price: n(p.price), salePrice: n(p.salePrice),
       gstRate: n(p.gstRate), stock: p.stockQty, status: p.status, badgeTag: p.badgeTag, itemType: p.itemType,
       showOnHome: p.showOnHome, isCampaign: p.isCampaign, campaignPrice: n(p.campaignPrice), image: p.image,
       downloadLink: p.downloadLink, licenseKey: p.licenseKey, affiliateUrl: p.affiliateUrl,
       gallery: p.images.map((g) => ({ id: g.id, image: g.image })),
       sizes: p.sizes.map((z) => ({ label: z.label, mrp: n(z.mrp), price: n(z.price), stock: z.stockQty, isDefault: z.isDefault })),
       specs: p.specs.map((x) => ({ name: x.name, value: x.value })),
+      variantIds: variants.map((v) => v.id),
     },
   });
 }

@@ -46,7 +46,7 @@ export default async function Billing2Page({ searchParams }: Billing2PageProps) 
       orderBy: { name: "asc" },
       select: {
         id: true, name: true, sku: true, barcode: true, price: true, salePrice: true,
-        gstRate: true, stockQty: true, productType: true, categoryId: true, subcategoryId: true, unit: true, image: true, brandId: true,
+        gstRate: true, stockQty: true, productType: true, categoryId: true, subcategoryId: true, unit: true, image: true, brandId: true, quantity: true, variantGroup: true,
       },
     }),
     prisma.ecomCoupon.findMany({
@@ -103,6 +103,7 @@ export default async function Billing2Page({ searchParams }: Billing2PageProps) 
           price: Number(p.price), salePrice: campaign.get(p.id) ?? (p.salePrice ? Number(p.salePrice) : null),
           gstRate: Number(p.gstRate), stockQty: p.stockQty, productType: p.productType,
           categoryId: p.categoryId, subcategoryId: p.subcategoryId, unit: p.unit, image: p.image,
+          quantity: p.quantity === null ? null : Number(p.quantity), variantGroup: p.variantGroup,
         }))}
         allCoupons={coupons.map((c: (typeof coupons)[number]) => ({
           code: c.code, discountType: c.discountType as "percentage" | "fixed",

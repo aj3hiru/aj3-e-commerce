@@ -43,6 +43,7 @@ import '../products/product_edit_screen.dart';
 import '../staff/staff_screen.dart';
 import '../web/web_page.dart';
 import 'menu.dart';
+import '../agent/agent_app.dart';
 
 class Section {
   final String id;
@@ -192,6 +193,9 @@ class _ShellState extends State<Shell> {
         _loginShown = false;
       });
     }
+
+    // A delivery agent on a phone gets their own simple app (Home, Orders, History, Report, Profile).
+    if (!wide && s.perms.seesMyDeliveries && !s.perms.seesOrders) return const AgentApp();
 
     final body = _pages(context);
 

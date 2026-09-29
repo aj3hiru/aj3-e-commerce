@@ -91,6 +91,7 @@ AppState _state({String role = 'admin', Map<String, dynamic>? perms}) {
       {'id': 30, 'username': 'ravi', 'name': 'Ravi Singh', 'email': 'r@x.in', 'role': 'cashier', 'roleLabel': 'Billing / Cashier', 'status': 'suspended'},
     ],
     'deliveries': [
+      {'id': 21, 'number': 'ORD0000011', 'type': 'online', 'status': 'Delivered', 'paymentStatus': 'Paid', 'paymentMethod': 'Split', 'customer': 'Rohit Mehta', 'total': 450, 'agentId': 1, 'address': 'Station Road, Narkatiaganj', 'createdAt': ago(300), 'deliveredAt': ago(30), 'items': [], 'pays': [{'method': 'UPI', 'amount': 250, 'at': ago(30)}, {'method': 'Cash', 'amount': 200, 'at': ago(30)}]},
       {'id': 16, 'number': 'ORD0000009', 'type': 'online', 'status': 'Out for Delivery', 'paymentStatus': 'Unpaid', 'paymentMethod': 'COD', 'customer': 'Sujata Kumari', 'phone': '9973007123', 'total': 500, 'subtotal': 500, 'discount': 0, 'gst': 0, 'due': 0, 'agentId': 1, 'address': 'Near Shiv Mandir, Narkatiaganj - 845455', 'createdAt': ago(95), 'items': [{'productId': 4, 'name': 'Camphor Tablets 100g', 'qty': 5, 'price': 85}]},
     ],
   };
@@ -168,6 +169,26 @@ void main() {
   testWidgets('customer profile phone', (t) => _shot(t, 'customer_profile_phone', const CustomerProfile(id: 2)));
   testWidgets('dues phone', (t) => _shot(t, 'dues_phone', const DuesScreen()));
   testWidgets('agent phone', (t) => _shot(t, 'agent_home_phone', const Shell(), state: _state(role: 'delivery_agent', perms: {'delivery': {'deliver': true}, 'dashboard_access': true})));
+  Future<void> tapTab(WidgetTester t, String label) async {
+    await t.tap(find.text(label).last);
+    for (var i = 0; i < 4; i++) {
+      await t.pump(const Duration(milliseconds: 200));
+    }
+  }
+  AppState agent() => _state(role: 'delivery_agent', perms: {'delivery': {'deliver': true}, 'dashboard_access': true});
+  testWidgets('agent orders phone', (t) => _shot(t, 'agent_orders_phone', const Shell(), state: agent(), after: (t) => tapTab(t, 'Orders')));
+  testWidgets('agent order details phone', (t) => _shot(t, 'agent_order_phone', const Shell(), state: agent(), after: (t) async {
+        await tapTab(t, 'Orders');
+        await tapTab(t, 'Sujata Kumari');
+      }));
+  testWidgets('agent deliver phone', (t) => _shot(t, 'agent_deliver_phone', const Shell(), state: agent(), after: (t) async {
+        await tapTab(t, 'Orders');
+        await tapTab(t, 'Sujata Kumari');
+        await tapTab(t, 'Deliver');
+      }));
+  testWidgets('agent history phone', (t) => _shot(t, 'agent_history_phone', const Shell(), state: agent(), after: (t) => tapTab(t, 'History')));
+  testWidgets('agent report phone', (t) => _shot(t, 'agent_report_phone', const Shell(), state: agent(), after: (t) => tapTab(t, 'Report')));
+  testWidgets('agent profile phone', (t) => _shot(t, 'agent_profile_phone', const Shell(), state: agent(), after: (t) => tapTab(t, 'Profile')));
   for (final x in ['products', 'categories', 'customers', 'dues', 'board', 'staff']) {
     testWidgets('$x web', (t) => _shot(t, '${x}_web', const Shell(), size: desktop, section: x));
   }

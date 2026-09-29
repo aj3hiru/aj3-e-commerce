@@ -93,6 +93,7 @@ const ORDER_SELECT = {
   items: { select: { productId: true, productName: true, qty: true, price: true, gstRate: true, gstAmount: true } },
   credits: { select: { amount: true, amountPaid: true, status: true } },
   events: { orderBy: { id: "desc" as const }, take: 1, select: { id: true } },
+  payments: { select: { paymentMethod: true, amount: true, createdAt: true } },
 } as const;
 
 type OrderRow = Awaited<ReturnType<typeof prisma.ecomOrder.findMany<{ select: typeof ORDER_SELECT }>>>[number];
@@ -105,6 +106,7 @@ function orderOut(o: OrderRow) {
     address: o.shippingAddress, lat: num(o.shippingLat), lng: num(o.shippingLng), agentId: o.deliveryAgentId, assignedAt: iso(o.assignedAt),
     deliveredAt: iso(o.deliveredAt), cancelReason: o.cancelReason, createdAt: o.createdAt.toISOString(), rev: o.events[0]?.id ?? 0,
     items: o.items.map((i) => ({ productId: i.productId, name: i.productName, qty: i.qty, price: Number(i.price), gstRate: Number(i.gstRate), gst: Number(i.gstAmount) })),
+    pays: o.payments.map((p) => ({ method: p.paymentMethod, amount: Number(p.amount), at: p.createdAt.toISOString() })),
   };
 }
 
@@ -145,9 +147,9 @@ const DEPS: Record<SetName, string[]> = {
   brands: ["EcomBrand"],
   customers: ["EcomCustomer", "EcomCredit", "EcomCreditPayment", "EcomOrder"],
   coupons: ["EcomCoupon"],
-  orders: ["EcomOrder", "EcomOrderItem", "EcomOrderEvent", "EcomCredit", "EcomCreditPayment", "EcomCustomer"],
+  orders: ["EcomOrder", "EcomOrderItem", "EcomOrderEvent", "EcomOrderPayment", "EcomCredit", "EcomCreditPayment", "EcomCustomer"],
   dues: ["EcomCredit", "EcomCreditPayment"],
-  deliveries: ["EcomOrder", "EcomOrderItem", "EcomOrderEvent", "EcomCustomer"],
+  deliveries: ["EcomOrder", "EcomOrderItem", "EcomOrderEvent", "EcomOrderPayment", "EcomCustomer"],
   agents: ["User"],
   staff: ["User"],
 };

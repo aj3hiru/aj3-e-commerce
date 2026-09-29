@@ -61,7 +61,7 @@ export async function changeOrderStatus(orderId: number, to: string, actor: Acto
   return result;
 }
 
-export async function changePaymentStatus(orderId: number, to: string, actor: Actor, opts: { method?: string; note?: string } = {}) {
+export async function changePaymentStatus(orderId: number, to: string, actor: Actor, opts: { method?: string; note?: string; split?: { method: string; amount: number }[] } = {}) {
   if (!isPaymentStatus(to)) throw new WorkflowError("Unknown payment status.");
   const blocked = await paymentChangeBlocked(prisma, orderId);
   if (blocked) throw new WorkflowError(blocked);
@@ -72,7 +72,8 @@ export async function changePaymentStatus(orderId: number, to: string, actor: Ac
     if (isOrderLocked(o.orderStatus)) throw new WorkflowError("This order is already Delivered and can't be changed.");
     await tx.ecomOrder.update({ where: { id: orderId }, data: { paymentStatus: to, paidAmount: to === "Paid" ? o.totalAmount : 0 } });
     // A collected payment is recorded with how it was paid (cash / UPI), for the day's cash report.
-    if (to === "Paid" && opts.method) await tx.ecomOrderPayment.create({ data: { orderId, paymentMethod: opts.method, amount: o.totalAmount } });
+    if (to === "Paid" && opts.split?.length) await tx.ecomOrderPayment.createMany({ data: opts.split.map((x) => ({ orderId, paymentMethod: x.method, amount: x.amount })) });
+    else if (to === "Paid" && opts.method) await tx.ecomOrderPayment.create({ data: { orderId, paymentMethod: opts.method, amount: o.totalAmount } });
     if (to === "Unpaid") await tx.ecomOrderPayment.deleteMany({ where: { orderId } });
     await logOrderEvent(tx, orderId, actor, "payment", o.paymentStatus, to, opts.method ? `Collected by ${opts.method}${opts.note ? ` — ${opts.note}` : ""}` : opts.note);
     return to;

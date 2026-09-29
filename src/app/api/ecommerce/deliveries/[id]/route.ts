@@ -9,6 +9,7 @@ import { withApiErrors } from "@/lib/api-errors";
  *   start   — picked up: In Progress → Out for Delivery
  *   collect — payment received (Cash / UPI…) → Paid
  *   deliver — Delivered (only after the payment is Paid)
+ *   complete — collect the payment (split across Cash / UPI / Other) and mark Delivered in one step
  *   fail    — couldn't deliver now: back to In Progress with the reason (retry later)
  *   cancel  — cancel the order with a reason (refused, not answering, damaged…)
  */
@@ -16,7 +17,7 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await getAdminSession();
   if (!session || !session.permissions.delivery?.deliver) return NextResponse.json({ success: false, message: "Access Denied" }, { status: 403 });
   const orderId = Number((await params).id);
-  const order = Number.isInteger(orderId) ? await prisma.ecomOrder.findUnique({ where: { id: orderId }, select: { deliveryAgentId: true, orderStatus: true, paymentStatus: true } }) : null;
+  const order = Number.isInteger(orderId) ? await prisma.ecomOrder.findUnique({ where: { id: orderId }, select: { deliveryAgentId: true, orderStatus: true, paymentStatus: true, totalAmount: true } }) : null;
   if (!order || order.deliveryAgentId !== session.userId) return NextResponse.json({ success: false, message: "This order isn't assigned to you." }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
@@ -32,6 +33,21 @@ async function handlePOST(req: NextRequest, { params }: { params: Promise<{ id: 
         const method = ["Cash", "UPI", "Card", "Other"].includes(body.method) ? body.method : "Cash";
         await changePaymentStatus(orderId, "Paid", actor, { method });
         return NextResponse.json({ success: true, message: `Payment collected (${method}).` });
+      }
+      case "complete": {
+        if (!["In Progress", "Out for Delivery"].includes(order.orderStatus)) throw new WorkflowError(`This order is ${order.orderStatus}.`);
+        if (order.paymentStatus !== "Paid") {
+          const rows = (Array.isArray(body.payments) ? body.payments : [])
+            .map((p: { method?: unknown; amount?: unknown }) => ({ method: ["Cash", "UPI", "Card", "Other"].includes(String(p.method)) ? String(p.method) : "Other", amount: Math.round(Number(p.amount) * 100) / 100 }))
+            .filter((p: { amount: number }) => Number.isFinite(p.amount) && p.amount > 0);
+          const sum = rows.reduce((n: number, p: { amount: number }) => n + p.amount, 0);
+          const total = Number(order.totalAmount);
+          if (!rows.length) throw new WorkflowError("Enter how much you collected.");
+          if (Math.abs(sum - total) > 0.5) throw new WorkflowError(`Collected ₹${sum.toFixed(2)} but the order is ₹${total.toFixed(2)}. The amounts must add up to the order total.`);
+          await changePaymentStatus(orderId, "Paid", actor, { method: rows.length === 1 ? rows[0].method : "Split", split: rows });
+        }
+        await changeOrderStatus(orderId, "Delivered", actor, { note: note || undefined });
+        return NextResponse.json({ success: true, message: "Delivered. Great job!" });
       }
       case "deliver":
         await changeOrderStatus(orderId, "Delivered", actor);

@@ -1,3 +1,4 @@
+import { autoLinkStoreRecords } from "@/lib/customer-link";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
@@ -72,7 +73,9 @@ async function handlePOST(req: NextRequest) {
     }
 
     await clearAttempts(identity);
-    await setCustomerSessionCookie(customer.id, customer.password);
+    // Store bills made with this mobile number join the account automatically.
+    const id = await autoLinkStoreRecords(customer.id);
+    await setCustomerSessionCookie(id, customer.password);
 
     return NextResponse.json({ success: true, redirect: safeRedirect(redirect) ?? "/account" });
   }

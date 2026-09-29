@@ -6,6 +6,7 @@ import { verifyFirebasePhoneToken } from "@/lib/firebase-token";
 import { findCustomerByPhone } from "@/lib/customer-phone";
 import { setCustomerSessionCookie } from "@/lib/session-cookies";
 import { withApiErrors } from "@/lib/api-errors";
+import { autoLinkStoreRecords } from "@/lib/customer-link";
 
 /**
  * Mobile OTP login / sign-up. The browser verifies the OTP with Firebase and
@@ -37,7 +38,9 @@ async function handlePOST(req: NextRequest) {
     created = true;
   }
 
-  await setCustomerSessionCookie(customer.id, customer.password);
+  // A verified mobile: any other record with it (store customer) joins this one.
+  const id = await autoLinkStoreRecords(customer.id);
+  await setCustomerSessionCookie(id, customer.password);
   const needsProfile = created || !customer.name.trim();
   const redirect = needsProfile ? `/account?setup=1${next ? `&next=${encodeURIComponent(next)}` : ""}` : next ?? "/account";
   return NextResponse.json({ success: true, created, redirect });

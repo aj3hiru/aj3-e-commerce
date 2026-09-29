@@ -3,8 +3,8 @@ import { customersWithPhone, hasLogin } from "@/lib/customer-phone";
 
 /**
  * A customer made at the store counter and an online account with the same
- * mobile number are the same person only when staff say so (without a verified
- * mobile OTP, anyone could type someone else's number). Linking makes them one
+ * mobile number are linked automatically (sign-up, login — autoLinkStoreRecords)
+ * or by staff from the customer page. Linking makes them one
  * customer: the store customer's record is kept (the billing screen and staff
  * app already know it), it takes the online login, and everything of the
  * online account moves into it.
@@ -61,4 +61,23 @@ export async function linkCustomers(aId: number, bId: number): Promise<number> {
     });
     return store.id;
   });
+}
+
+/**
+ * Automatic linking (the store owner's choice, 2026-09-29: no mobile verification): an online account takes
+ * in every store customer with its mobile number. Returns the id the customer now has (the store record is
+ * kept, so the session must be set for this id). Never throws — a failed link just leaves them separate.
+ */
+export async function autoLinkStoreRecords(customerId: number): Promise<number> {
+  let id = customerId;
+  try {
+    const me = await prisma.ecomCustomer.findUnique({ where: { id } });
+    if (!me?.phone || !hasLogin(me)) return id;
+    for (const store of (await customersWithPhone(me.phone)).filter((c) => c.id !== id && !hasLogin(c))) {
+      id = await linkCustomers(id, store.id);
+    }
+  } catch (e) {
+    console.error("auto-link failed", e);
+  }
+  return id;
 }

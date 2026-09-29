@@ -38,7 +38,7 @@ export default async function OrderPage({ searchParams }: OrderPageProps) {
             : orders.map((o) => <OrderCard key={o.id} o={o} />)}
           {!orders.some((o) => o.store) && (
             <p className="px-4 py-4 text-center text-[12.5px] leading-[18px] text-[#8b8ba3]">
-              Also buy at our store? Show this mobile number at the counter — we&rsquo;ll add your store bills here.
+              Also buy at our store? Give this mobile number at the counter — those bills show here automatically.
             </p>
           )}
         </Page>

@@ -1,0 +1,59 @@
+# Builds the Windows desktop app (desktop/ — Tauri v2) and publishes the installers
+# as a GitHub Release "desktop-app-v<version>". Staff-app releases stay the
+# "latest" release (the website reads that one for the staff app).
+name: Desktop app (Windows)
+
+on:
+  push:
+    branches: [main]
+    paths: ["desktop/**", ".github/workflows/desktop-app.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults: { run: { working-directory: desktop } }
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: "desktop/src-tauri -> target" }
+      - id: v
+        shell: pwsh
+        run: |
+          $v = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          "version=$v" >> $env:GITHUB_OUTPUT
+      - run: npm install --no-audit --no-fund
+      - run: npx tauri build
+      - name: Name the installers and write checksums
+        shell: pwsh
+        run: |
+          $v = "${{ steps.v.outputs.version }}"
+          New-Item -ItemType Directory -Force out | Out-Null
+          Copy-Item (Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | Select-Object -First 1).FullName "out/SriAndalAdmin-$v-setup.exe"
+          Copy-Item (Get-ChildItem src-tauri/target/release/bundle/msi/*.msi | Select-Object -First 1).FullName "out/SriAndalAdmin-$v.msi"
+          Get-ChildItem out | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content out/SHA256SUMS.txt
+          Get-Content out/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with: { name: windows-desktop, path: desktop/out/* }
+
+  release:
+    needs: windows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: windows-desktop, path: out }
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-app-v${{ needs.windows.outputs.version }}
+          name: Sri Andal Admin (Windows) ${{ needs.windows.outputs.version }}
+          body: "Windows desktop app for the admin — installer (.exe) or .msi. SHA-256 checksums in SHA256SUMS.txt. Build ${{ github.run_number }}."
+          files: out/*
+          make_latest: false

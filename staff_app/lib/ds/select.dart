@@ -218,9 +218,8 @@ class _DSelectState<T> extends State<DSelect<T>> {
               onExit: (_) => setState(() => _hover = false),
               child: GestureDetector(
                 onTap: () => open ? _close() : _open(),
-                child: AnimatedContainer(
+                child: Container(
                   key: _fieldKey,
-                  duration: DS.fast,
                   height: widget.small ? DS.controlHSm : DS.controlH,
                   padding: const EdgeInsets.symmetric(horizontal: 10),
                   decoration: BoxDecoration(

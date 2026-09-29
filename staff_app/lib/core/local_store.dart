@@ -93,12 +93,15 @@ class LocalStore {
   /// Sign-out: forget this user's data (the outbox is kept only if it still has unsent work).
   Future<void> clearData({bool keepOutbox = false}) async {
     if (!_ready) return _memory.clear();
-    _cache.removeWhere((k, _) => !(keepOutbox && k == 'outbox'));
+    _cache.removeWhere((k, _) => !(keepOutbox && k == 'outbox') && !k.startsWith('outbox_parked') && k != 'device');
     for (final w in _writing.values.toList()) {
       await w;
     }
     for (final f in _dir.listSync().whereType<File>()) {
-      if (keepOutbox && f.path.endsWith('outbox.json')) continue;
+      final n = f.uri.pathSegments.last;
+      if (keepOutbox && n == 'outbox.json') continue;
+      // Never deleted: another person's changes waiting to be sent, and this computer's id.
+      if (n.startsWith('outbox_parked') || n == 'device.json') continue;
       await f.delete();
     }
   }

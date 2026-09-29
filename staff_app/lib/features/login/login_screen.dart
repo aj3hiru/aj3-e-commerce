@@ -18,15 +18,33 @@ class _LoginScreenState extends State<LoginScreen> {
   final _id = TextEditingController();
   final _pw = TextEditingController();
   late final _server = TextEditingController(text: context.read<AppState>().api.server);
-  bool _busy = false, _show = false, _advanced = false;
+  bool _busy = false, _show = false, _advanced = false, _remember = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    final u = context.read<AppState>().user;
+    final s = context.read<AppState>();
+    final u = s.user;
     if (u != null) _id.text = u['username'] ?? '';
+    // Remember me: username and password saved on this computer fill in by themselves.
+    s.rememberedLogin().then((v) {
+      if (v == null || !mounted) return;
+      setState(() {
+        _id.text = v.$1;
+        _pw.text = v.$2;
+      });
+    });
   }
+
+  Widget _rememberBox(Color color) => InkWell(
+        onTap: () => setState(() => _remember = !_remember),
+        child: Row(children: [
+          SizedBox(width: 24, height: 24, child: Checkbox(value: _remember, activeColor: color, onChanged: (v) => setState(() => _remember = v ?? true))),
+          const SizedBox(width: 8),
+          const Text('Remember me', style: TextStyle(fontSize: 13.5, color: Color(0xFF4B5563))),
+        ]),
+      );
 
   Future<void> _submit() async {
     if (_id.text.trim().isEmpty || _pw.text.isEmpty) {
@@ -37,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _busy = true;
       _error = null;
     });
-    final err = await context.read<AppState>().login(_id.text, _pw.text, server: _advanced ? _server.text : null);
+    final err = await context.read<AppState>().login(_id.text, _pw.text, server: _advanced ? _server.text : null, remember: _remember);
     if (!mounted) return;
     setState(() {
       _busy = false;
@@ -62,6 +80,8 @@ class _LoginScreenState extends State<LoginScreen> {
           decoration: InputDecoration(labelText: 'Password', prefixIcon: const Icon(Icons.lock_outline),
               suffixIcon: IconButton(icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined), onPressed: () => setState(() => _show = !_show))),
         ),
+        const SizedBox(height: 10),
+        _rememberBox(AppColors.primary),
         if (_error != null) ...[
           const SizedBox(height: 14),
           Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.redSoft, borderRadius: BorderRadius.circular(10)),
@@ -143,6 +163,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     autofillHints: const [AutofillHints.password],
                     decoration: box(suffix: IconButton(icon: Icon(_show ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 19, color: const Color(0xFF6B7280)), onPressed: () => setState(() => _show = !_show))),
                   ),
+                  const SizedBox(height: 12),
+                  _rememberBox(magenta),
                   if (_error != null) ...[
                     const SizedBox(height: 14),
                     Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFFEF2F2), borderRadius: BorderRadius.circular(4), border: Border.all(color: const Color(0xFFFECACA))),

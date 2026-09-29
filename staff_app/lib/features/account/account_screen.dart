@@ -22,9 +22,9 @@ class AccountScreen extends StatelessWidget {
     final u = s.user ?? {};
     Future<void> logout() async {
       final msg = s.pending > 0
-          ? '${s.pending} change(s) have not reached the server yet. If you log out now they will be LOST. Connect to the internet first to send them.'
+          ? '${s.pending} change(s) have not reached the server yet. They stay safe on this computer and are sent when you log in again with internet.'
           : 'You can log in again any time.';
-      if (await confirm(context, 'Log out?', msg, ok: 'Log out', danger: s.pending > 0)) s.logout();
+      if (await confirm(context, 'Log out?', msg, ok: 'Log out')) s.logout();
     }
 
     if (!isWide(context)) {

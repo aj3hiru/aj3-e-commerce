@@ -160,8 +160,7 @@ class _HoverableState extends State<_Hoverable> {
         child: GestureDetector(
           onTap: widget.onTap,
           behavior: HitTestBehavior.opaque,
-          child: AnimatedContainer(
-            duration: DS.fast,
+          child: Container(
             foregroundDecoration: BoxDecoration(color: _h ? const Color(0x08000000) : Colors.transparent, borderRadius: DS.rCard),
             child: widget.child,
           ),
@@ -478,10 +477,18 @@ class WebRangeBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, runSpacing: 6, children: [
-          Text.rich(TextSpan(children: [
-            const TextSpan(text: 'Showing: ', style: TextStyle(color: DS.muted, fontSize: DS.fBody)),
-            TextSpan(text: range.label, style: const TextStyle(color: DS.text, fontSize: DS.fBody, fontWeight: FontWeight.w600)),
-          ])),
+          // Fixed width: "Today" / "Previous Month" / a date range must not push the buttons around.
+          SizedBox(
+            width: 230,
+            child: Text.rich(
+              TextSpan(children: [
+                const TextSpan(text: 'Showing: ', style: TextStyle(color: DS.muted, fontSize: DS.fBody)),
+                TextSpan(text: range.label, style: const TextStyle(color: DS.text, fontSize: DS.fBody, fontWeight: FontWeight.w600)),
+              ]),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           const SizedBox(width: 8),
           DSegmented<String>(options: [for (final k in presets) (k, DateRange.preset(k).label)], value: presets.contains(range.key) ? range.key : '', onChanged: (k) => onChanged(DateRange.preset(k))),
           const SizedBox(width: 8),
@@ -514,7 +521,11 @@ class WebTabs extends StatelessWidget {
               decoration: BoxDecoration(border: Border(bottom: BorderSide(color: k == selected ? DS.primary : Colors.transparent, width: 2))),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 if (dot != null) ...[Container(width: 6, height: 6, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)), const SizedBox(width: 6)],
-                Text(label, style: TextStyle(fontSize: DS.fBody, fontWeight: k == selected ? FontWeight.w600 : FontWeight.w500, color: k == selected ? DS.primary : DS.text2)),
+                // Same width selected or not (the bold copy only reserves space) — tabs never shift.
+                Stack(alignment: Alignment.center, children: [
+                  Opacity(opacity: 0, child: Text(label, style: const TextStyle(fontSize: DS.fBody, fontWeight: FontWeight.w600))),
+                  Text(label, style: TextStyle(fontSize: DS.fBody, fontWeight: k == selected ? FontWeight.w600 : FontWeight.w500, color: k == selected ? DS.primary : DS.text2)),
+                ]),
                 if (counts[k] != null) ...[
                   const SizedBox(width: 6),
                   Container(
@@ -868,8 +879,7 @@ class _UserChipState extends State<_UserChip> {
         onExit: (_) => setState(() => _h = false),
         child: GestureDetector(
           onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: DS.fast,
+          child: Container(
             padding: const EdgeInsets.fromLTRB(4, 4, 10, 4),
             decoration: BoxDecoration(color: _h ? DS.hover : DS.bg, borderRadius: BorderRadius.circular(999), border: Border.all(color: DS.line)),
             child: Row(mainAxisSize: MainAxisSize.min, children: [

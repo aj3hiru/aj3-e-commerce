@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -89,6 +91,15 @@ class AppState extends ChangeNotifier {
   bool online = true;
   bool needLogin = false;
   SyncPhase phase = SyncPhase.idle;
+  /// Sync activity for small indicators only — changing it does not redraw whole pages.
+  final activity = ValueNotifier<SyncPhase>(SyncPhase.idle);
+  /// Something the pages show changed during a background sync (redraw once at the end, only then).
+  bool _changed = false;
+  void _setPhase(SyncPhase p) {
+    phase = p;
+    activity.value = p;
+  }
+
   DateTime? lastSync;
   String? lastError;
   Map<String, dynamic>? release;
@@ -98,6 +109,8 @@ class AppState extends ChangeNotifier {
   Map<String, Map<String, dynamic>> pageData = {};
   DateTime _lastPages = DateTime.fromMillisecondsSinceEpoch(0);
   bool _pagesBusy = false;
+  final Map<String, String> _rawPage = {};
+  bool _pagesChanged = false;
   String appVersion = '';
   /// First start (or after an update with new pages): everything is downloaded once, with a % shown.
   bool setupNeeded = false;
@@ -153,7 +166,10 @@ class AppState extends ChangeNotifier {
     if (m is List) menu = m.map((e) => Map<String, dynamic>.from(e)).toList();
     for (final n in kPageNames) {
       final v = await _store.read('page:$n');
-      if (v is Map && v.containsKey('data')) pageData[n] = Map<String, dynamic>.from(v);
+      if (v is Map && v.containsKey('data')) {
+        pageData[n] = Map<String, dynamic>.from(v);
+        _rawPage[n] = jsonEncode(v['data']);
+      }
     }
     _applyEffects();
     setupNeeded = signedIn && await _store.read('setup') != _setupKey;
@@ -228,25 +244,50 @@ class AppState extends ChangeNotifier {
   }
 
   // ───────────────────────────── sign in / out ─────────────────────────────
-  Future<String?> login(String identity, String password, {String? server}) async {
+  /// Saved login (Remember me): identity and password kept in the computer's secure storage.
+  Future<(String, String)?> rememberedLogin() async {
+    try {
+      final id = await _secure.read(key: 'remember_identity');
+      final pw = await _secure.read(key: 'remember_password');
+      return id == null ? null : (id, pw ?? '');
+    } catch (_) {
+      return null; // secure storage unavailable: just type it
+    }
+  }
+
+  String _loginCheck(String identity, String password) => sha256.convert(utf8.encode('${identity.trim().toLowerCase()}|$password|$deviceId')).toString();
+
+  Future<String?> login(String identity, String password, {String? server, bool remember = true}) async {
     if (server != null && server.trim().isNotEmpty) api.server = server.trim().replaceAll(RegExp(r'/+$'), '');
     api.token = null;
     final r = await api.send('POST', '/api/app/v1/login', body: {
       'identity': identity.trim(), 'password': password, 'device': deviceId, 'platform': Platform.isAndroid ? 'android' : Platform.operatingSystem,
     });
-    if (!r.ok) return r.outcome == ApiOutcome.offline ? 'No internet connection. Connect and try again.' : r.message;
-    // A different person on this device: start clean (keep only unsent work of the same person).
+    if (!r.ok && (r.outcome == ApiOutcome.offline || r.outcome == ApiOutcome.busy)) {
+      // No internet: the same person can come back in with the password that worked last time.
+      final ok = await _offlineLogin(identity, password, remember);
+      return ok ? null : 'No internet connection. Log in once with internet, or use the same username and password as last time.';
+    }
+    if (!r.ok) return r.message;
     final newUser = Map<String, dynamic>.from(r.data['user']);
-    if (user != null && user!['id'] != newUser['id']) {
+    final last = await _store.read('user');
+    final lastId = last is Map ? last['id'] : user?['id'];
+    if (lastId != null && lastId != newUser['id']) {
+      // A different person: the previous person's unsent changes are parked (never deleted) and go out when they log in again.
+      await _parkOutbox(lastId);
       await _store.clearData();
       sets = {};
       hashes = {};
       outbox = [];
       pageData = {};
+      menu = [];
     }
+    await _unparkOutbox(newUser['id']);
     api.token = r.data['token'];
     await _secure.write(key: 'token', value: api.token);
     await _secure.write(key: 'server', value: api.server);
+    await _secure.write(key: 'login_check', value: _loginCheck(identity, password));
+    await _rememberLogin(identity, password, remember);
     _setUser(newUser);
     release = r.data['release'] is Map ? Map<String, dynamic>.from(r.data['release']) : null;
     needLogin = false;
@@ -257,19 +298,61 @@ class AppState extends ChangeNotifier {
     return null;
   }
 
+  Future<void> _rememberLogin(String identity, String password, bool remember) async {
+    if (remember) {
+      await _secure.write(key: 'remember_identity', value: identity.trim());
+      await _secure.write(key: 'remember_password', value: password);
+    } else {
+      await _secure.delete(key: 'remember_identity');
+      await _secure.delete(key: 'remember_password');
+    }
+  }
+
+  Future<bool> _offlineLogin(String identity, String password, bool remember) async {
+    final check = await _secure.read(key: 'login_check');
+    final token = await _secure.read(key: 'token_parked');
+    final last = await _store.read('user');
+    if (check == null || token == null || last is! Map || check != _loginCheck(identity, password)) return false;
+    api.token = token;
+    await _secure.write(key: 'token', value: token);
+    await _rememberLogin(identity, password, remember);
+    _setUser(Map<String, dynamic>.from(last));
+    await _unparkOutbox(last['id']);
+    needLogin = false;
+    online = false;
+    notifyListeners();
+    _startLoop();
+    return true;
+  }
+
+  Future<void> _parkOutbox(Object? userId) async {
+    if (outbox.isEmpty) return;
+    final had = await _store.read('outbox_parked_$userId');
+    final list = [if (had is List) ...had, ...outbox.map((o) => o.toJson())];
+    await _store.write('outbox_parked_$userId', list);
+  }
+
+  Future<void> _unparkOutbox(Object? userId) async {
+    final had = await _store.read('outbox_parked_$userId');
+    if (had is! List || had.isEmpty) return;
+    final ids = {for (final o in outbox) o.id};
+    outbox.addAll(had.map((e) => OutboxItem.fromJson(Map<String, dynamic>.from(e))).where((o) => !ids.contains(o.id)));
+    await _saveOutbox();
+    await _store.remove('outbox_parked_$userId');
+    _applyEffects();
+  }
+
+  /// Log out: nothing is deleted — data, pages and changes not sent yet all stay on this computer,
+  /// so logging back in (even without internet) continues exactly where it was.
   Future<void> logout() async {
     _liveGen++;
     _timer?.cancel();
     _conn?.cancel();
+    await _saveOutbox();
+    if (api.token != null) await _secure.write(key: 'token_parked', value: api.token);
     await _secure.delete(key: 'token');
     api.token = null;
     user = null;
-    sets = {};
-    hashes = {};
-    outbox = [];
-    menu = [];
-    pageData = {};
-    await _store.clearData();
     notifyListeners();
   }
 
@@ -346,8 +429,12 @@ class AppState extends ChangeNotifier {
       if (online) unawaited(loadPages());
     } finally {
       _syncing = false;
-      phase = SyncPhase.idle;
-      notifyListeners();
+      _setPhase(SyncPhase.idle);
+      // Pages redraw only when something they show changed — no redraw every 20 seconds for nothing.
+      if (_changed) {
+        _changed = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -357,14 +444,14 @@ class AppState extends ChangeNotifier {
     final refresh = <String>{};
     for (final o in List<OutboxItem>.from(outbox)) {
       if (o.failed) continue;
-      phase = SyncPhase.sending;
-      notifyListeners();
+      _setPhase(SyncPhase.sending);
       final r = await _deliver(o);
       switch (r.outcome) {
         case ApiOutcome.ok:
           outbox.remove(o);
           refresh.addAll(o.refresh);
           sent++;
+          _changed = true;
           await _saveOutbox();
           online = true;
           continue;
@@ -394,17 +481,20 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> _pull({List<String>? only, bool force = false}) async {
-    phase = SyncPhase.receiving;
-    notifyListeners();
+    _setPhase(SyncPhase.receiving);
+    final wasOnline = online;
     final r = await api.send('POST', '/api/app/v1/sync', body: {'have': force ? <String, String>{} : hashes, 'only': ?only});
     if (r.outcome == ApiOutcome.offline) {
       online = false;
+      if (wasOnline) _changed = true;
       return;
     }
     if (r.outcome == ApiOutcome.unauthorized) {
       needLogin = true;
+      _changed = true;
       return;
     }
+    if (!wasOnline) _changed = true;
     if (!r.ok) {
       lastError = r.message;
       return;
@@ -433,6 +523,7 @@ class AppState extends ChangeNotifier {
       }
     }
     if (changed) {
+      _changed = true;
       _applyEffects(); // changes not sent yet stay visible
       await _store.write('sets', sets);
     }
@@ -493,7 +584,10 @@ class AppState extends ChangeNotifier {
       _lastPages = DateTime.now();
     } finally {
       _pagesBusy = false;
-      notifyListeners();
+      if (_pagesChanged) {
+        _pagesChanged = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -635,6 +729,11 @@ class AppState extends ChangeNotifier {
   Future<ApiOutcome> reloadPage(String name, {bool notify = true}) async {
     final r = await api.get('/api/app/v1/page/$name');
     if (r.ok) {
+      // Same as what is already on screen: keep it (no redraw, no disk write).
+      final raw = jsonEncode(r.data['data']);
+      if (_rawPage[name] == raw && pageData[name] != null) return ApiOutcome.ok;
+      _rawPage[name] = raw;
+      _pagesChanged = true;
       final v = {'data': r.data['data'], 'at': r.data['at'] as String? ?? DateTime.now().toUtc().toIso8601String()};
       pageData[name] = v;
       await _store.write('page:$name', v);

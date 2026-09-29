@@ -113,8 +113,7 @@ class _DButtonState extends State<DButton> {
         Text(widget.label!, style: TextStyle(fontSize: DS.fBody, fontWeight: FontWeight.w600, color: fg, height: 1)),
       ]);
     }
-    Widget box = AnimatedContainer(
-      duration: DS.fast,
+    Widget box = Container(
       height: h,
       width: iconOnly ? h : null,
       padding: iconOnly ? EdgeInsets.zero : EdgeInsets.symmetric(horizontal: widget.size == DSize.md ? 12 : 9),

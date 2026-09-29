@@ -196,21 +196,24 @@ class DSegmented<T> extends StatelessWidget {
         decoration: BoxDecoration(color: DS.hover, borderRadius: DS.r, border: Border.all(color: DS.line)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           for (final (v, l) in options)
+            // Windows-style: instant switch, no splash, and every button keeps the same width
+            // whether selected (bold) or not — so nothing beside it moves when you click.
             InkWell(
               onTap: () => onChanged(v),
               borderRadius: BorderRadius.circular(3),
-              child: AnimatedContainer(
-                duration: DS.fast,
+              splashFactory: NoSplash.splashFactory,
+              highlightColor: Colors.transparent,
+              child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 11),
                 decoration: BoxDecoration(
                   color: v == value ? DS.surface : Colors.transparent,
                   borderRadius: BorderRadius.circular(3),
                   boxShadow: v == value ? DS.cardShadow : null,
                 ),
-                child: Center(
-                  widthFactor: 1,
-                  child: Text(l, maxLines: 1, style: TextStyle(fontSize: DS.fBody, fontWeight: v == value ? FontWeight.w600 : FontWeight.w500, color: v == value ? DS.primary : DS.muted)),
-                ),
+                child: Stack(alignment: Alignment.center, children: [
+                  Opacity(opacity: 0, child: Text(l, maxLines: 1, style: const TextStyle(fontSize: DS.fBody, fontWeight: FontWeight.w600))),
+                  Text(l, maxLines: 1, style: TextStyle(fontSize: DS.fBody, fontWeight: v == value ? FontWeight.w600 : FontWeight.w500, color: v == value ? DS.primary : DS.muted)),
+                ]),
               ),
             ),
         ]),

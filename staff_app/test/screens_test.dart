@@ -19,6 +19,7 @@ import 'package:sri_staff/features/deliveries/my_deliveries_screen.dart';
 import 'package:sri_staff/features/native/catalog_pages.dart';
 import 'package:sri_staff/features/native/customizer_page.dart';
 import 'package:sri_staff/features/native/sales_pages.dart';
+import 'package:sri_staff/features/native/settings_pages.dart';
 import 'package:sri_staff/features/dues/dues_screen.dart';
 import 'package:sri_staff/features/login/login_screen.dart';
 import 'package:sri_staff/features/orders/order_detail_screen.dart';
@@ -196,6 +197,7 @@ void main() {
       {'key': 'cod', 'label': 'Cash On Delivery', 'text': '', 'isEnabled': true, 'isDefault': true, 'fields': [], 'filled': {}, 'configured': true},
       {'key': 'razorpay', 'label': 'Razorpay', 'text': '', 'isEnabled': false, 'isDefault': false, 'fields': [{'key': 'key', 'label': 'Razorpay Key'}, {'key': 'secret', 'label': 'Razorpay Secret'}], 'filled': {'key': false, 'secret': false}, 'configured': false},
     ]});
+    await _page('backups', {'at': at, 'data': [{'name': 'backup-2026-09-29.zip', 'size': 52428800, 'createdAt': at}]});
     await _page('customizer', {'at': at, 'data': {
       'canStore': true, 'unpublished': false, 'header': {'showLocation': true, 'showDeliveryInfo': true, 'deliveryLabel': "We're open", 'deliveryTimeText': '', 'searchPlaceholder': 'Search for products'},
       'store': {'headerMenu': [{'id': 'h1', 'label': 'Home', 'href': '/', 'icon': 'home', 'visibility': 'all', 'enabled': true, 'newTab': false, 'autoCategories': false, 'children': []}], 'sidebarMenu': [], 'menuDesign': {'accent': '#9f2089', 'showIcons': true, 'dividers': true}, 'push': {'showBell': true, 'autoPrompt': true}, 'footer': {'columns': []}},
@@ -290,6 +292,8 @@ void main() {
     st.setupStep = 'Product details (41 of 96)';
     await _shot(t, 'setup_desktop', const SetupScreen(), size: wideSize, state: st);
   });
+  testWidgets('native backup web', (t) => _shot(t, 'n_backup_web', const BackupPage(), size: wideSize));
+  testWidgets('native staff app web', (t) => _shot(t, 'n_staffapp_web', const StaffAppPage(), size: wideSize));
   testWidgets('native sales history web', (t) => _shot(t, 'n_sales_web', const SalesHistoryWeb(), size: wideSize, after: (t) async {
         await t.tap(find.text('This Month').first);
         await t.pump(const Duration(milliseconds: 300));

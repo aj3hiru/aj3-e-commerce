@@ -66,19 +66,6 @@ export default async function DeliveriesPage({ searchParams }: { searchParams: P
       <AdminShell {...shell} pageTitle="Deliveries Board" pageSubtitle="Who is carrying which order right now — assign new ones, follow every delivery"
         headerActions={<div className="hidden items-center gap-3 xl:flex"><DisplayOptionsPanel variant="header" /></div>}>
         {nav}
-        <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-          {[
-            ["On the road", String(onRoad.filter((o) => o.status === "Out for Delivery").length), "bg-sky-50 text-sky-700"],
-            ["Waiting for an agent", String(data.unassigned.length), "bg-amber-50 text-amber-700"],
-            ["Delivered today", String(data.agents.reduce((n, a) => n + a.deliveredToday, 0)), "bg-emerald-50 text-emerald-700"],
-            ["Cash to collect", money(onRoad.filter((o) => o.paymentStatus !== "Paid").reduce((n, o) => n + o.total, 0)), "bg-violet-50 text-violet-700"],
-          ].map(([l, v, c]) => (
-            <div key={l} className="rounded-xl border border-admin-gray-200 bg-white p-3.5 shadow-sm">
-              <p className={cn("inline-block rounded-md px-2 py-0.5 text-xs font-semibold", c)}>{l}</p>
-              <p className="mt-1.5 text-xl font-bold text-admin-gray-900">{v}</p>
-            </div>
-          ))}
-        </div>
         {onRoad.length > 0 && (
           <section className="mb-4 overflow-x-auto rounded-xl border border-admin-gray-200 bg-white shadow-sm">
             <h2 className="border-b border-admin-gray-100 px-4 py-3 text-[15px] font-semibold text-admin-gray-900">On the road now</h2>

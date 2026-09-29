@@ -14,6 +14,9 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Deploys build into a separate folder (NEXT_DIST_DIR=.next-build) and swap it in when done,
+  // so the running site never serves pages whose CSS/JS files are half rebuilt (scripts/deploy.sh).
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   async headers() {
     return [
       { source: "/:path*", headers: SECURITY_HEADERS },

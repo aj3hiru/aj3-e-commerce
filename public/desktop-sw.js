@@ -197,8 +197,20 @@ async function warm(urls) {
 
 // Pages shown from a saved copy in the last few seconds → the page asks, then refreshes from the server.
 const servedStale = new Map(); // path → time
-// The next page-data request for these paths goes to the server (the refresh right after a saved copy).
-const forceNet = new Set();
+// The next page-data request for these paths goes to the server (the refresh right after a saved copy),
+// if it comes within a few seconds.
+const forceNet = new Map(); // path → time
+function takeForce(path) {
+  const at = forceNet.get(path);
+  forceNet.delete(path);
+  return !!at && Date.now() - at < 8000;
+}
+/** Which way an answer came (seen in the app's network log; "saved" = from this computer). */
+function tag(res, src) {
+  const headers = new Headers(res.headers);
+  headers.set("x-dsk-src", src);
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+}
 
 self.addEventListener("message", (e) => {
   const d = e.data || {};
@@ -209,7 +221,7 @@ self.addEventListener("message", (e) => {
     const at = servedStale.get(d.path);
     if (at && Date.now() - at < 30_000) {
       servedStale.delete(d.path);
-      forceNet.add(d.path);
+      forceNet.set(d.path, Date.now());
       e.source && e.source.postMessage({ type: "refresh", path: d.path });
     }
   }
@@ -324,25 +336,21 @@ self.addEventListener("fetch", (e) => {
         if (res.ok && res.type === "basic") await cache.put(key, await stamp(res.clone()));
         return res;
       });
-      if (hit && !prefetch && !forceNet.has(path)) {
-        servedStale.set(path, Date.now());
-        e.waitUntil(net().catch(() => {}));
-        return hit;
-      }
-      // Not saved from this screen, but the page itself is: open the saved page directly (an error makes
-      // Next.js do a normal page load, which the page cache answers in a few milliseconds) and save this
-      // page data in the background for next time.
-      if (!hit && !prefetch && !forceNet.has(path)) {
+      const forced = !prefetch && takeForce(path); // the page's refresh right after showing a saved copy → the server
+      if (!forced && !prefetch) {
+        if (hit) { servedStale.set(path, Date.now()); return tag(hit, "saved"); }
+        // Not saved from this screen, but the page itself is: open the saved page directly (an error makes
+        // Next.js do a normal page load, which the page cache answers in a few milliseconds) and save this
+        // page data in the background for next time.
         const u = new URL(url.href); u.searchParams.delete("_rsc");
         const page = (await cache.match(pageKey(u), { ignoreVary: true })) || (await cache.match(u.origin + u.pathname, { ignoreVary: true }));
         if (page) { e.waitUntil(net().catch(() => {})); return Response.error(); }
       }
-      forceNet.delete(path);
       try {
-        return await withTimeout(net(), hit ? 2500 : NET_TIMEOUT);
+        return tag(await withTimeout(net(), hit ? 4000 : NET_TIMEOUT), "server");
       } catch (_) {
         // Nothing saved: an error makes Next.js open the page normally — from the saved page below.
-        return hit || Response.error();
+        return hit ? tag(hit, "saved") : Response.error();
       }
     })());
     return;

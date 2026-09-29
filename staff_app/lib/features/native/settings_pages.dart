@@ -646,7 +646,7 @@ class _BackupPageState extends State<BackupPage> {
         final running = _job?['status'] == 'running';
         return NativeScreen(
           title: 'Backup & Restore',
-          subtitle: 'Full copy of the database and uploaded files',
+          subtitle: 'A complete copy of your store — keep it safe, restore it any time',
           onRefresh: reload,
           actions: [NativeAction('Back up now', LucideIcons.databaseBackup, running ? null : () => _start({'action': 'backup'}, reload))],
           children: [

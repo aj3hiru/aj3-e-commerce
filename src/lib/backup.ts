@@ -154,11 +154,11 @@ async function createBackup(j: Job, prefix: string, by: string, from = 0, to = 1
   await mkdir(path.join(work, "db"), { recursive: true });
   try {
     const list = await tables();
-    log(j, `Database: ${list.length} tables`);
+    log(j, `Saving your store data (${list.length} sections)…`);
     const counts: Record<string, number> = {};
     const sums: Record<string, string> = {};
     for (const [i, t] of list.entries()) {
-      step(j, span((i / list.length) * 70), `Saving table ${t}`);
+      step(j, span((i / list.length) * 70), `Saving store data (${i + 1} of ${list.length})`);
       const file = path.join(work, "db", `${t}.jsonl`);
       const out = createWriteStream(file);
       let n = 0;
@@ -176,20 +176,20 @@ async function createBackup(j: Job, prefix: string, by: string, from = 0, to = 1
       await new Promise<void>((res, rej) => out.end((e?: Error) => (e ? rej(e) : res())));
       counts[t] = n;
       sums[`db/${t}.jsonl`] = await sha256(file);
-      log(j, `  ✓ ${t} — ${n.toLocaleString("en-IN")} row${n === 1 ? "" : "s"}`);
+      log(j, `✓ ${t.replace(/^ecom_/, "").replace(/_/g, " ")} — ${n.toLocaleString("en-IN")} record${n === 1 ? "" : "s"}`);
     }
 
     step(j, span(72), "Checking uploaded files");
     const files = await walk(UPLOADS);
     let bytes = 0;
     for (const f of files) bytes += (await stat(path.join(UPLOADS, f))).size;
-    log(j, `Uploads: ${files.length.toLocaleString("en-IN")} files (${(bytes / 1048576).toFixed(1)} MB)`);
+    log(j, `Images and files: ${files.length.toLocaleString("en-IN")} (${(bytes / 1048576).toFixed(1)} MB)`);
 
     const manifest = { format: FORMAT, version: VERSION, createdAt: new Date().toISOString(), by, site: process.env.NEXT_PUBLIC_SITE_URL ?? null, tables: counts, checksums: sums, uploads: { files: files.length, bytes } };
     await writeFile(path.join(work, "manifest.json"), JSON.stringify(manifest, null, 2));
 
     step(j, span(80), "Packing the backup file");
-    log(j, "Packing database and uploads into one file…");
+    log(j, "Putting everything into one backup file…");
     const tmp = path.join(BACKUP_DIR, `.${name}.part`);
     const args = ["-czf", tmp, "-C", work, "manifest.json", "db"];
     if (files.length) args.push("-C", path.join(process.cwd(), "public"), "uploads");
@@ -260,7 +260,7 @@ async function validate(j: Job, name: string, dir: string, from = 0, to = 100): 
     if (reason) { bad++; if (bad <= 20) log(j, `  ✗ ${p} — ${reason}`, "error"); }
   }
   if (bad) throw new Error(`${bad} unsafe or unexpected file${bad === 1 ? "" : "s"} inside.`);
-  log(j, `  ✓ ${lines.length} entries, no scripts or links (${uploads} uploaded files)`, "ok");
+  log(j, `✓ File is safe — ${uploads} images and files inside`, "ok");
 
   step(j, span(25), "Unpacking to check it");
   await mkdir(dir, { recursive: true });
@@ -268,12 +268,12 @@ async function validate(j: Job, name: string, dir: string, from = 0, to = 100): 
 
   const m = JSON.parse(await readFile(path.join(dir, "manifest.json"), "utf8").catch(() => { throw new Error("manifest.json is missing."); })) as Manifest;
   if (m.format !== FORMAT || m.version > VERSION) throw new Error("This file wasn't made by this site's Backup & Restore.");
-  log(j, `  ✓ Made on ${new Date(m.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} — ${Object.keys(m.tables).length} tables`, "ok");
+  log(j, `✓ Made on ${new Date(m.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`, "ok");
 
   const names = Object.keys(m.tables);
   for (const [i, t] of names.entries()) {
     if (!TABLE.test(t)) throw new Error(`Bad table name “${t}”.`);
-    step(j, span(35 + (i / names.length) * 60), `Checking table ${t}`);
+    step(j, span(35 + (i / names.length) * 60), `Checking store data (${i + 1} of ${names.length})`);
     const f = path.join(dir, "db", `${t}.jsonl`);
     const sum = await sha256(f).catch(() => null);
     if (!sum) throw new Error(`Table ${t} is missing.`);
@@ -283,7 +283,7 @@ async function validate(j: Job, name: string, dir: string, from = 0, to = 100): 
     if (rows.length !== m.tables[t]) throw new Error(`Table ${t}: expected ${m.tables[t]} rows, found ${rows.length}.`);
     for (const r of rows) JSON.parse(r);
   }
-  log(j, `  ✓ All ${names.length} tables match their checksums`, "ok");
+  log(j, "✓ All store data is complete and undamaged", "ok");
   step(j, span(100), "Checked");
   return m;
 }
@@ -303,15 +303,15 @@ export function startRestore(name: string, by: string): Job {
 async function restore(j: Job, name: string, dir: string, by: string) {
   const m = await validate(j, name, dir, 0, 20);
 
-  log(j, "Saving a safety backup of the site as it is now…");
+  log(j, "Saving a safety copy of the store as it is now…");
   const safety = await createBackup(j, "safety", by, 20, 45);
-  log(j, `  ✓ Safety backup: ${safety} (restore it to undo)`, "ok");
+  log(j, `✓ Safety copy saved: ${safety} (restore it to undo)`, "ok");
 
   const current = new Set(await tables());
   const names = Object.keys(m.tables);
   for (const [i, t] of names.entries()) {
-    step(j, 45 + (i / names.length) * 45, `Restoring table ${t}`);
-    if (!current.has(t)) { log(j, `  – ${t}: not in this site's database, skipped`, "warn"); continue; }
+    step(j, 45 + (i / names.length) * 45, `Restoring store data (${i + 1} of ${names.length})`);
+    if (!current.has(t)) { log(j, `– ${t.replace(/^ecom_/, "").replace(/_/g, " ")}: not used by this store any more, skipped`, "warn"); continue; }
     const rows = (await readFile(path.join(dir, "db", `${t}.jsonl`), "utf8")).split("\n").filter(Boolean).map((r) => JSON.parse(r) as Record<string, unknown>);
     const cols = new Set((await prisma.$queryRawUnsafe<{ Field: string }[]>(`SHOW COLUMNS FROM \`${t}\``)).map((c) => c.Field));
     await prisma.$transaction(async (tx) => {
@@ -326,10 +326,10 @@ async function restore(j: Job, name: string, dir: string, by: string) {
       }
       await tx.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1");
     }, { timeout: 10 * 60_000, maxWait: 60_000 });
-    log(j, `  ✓ ${t} — ${rows.length.toLocaleString("en-IN")} rows`);
+    log(j, `✓ ${t.replace(/^ecom_/, "").replace(/_/g, " ")} — ${rows.length.toLocaleString("en-IN")} records`);
   }
 
-  step(j, 92, "Restoring uploaded files");
+  step(j, 92, "Restoring images and files");
   const incoming = path.join(dir, "uploads");
   if ((await stat(incoming).catch(() => null))?.isDirectory()) {
     const old = `${UPLOADS}.before-restore`;

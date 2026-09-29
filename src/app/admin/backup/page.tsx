@@ -11,7 +11,7 @@ export default async function BackupPage() {
   if (session.role !== "admin") redirect("/admin/dashboard?denied=1");
   const [backups, run] = await Promise.all([listBackups(), Promise.resolve(currentJob())]);
   return (
-    <AdminShell siteName="EduMint24" pageTitle="Backup & Restore" pageSubtitle="Full copy of the database and uploaded files — download it, or bring the site back from one"
+    <AdminShell siteName="EduMint24" pageTitle="Backup & Restore" pageSubtitle="A complete copy of your store — download it, keep it safe, and restore it whenever you need"
       username={session.username} role={session.role} permissions={session.permissions}>
       <BackupView initial={backups} runningJob={run?.id ?? null} />
     </AdminShell>

@@ -534,6 +534,20 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
 
     final pricing = _Section(icon: LucideIcons.indianRupee, title: 'Pricing & Stock', children: [
       two(
+        AppSelect<String>(label: 'Unit', helper: 'How it is sold', value: _unit, options: [('', 'No unit'), for (final u in _units) (u, u), ('custom', 'Custom…')], onChanged: (v) => setState(() => _unit = v)),
+        tf(
+          controller: _qty,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          validator: (v) => v == null || v.trim().isEmpty ? null : ((double.tryParse(v.trim()) ?? 0) <= 0 ? 'Enter a number like 1 or 250' : null),
+          label: dec('Quantity (weight)', hint: 'e.g. 10', helper: _unitValue.isEmpty ? 'Pick the unit first' : 'e.g. 10 = 10 $_unitValue',
+              suffix: _unitValue.isEmpty ? null : Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), child: Text(_unitValue, style: const TextStyle(color: AppColors.muted)))),
+        ),
+      ),
+      if (_unit == 'custom') two(
+        tf(controller: _unitCustom, validator: req, label: dec('Custom unit', hint: 'e.g. Dozen')),
+        const SizedBox(),
+      ),
+      two(
         tf(
           controller: _price,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -562,25 +576,11 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
         ),
         AppSelect<String>(label: 'GST Rate', helper: 'Auto in bills', value: _gst, options: [for (final i in gstItems) (i.value!, (i.child as Text).data!)], onChanged: (v) => setState(() => _gst = v)),
       ),
-      two(
-        tf(
-          controller: _qty,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          validator: (v) => v == null || v.trim().isEmpty ? null : ((double.tryParse(v.trim()) ?? 0) <= 0 ? 'Enter a number like 1 or 250' : null),
-          label: dec('Quantity', hint: 'e.g. 1', helper: _unitValue.isEmpty ? 'Pick a unit below' : 'Pack size, e.g. 1 $_unitValue',
-              suffix: _unitValue.isEmpty ? null : Padding(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8), child: Text(_unitValue, style: const TextStyle(color: AppColors.muted)))),
-        ),
-        const SizedBox(),
-      ),
     ]);
 
     final categorization = _Section(icon: LucideIcons.listTree, title: 'Categorization', children: [
       AppSelect<int?>(label: 'Category', value: _category, options: [(null, 'Select category…'), for (final c in cats) (toInt(c['id']), '${c['name']}')], onChanged: (v) => setState(() => _category = v)),
       AppSelect<int?>(label: 'Brand', value: _brand, options: [(null, 'Select brand…'), for (final b in brands) (toInt(b['id']), '${b['name']}')], onChanged: (v) => setState(() => _brand = v)),
-      two(
-        AppSelect<String>(label: 'Unit', helper: 'How it is sold', value: _unit, options: [('', 'No unit'), for (final u in _units) (u, u), ('custom', 'Custom…')], onChanged: (v) => setState(() => _unit = v)),
-        _unit == 'custom' ? tf(controller: _unitCustom, validator: req, label: dec('Custom unit', hint: 'e.g. Dozen')) : const SizedBox(),
-      ),
     ]);
 
     final sizes = _Section(
@@ -657,8 +657,6 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       optional: true,
       locked: lockExtra,
       children: [
-        const Text('Link the other sizes you sell as separate products (e.g. Clinic+ 80 ml, 175 ml, 340 ml). Billing and the shop can switch between them; the link shows on every linked product.',
-            style: TextStyle(color: AppColors.muted, fontSize: 13)),
         for (final id in _variantIds)
           () {
             final v = byId[id];

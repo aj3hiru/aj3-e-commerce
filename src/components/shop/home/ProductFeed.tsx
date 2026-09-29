@@ -65,7 +65,6 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted, bar =
   const [items, setItems] = useState<FeedProduct[]>(initial.products);
   const [page, setPage] = useState(initial.page);
   const [pageCount, setPageCount] = useState(initial.pageCount);
-  const [total, setTotal] = useState(initial.total);
   const [loading, setLoading] = useState<"replace" | "more" | null>(null);
   const [error, setError] = useState(false);
   const [sheet, setSheet] = useState<null | "sort" | "category" | "brand" | "filters">(null);
@@ -85,7 +84,7 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted, bar =
     setLoading(null);
     if (!res?.success) { setError(true); return; }
     setItems((prev) => (mode === "replace" ? res.products : [...prev, ...res.products.filter((x: FeedProduct) => !prev.some((y) => y.id === x.id))]));
-    setPage(res.page); setPageCount(res.pageCount); setTotal(res.total);
+    setPage(res.page); setPageCount(res.pageCount);
   }, [q, withScope]);
 
   function apply(next: Draft) {
@@ -194,7 +193,7 @@ export function ProductFeed({ title, initial, filters, facets, wishlisted, bar =
         {loading === "more" ? <Loader2 className="mx-auto h-5 w-5 animate-spin text-[var(--hp-accent)]" />
           : error && items.length > 0 ? <button type="button" onClick={() => load(applied, page + 1, "more")} className="font-bold text-[var(--hp-accent)]">Couldn&apos;t load more — tap to retry</button>
           : page < pageCount ? <button type="button" onClick={() => load(applied, page + 1, "more")} className="font-bold text-[var(--hp-accent)]">Load more</button>
-          : items.length > 0 ? `You've seen all ${total.toLocaleString("en-IN")} products` : null}
+          : null}
       </div>
       </div>
       </div>

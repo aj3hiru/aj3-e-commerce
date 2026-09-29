@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import slugify from "slugify";
 import { cn } from "@/lib/utils";
+import { fetchWithRetry } from "@/lib/fetch-retry";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import { packLabel, variantPrices, withUnit, withoutUnit, type VariantProduct } from "@/lib/product-variants-shared";
 
@@ -70,7 +71,6 @@ const UNIT_PRESETS = ["KG", "Gram", "Liter", "ml", "cm", "Meter", "Piece"];
 const LIST_PATH = "/admin/ecommerce/products";
 /** Four fields in one row; 2 × 2 while the form shares the screen with the side column on laptops (1280–1439px). */
 const ROW4 = "grid items-start gap-4 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-2 min-[1440px]:grid-cols-4";
-const ROW5 = "grid items-start gap-4 sm:grid-cols-2 md:grid-cols-5 xl:grid-cols-3 min-[1440px]:grid-cols-5";
 const FORM_ID = "add-product2-form";
 
 const makeSlug = (s: string) => slugify(s, { lower: true, strict: true, trim: true });
@@ -432,10 +432,10 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
     removedGallery.forEach((id) => fd.append("removed_gallery_ids", String(id)));
 
     try {
-      const res = await fetch(editing ? `/api/ecommerce/products2/${product!.id}` : "/api/ecommerce/products2", {
+      const res = await fetchWithRetry(editing ? `/api/ecommerce/products2/${product!.id}` : "/api/ecommerce/products2", {
         method: editing ? "PUT" : "POST",
         body: fd,
-      });
+      }, { onRetry: () => setToast("Connection dropped for a moment — trying again…") });
       const data = await res.json().catch(() => ({ success: false, message: "Unexpected server response." }));
       if (!data.success) {
         setError({ message: data.message || "Could not save the product.", field: data.field });
@@ -461,7 +461,7 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
       setDirty(false);
       router.push(`${listPath}?success=${editing ? "updated" : "created"}&name=${encodeURIComponent(data.name)}`);
     } catch {
-      setError({ message: "Could not reach the server. Please try again." });
+      setError({ message: "The server could not be reached for 20 seconds — check the internet connection, then press Save again. Nothing was lost." });
       setSaving(null);
     }
   }
@@ -629,11 +629,31 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
           </Card>
 
           <Card icon={IndianRupee} title={isPhysical ? "Pricing & Stock" : "Pricing"}>
-            {/* Quantity · Price · Sale Price · Stock · GST in one row. */}
-            <div className={show("ap2-price", "ap2-qty") ? ROW5 : ROW4}>
+            {/* Unit, then Quantity (KG + 10 = 10 KG), then Price · Sale Price · Stock · GST. */}
+            <div className={ROW4}>
+                {show("ap2-cat", "ap2-unit") && (
+                  <Field label="Unit" hint="How it's sold" field="unit" error={fieldErr("unit")}>
+                    {/* "Custom…" swaps the list for a text box (× goes back to the list), so the row stays one line. */}
+                    {s.unitChoice === "custom" ? (
+                      <div className="relative">
+                        <input value={s.unitCustom} onChange={(e) => set("unitCustom", e.target.value)} placeholder="Type unit, e.g. Dozen" maxLength={30} autoFocus aria-label="Custom unit" className={cn(inputCls(fieldErr("unit")), "pr-9")} />
+                        <button type="button" onClick={() => setS((p) => ({ ...p, unitChoice: "", unitCustom: "" }))} title="Back to the unit list" aria-label="Back to the unit list" className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-admin-gray-400 hover:bg-admin-gray-100 hover:text-admin-gray-700">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <SelectBox value={s.unitChoice} onChange={(v) => set("unitChoice", v)}>
+                        <option value="">No unit</option>
+                        {UNIT_PRESETS.map((u) => <option key={u} value={u}>{u}</option>)}
+                        <option value="custom">Custom…</option>
+                      </SelectBox>
+                    )}
+                  </Field>
+                )}
+
               {show("ap2-price", "ap2-qty") && (
-                <Field label="Quantity" field="quantity" error={fieldErr("quantity")}
-                  hint={unitValue ? (s.quantity !== "" && Number(s.quantity) > 0 ? `= ${packLabel(s.quantity, unitValue)}` : undefined) : "Pick a unit below"} hintGood={!!unitValue && s.quantity !== ""}>
+                <Field label="Quantity (weight)" field="quantity" error={fieldErr("quantity")}
+                  hint={unitValue ? (s.quantity !== "" && Number(s.quantity) > 0 ? `= ${packLabel(s.quantity, unitValue)}` : "Weight / size") : "Pick the unit first"} hintGood={!!unitValue && s.quantity !== ""}>
                   <div className="relative">
                     <input type="number" min={0} step="any" inputMode="decimal" value={s.quantity} onChange={(e) => set("quantity", e.target.value)}
                       onWheel={(e) => (e.target as HTMLInputElement).blur()} placeholder="e.g. 1" aria-label="Pack quantity" className={cn(inputCls(fieldErr("quantity")), unitValue && "pr-16")} />
@@ -688,9 +708,9 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
               </Field>
             )}
           </Card>
-          {isVisible("ap2-cat") && (show("ap2-cat", "ap2-category") || show("ap2-cat", "ap2-brand") || show("ap2-cat", "ap2-unit")) && (
+          {isVisible("ap2-cat") && (show("ap2-cat", "ap2-category") || show("ap2-cat", "ap2-brand")) && (
             <Card icon={FolderTree} title="Categorization">
-              {/* Category · Brand · Unit in one row. */}
+              {/* Category · Brand in one row. */}
               <div className={ROW4}>
                 {show("ap2-cat", "ap2-category") && (
                   <Field label="Category" field="category_id" error={fieldErr("category_id")}>
@@ -717,25 +737,6 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
                     </SelectBox>
                   </Field>
                 )}
-                {show("ap2-cat", "ap2-unit") && (
-                  <Field label="Unit" hint="How it's sold" field="unit" error={fieldErr("unit")}>
-                    {/* "Custom…" swaps the list for a text box (× goes back to the list), so the row stays one line. */}
-                    {s.unitChoice === "custom" ? (
-                      <div className="relative">
-                        <input value={s.unitCustom} onChange={(e) => set("unitCustom", e.target.value)} placeholder="Type unit, e.g. Dozen" maxLength={30} autoFocus aria-label="Custom unit" className={cn(inputCls(fieldErr("unit")), "pr-9")} />
-                        <button type="button" onClick={() => setS((p) => ({ ...p, unitChoice: "", unitCustom: "" }))} title="Back to the unit list" aria-label="Back to the unit list" className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-admin-gray-400 hover:bg-admin-gray-100 hover:text-admin-gray-700">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ) : (
-                      <SelectBox value={s.unitChoice} onChange={(v) => set("unitChoice", v)}>
-                        <option value="">No unit</option>
-                        {UNIT_PRESETS.map((u) => <option key={u} value={u}>{u}</option>)}
-                        <option value="custom">Custom…</option>
-                      </SelectBox>
-                    )}
-                  </Field>
-                )}
               </div>
             </Card>
           )}
@@ -748,7 +749,6 @@ export function AddProduct2Form({ product, categories: initialCategories, subcat
               brands={brands}
               categories={categories}
               value={variants}
-              help={isVisible("ap2-var-help")}
               onChange={(v) => { setVariants(v); setDirty(true); }}
               onCopy={copyFrom}
             />
@@ -1330,13 +1330,12 @@ function QuickAddModal({ kind, category, onClose, onAdded }: {
  * is both ways, so every product in the group shows all the others.
  * Search by name, product ID, barcode or SKU; filtered to this brand by default.
  */
-function VariantsCard({ productId, brandId, brands, categories, value, help, onChange, onCopy }: {
+function VariantsCard({ productId, brandId, brands, categories, value, onChange, onCopy }: {
   productId: number | null;
   brandId: string;
   brands: AP2Option[];
   categories: AP2Option[];
   value: VariantProduct[];
-  help: boolean;
   onChange: (v: VariantProduct[]) => void;
   onCopy: (id: number) => Promise<void>;
 }) {
@@ -1392,11 +1391,6 @@ function VariantsCard({ productId, brandId, brands, categories, value, help, onC
   return (
     <Card icon={Layers} title="Variants" note="(optional)"
       aside={value.length > 0 ? <span className="rounded-full bg-admin-primary-lighter px-2 py-0.5 text-xs font-semibold text-admin-primary">{value.length} linked</span> : undefined}>
-      {help && (
-        <p className="-mt-1 text-[13px] text-admin-gray-500">
-          Link the other sizes of this product that you sell as separate products (e.g. Clinic+ 80 ml, 175 ml, 340 ml). Customers and billing can switch between them; the link shows on every linked product.
-        </p>
-      )}
       <div className="grid items-start gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <div className="relative" data-field="variants">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-admin-gray-400" />

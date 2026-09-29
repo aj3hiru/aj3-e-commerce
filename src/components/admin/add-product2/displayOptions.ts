@@ -41,7 +41,7 @@ export const ADD2_GROUPS: readonly WidgetGroup[] = [
   {
     group: "ap2-variants",
     groupLabel: "Variants",
-    items: [{ key: "ap2-var-help", label: "Help text" }],
+    items: [],
   },
   {
     group: "ap2-sizes",

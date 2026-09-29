@@ -15,7 +15,7 @@ import { enqueueBill, newBillRef, postJson } from "@/lib/pos-offline";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
 import type { PosProduct, PosCoupon, PosCustomer, BusinessPosSettings, PaymentRow } from "@/types/pos";
 import { cn } from "@/lib/utils";
-import { packLabel, packSortKey } from "@/lib/product-variants-shared";
+import { packLabel, packSortKey, variantLabel } from "@/lib/product-variants-shared";
 
 /** ₹1,934.30 — Indian digit grouping, always two decimals, like the mockup. */
 const fmt = (n: number) =>
@@ -853,7 +853,7 @@ function VariantPicker({ current, options, name, onPick }: { current: PosProduct
         className="h-8 w-full appearance-none rounded-md border border-[#F3B6A6] bg-[#FFF8F6] pl-2 pr-6 text-sm font-semibold text-admin-gray-900 focus:border-[#EE6A4D] focus:outline-none focus:ring-2 focus:ring-[#EE6A4D]/15"
       >
         {options.map((o) => {
-          const label = packLabel(o.quantity, o.unit) ?? o.name;
+          const label = variantLabel({ quantity: o.quantity ?? null, unit: o.unit, name: o.name });
           const out = o.productType === "physical" && o.stockQty !== null && o.stockQty <= 0;
           return (
             <option key={o.id} value={o.id} disabled={out && o.id !== current.id}>

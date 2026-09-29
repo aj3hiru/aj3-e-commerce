@@ -12,6 +12,7 @@ import { AvatarPicker } from "@/components/staff/AvatarPicker";
 import { StatusBadge, StatusPill } from "@/components/admin/ui/buttons";
 import { orderStatusVariant, paymentStatusVariant } from "@/components/admin/StatusDropdown";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
+import { CollectButton, ReceiptsButton, type DueReceipt } from "@/components/admin/due/DueActions";
 
 export interface CustomerProfileData {
   id: number;
@@ -33,7 +34,9 @@ export interface CustomerOrderRow {
   orderStatus: string;
   createdAt: string;
   orderType?: string;
-  receipts?: string[];
+  receipts?: DueReceipt[];
+  /** Still owed on this order (collect it right here). */
+  due?: { creditId: number; balance: number } | null;
 }
 
 export interface CustomerCreditRow {
@@ -167,7 +170,7 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
                 <thead>
                   <tr className="border-b border-admin-gray-200 text-left text-xs uppercase tracking-wide text-admin-gray-500 [&>th]:px-2 [&>th]:py-2.5 [&>th]:font-semibold">
                     {on("cp-cols", "cp-c-order") && <th>Order</th>}{on("cp-cols", "cp-c-date") && <th>Date</th>}{on("cp-cols", "cp-c-total") && <th className="text-right">Total</th>}
-                    {on("cp-cols", "cp-c-payment") && <th>Payment</th>}{on("cp-cols", "cp-c-status") && <th>Status</th>}{on("cp-cols", "cp-c-view") && <th />}
+                    {on("cp-cols", "cp-c-payment") && <th>Payment</th>}{on("cp-cols", "cp-c-status") && <th>Status</th>}<th>Due / Receipts</th>{on("cp-cols", "cp-c-view") && <th />}
                   </tr>
                 </thead>
                 <tbody>
@@ -180,11 +183,6 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
                             {o.orderType === "online"
                               ? <span className="rounded-[5px] bg-violet-50 px-1.5 py-0.5 text-[10.5px] font-bold uppercase text-violet-700">Online</span>
                               : <span className="rounded-[5px] bg-amber-50 px-1.5 py-0.5 text-[10.5px] font-bold uppercase text-amber-700">Store</span>}
-                            {(o.receipts ?? []).length > 0 && (
-                              <span title={(o.receipts ?? []).join(", ")} className="rounded-[5px] bg-admin-gray-100 px-1.5 py-0.5 text-[10.5px] font-semibold text-admin-gray-600">
-                                Receipts ×{(o.receipts ?? []).length}
-                              </span>
-                            )}
                           </div>
                         </td>
                       )}
@@ -192,6 +190,13 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
                       {on("cp-cols", "cp-c-total") && <td className="whitespace-nowrap text-right font-semibold text-admin-gray-900">{money(o.totalAmount)}</td>}
                       {on("cp-cols", "cp-c-payment") && <td><StatusBadge variant={paymentStatusVariant(o.paymentStatus)}>{o.paymentStatus}</StatusBadge></td>}
                       {on("cp-cols", "cp-c-status") && <td><StatusBadge variant={orderStatusVariant(o.orderStatus)}>{o.orderStatus}</StatusBadge></td>}
+                      <td>
+                        <div className="flex items-center gap-1.5">
+                          {o.due && <CollectButton creditId={o.due.creditId} balance={o.due.balance} label={o.orderNumber} onDone={(text) => setToast({ ok: true, text })} />}
+                          <ReceiptsButton receipts={o.receipts ?? []} title={o.orderNumber} />
+                          {!o.due && !(o.receipts ?? []).length && <span className="text-admin-gray-300">—</span>}
+                        </div>
+                      </td>
                       {on("cp-cols", "cp-c-view") && <td className="text-right"><Link href={`/admin/ecommerce/orders/${o.id}`} className="inline-grid h-8 w-8 place-items-center rounded-[8px] text-admin-gray-500 hover:bg-admin-gray-100" title="Open order"><Eye className="h-4 w-4" /></Link></td>}
                     </tr>
                   ))}
@@ -224,9 +229,13 @@ export function CustomerProfileView({ customer, orders, credits, totalSpent, tot
                 const balance = c.amount - c.amountPaid;
                 return (
                   <div key={c.id} className="rounded-[10px] border border-admin-gray-200 p-3.5">
-                    <div className="flex items-center justify-between gap-3 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                       <span className="font-semibold text-admin-gray-800">{c.orderNumber ?? "General due"}</span>
-                      {balance > 0.004 ? <StatusBadge variant="danger">Due {money(balance)}</StatusBadge> : <StatusBadge variant="success">Fully paid</StatusBadge>}
+                      <span className="flex items-center gap-1.5">
+                        {balance > 0.004 ? <StatusBadge variant="danger">Due {money(balance)}</StatusBadge> : <StatusBadge variant="success">Fully paid</StatusBadge>}
+                        <CollectButton creditId={c.id} balance={Math.round(balance * 100) / 100} label={c.orderNumber ?? "this due"} onDone={(text) => setToast({ ok: true, text })} />
+                        <ReceiptsButton title={c.orderNumber ?? "Due"} receipts={c.payments.filter((p) => p.receipt).map((p) => ({ receiptNumber: p.receipt!, amount: p.amount, paymentMethod: p.paymentMethod, createdAt: p.createdAt }))} />
+                      </span>
                     </div>
                     <p className="mt-0.5 text-xs text-admin-gray-500">{money(c.amount)} total · {money(c.amountPaid)} paid · {day(c.createdAt)}</p>
                     {c.payments.length > 0 && (

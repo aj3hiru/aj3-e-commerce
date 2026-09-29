@@ -5,7 +5,7 @@ import { loadLiveCampaigns } from "@/lib/campaign-pricing";
 import { priceLine, type CartProduct, type CartSize } from "@/lib/cart-lines";
 import { LOW_STOCK_LIMIT } from "@/components/admin/products2/filters";
 import type { ProductPageConfig } from "@/types/product-page";
-import { packLabel, packSortKey } from "@/lib/product-variants-shared";
+import { packLabel, packSortKey, variantLabel } from "@/lib/product-variants-shared";
 
 /** Everything the Meesho-style product page shows, already priced and serialisable. */
 export interface ProductPageData {
@@ -110,7 +110,7 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
   }
 
   // Each variant priced like its own page (default size, live campaigns).
-  type VRow = { id: number; slug: string; name: string; quantity: unknown; unit: string | null; productType: string; sizes: { isDefault: boolean }[] };
+  type VRow = { id: number; slug: string; name: string; quantity: unknown; unit: string | null; productType: string; sizes: { isDefault: boolean; label: string }[] };
   const variants = (variantRows as VRow[]).length > 1
     ? (variantRows as VRow[])
         .map((v) => {
@@ -118,7 +118,7 @@ export async function loadProductPage(slug: string, cfg: ProductPageConfig): Pro
           const pr = priceLine(v as unknown as CartProduct, (vd as unknown as CartSize) ?? null, campaigns, now);
           const q = v.quantity === null || v.quantity === undefined ? null : Number(v.quantity);
           return {
-            id: v.id, slug: v.slug, label: packLabel(q, v.unit) ?? v.name, mrp: pr.mrp, final: pr.unitPrice, discountPct: pct(pr.mrp, pr.unitPrice),
+            id: v.id, slug: v.slug, label: variantLabel({ quantity: q, unit: v.unit, name: v.name, sizeLabel: vd?.label ?? null }), mrp: pr.mrp, final: pr.unitPrice, discountPct: pct(pr.mrp, pr.unitPrice),
             stock: stockOf(v.productType === "physical", pr.maxQty), current: v.id === p.id, q, unit: v.unit,
           };
         })

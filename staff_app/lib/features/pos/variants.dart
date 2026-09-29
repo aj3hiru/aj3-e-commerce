@@ -33,9 +33,21 @@ List<Map<String, dynamic>> variantsOf(AppState s, Map p) {
   return list.length > 1 ? list : const [];
 }
 
+/// The size written in a name: "Clinic Plus 80ml" → "80 ml".
+String? packFromName(String name) {
+  final m = RegExp(r'(\d+(?:\.\d+)?)\s*(kg|kgs|gms?|grams?|g|litres?|liters?|ltr|l|mls?|pcs|pc|pieces?)\b', caseSensitive: false).allMatches(name).lastOrNull;
+  if (m == null) return null;
+  final u = m.group(2)!.toLowerCase();
+  final unit = u.startsWith('kg') ? 'KG' : u.startsWith('g') ? 'g' : u.startsWith('ml') ? 'ml' : u.startsWith('l') ? 'L' : 'Pcs';
+  return '${num.parse(m.group(1)!)} $unit';
+}
+
+/// Short size of a variant: quantity + unit, else the size in its name.
+String variantName(Map v) => (v['quantity'] != null ? packOf(v) : null) ?? packFromName('${v['name']}') ?? packOf(v) ?? '${v['name']}';
+
 String _optionLabel(Map<String, dynamic> v) {
   final stock = v['type'] == 'physical' && v['stock'] != null ? toInt(v['stock']) : null;
-  return '${packOf(v) ?? v['name']}  ·  ${money(CartLine.shelfPrice(v))}${stock != null && stock <= 0 ? '  ·  out of stock' : ''}';
+  return '${variantName(v)}  ·  ${money(CartLine.shelfPrice(v))}${stock != null && stock <= 0 ? '  ·  out of stock' : ''}';
 }
 
 /// Unit cell of a bill line: shows the pack (1 KG); when the product has
@@ -75,7 +87,7 @@ class LineUnit extends StatelessWidget {
         final id = await showAppSheet<int>(context, title: 'Choose size — ${line.name}', builder: (c) => ListView(shrinkWrap: true, children: [
               for (final v in vs)
                 AppChoice(
-                  title: packOf(v) ?? '${v['name']}',
+                  title: variantName(v),
                   subtitle: '${money(CartLine.shelfPrice(v))} · ${v['name']}',
                   selected: toInt(v['id']) == line.productId,
                   onTap: () => popDialog(c, toInt(v['id'])),

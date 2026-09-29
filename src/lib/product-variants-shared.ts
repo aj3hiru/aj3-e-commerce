@@ -52,3 +52,22 @@ export function withoutUnit(label: string, unit: string): string {
   const m = label.trim().match(/^(\d+(?:\.\d+)?)\s*(.+)$/);
   return m && m[2].toLowerCase() === unit.toLowerCase() ? m[1] : label;
 }
+
+const UNIT_WORDS: [RegExp, string][] = [
+  [/^(kg|kgs|kilo|kilogram|kilograms)$/i, "KG"], [/^(g|gm|gms|gram|grams|grm)$/i, "g"], [/^(l|lt|ltr|litre|liter|litres|liters)$/i, "L"],
+  [/^(ml|mls)$/i, "ml"], [/^(pc|pcs|piece|pieces|nos)$/i, "Pcs"], [/^(m|mtr|meter|metre)$/i, "m"], [/^(cm)$/i, "cm"], [/^(tab|tabs|tablets?)$/i, "Tablets"], [/^(caps?|capsules?)$/i, "Capsules"],
+];
+
+/** "Clinic Plus Shampoo 80ml" → "80 ml" (the size written in a product name), or null. */
+export function packFromName(name: string): string | null {
+  const m = [...name.matchAll(/(\d+(?:\.\d+)?)\s*(kg|kgs|kilograms?|kilo|gms?|grams?|grm|g|litres?|liters?|ltr|lt|l|mls?|pcs|pc|pieces?|nos|mtr|metre|meter|m|cm|tabs?|tablets?|caps?|capsules?)\b/gi)].pop();
+  if (!m) return null;
+  const unit = UNIT_WORDS.find(([re]) => re.test(m[2]))?.[1] ?? m[2];
+  return `${Number(m[1])} ${unit}`;
+}
+
+/** The short size shown on a variant tile: its quantity + unit, else the size in its name, else its first size, else its unit. */
+export function variantLabel(v: { quantity: number | null; unit: string | null; name: string; sizeLabel?: string | null }): string {
+  if (v.quantity !== null && v.quantity > 0) return packLabel(v.quantity, v.unit) ?? v.name;
+  return packFromName(v.name) ?? v.sizeLabel ?? (v.unit?.trim() || "Option");
+}

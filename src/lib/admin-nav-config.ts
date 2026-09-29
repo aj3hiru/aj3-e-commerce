@@ -89,6 +89,7 @@ export const ADMIN_NAV: NavSection[] = [
       { href: "/admin/ecommerce/orders", label: "Orders", icon: faReceipt, permission: "orders.view" },
       { href: "/admin/deliveries?view=all", label: "Deliveries", icon: faTruck, permission: "delivery.view_all", matchQuery: { key: "view", value: "all" } },
       { href: "/admin/ecommerce/due", label: "Due Payments", icon: faHandHoldingUsd, permission: "ecommerce.manage_credits" },
+      { href: "/admin/ecommerce/sales-history", label: "Sales History", icon: faHistory, permission: "ecommerce.manage_billing" },
     ],
   },
 
@@ -133,7 +134,6 @@ export const ADMIN_NAV: NavSection[] = [
     links: [
       { href: "/admin/ecommerce/reports", label: "Report Builder", icon: faFileInvoiceDollar, permission: "reports.any" },
       { href: "/admin/ecommerce/analytics", label: "Sales Analytics", icon: faChartLine, permission: "ecommerce.manage_orders" },
-      { href: "/admin/ecommerce/sales-history", label: "Sales History", icon: faHistory, permission: "ecommerce.manage_billing" },
       {
         href: "/admin/ecommerce/gst-report",
         label: "Tax / GST",

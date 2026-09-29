@@ -32,7 +32,7 @@ function Gap() { return <div className="h-2 bg-[#eaeaf2] shop:hidden" aria-hidde
 /** Desktop (≥ 901px): photos on the left (sticky), details + buy box on the right, reviews and related below. */
 const DESK_LEFT: PPSectionKey[] = ["gallery", "thumbs"];
 const DESK_TOP: PPSectionKey[] = ["breadcrumb"];
-const DESK_BOTTOM: PPSectionKey[] = ["reviews", "assurance", "related"];
+const DESK_BOTTOM: PPSectionKey[] = ["reviews", "related"];
 
 function useIsDesktop() {
   const [desk, setDesk] = useState(false);
@@ -223,7 +223,8 @@ function Reviews({ d, cfg, loggedIn }: { d: ProductPageData; cfg: ProductPageCon
   const list = all ? d.reviews : d.reviews.slice(0, cfg.perPage);
   const fmt = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
   return (
-    <div className="px-4 pt-5" id="reviews">
+    <div className="px-4 pt-5 shop:grid shop:grid-cols-[260px_minmax(0,1fr)] shop:gap-x-10 shop:px-5 shop:pb-4" id="reviews">
+      <div>
       <h2 className="text-[18px] font-semibold leading-6">{cfg.title}</h2>
       {d.rating.count === 0 ? (
         <p className="pt-3 text-[14px] text-[#8b8ba3]">No ratings yet — be the first to rate this product.</p>
@@ -244,8 +245,10 @@ function Reviews({ d, cfg, loggedIn }: { d: ProductPageData; cfg: ProductPageCon
           </div>
         </div>
       )}
+      </div>
+      <div className="min-w-0">
       {list.length > 0 && (
-        <ul className="border-t border-[#dcdce6]">
+        <ul className="border-t border-[#dcdce6] shop:border-t-0">
           {list.map((r) => (
             <li key={r.id} className="border-b border-[#dcdce6] py-4">
               <p className="flex items-center gap-2.5 text-[14px] font-medium text-[#616173]">
@@ -270,6 +273,7 @@ function Reviews({ d, cfg, loggedIn }: { d: ProductPageData; cfg: ProductPageCon
       )}
       {cfg.allowWrite && <WriteReview productId={d.product.id} loggedIn={loggedIn} slug={d.product.slug} />}
       <div className="h-3" />
+      </div>
     </div>
   );
 }
@@ -556,7 +560,7 @@ export function ProductView({ d, cfg, wished: initialWished, loggedIn, wishliste
         const items = cfg.assurance.items;
         if (items.length === 0) return null;
         return (
-          <div className="grid py-3" style={{ background: cfg.assurance.bg, gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
+          <div className="grid py-3 shop:mx-4 shop:my-3 shop:rounded-lg shop:py-2" style={{ background: cfg.assurance.bg, gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
             {items.map((a, i) => { const A = ASSURE[a.icon]; return (
               <div key={a.id} className={cn("flex flex-col items-center gap-1.5 px-1 text-center", i > 0 && "border-l border-white/90")}>
                 <span className="grid h-10 w-10 place-items-center overflow-hidden rounded-full bg-white">

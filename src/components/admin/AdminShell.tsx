@@ -7,6 +7,7 @@ import { SelectEnhancer } from "./SelectEnhancer";
 import { DeniedNotice } from "./DeniedNotice";
 import { NavProgress } from "./NavProgress";
 import { AdminLiveUpdates } from "./AdminLiveUpdates";
+import { FetchRetry } from "./FetchRetry";
 
 interface AdminShellProps {
   siteName: string;
@@ -63,6 +64,7 @@ export function AdminShell({ siteName, pageTitle, pageSubtitle, username, role, 
       </main>
       <NavProgress />
       <AdminLiveUpdates username={username} />
+      <FetchRetry />
       {/* Every dropdown opens the admin's own list, not the browser pop-up. */}
       <SelectEnhancer />
     </div>

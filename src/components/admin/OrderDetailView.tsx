@@ -13,6 +13,7 @@ import { ORDER_STATUSES } from "@/lib/order-statuses";
 import { StatusPill, StatusBadge } from "@/components/admin/ui/buttons";
 import { orderStatusVariant, paymentStatusVariant } from "@/components/admin/StatusDropdown";
 import { useDashboardWidgetPrefs } from "@/hooks/useDashboardWidgetPrefs";
+import { CollectButton, ReceiptsButton } from "@/components/admin/due/DueActions";
 
 export interface OrderDetailItem {
   id: number;
@@ -156,6 +157,11 @@ export function OrderDetailView({ order, items, availableProducts, perms = ALL, 
                 </span>
               )}
               {order.locked && <span className="inline-flex items-center gap-1 rounded-[6px] bg-admin-gray-100 px-2 py-0.5 text-xs font-semibold text-admin-gray-600"><Lock className="h-3 w-3" />Locked</span>}
+              {/* Due receipts (×2, ×3) and Collect, as on the Due page. */}
+              <ReceiptsButton title={order.orderNumber} receipts={(order.duePayments ?? []).map((p) => ({ receiptNumber: p.receipt, amount: p.amount, paymentMethod: p.method, createdAt: p.at }))} />
+              {order.linkedCreditId && order.dueBalance > 0.004 && (
+                <CollectButton creditId={order.linkedCreditId} balance={order.dueBalance} label={order.orderNumber} onDone={(message) => setNotice({ type: "success", message })} />
+              )}
             </div>
             {show("ov-header", "ov-h-date") && order.createdAt && <p className="mt-0.5 flex items-center gap-1.5 text-sm text-admin-gray-500"><CalendarDays className="h-3.5 w-3.5" />{when(order.createdAt)}</p>}
           </div>

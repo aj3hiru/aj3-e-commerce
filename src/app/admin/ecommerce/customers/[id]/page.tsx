@@ -65,8 +65,14 @@ export default async function CustomerProfilePage({ params, searchParams }: Cust
           id: o.id, orderNumber: o.orderNumber, totalAmount: Number(o.totalAmount),
           paymentStatus: o.paymentStatus, orderStatus: o.orderStatus, createdAt: o.createdAt.toISOString(),
           orderType: o.orderType,
-          // Due receipts on this order (×2, ×3 when it was paid in parts).
-          receipts: credits.filter((c: (typeof credits)[number]) => c.orderId === o.id).flatMap((c: (typeof credits)[number]) => c.payments.map((p: (typeof c.payments)[number]) => p.receiptNumber)),
+          // Due receipts on this order (×2, ×3 when it was paid in parts) and what is still owed.
+          receipts: credits.filter((c: (typeof credits)[number]) => c.orderId === o.id).flatMap((c: (typeof credits)[number]) => c.payments.map((p: (typeof c.payments)[number]) => ({
+            receiptNumber: p.receiptNumber, amount: Number(p.amount), paymentMethod: p.paymentMethod, createdAt: p.createdAt.toISOString(),
+          }))),
+          due: (() => {
+            const c = credits.find((x: (typeof credits)[number]) => x.orderId === o.id && Number(x.amount) - Number(x.amountPaid) > 0.004);
+            return c ? { creditId: c.id, balance: Math.round((Number(c.amount) - Number(c.amountPaid)) * 100) / 100 } : null;
+          })(),
         }))}
         credits={credits.map((c: (typeof credits)[number]) => ({
           id: c.id, orderNumber: c.order?.orderNumber ?? null, amount: Number(c.amount), amountPaid: Number(c.amountPaid),

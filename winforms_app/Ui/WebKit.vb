@@ -843,3 +843,81 @@ Public Class FooterRow
         End If
     End Sub
 End Class
+
+''' <summary>The website's segmented page tabs: a white bar, each tab an icon + label; the active one purple.</summary>
+Public Class PillTabs
+    Inherits Control
+    Public Event Changed()
+    Public Items As New List(Of (Key As String, Label As String, Icon As String))
+    Public Current As String = ""
+    Private _rects As New List(Of (Key As String, R As Rectangle))
+    Private _hover As String = ""
+    Private ReadOnly _f As Font = Theme.Px(14, 600)
+
+    Public Sub New(ParamArray items As String())
+        SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
+        For Each it In items
+            Dim p = it.Split("|"c)
+            Me.Items.Add((p(0), p(1), If(p.Length > 2, p(2), "")))
+        Next
+        If Me.Items.Count > 0 Then Current = Me.Items(0).Key
+        Height = 46
+    End Sub
+
+    Protected Overrides Sub OnPaint(e As PaintEventArgs)
+        Dim g = e.Graphics
+        g.Clear(Theme.Behind(Me))
+        Theme.Smooth(g)
+        Dim total = 4 + Items.Sum(Function(i) 16 + If(i.Icon <> "", 24, 0) + Tr.MeasureText(i.Label, _f).Width + 16 + 4)
+        Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
+            Using b As New SolidBrush(Color.White) : g.FillPath(b, p) : End Using
+            Using pen As New Pen(Theme.G200) : g.DrawPath(pen, p) : End Using
+        End Using
+        _rects = New List(Of (String, Rectangle))
+        Dim x = 5
+        For Each it In Items
+            Dim w = 16 + If(it.Icon <> "", 24, 0) + Tr.MeasureText(it.Label, _f).Width + 16
+            Dim r As New Rectangle(x, 5, w, Height - 10)
+            Dim on_ = it.Key = Current
+            If on_ OrElse it.Key = _hover Then
+                Using p = Theme.RoundRect(New RectangleF(r.X, r.Y, r.Width, r.Height), Theme.Radius)
+                    Using b As New SolidBrush(If(on_, Theme.Primary, Theme.G50)) : g.FillPath(b, p) : End Using
+                End Using
+            End If
+            Dim fg = If(on_, Color.White, Theme.G600)
+            Dim tx = r.X + 16
+            If it.Icon <> "" Then
+                Icons.Draw(g, it.Icon, New RectangleF(tx, r.Y + (r.Height - 16) / 2.0F, 16, 16), fg)
+                tx += 24
+            End If
+            Tr.DrawText(g, it.Label, _f, New Rectangle(tx, r.Y, w, r.Height), fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+            _rects.Add((it.Key, r))
+            x += w + 4
+        Next
+    End Sub
+
+    Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
+        MyBase.OnMouseMove(e)
+        Dim h = _rects.FirstOrDefault(Function(c) c.R.Contains(e.Location)).Key
+        If h Is Nothing Then h = ""
+        Cursor = If(h = "", Cursors.Default, Cursors.Hand)
+        If h <> _hover Then _hover = h : Invalidate()
+    End Sub
+
+    Protected Overrides Sub OnMouseLeave(e As EventArgs)
+        MyBase.OnMouseLeave(e)
+        _hover = "" : Invalidate()
+    End Sub
+
+    Protected Overrides Sub OnMouseClick(e As MouseEventArgs)
+        MyBase.OnMouseClick(e)
+        For Each c In _rects
+            If c.R.Contains(e.Location) AndAlso c.Key <> Current Then
+                Current = c.Key
+                Invalidate()
+                RaiseEvent Changed()
+                Return
+            End If
+        Next
+    End Sub
+End Class

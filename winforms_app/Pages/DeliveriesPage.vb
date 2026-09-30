@@ -9,7 +9,7 @@ Public Class DeliveriesPage
     Inherits ScrollPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_deliveries_display")
-    Private ReadOnly _mode As New Tabs("live|Live now", "history|History", "report|Agent report")
+    Private ReadOnly _mode As New PillTabs("live|Live now|radio", "history|History|history", "report|Agent report|bar-chart-3")
     Private ReadOnly _export As WButton = Ui.Btn("Export", ChrW(&HE896), outline:=True)
     Private ReadOnly _range As New RangeBar("today,yesterday,week,7d,this_month,30d,custom", "today")
     Private ReadOnly _agent As ComboBox = Ui.Filter({"0|All delivery agents"}, 220)
@@ -57,7 +57,6 @@ Public Class DeliveriesPage
         Body.SuspendLayout()
         Dim typing = _search.Box.Focused
         ClearBody(_mode, _range, _agent, _status, _search)
-        _mode.Height = 44
         Body.Add(_mode)
         If _mode.Current = "live" Then Live() Else History()
         Body.ResumeLayout()
@@ -90,7 +89,7 @@ Public Class DeliveriesPage
 
         If withAgent.Count > 0 Then
             Dim card As New CardBox("On the road now", Theme.IcTruck)
-            Dim t As New WebTable() With {.RowHeight = 56, .RowClickable = True}
+            Dim t As New WebTable() With {.RowHeight = 52, .RowClickable = True, .Modern = True}
             t.Cols.Add(New TCol("Order", Function(o) Js.Str(o, "number"), 0, CellKind.Link) With {.Flex = 10, .Colour = Function(o) Theme.Blue})
             t.Cols.Add(New TCol("Delivery agent", Function(o) OrderActions.AgentName(Js.Int(o, "agentId")), 0, CellKind.Bold) With {.Flex = 10})
             t.Cols.Add(New TCol("Customer", Function(o) Js.Str(o, "customer"), 0) With {.Flex = 22, .Sub = Function(o) Js.Str(o, "address").Replace(vbLf, ", ")})
@@ -99,7 +98,11 @@ Public Class DeliveriesPage
             t.Cols.Add(New TCol("With the agent for", Function(o) Since(Js.Time(o, "assignedAt")), 0) With {.Flex = 10, .Colour = Function(o) Theme.G600})
             t.Cols.Add(New TCol("To collect", Function(o) If(Js.Str(o, "paymentStatus") = "Paid", "Paid", Theme.Money(Js.Num(o, "total"))), 0, CellKind.Bold) With {.Flex = 10, .Right = True,
                 .Colour = Function(o) If(Js.Str(o, "paymentStatus") = "Paid", Theme.Green, Theme.G900)})
-            t.Rows = withAgent
+            Dim agentOrder = agents.Select(Function(a) Js.Int(a, "id")).ToList()
+            t.Rows = withAgent.OrderBy(Function(o)
+                                           Dim ix = agentOrder.IndexOf(Js.Int(o, "agentId"))
+                                           Return If(ix < 0, Integer.MaxValue, ix)
+                                       End Function).ThenBy(Function(o) Js.Str(o, "assignedAt")).ToList()
             AddHandler t.RowClick, Sub(o) Open(o)
             card.Add(t)
             Body.Add(card)
@@ -126,7 +129,7 @@ Public Class DeliveriesPage
                 card.Add(New TextBlock("All accepted orders have an agent.", Theme.Body, Theme.G600))
             Else
                 Dim w = Function(k As String) on_("dv-waiting", k)
-                Dim t As New WebTable() With {.RowHeight = 58, .RowClickable = True}
+                Dim t As New WebTable() With {.RowHeight = 58, .RowClickable = True, .Modern = True}
                 t.Cols.Add(New TCol("Order", Function(o) "#" & Js.Str(o, "number"), 0, CellKind.Link) With {.Flex = 22, .Colour = Function(o) Theme.Blue,
                     .Sub = Function(o)
                                Dim parts As New List(Of String)
@@ -316,7 +319,7 @@ Public Class DeliveriesPage
         Body.Add(cards)
 
         If _mode.Current = "report" Then
-            Dim t As New WebTable() With {.RowHeight = 52, .EmptyText = "No delivery agents yet."}
+            Dim t As New WebTable() With {.RowHeight = 52, .EmptyText = "No delivery agents yet.", .Modern = True}
             t.Cols.Add(New TCol("Delivery agent", Function(r) Js.Str(r, "name"), 0, CellKind.Bold) With {.Flex = 16})
             For Each c In {("Assigned", "assigned", Theme.G800), ("Delivered", "delivered", Color.FromArgb(5, &H96, &H69)), ("Failed", "failed", Color.FromArgb(&HEA, &H58, &HC)), ("Cancelled", "canceled", Theme.Danger), ("Still out", "active", Color.FromArgb(2, &H84, &HC7))}
                 Dim k = c.Item2, col = c.Item3
@@ -359,7 +362,7 @@ Public Class DeliveriesPage
                                 Case Else : Return "Waiting"
                             End Select
                         End Function
-            Dim t As New WebTable() With {.RowHeight = 64, .RowClickable = True, .EmptyText = "No deliveries match these filters."}
+            Dim t As New WebTable() With {.RowHeight = 64, .RowClickable = True, .EmptyText = "No deliveries match these filters.", .Modern = True}
             t.Cols.Add(New TCol("Order", Function(r) Js.Str(r, "number"), 0, CellKind.Link) With {.Flex = 10, .Colour = Function(r) Theme.Blue, .Sub = Function(r) Js.Int(r, "items") & " item" & If(Js.Int(r, "items") = 1, "", "s")})
             t.Cols.Add(New TCol("Customer", Function(r) Js.Str(r, "customer"), 0) With {.Flex = 18, .Sub = Function(r) String.Join(" · ", {Js.Str(r, "phone"), Js.Str(r, "address")}.Where(Function(x) x <> ""))})
             t.Cols.Add(New TCol("Delivery agent", Function(r) Js.Str(r, "agent", "—"), 0, CellKind.Bold) With {.Flex = 10})

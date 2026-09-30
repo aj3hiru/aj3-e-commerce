@@ -20,6 +20,7 @@ Public Module Routes
             Case "/admin/ecommerce/product-reviews" : Return New ReviewsPage()
             Case "/admin/ecommerce/stock-out-products" : Return New StockOutPage()
             Case "/admin/ecommerce/offers" : Return New OffersPage()
+            Case "/push-notifications/push-manager2" : Return New PushPage()
         End Select
         Return Nothing
     End Function

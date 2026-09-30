@@ -135,6 +135,21 @@ Public Class ApiClient
         Return Server & "/" & p.TrimStart("/"c)
     End Function
 
+    ''' <summary>A file from the staff API (exports, backups) with this login. Nothing when it fails.</summary>
+    Public Async Function DownloadAsync(path As String, Optional seconds As Integer = 120) As Task(Of (Status As Integer, Bytes As Byte()))
+        Try
+            Using cts As New Threading.CancellationTokenSource(TimeSpan.FromSeconds(seconds))
+                Dim req = Make(HttpMethod.Get, path)
+                req.Headers.Accept.Clear()
+                Dim res = Await Http.SendAsync(req, cts.Token)
+                If Not res.IsSuccessStatusCode Then Return (CInt(res.StatusCode), Nothing)
+                Return (200, Await res.Content.ReadAsByteArrayAsync(cts.Token))
+            End Using
+        Catch
+            Return (0, Nothing)
+        End Try
+    End Function
+
     Public Async Function GetBytesAsync(url As String) As Task(Of Byte())
         Try
             Using cts As New Threading.CancellationTokenSource(TimeSpan.FromSeconds(20))

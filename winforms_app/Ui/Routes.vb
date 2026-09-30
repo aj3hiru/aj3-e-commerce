@@ -22,6 +22,7 @@ Public Module Routes
             Case "/admin/ecommerce/offers" : Return New OffersPage()
             Case "/push-notifications/push-manager2" : Return New PushPage()
             Case "/admin/ecommerce/reports" : Return New ReportsPage()
+            Case "/admin/ecommerce/analytics" : Return New AnalyticsPage()
         End Select
         Return Nothing
     End Function

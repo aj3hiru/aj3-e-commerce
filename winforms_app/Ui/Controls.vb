@@ -300,6 +300,8 @@ Public Class LineChart
     ''' <summary>How axis / tooltip numbers are written (default: short money).</summary>
     Public Formatter As Func(Of Double, String)
     Public TipFormatter As Func(Of Double, String)
+    ''' <summary>Tooltip text for a point by its index (overrides the formatters).</summary>
+    Public TipAt As Func(Of Integer, String)
     Private _hover As Integer = -1
     Public Sub New()
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
@@ -374,7 +376,7 @@ Public Class LineChart
         Next
         If _hover >= 0 AndAlso _hover < p.Length Then
             Using b As New SolidBrush(LineColor) : g.FillEllipse(b, p(_hover).X - 4, p(_hover).Y - 4, 8, 8) : End Using
-            Dim t = If(TipFormatter IsNot Nothing, TipFormatter(Values(_hover)), If(Formatter IsNot Nothing, Formatter(Values(_hover)), Theme.Money(Values(_hover))))
+            Dim t = If(TipAt IsNot Nothing, TipAt(_hover), If(TipFormatter IsNot Nothing, TipFormatter(Values(_hover)), If(Formatter IsNot Nothing, Formatter(Values(_hover)), Theme.Money(Values(_hover)))))
             Dim w = TextRenderer.MeasureText(t, Theme.BodyBold).Width + 16
             Dim bx = Math.Min(Math.Max(0, p(_hover).X - w / 2), Width - w)
             Using path = Theme.RoundRect(New RectangleF(CSng(bx), p(_hover).Y - 36, w, 26), 5)

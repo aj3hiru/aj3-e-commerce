@@ -123,7 +123,7 @@ Public Class BarcodesPage
         _picker.Add(searchRow)
         _found.Cols.Add(New TCol("Product", Function(p) Js.Str(p, "name"), 0, CellKind.Bold) With {.Flex = 24})
         _found.Cols.Add(New TCol("Barcode", Function(p) Js.Str(p, "barcode"), 0) With {.Flex = 12, .Colour = Function(p) Theme.G600})
-        _found.Cols.Add(New TCol("Price", Function(p) Theme.Money(CartLine.ShelfPrice(p)), 0) With {.Flex = 8})
+        _found.Cols.Add(New TCol("Price", Function(p) Theme.Money(Pos.ShelfPrice(p)), 0) With {.Flex = 8})
         _found.Cols.Add(New TCol("", Function(p) If(_qty.ContainsKey(Js.Int(p, "id")), "In the list ✓", ""), 130) With {.Colour = Function(p) Theme.Green})
         _found.Cols.Add(New TCol("", Nothing, 60, CellKind.Actions) With {.ButtonsFor = Function(p) If(_qty.ContainsKey(Js.Int(p, "id")), New String() {}, {"add"})}.Btn("add", Theme.IcAdd, "Add to the list", Theme.Blue))
         AddHandler _found.ActionClick, Sub(p, k)
@@ -215,7 +215,7 @@ Public Class BarcodesPage
     End Property
 
     Private Function LabelPrice(p As JsonObject) As Double
-        Return If(Opt("offer"), CartLine.ShelfPrice(p), Js.Num(p, "price"))
+        Return If(Opt("offer"), Pos.ShelfPrice(p), Js.Num(p, "price"))
     End Function
 
     Private Function PriceLine(p As JsonObject) As String

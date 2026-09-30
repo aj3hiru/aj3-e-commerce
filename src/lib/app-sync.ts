@@ -62,6 +62,8 @@ async function buildSettings() {
     businessName: b?.businessName ?? "My Store", tagline: b?.tagline ?? null, logo: b?.logo ?? null, address: b?.address ?? null, phones,
     email: b?.email ?? null, gstin: b?.showGstinOnInvoice ? b?.gstin ?? null : null,
     printerFormat: b?.printerFormat ?? "thermal_80", posPrintMode: b?.posPrintMode ?? "both",
+    // Billing keyboard keys (Business Settings → POS Shortcuts)
+    shortcutCompleteSale: b?.shortcutCompleteSale ?? "F2", shortcutPrint: b?.shortcutPrint ?? "F3", shortcutNewSale: b?.shortcutNewSale ?? "F4",
     paymentMethods: ["Cash", "UPI", "Card", "Other"],
     // Storefront orders keep the method key ("cod"); the website shows its name ("Cash On Delivery").
     paymentNames: Object.fromEntries(pays.map((m) => [m.methodKey, m.name])),
@@ -76,7 +78,7 @@ async function buildProducts() {
   const rows = await prisma.ecomProduct.findMany({
     orderBy: { name: "asc" },
     select: { id: true, name: true, slug: true, sku: true, barcode: true, hsnCode: true, price: true, salePrice: true, gstRate: true, stockQty: true, unit: true, image: true,
-      categoryId: true, brandId: true, status: true, productType: true, updatedAt: true, quantity: true, variantGroup: true,
+      categoryId: true, subcategoryId: true, brandId: true, status: true, productType: true, updatedAt: true, quantity: true, variantGroup: true,
       badgeTag: true, itemType: true, createdAt: true,
       sizes: { orderBy: [{ sortOrder: "asc" }, { id: "asc" }], select: { id: true, label: true, mrp: true, price: true, stockQty: true, isDefault: true } } },
   });
@@ -86,7 +88,7 @@ async function buildProducts() {
     salePrice: campaign.get(r.id) ?? num(r.salePrice), gstRate: Number(r.gstRate), stock: r.stockQty, unit: r.unit, image: r.image,
     quantity: num(r.quantity), variantGroup: r.variantGroup, pack: packLabel(num(r.quantity), r.unit),
     sizes: r.sizes.map((z) => ({ id: z.id, label: z.label, mrp: Number(z.mrp), price: num(z.price), stock: z.stockQty, isDefault: z.isDefault })),
-    categoryId: r.categoryId, brandId: r.brandId, status: r.status, type: r.productType, updatedAt: iso(r.updatedAt),
+    categoryId: r.categoryId, subcategoryId: r.subcategoryId, brandId: r.brandId, status: r.status, type: r.productType, updatedAt: iso(r.updatedAt),
     badgeTag: r.badgeTag, itemType: r.itemType, createdAt: iso(r.createdAt),
   }));
 }
@@ -224,7 +226,8 @@ async function buildFresh(name: SetName, session: AdminSession): Promise<unknown
     case "categories": return prisma.ecomCategory.findMany({ orderBy: [{ serial: "asc" }, { name: "asc" }], select: { id: true, name: true, slug: true, image: true, status: true, serial: true, metaKeywords: true, metaDescription: true, createdAt: true, updatedAt: true } });
     case "brands": return prisma.ecomBrand.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, logo: true, status: true } });
     case "customers": return buildCustomers();
-    case "coupons": return (await prisma.ecomCoupon.findMany({ where: { status: "active", isPaused: false }, select: { id: true, code: true, title: true, discountType: true, discountValue: true, appliesTo: true, productId: true, categoryId: true, numberOfTimes: true, usedCount: true, startsAt: true, endsAt: true } }))
+    // Same list as the website's billing screen (every active coupon; the checkout checks the rest).
+    case "coupons": return (await prisma.ecomCoupon.findMany({ where: { status: "active" }, select: { id: true, code: true, title: true, discountType: true, discountValue: true, appliesTo: true, productId: true, categoryId: true, subcategoryId: true, numberOfTimes: true, usedCount: true, startsAt: true, endsAt: true, isPaused: true } }))
       .map((c) => ({ ...c, discountValue: Number(c.discountValue), startsAt: iso(c.startsAt), endsAt: iso(c.endsAt) }));
     case "orders": return buildOrders();
     case "dues": return buildDues();

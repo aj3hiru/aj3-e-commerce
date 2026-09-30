@@ -30,6 +30,8 @@ Public Class WButton
     Public Property Glyph As String = ""
     Public Property Fill As Color = Theme.Primary
     Public Property Outline As Boolean
+    ''' <summary>Icon colour on outline buttons (default: the text colour).</summary>
+    Public Property GlyphColor As Color = Color.Empty
     Private _hover As Boolean, _down As Boolean
     Public Sub New()
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw Or ControlStyles.SupportsTransparentBackColor, True)
@@ -94,7 +96,7 @@ Public Class WButton
         Dim x = (Width - total) \ 2
         If Glyph <> "" Then
             Using f = Theme.IconFont(10)
-                TextRenderer.DrawText(g, Glyph, f, New Rectangle(x, 0, 18, Height), fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
+                TextRenderer.DrawText(g, Glyph, f, New Rectangle(x, 0, 18, Height), If(Outline AndAlso GlyphColor <> Color.Empty AndAlso Enabled, GlyphColor, fg), TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
             End Using
             x += 22
         End If
@@ -292,17 +294,24 @@ Public Class LineChart
     Public Values As New List(Of Double)
     Public Labels As New List(Of String)
     Public Property LineColor As Color = Theme.Primary
+    ''' <summary>Optional second line (previous period), drawn thinner behind the first.</summary>
+    Public Values2 As New List(Of Double)
+    Public Property Color2 As Color = Theme.Blue
+    ''' <summary>How axis / tooltip numbers are written (default: short money).</summary>
+    Public Formatter As Func(Of Double, String)
+    Public TipFormatter As Func(Of Double, String)
     Private _hover As Integer = -1
     Public Sub New()
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
         BackColor = Color.White
     End Sub
-    Private Function Pts(plot As RectangleF, top As Double) As PointF()
-        Dim n = Values.Count
+    Private Function Pts(plot As RectangleF, top As Double, Optional vals As List(Of Double) = Nothing) As PointF()
+        If vals Is Nothing Then vals = Values
+        Dim n = vals.Count
         Dim a(n - 1) As PointF
         For i = 0 To n - 1
             Dim x = plot.Left + If(n = 1, plot.Width / 2, plot.Width * i / (n - 1))
-            Dim y = plot.Bottom - CSng(Values(i) / top) * plot.Height
+            Dim y = plot.Bottom - CSng(vals(i) / top) * plot.Height
             a(i) = New PointF(CSng(x), y)
         Next
         Return a
@@ -325,15 +334,19 @@ Public Class LineChart
         Theme.Smooth(g)
         Dim plot As New RectangleF(58, 10, Width - 70, Height - 40)
         Dim max = If(Values.Count = 0, 0, Values.Max())
+        If Values2.Count > 0 Then max = Math.Max(max, Values2.Max())
         Dim top = If(max <= 0, 100, max * 1.25)
         Using pen As New Pen(Theme.G100)
             For k = 0 To 4
                 Dim y = plot.Bottom - plot.Height * k / 4
                 g.DrawLine(pen, plot.Left, y, plot.Right, y)
-                TextRenderer.DrawText(g, ShortMoney(top * k / 4), Theme.Small, New Rectangle(0, CInt(y) - 8, 52, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                TextRenderer.DrawText(g, If(Formatter Is Nothing, ShortMoney(top * k / 4), Formatter(top * k / 4)), Theme.Small, New Rectangle(0, CInt(y) - 8, 52, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
             Next
         End Using
         If Values.Count = 0 Then Return
+        If Values2.Count > 1 Then
+            Using pen As New Pen(Color2, 1.8F) : g.DrawCurve(pen, Pts(plot, top, Values2), 0.4F) : End Using
+        End If
         Dim p = Pts(plot, top)
         If p.Length > 1 Then
             Using path As New GraphicsPath()
@@ -355,7 +368,7 @@ Public Class LineChart
         Next
         If _hover >= 0 AndAlso _hover < p.Length Then
             Using b As New SolidBrush(LineColor) : g.FillEllipse(b, p(_hover).X - 4, p(_hover).Y - 4, 8, 8) : End Using
-            Dim t = Theme.Money(Values(_hover))
+            Dim t = If(TipFormatter IsNot Nothing, TipFormatter(Values(_hover)), If(Formatter IsNot Nothing, Formatter(Values(_hover)), Theme.Money(Values(_hover))))
             Dim w = TextRenderer.MeasureText(t, Theme.BodyBold).Width + 16
             Dim bx = Math.Min(Math.Max(0, p(_hover).X - w / 2), Width - w)
             Using path = Theme.RoundRect(New RectangleF(CSng(bx), p(_hover).Y - 36, w, 26), 5)
@@ -384,20 +397,36 @@ Public Class DisplayGroup
     End Sub
 End Class
 
-''' <summary>The website's "Display Options" button: tick the parts of the page to show (remembered).</summary>
+''' <summary>The website's "Display Options" button: tick the parts of the page to show (remembered on this
+''' computer). Stays open while ticking several parts.</summary>
 Public Class DisplayOptions
     Public ReadOnly Key As String
     Public ReadOnly Hidden As New HashSet(Of String)
     Public Event Changed()
     Public ReadOnly Button As WButton
     Private ReadOnly _groups As List(Of DisplayGroup)
+    Private ReadOnly _singles As New List(Of (Key As String, Label As String))
+
+    ''' <summary>The page's options from the website's list (DisplayDefs).</summary>
+    Public Shared Function [For](key As String) As DisplayOptions
+        Return New DisplayOptions(key, DisplayDefs.Groups(key))
+    End Function
 
     Public Sub New(key As String, ParamArray groups As DisplayGroup())
         Me.Key = key
         _groups = groups.ToList()
+        For Each s In DisplayDefs.Singles(key)
+            Dim p = s.Split("|"c)
+            _singles.Add((p(0), p(1)))
+        Next
         Dim saved = TryCast(Store.Read("display_" & key), JsonArray)
         If saved IsNot Nothing Then
             For Each x In saved : Hidden.Add(x.ToString()) : Next
+        Else
+            Dim def As String() = Nothing
+            If DisplayDefs.DefaultHidden.TryGetValue(key, def) Then
+                For Each h In def : Hidden.Add(h) : Next
+            End If
         End If
         Button = WButton.Make("Display Options", Theme.IcOptions, Theme.Primary, outline:=True)
         Button.Width += 6
@@ -408,35 +437,75 @@ Public Class DisplayOptions
         Return Not Hidden.Contains(group) AndAlso (item Is Nothing OrElse Not Hidden.Contains(item))
     End Function
 
+    ''' <summary>A single item (not in a group) is shown.</summary>
+    Public Function Item(k As String) As Boolean
+        Return Not Hidden.Contains(k)
+    End Function
+
     Private Sub Toggle(k As String)
         If Hidden.Contains(k) Then Hidden.Remove(k) Else Hidden.Add(k)
+        Save()
+        RaiseEvent Changed()
+    End Sub
+
+    Private Sub Save()
         Dim a As New JsonArray()
         For Each h In Hidden : a.Add(h) : Next
         Store.Write("display_" & Key, a)
-        RaiseEvent Changed()
     End Sub
 
     Private Sub ShowMenu(sender As Object, e As EventArgs)
         Dim m As New ContextMenuStrip With {.ShowCheckMargin = True, .ShowImageMargin = False, .Font = Theme.Body}
+        Dim children As New Dictionary(Of String, List(Of ToolStripMenuItem))
+        For Each s In _singles
+            Dim si As New ToolStripMenuItem(s.Label) With {.Checked = Not Hidden.Contains(s.Key), .Font = Theme.BodyBold, .Tag = s.Key}
+            m.Items.Add(si)
+        Next
+        If _singles.Count > 0 AndAlso _groups.Count > 0 Then m.Items.Add(New ToolStripSeparator())
         For Each g In _groups
-            Dim gi As New ToolStripMenuItem(g.Label) With {.Checked = Not Hidden.Contains(g.Key), .Font = Theme.BodyBold}
-            Dim gk = g.Key
-            AddHandler gi.Click, Sub() Toggle(gk)
+            Dim gi As New ToolStripMenuItem(g.Label) With {.Checked = Not Hidden.Contains(g.Key), .Font = Theme.BodyBold, .Tag = g.Key}
             m.Items.Add(gi)
+            children(g.Key) = New List(Of ToolStripMenuItem)
             For Each it In g.Items
-                Dim ii As New ToolStripMenuItem("      " & it.Label) With {.Checked = Not Hidden.Contains(it.Key), .Enabled = Not Hidden.Contains(g.Key)}
-                Dim ik = it.Key
-                AddHandler ii.Click, Sub() Toggle(ik)
+                Dim ii As New ToolStripMenuItem("      " & it.Label) With {.Checked = Not Hidden.Contains(it.Key), .Enabled = Not Hidden.Contains(g.Key), .Tag = it.Key}
                 m.Items.Add(ii)
+                children(g.Key).Add(ii)
             Next
             m.Items.Add(New ToolStripSeparator())
         Next
-        If m.Items.Count > 0 Then m.Items.RemoveAt(m.Items.Count - 1)
+        If m.Items.Count > 0 AndAlso TypeOf m.Items(m.Items.Count - 1) Is ToolStripSeparator Then m.Items.RemoveAt(m.Items.Count - 1)
+        Dim reset As New ToolStripMenuItem("Show everything") With {.ForeColor = Theme.Primary, .Tag = ""}
+        m.Items.Add(New ToolStripSeparator())
+        m.Items.Add(reset)
+        AddHandler m.ItemClicked, Sub(s2, e2)
+                                      Dim mi = TryCast(e2.ClickedItem, ToolStripMenuItem)
+                                      If mi Is Nothing OrElse Not mi.Enabled Then Return
+                                      If mi Is reset Then
+                                          Hidden.Clear()
+                                          Save()
+                                          For Each x In m.Items.OfType(Of ToolStripMenuItem)()
+                                              If x IsNot reset Then x.Checked = True : x.Enabled = True
+                                          Next
+                                          RaiseEvent Changed()
+                                          Return
+                                      End If
+                                      Dim k = CStr(mi.Tag)
+                                      Toggle(k)
+                                      mi.Checked = Not Hidden.Contains(k)
+                                      Dim kids As List(Of ToolStripMenuItem) = Nothing
+                                      If children.TryGetValue(k, kids) Then
+                                          For Each c In kids : c.Enabled = mi.Checked : Next
+                                      End If
+                                  End Sub
+        AddHandler m.Closing, Sub(s2, e2)
+                                  If e2.CloseReason = ToolStripDropDownCloseReason.ItemClicked Then e2.Cancel = True
+                              End Sub
+        AddHandler m.Closed, Sub() m.BeginInvoke(Sub() m.Dispose())
         m.Show(Button, New Point(0, Button.Height + 2))
     End Sub
 End Class
 
-Public Module Ui
+Partial Public Module Ui
     ''' <summary>The website's table look for a DataGridView: light header, row lines, no heavy borders.</summary>
     Public Sub StyleGrid(g As DataGridView)
         g.BackgroundColor = Color.White

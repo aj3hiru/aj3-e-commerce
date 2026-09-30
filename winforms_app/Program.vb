@@ -13,9 +13,14 @@ Public Module Program
                 Using login As New LoginForm()
                     If login.ShowDialog() <> DialogResult.OK Then Return
                 End Using
-            Else
-                AppState.I.StartLoop()
             End If
+            ' One-time full download (first login / after an update with new pages), with a % bar.
+            If AppState.I.SetupNeeded AndAlso AppState.I.Online Then
+                Using setup As New SetupForm()
+                    If setup.ShowDialog() <> DialogResult.OK Then Return
+                End Using
+            End If
+            AppState.I.StartLoop()
             Dim main As New MainForm()
             Application.Run(main)
             If Not main.LoggedOut Then Return

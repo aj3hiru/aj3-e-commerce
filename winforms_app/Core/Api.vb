@@ -48,7 +48,7 @@ Public Class ApiClient
     Public Server As String = "https://admin.sriandaltraders.co.in"
     Public Token As String
 
-    Private Shared ReadOnly Http As New HttpClient(New SocketsHttpHandler With {.PooledConnectionLifetime = TimeSpan.FromMinutes(5), .AutomaticDecompression = DecompressionMethods.All}) With {.Timeout = TimeSpan.FromSeconds(25)}
+    Private Shared ReadOnly Http As New HttpClient(New SocketsHttpHandler With {.PooledConnectionLifetime = TimeSpan.FromMinutes(5), .AutomaticDecompression = DecompressionMethods.All}) With {.Timeout = TimeSpan.FromSeconds(120)}
 
     Private Function Make(method As HttpMethod, path As String, Optional idem As String = Nothing) As HttpRequestMessage
         Dim req As New HttpRequestMessage(method, Server & path)
@@ -59,8 +59,8 @@ Public Class ApiClient
         Return req
     End Function
 
-    Public Async Function GetAsync(path As String) As Task(Of ApiResult)
-        Return Await Run(Make(HttpMethod.Get, path))
+    Public Async Function GetAsync(path As String, Optional seconds As Integer = 20) As Task(Of ApiResult)
+        Return Await Run(Make(HttpMethod.Get, path), seconds)
     End Function
 
     Public Async Function SendAsync(method As String, path As String, body As JsonNode, Optional idem As String = Nothing) As Task(Of ApiResult)
@@ -123,7 +123,7 @@ Public Class ApiClient
         Dim s = CInt(res.StatusCode)
         If s = 401 Then Return New ApiResult(ApiOutcome.Unauthorized, s, data)
         If s = 403 Then Return New ApiResult(ApiOutcome.Forbidden, s, data)
-        If s = 502 OrElse s = 503 OrElse s = 504 OrElse s = 429 OrElse s >= 500 Then Return New ApiResult(ApiOutcome.Busy, s, data)
+        If s = 502 OrElse s = 503 OrElse s = 504 OrElse s = 429 OrElse s >= 500 OrElse (s = 409 AndAlso Js.Bool(data, "retry")) Then Return New ApiResult(ApiOutcome.Busy, s, data)
         If s >= 400 OrElse (data.ContainsKey("success") AndAlso Not Js.Bool(data, "success")) Then Return New ApiResult(ApiOutcome.Rejected, s, data)
         Return New ApiResult(ApiOutcome.Ok, s, data)
     End Function

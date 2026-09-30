@@ -59,21 +59,51 @@ Public Class AddProductPage
     ' sections: (group key, card, rows of controls laid out inside)
     Private ReadOnly _basic As New Card(), _pricing As New Card(), _catCard As New Card(), _sizesCard As New Card(), _specsCard As New Card(), _images As New Card(), _org As New Card()
 
-    Public Overrides ReadOnly Property PageTitle As String = "Add Product"
-    Public Overrides ReadOnly Property PageSubtitle As String = "Fill in the details for your new product"
+    ' editing an existing product (0 = new)
+    Private ReadOnly _productId As Integer
+    Private _row As JsonObject
+    Private _full As Boolean = True
+    Private _serverPhoto As String
+    Private _removePhotoFlag As Boolean
+    Private ReadOnly _serverGallery As New List(Of JsonObject)
+    Private ReadOnly _removedGallery As New List(Of Integer)
+    Private _variantIds As String = ""
+    Private _type As String = "physical"
+    Private _campaignOn As Boolean
+    Private _campaignPrice As String = ""
+    Private ReadOnly _delete As WButton = WButton.Make("Delete", Theme.IcDelete, Theme.Danger, outline:=True)
+
+    Public Overrides ReadOnly Property PageTitle As String
+        Get
+            Return If(_productId = 0, "Add Product", "Edit Product")
+        End Get
+    End Property
+    Public Overrides ReadOnly Property PageSubtitle As String
+        Get
+            Return If(_productId = 0, "Fill in the details for your new product", Js.Str(_row, "name", "Change the details and save"))
+        End Get
+    End Property
     Public Overrides ReadOnly Property Actions As Control()
         Get
             Return {_display.Button}
         End Get
     End Property
 
-    Public Sub New()
+    Public Sub New(Optional productId As Integer = 0)
+        _productId = productId
         Controls.Add(_scroll)
         Ui.DoubleBuffer(_scroll)
         For Each c In {_basic, _pricing, _catCard, _sizesCard, _specsCard, _images, _org}
             _scroll.Controls.Add(c)
         Next
-        _scroll.Controls.AddRange(New Control() {_saveAnother, _create, _error})
+        _scroll.Controls.AddRange(New Control() {_saveAnother, _create, _error, _delete})
+        _delete.Visible = productId <> 0
+        AddHandler _delete.Click, Async Sub() Await DeleteAsync()
+        If productId <> 0 Then
+            _create.Text = "Save Changes"
+            _create.Width = _create.PreferredWidth()
+            _saveAnother.Visible = False
+        End If
 
         _basic.Controls.Add(New CardHeading("Basic Info", Theme.IcInfo))
         _pricing.Controls.Add(New CardHeading("Pricing & Stock", Theme.IcMoney))
@@ -103,6 +133,7 @@ Public Class AddProductPage
         AddHandler _removePhoto.Click, Sub()
                                            _photoPath = Nothing
                                            _photo.Image = Nothing
+                                           _removePhotoFlag = True
                                        End Sub
         AddHandler _addGallery.Click, Sub() PickGallery()
         AddHandler _create.Click, Async Sub() Await SaveAsync(False)
@@ -113,10 +144,11 @@ Public Class AddProductPage
         AddHandler _scroll.Resize, Sub() LayoutAll()
         AddHandler AppState.I.DataChanged, Sub() If Not Visible Then LoadChoices()
         LoadChoices()
+        If productId <> 0 Then LoadProduct()
     End Sub
 
     Public Overrides Sub OnOpened()
-        If _name.Text = "" Then LoadChoices()
+        If _name.Text = "" AndAlso _productId = 0 Then LoadChoices()
         LayoutAll()
         _name.Box.Focus()
     End Sub
@@ -176,9 +208,10 @@ Public Class AddProductPage
         Using d As New OpenFileDialog With {.Filter = "Pictures|*.jpg;*.jpeg;*.png;*.webp;*.gif", .Title = "Choose the product photo"}
             If d.ShowDialog(Me) <> DialogResult.OK Then Return
             _photoPath = d.FileName
+            _removePhotoFlag = False
             Try
                 Using fs As New FileStream(d.FileName, FileMode.Open, FileAccess.Read)
-                    _photo.Image = Image.FromStream(fs)
+                    Using im = Image.FromStream(fs) : _photo.Image = New Bitmap(im) : End Using
                 End Using
             Catch
                 _photo.Image = Nothing
@@ -194,7 +227,7 @@ Public Class AddProductPage
                 Dim pb As New PictureBox With {.Size = New Size(72, 72), .SizeMode = PictureBoxSizeMode.Zoom, .BackColor = Color.FromArgb(&HF4, &HF4, &HF7), .Margin = New Padding(0, 0, 8, 8), .Cursor = Cursors.Hand, .Tag = f}
                 Try
                     Using fs As New FileStream(f, FileMode.Open, FileAccess.Read)
-                        pb.Image = Image.FromStream(fs)
+                        Using im = Image.FromStream(fs) : pb.Image = New Bitmap(im) : End Using
                     End Using
                 Catch
                 End Try
@@ -245,8 +278,16 @@ Public Class AddProductPage
             {"price", If(price.HasValue, price.Value.ToString(Globalization.CultureInfo.InvariantCulture), "")}, {"sale_price", If(sale.HasValue, sale.Value.ToString(Globalization.CultureInfo.InvariantCulture), "")},
             {"stock_qty", If(stockTxt = "", "0", stockTxt)}, {"gst_rate", gst.ToString(Globalization.CultureInfo.InvariantCulture)},
             {"status", If(_published.Checked, "active", "inactive")}, {"badge_tag", badge}, {"item_type", itemType},
-            {"campaign_price", ""}, {"quantity", _qty.Text.Trim()}, {"variant_ids", ""}, {"sizes", sizesJson.ToJsonString()}, {"specs", specs.ToJsonString()}}
+            {"campaign_price", ""}, {"quantity", _qty.Text.Trim()}, {"variant_ids", _variantIds}, {"sizes", sizesJson.ToJsonString()}, {"specs", specs.ToJsonString()}}
         If _home.Checked Then fields("show_on_home") = "on"
+        If _productId <> 0 Then
+            fields("product_type") = _type
+            fields("variant_ids") = _variantIds
+            If _campaignOn Then fields("is_campaign") = "on"
+            fields("campaign_price") = _campaignPrice
+            If _removePhotoFlag AndAlso _photoPath Is Nothing Then fields("remove_image") = "1"
+            If _removedGallery.Count > 0 Then fields("removed_gallery_ids") = String.Join(",", _removedGallery)
+        End If
         ' Photos are copied into the app's folder, so they upload even if the originals are moved.
         Dim files As New Dictionary(Of String, String)
         If _photoPath IsNot Nothing Then files("image") = Store.KeepFile(_photoPath)
@@ -256,28 +297,175 @@ Public Class AddProductPage
 
         _busy = True : _create.Enabled = False : _saveAnother.Enabled = False
         Try
-            Dim item As New OutboxItem With {.Method = "POST", .Path = "/api/ecommerce/products2", .Label = "New product: " & name, .Multipart = True, .Fields = fields, .Files = files}
-            Dim r = Await AppState.I.SendNowAsync(item)
-            If r.IsOk Then
-                Toast("Product added.")
-            ElseIf r.Outcome = ApiOutcome.Offline OrElse r.Outcome = ApiOutcome.Busy Then
+            Dim status = If(_published.Checked, "active", "inactive")
+            Dim catNode = If(catId = "", Nothing, JsonValue.Create(CInt(catId)))
+            Dim brandNode = If(brandId = "", Nothing, JsonValue.Create(CInt(brandId)))
+            Dim saleNode = If(sale.HasValue, JsonValue.Create(sale.Value), Nothing)
+            Dim item As OutboxItem
+            If _productId = 0 Then
+                item = New OutboxItem With {.Method = "POST", .Path = "/api/ecommerce/products2", .Label = "New product: " & name, .Multipart = True, .Fields = fields, .Files = files, .Refresh = New List(Of String) From {"products"}}
                 ' Shows in Billing and lists at once; uploads when the internet is back.
-                Dim local As New JsonObject From {
+                item.Effect = New JsonObject From {{"kind", "product_new"}, {"product", New JsonObject From {
                     {"id", -DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}, {"localRef", item.Id}, {"name", name}, {"sku", _sku.Text.Trim()}, {"barcode", _barcode.Text.Trim()},
-                    {"price", If(price, 0)}, {"salePrice", If(sale.HasValue, JsonValue.Create(sale.Value), Nothing)}, {"gstRate", gst}, {"stock", If(stockTxt = "", 0, stockN)},
-                    {"unit", unit}, {"categoryId", If(catId = "", Nothing, JsonValue.Create(CInt(catId)))}, {"status", If(_published.Checked, "active", "inactive")}, {"type", "physical"},
-                    {"sizes", New JsonArray()}, {"updatedAt", DateTime.UtcNow.ToString("o")}}
-                AppState.I.AddLocal("products", local)
-                Toast("Product saved on this computer — it uploads when the internet is back.")
+                    {"price", If(price, 0)}, {"salePrice", saleNode}, {"gstRate", gst}, {"stock", If(stockTxt = "", 0, stockN)},
+                    {"unit", unit}, {"categoryId", catNode}, {"brandId", brandNode}, {"status", status}, {"type", "physical"},
+                    {"localImage", If(files.ContainsKey("image"), files("image"), Nothing)},
+                    {"sizes", New JsonArray()}, {"updatedAt", DateTime.UtcNow.ToString("o")}}}}
+            ElseIf _full Then
+                item = New OutboxItem With {.Method = "PUT", .Path = "/api/ecommerce/products2/" & _productId, .Label = "Edit product: " & name, .Multipart = True, .Fields = fields, .Files = files, .Refresh = New List(Of String) From {"products"}}
+                item.Effect = New JsonObject From {{"kind", "product"}, {"id", _productId}, {"fields", New JsonObject From {
+                    {"name", name}, {"price", If(price, 0)}, {"salePrice", Js.Copy(saleNode)}, {"stock", If(stockTxt = "", 0, stockN)}, {"unit", unit}, {"sku", _sku.Text.Trim()},
+                    {"barcode", _barcode.Text.Trim()}, {"categoryId", Js.Copy(catNode)}, {"brandId", Js.Copy(brandNode)}, {"status", status}, {"gstRate", gst}}}}
             Else
+                ' Offline and the full form was never downloaded: the main details still change.
+                Dim changes As New JsonObject From {{"name", name}, {"price", If(price, 0)}, {"salePrice", Js.Copy(saleNode)}, {"gstRate", gst}, {"unit", unit}, {"sku", _sku.Text.Trim()},
+                    {"barcode", _barcode.Text.Trim()}, {"hsn", _hsn.Text.Trim()}, {"categoryId", Js.Copy(catNode)}, {"brandId", Js.Copy(brandNode)}, {"status", status}}
+                If Not Js.IsNull(_row, "stock") Then changes("stock") = If(stockTxt = "", 0, stockN)
+                item = New OutboxItem With {.Method = "PATCH", .Path = "/api/app/v1/products/" & _productId, .Label = "Edit product: " & name, .Body = changes, .Refresh = New List(Of String) From {"products"}}
+                item.Effect = New JsonObject From {{"kind", "product"}, {"id", _productId}, {"fields", Js.Copy(changes)}}
+            End If
+            Dim r = Await AppState.I.SendNowAsync(item)
+            If r.Outcome = ApiOutcome.Rejected OrElse r.Outcome = ApiOutcome.Forbidden OrElse r.Outcome = ApiOutcome.Unauthorized Then
                 ShowError(r.Message)
                 Return
             End If
+            If _productId <> 0 AndAlso Not _full AndAlso _photoPath IsNot Nothing Then
+                Await AppState.I.SendNowAsync(New OutboxItem With {.Method = "POST", .Path = "/api/app/v1/products/" & _productId & "/image", .Label = "New photo: " & name, .Files = New Dictionary(Of String, String) From {{"image", files("image")}}, .Refresh = New List(Of String) From {"products"}})
+            End If
+            If r.IsOk Then
+                Toast(If(_productId = 0, "Product added.", "Saved."))
+                If _productId = 0 AndAlso another Then
+                    ' the next product (usually the next size) stays linked to the one just made
+                    Dim nid = Js.Int(r.Data, "id")
+                    If nid > 0 Then _variantIds = If(_variantIds = "", nid.ToString(), _variantIds & "," & nid)
+                End If
+            Else
+                Toast("Saved on this computer — it goes to the website when the internet is back.")
+            End If
+            If _productId <> 0 Then
+                Main?.Back()
+                Return
+            End If
             ClearForm(keepChoices:=another)
-            If Not another Then TryCast(FindForm(), MainForm)?.Pick("dashboard")
+            If Not another Then Main?.Pick("/admin/ecommerce/products")
         Finally
             _busy = False : _create.Enabled = True : _saveAnother.Enabled = True
         End Try
+    End Function
+
+    ' ───────── editing: fill the form ─────────
+    Private Sub LoadProduct()
+        _row = AppState.I.List("products").FirstOrDefault(Function(p) Js.Int(p, "id") = _productId)
+        If _row IsNot Nothing Then Fill(_row, False)
+        Dim saved = AppState.I.SavedProduct(_productId)
+        If saved IsNot Nothing Then
+            Fill(saved, True)
+        Else
+            _full = False
+            Dim unused = FetchFullAsync()
+        End If
+    End Sub
+
+    Private Async Function FetchFullAsync() As Task
+        Dim r = Await AppState.I.Api.GetAsync("/api/app/v1/products/" & _productId)
+        If Not r.IsOk OrElse IsDisposed Then Return
+        Dim x = TryCast(Js.Copy(Js.Field(r.Data, "product")), JsonObject)
+        If x Is Nothing Then Return
+        AppState.I.SaveProduct(_productId, x)
+        Fill(x, True)
+        LayoutAll()
+    End Function
+
+    Private Shared Function N(v As JsonNode) As String
+        If v Is Nothing Then Return ""
+        Dim d = Js.ToNum(v, Double.NaN)
+        If Double.IsNaN(d) Then Return ""
+        Return d.ToString("0.##", Globalization.CultureInfo.InvariantCulture)
+    End Function
+
+    Private Sub Fill(x As JsonObject, full As Boolean)
+        _full = full
+        _name.Text = Js.Str(x, "name")
+        _sku.Text = Js.Str(x, "sku")
+        _hsn.Text = Js.Str(x, "hsn")
+        _barcode.Text = Js.Str(x, "barcode")
+        _price.Text = N(Js.Field(x, "price"))
+        _sale.Text = N(Js.Field(x, "salePrice"))
+        _stock.Text = If(Js.IsNull(x, "stock"), "", Js.Int(x, "stock").ToString())
+        _qty.Text = N(Js.Field(x, "quantity"))
+        _type = Js.Str(x, "type", "physical")
+        Dim unit = Js.Str(x, "unit").Trim()
+        If unit <> "" AndAlso Not _unit.Items.Cast(Of Object)().Any(Function(o) o.ToString() = unit) Then _unit.Items.Add(unit)
+        _unit.SelectedIndex = If(unit = "", 0, _unit.Items.Cast(Of Object)().ToList().FindIndex(Function(o) o.ToString() = unit))
+        Dim rate = Js.Num(x, "gstRate")
+        Dim ri = _rates.IndexOf(rate)
+        If ri < 0 Then _rates.Add(rate) : _gst.Items.Add(rate.ToString("0.##") & "%") : ri = _rates.Count - 1
+        _gst.SelectedIndex = ri
+        Dim ci = _cats.FindIndex(Function(c) Js.Int(c, "id") = Js.Int(x, "categoryId"))
+        _category.SelectedIndex = If(ci >= 0, ci + 1, 0)
+        Dim bi = _brands.FindIndex(Function(b) Js.Int(b, "id") = Js.Int(x, "brandId"))
+        _brand.SelectedIndex = If(bi >= 0, bi + 1, 0)
+        _published.Checked = Js.Str(x, "status") <> "inactive"
+        _unpublished.Checked = Not _published.Checked
+        _serverPhoto = Js.Str(x, "image")
+        If _serverPhoto <> "" AndAlso _photoPath Is Nothing Then
+            Dim src = _serverPhoto
+            Dim im = Img.Get(src, 600, Sub(i) If _photoPath Is Nothing AndAlso Not IsDisposed Then _photo.Image = i)
+            If im IsNot Nothing Then _photo.Image = im
+        End If
+        If Not full Then Return
+        _slug.Text = Js.Str(x, "slug")
+        _desc.Text = Js.Str(x, "description").Replace(vbLf, vbCrLf).Replace(vbCr & vbCrLf, vbCrLf)
+        _variantIds = String.Join(",", Js.Arr(x, "variantIds").Select(Function(v) Js.Text(v)))
+        Dim bIdx = _badges.FindIndex(Function(b) b.Item1 = Js.Str(x, "badgeTag"))
+        _badge.SelectedIndex = If(bIdx >= 0, bIdx + 1, 0)
+        Dim tIdx = _types.FindIndex(Function(b) b.Item1 = Js.Str(x, "itemType"))
+        _itemType.SelectedIndex = If(tIdx >= 0, tIdx + 1, 0)
+        _home.Checked = Js.Bool(x, "showOnHome")
+        _campaignOn = Js.Bool(x, "isCampaign")
+        _campaignPrice = N(Js.Field(x, "campaignPrice"))
+        ' sizes: the unit is added automatically, so show just the number ("250 Gram" -> "250")
+        _sizes.Rows.Clear()
+        For Each z In Js.Objs(Js.Arr(x, "sizes"))
+            Dim label = Js.Str(z, "label")
+            If unit <> "" AndAlso label.EndsWith(" " & unit, StringComparison.OrdinalIgnoreCase) Then
+                Dim head = label.Substring(0, label.Length - unit.Length - 1).Trim()
+                Dim dummy As Double
+                If Double.TryParse(head, Globalization.NumberStyles.Any, Globalization.CultureInfo.InvariantCulture, dummy) Then label = head
+            End If
+            _sizes.Rows.Add(label, N(Js.Field(z, "mrp")), N(Js.Field(z, "price")), If(Js.IsNull(z, "stock"), "", Js.Int(z, "stock").ToString()), Js.Bool(z, "isDefault"))
+        Next
+        _specs.Rows.Clear()
+        For Each sp In Js.Objs(Js.Arr(x, "specs"))
+            _specs.Rows.Add(Js.Str(sp, "name"), Js.Str(sp, "value"))
+        Next
+        ' gallery already on the website (click to remove)
+        _serverGallery.Clear()
+        _serverGallery.AddRange(Js.Objs(Js.Arr(x, "gallery")))
+        For Each c As Control In _gallery.Controls.Cast(Of Control)().ToList()
+            If TypeOf c Is WebPicture Then _gallery.Controls.Remove(c) : c.Dispose()
+        Next
+        For Each g In _serverGallery
+            Dim gid = Js.Int(g, "id")
+            Dim wp As New WebPicture(72) With {.Margin = New Padding(0, 0, 8, 8), .Cursor = Cursors.Hand}
+            wp.Source = Js.Str(g, "image")
+            AddHandler wp.Click, Sub()
+                                     _removedGallery.Add(gid)
+                                     _gallery.Controls.Remove(wp)
+                                 End Sub
+            _gallery.Controls.Add(wp)
+        Next
+    End Sub
+
+    Private Async Function DeleteAsync() As Task
+        If _productId = 0 Then Return
+        If Not Ui.Confirm(Me, "Delete """ & _name.Text & """? This cannot be undone.") Then Return
+        Dim item As New OutboxItem With {.Method = "DELETE", .Path = "/api/ecommerce/products2/" & _productId, .Label = "Delete product: " & _name.Text, .Refresh = New List(Of String) From {"products"},
+            .Effect = New JsonObject From {{"kind", "product_delete"}, {"ids", New JsonArray(JsonValue.Create(_productId))}}}
+        Dim r = Await AppState.I.SendNowAsync(item)
+        If r.Outcome = ApiOutcome.Rejected OrElse r.Outcome = ApiOutcome.Forbidden Then Toast(r.Message, True) : Return
+        Toast("Product deleted.")
+        Main?.Back()
     End Function
 
     Private Function ReadSizes() As List(Of JsonObject)
@@ -429,7 +617,8 @@ Public Class AddProductPage
         If v_org Then rightY += Place(_org, pad + lw + gap, rightY, rw, rows) + gap
 
         Dim by = Math.Max(leftY, rightY)
-        _error.SetBounds(pad, by, w - 420, 40)
+        _error.SetBounds(pad + If(_delete.Visible, 130, 0), by, w - 420 - If(_delete.Visible, 130, 0), 40)
+        _delete.SetBounds(pad, by, 120, 44)
         _saveAnother.SetBounds(pad + w - 380, by, 180, 44)
         _create.SetBounds(pad + w - 190, by, 190, 44)
         _scroll.AutoScrollMinSize = New Size(0, by + 44 + pad)

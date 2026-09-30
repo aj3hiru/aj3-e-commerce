@@ -192,7 +192,23 @@ Public Class BillingPage
         Relayout()
     End Sub
 
+    ''' <summary>A customer to start the next bill for ("New order" on a customer's profile).</summary>
+    Public Shared Pending As Integer
+
     Public Overrides Sub OnOpened()
+        FillCustomers()
+        If Pending > 0 Then
+            Dim c = AppState.I.List("customers").FirstOrDefault(Function(x) Js.Int(x, "id") = Pending)
+            Pending = 0
+            If c IsNot Nothing Then
+                _guest.Checked = False
+                _customer = c
+                _phone.Text = Js.Str(c, "phone")
+                _name.Text = Js.Str(c, "name")
+                Dim due = Js.Num(c, "due")
+                _prevDue.Text = If(due > 0, "Previous due: " & Theme.Money(due), "")
+            End If
+        End If
         Relayout()
         _scan.Box.Focus()
     End Sub

@@ -195,9 +195,8 @@ Public Module OrderActions
 
     ''' <summary>Print an order's bill on the paper chosen in Business Settings (thermal 58 / 80 mm or A4).</summary>
     Public Sub PrintOrder(o As JsonObject, owner As Control, Optional preview As Boolean = False)
-        Dim size = PrintPrefs.Choose(owner, "Print " & Js.Str(o, "number", "bill"), preview)
-        If size Is Nothing Then Return
-        Receipts.Print(Receipts.FromOrder(o), size, owner, preview)
+        ' the bill opens on screen (paper choice + Print there), like the website's invoice page
+        Receipts.Print(Receipts.FromOrder(o), PrintPrefs.Paper(), owner, True)
     End Sub
 End Module
 
@@ -231,91 +230,189 @@ Public Module Receipts
         Return r
     End Function
 
-    Public Sub Print(r As ReceiptData, size As String, owner As Control, Optional preview As Boolean = False)
+    ''' <summary>The bill drawn at (x, y) in 1/100 inch, w wide. Returns where it ended.</summary>
+    Public Function DrawBill(g As Graphics, r As ReceiptData, size As String, x As Single, y As Single, w As Single) As Single
         Dim shop = AppState.I.Settings
-        Dim doc As New PrintDocument With {.DocumentName = "Bill " & r.Number}
-        If PrintPrefs.Printer() <> "" Then doc.PrinterSettings.PrinterName = PrintPrefs.Printer()
         Dim a4 = size = "a4"
-        Dim widthIn = If(size = "thermal_58", 2.28, 3.15)
-        If Not a4 Then
-            doc.DefaultPageSettings.PaperSize = New PaperSize("Receipt", CInt(widthIn * 100), 3000)
-            doc.DefaultPageSettings.Margins = New Margins(8, 8, 8, 8)
-        Else
-            doc.DefaultPageSettings.Margins = New Margins(50, 50, 50, 50)
-        End If
         Dim fs = If(a4, 10.0F, If(size = "thermal_58", 7.2F, 8.0F))
-        AddHandler doc.PrintPage, Sub(s, e)
-                                      Dim g = e.Graphics
-                                      Dim w = CSng(e.MarginBounds.Width), x = CSng(e.MarginBounds.Left)
-                                      Dim y = CSng(e.MarginBounds.Top)
-                                      Dim center As New StringFormat With {.Alignment = StringAlignment.Center}
-                                      Dim right As New StringFormat With {.Alignment = StringAlignment.Far}
-                                      Using f As New Font("Segoe UI", fs), fb As New Font("Segoe UI", fs, FontStyle.Bold), fbig As New Font("Segoe UI", fs * 1.45F, FontStyle.Bold)
-                                          Dim lh = f.GetHeight(g) + 1
-                                          Dim line = Sub(t As String, font As Font, fmt As StringFormat)
-                                                         Dim sz = g.MeasureString(t, font, CInt(w))
-                                                         g.DrawString(t, font, Brushes.Black, New RectangleF(x, y, w, sz.Height + 2), fmt)
-                                                         y += sz.Height
-                                                     End Sub
-                                          Dim row = Sub(l As String, v As String, bold As Boolean)
-                                                        Dim font = If(bold, fb, f)
-                                                        g.DrawString(l, font, Brushes.Black, New RectangleF(x, y, w * 0.62F, lh * 2))
-                                                        g.DrawString(v, font, Brushes.Black, New RectangleF(x, y, w, lh), right)
-                                                        y += lh
-                                                    End Sub
-                                          Dim dash = Sub()
-                                                         y += 2
-                                                         Using pen As New Pen(Color.Black, 0.6F) With {.DashStyle = Drawing2D.DashStyle.Dash}
-                                                             g.DrawLine(pen, x, y, x + w, y)
-                                                         End Using
-                                                         y += 4
-                                                     End Sub
-                                          line(Js.Str(shop, "businessName", "Sri Andal Traders"), fbig, center)
-                                          Dim addr = Js.Str(shop, "address")
-                                          If addr <> "" Then line(addr, f, center)
-                                          Dim phones = Js.Arr(shop, "phones").Select(Function(p) Js.Text(p)).Where(Function(p) p <> "").ToList()
-                                          If phones.Count > 0 Then line("Mob: " & String.Join(", ", phones), f, center)
-                                          Dim gstin = Js.Str(shop, "gstin")
-                                          If gstin <> "" Then line("GSTIN: " & gstin, f, center)
-                                          y += 3
-                                          line(If(a4, "TAX INVOICE", "BILL"), fb, center)
-                                          dash()
-                                          row("Bill no.", r.Number, False)
-                                          row("Date", r.At.ToString("dd MMM yyyy, hh:mm tt"), False)
-                                          row("Customer", If(r.Customer = "", "Walk-in Customer", r.Customer), False)
-                                          If Not String.IsNullOrEmpty(r.Phone) Then row("Mobile", r.Phone, False)
-                                          dash()
-                                          For Each l In r.Lines
-                                              line(l.Name & If(String.IsNullOrEmpty(l.Unit), "", " (" & l.Unit & ")"), f, StringFormat.GenericDefault)
-                                              row("   " & Fmt.Num(l.Qty) & " × " & Theme.Money(l.Price), Theme.Money(l.Qty * l.Price), False)
-                                          Next
-                                          dash()
-                                          row("Subtotal", Theme.Money(r.Subtotal), False)
-                                          If r.Discount > 0 Then row("Discount", "-" & Theme.Money(r.Discount), False)
-                                          If r.Gst > 0 Then row("GST", Theme.Money(r.Gst), False)
-                                          row("TOTAL", Theme.Money(r.Total), True)
-                                          For Each p In r.Payments.Where(Function(q) q.Amount > 0)
-                                              row("Paid (" & p.Method & ")", Theme.Money(p.Amount), False)
-                                          Next
-                                          If r.Due > 0.004 Then row("Due", Theme.Money(r.Due), True)
-                                          y += 6
-                                          If r.Offline Then line("Billed offline — uploads automatically", f, center)
-                                          line("Thank you! Visit again.", f, center)
-                                      End Using
-                                  End Sub
+        Dim center As New StringFormat With {.Alignment = StringAlignment.Center}
+        Dim right As New StringFormat With {.Alignment = StringAlignment.Far}
+        Using f As New Font("Segoe UI", fs), fb As New Font("Segoe UI", fs, FontStyle.Bold), fbig As New Font("Segoe UI", fs * 1.45F, FontStyle.Bold)
+            Dim lh = f.GetHeight(g) + 1
+            Dim line = Sub(t As String, font As Font, fmt As StringFormat)
+                           Dim sz = g.MeasureString(t, font, CInt(w))
+                           g.DrawString(t, font, Brushes.Black, New RectangleF(x, y, w, sz.Height + 2), fmt)
+                           y += sz.Height
+                       End Sub
+            Dim row = Sub(l As String, v As String, bold As Boolean)
+                          Dim font = If(bold, fb, f)
+                          g.DrawString(l, font, Brushes.Black, New RectangleF(x, y, w * 0.62F, lh * 2))
+                          g.DrawString(v, font, Brushes.Black, New RectangleF(x, y, w, lh), right)
+                          y += lh
+                      End Sub
+            Dim dash = Sub()
+                           y += 2
+                           Using pen As New Pen(Color.Black, 0.6F) With {.DashStyle = Drawing2D.DashStyle.Dash}
+                               g.DrawLine(pen, x, y, x + w, y)
+                           End Using
+                           y += 4
+                       End Sub
+            line(Js.Str(shop, "businessName", "Sri Andal Traders"), fbig, center)
+            Dim addr = Js.Str(shop, "address")
+            If addr <> "" Then line(addr, f, center)
+            Dim phones = Js.Arr(shop, "phones").Select(Function(p) Js.Text(p)).Where(Function(p) p <> "").ToList()
+            If phones.Count > 0 Then line("Mob: " & String.Join(", ", phones), f, center)
+            Dim gstin = Js.Str(shop, "gstin")
+            If gstin <> "" Then line("GSTIN: " & gstin, f, center)
+            y += 3
+            line(If(a4, "TAX INVOICE", "BILL"), fb, center)
+            dash()
+            row("Bill no.", r.Number, False)
+            row("Date", Fmt.ToIst(r.At).ToString("dd MMM yyyy, hh:mm tt", Globalization.CultureInfo.InvariantCulture), False)
+            row("Customer", If(String.IsNullOrEmpty(r.Customer), "Walk-in Customer", r.Customer), False)
+            If Not String.IsNullOrEmpty(r.Phone) Then row("Mobile", r.Phone, False)
+            dash()
+            For Each l In r.Lines
+                line(l.Name & If(String.IsNullOrEmpty(l.Unit), "", " (" & l.Unit & ")"), f, StringFormat.GenericDefault)
+                row("   " & Fmt.Num(l.Qty) & " × " & Theme.Money(l.Price), Theme.Money(l.Qty * l.Price), False)
+            Next
+            dash()
+            row("Subtotal", Theme.Money(r.Subtotal), False)
+            If r.Discount > 0 Then row("Discount", "-" & Theme.Money(r.Discount), False)
+            If r.Gst > 0 Then row("GST", Theme.Money(r.Gst), False)
+            row("TOTAL", Theme.Money(r.Total), True)
+            For Each p In r.Payments.Where(Function(q) q.Amount > 0)
+                row("Paid (" & p.Method & ")", Theme.Money(p.Amount), False)
+            Next
+            If r.Due > 0.004 Then row("Due", Theme.Money(r.Due), True)
+            y += 6
+            If r.Offline Then line("Billed offline — uploads automatically", f, center)
+            line("Thank you! Visit again.", f, center)
+        End Using
+        Return y
+    End Function
+
+    ''' <summary>A print job for the bill on the chosen paper (thermal 58 / 80 mm or A4).</summary>
+    Public Function MakeDoc(r As ReceiptData, size As String) As PrintDocument
+        Dim doc As New PrintDocument With {.DocumentName = "Bill " & r.Number}
         Try
-            If preview Then
-                Using d As New PrintPreviewDialog With {.Document = doc, .Width = 900, .Height = 900, .UseAntiAlias = True}
-                    d.ShowDialog(owner?.FindForm())
-                End Using
+            If PrintPrefs.Printer() <> "" AndAlso PrinterSettings.InstalledPrinters.Cast(Of String)().Contains(PrintPrefs.Printer()) Then doc.PrinterSettings.PrinterName = PrintPrefs.Printer()
+            If size <> "a4" Then
+                doc.DefaultPageSettings.PaperSize = New PaperSize("Receipt", CInt(If(size = "thermal_58", 2.28, 3.15) * 100), 3000)
+                doc.DefaultPageSettings.Margins = New Margins(8, 8, 8, 8)
             Else
-                doc.Print()
+                doc.DefaultPageSettings.Margins = New Margins(50, 50, 50, 50)
             End If
-        Catch ex As Exception
-            TryCast(owner?.FindForm(), MainForm)?.Toast("Printer not available: " & ex.Message, True)
+        Catch
         End Try
+        AddHandler doc.PrintPage, Sub(s, e) DrawBill(e.Graphics, r, size, e.MarginBounds.Left, e.MarginBounds.Top, e.MarginBounds.Width)
+        Return doc
+    End Function
+
+    ''' <summary>Print the bill. preview (or no printer / a printing error) opens the bill window instead, where
+    ''' it can be seen, the paper changed and printed with the Windows print dialog.</summary>
+    Public Sub Print(r As ReceiptData, size As String, owner As Control, Optional preview As Boolean = False)
+        If size = "ask" OrElse size = "" Then size = Js.Str(AppState.I.Settings, "printerFormat", "thermal_80")
+        If Not preview AndAlso PrinterSettings.InstalledPrinters.Count > 0 Then
+            Try
+                MakeDoc(r, size).Print()
+                Return
+            Catch ex As Exception
+                TryCast(owner?.FindForm(), MainForm)?.Toast("Couldn't print (" & ex.Message & ") — opening the bill.", True)
+            End Try
+        End If
+        Dim w As New InvoiceWindow(r, size)
+        w.Show(owner?.FindForm())
     End Sub
 End Module
+
+''' <summary>The bill on screen: paper choice, Print (Windows print dialog), Close. Opens without any printer.</summary>
+Public Class InvoiceWindow
+    Inherits Form
+    Private ReadOnly _r As ReceiptData
+    Private _size As String
+    Private ReadOnly _pic As New PictureBox With {.SizeMode = PictureBoxSizeMode.AutoSize, .BackColor = Color.White}
+    Private ReadOnly _scroll As New Panel With {.Dock = DockStyle.Fill, .AutoScroll = True, .BackColor = Theme.G100}
+    Private ReadOnly _bar As New Panel With {.Dock = DockStyle.Top, .Height = 56, .BackColor = Color.White}
+    Private ReadOnly _paper As ComboBox = Ui.Filter({"thermal_80|Thermal 80 mm", "thermal_58|Thermal 58 mm", "a4|A4 invoice"}, 170)
+    Private ReadOnly _print As New HeadButton("Print", "printer", Web.Blue)
+    Private ReadOnly _close As New HeadButton("Close", "x")
+
+    Public Sub New(r As ReceiptData, paper As String)
+        _r = r : _size = paper
+        Text = "Bill " & r.Number
+        Icon = Theme.AppIcon
+        StartPosition = FormStartPosition.CenterParent
+        Me.Size = New Size(760, 860)
+        BackColor = Color.White
+        KeyPreview = True
+        _scroll.Controls.Add(_pic)
+        _bar.Controls.AddRange(New Control() {_paper, _print, _close})
+        Controls.Add(_scroll)
+        Controls.Add(_bar)
+        Ui.SetVal(_paper, paper)
+        AddHandler _bar.Layout, Sub()
+                                    _paper.SetBounds(16, 10, 170, 36)
+                                    _close.Location = New Point(_bar.Width - 16 - _close.Width, 8)
+                                    _print.Location = New Point(_close.Left - 10 - _print.Width, 8)
+                                End Sub
+        AddHandler _scroll.Resize, Sub() Place()
+        AddHandler _paper.SelectedIndexChanged, Sub()
+                                                    _size = Ui.Val(_paper)
+                                                    Render()
+                                                End Sub
+        AddHandler _print.Click, Sub() DoPrint()
+        AddHandler _close.Click, Sub() Close()
+        AddHandler KeyDown, Sub(s, e)
+                                If e.KeyCode = Keys.Escape Then Close()
+                                If e.Control AndAlso e.KeyCode = Keys.P Then DoPrint()
+                            End Sub
+        Render()
+    End Sub
+
+    ''' <summary>The bill as a picture (100 dots per inch, the print units).</summary>
+    Private Sub Render()
+        Dim a4 = _size = "a4"
+        Dim wIn = If(a4, 8.27, If(_size = "thermal_58", 2.28, 3.15))
+        Dim margin = If(a4, 50, 8)
+        Dim pw = CInt(wIn * 100)
+        Dim tall As New Bitmap(pw, 4000)
+        tall.SetResolution(100, 100)
+        Dim bottom As Single
+        Using g = Graphics.FromImage(tall)
+            g.PageUnit = GraphicsUnit.Pixel
+            g.Clear(Color.White)
+            g.TextRenderingHint = Drawing.Text.TextRenderingHint.ClearTypeGridFit
+            bottom = Receipts.DrawBill(g, _r, _size, margin, margin, pw - margin * 2)
+        End Using
+        Dim h = Math.Max(If(a4, 1169, 200), CInt(bottom) + margin)
+        Dim bmp = tall.Clone(New Rectangle(0, 0, pw, Math.Min(h, tall.Height)), tall.PixelFormat)
+        tall.Dispose()
+        _pic.Image?.Dispose()
+        _pic.Image = bmp
+        Place()
+    End Sub
+
+    Private Sub Place()
+        _pic.Location = New Point(Math.Max(16, (_scroll.ClientSize.Width - _pic.Width) \ 2) + _scroll.AutoScrollPosition.X, 16 + _scroll.AutoScrollPosition.Y)
+    End Sub
+
+    Private Sub DoPrint()
+        If PrinterSettings.InstalledPrinters.Count = 0 Then
+            MessageBox.Show(Me, "No printer is installed on this computer. Add a printer in Windows Settings › Printers, then print again.", "Print", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+        Dim doc = Receipts.MakeDoc(_r, _size)
+        Using d As New PrintDialog With {.Document = doc, .UseEXDialog = True, .AllowSomePages = False}
+            If d.ShowDialog(Me) <> DialogResult.OK Then Return
+            Try
+                doc.Print()
+            Catch ex As Exception
+                MessageBox.Show(Me, "Couldn't print: " & ex.Message, "Print", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            End Try
+        End Using
+    End Sub
+End Class
 
 ''' <summary>Saves a table as an Excel file (or CSV), like the website's Export button.</summary>
 Public Module Export

@@ -162,7 +162,30 @@ Public Class BillingPage
             ResetForNextSale()
             Return True
         End If
+        ' a scan while the cursor is not in a text box (e.g. after clicking the cart): send it to the scan box
+        Dim ch = ScanChar(k)
+        If ch <> "" AndAlso Not (TypeOf FindForm()?.ActiveControl Is TextBoxBase) AndAlso Not IsTyping() Then
+            _scan.Type(ch)
+            Return True
+        End If
         Return False
+    End Function
+
+    Private Function IsTyping() As Boolean
+        Dim c = FindForm()?.ActiveControl
+        While TypeOf c Is ContainerControl AndAlso DirectCast(c, ContainerControl).ActiveControl IsNot Nothing
+            c = DirectCast(c, ContainerControl).ActiveControl
+        End While
+        Return TypeOf c Is TextBoxBase OrElse TypeOf c Is ComboBox OrElse TypeOf c Is NumericUpDown
+    End Function
+
+    Private Shared Function ScanChar(k As Keys) As String
+        If (k And Keys.Modifiers) <> Keys.None AndAlso (k And Keys.Modifiers) <> Keys.Shift Then Return ""
+        Dim code = k And Keys.KeyCode
+        If code >= Keys.D0 AndAlso code <= Keys.D9 AndAlso (k And Keys.Shift) = Keys.None Then Return ChrW(AscW("0"c) + (code - Keys.D0)).ToString()
+        If code >= Keys.NumPad0 AndAlso code <= Keys.NumPad9 Then Return ChrW(AscW("0"c) + (code - Keys.NumPad0)).ToString()
+        If code >= Keys.A AndAlso code <= Keys.Z Then Return ChrW(AscW(If((k And Keys.Shift) = Keys.Shift, "A"c, "a"c)) + (code - Keys.A)).ToString()
+        Return ""
     End Function
 
     ' ───────── money (usePosCart totals) ─────────
@@ -661,7 +684,17 @@ Public Class ScanBar
         _box.Font = Theme.Px(14)
         _box.PlaceholderText = "Scan barcode or type product name / SKU..."
         Controls.Add(_box)
-        AddHandler _box.TextChanged, Sub() Suggest()
+        ' suggestions wait until typing pauses: a scanner types the whole code + Enter in a few ms, and an open
+        ' list would take the keyboard away from the box (the scan got lost)
+        AddHandler _box.TextChanged, Sub()
+                                         _wait.Stop()
+                                         _dd?.Close()
+                                         If _box.Text.Trim().Length >= 2 Then _wait.Start()
+                                     End Sub
+        AddHandler _wait.Tick, Sub()
+                                   _wait.Stop()
+                                   If _box.Focused Then Suggest()
+                               End Sub
         AddHandler _box.KeyDown, AddressOf KeyDown_
         AddHandler _box.GotFocus, Sub() Invalidate()
         AddHandler _box.LostFocus, Sub() Invalidate()
@@ -671,8 +704,38 @@ Public Class ScanBar
         If _box.CanFocus Then _box.Focus()
     End Sub
 
+    ''' <summary>A key that arrived elsewhere (a scanner): into the box, cursor at the end.</summary>
+    Public Sub Type(ch As String)
+        If Not _box.CanFocus Then Return
+        _box.Focus()
+        _box.SelectionStart = _box.TextLength
+        _box.SelectedText = ch
+    End Sub
+
+    Private ReadOnly _wait As New Timer With {.Interval = 220}
+    Private _cacheSrc As JsonNode
+    Private _cache As List(Of JsonObject)
+    Private _byCode As Dictionary(Of String, JsonObject)
+
+    ''' <summary>Active products, sorted once per data change (not on every key), plus a barcode / SKU / id index.</summary>
     Private Function Products() As List(Of JsonObject)
-        Return AppState.I.List("products").Where(Function(p) Js.Str(p, "status") = "active").OrderBy(Function(p) Js.Str(p, "name")).ToList()
+        Dim node As JsonNode = Nothing
+        AppState.I.Sets.TryGetValue("products", node)
+        If _cache Is Nothing OrElse node IsNot _cacheSrc Then
+            _cacheSrc = node
+            _cache = AppState.I.List("products").Where(Function(p) Js.Str(p, "status") = "active").OrderBy(Function(p) Js.Str(p, "name")).ToList()
+            _byCode = New Dictionary(Of String, JsonObject)(StringComparer.OrdinalIgnoreCase)
+            For Each p In _cache
+                For Each k In {Js.Str(p, "barcode").Trim(), Js.Str(p, "sku").Trim()}
+                    If k <> "" AndAlso Not _byCode.ContainsKey(k) Then _byCode(k) = p
+                Next
+                For Each z In Js.Objs(Js.Arr(p, "sizes"))
+                    Dim k = Js.Str(z, "barcode").Trim()
+                    If k <> "" AndAlso Not _byCode.ContainsKey(k) Then _byCode(k) = p
+                Next
+            Next
+        End If
+        Return _cache
     End Function
 
     Protected Overrides Sub OnLayout(e As LayoutEventArgs)
@@ -738,8 +801,16 @@ Public Class ScanBar
     Private Sub Enter()
         Dim v = _box.Text.Trim()
         If v = "" Then Return
+        _wait.Stop()
         Dim all = Products()
-        Dim exact = all.FirstOrDefault(Function(p) Js.Str(p, "barcode") = v OrElse Js.Str(p, "sku") = v OrElse Js.Int(p, "id").ToString() = v)
+        Dim exact As JsonObject = Nothing
+        If Not _byCode.TryGetValue(v, exact) Then
+            ' not in the index (e.g. a product changed on this computer just now): look through the fresh list
+            exact = AppState.I.List("products").FirstOrDefault(Function(p) Js.Str(p, "status") = "active" AndAlso
+                (String.Equals(Js.Str(p, "barcode").Trim(), v, StringComparison.OrdinalIgnoreCase) OrElse String.Equals(Js.Str(p, "sku").Trim(), v, StringComparison.OrdinalIgnoreCase) OrElse
+                 Js.Int(p, "id").ToString() = v OrElse Js.Objs(Js.Arr(p, "sizes")).Any(Function(z) String.Equals(Js.Str(z, "barcode").Trim(), v, StringComparison.OrdinalIgnoreCase))))
+            If exact IsNot Nothing Then _cache = Nothing ' rebuild the index next time
+        End If
         If exact IsNot Nothing Then Pick(exact) : Return
         Dim m = all.FirstOrDefault(Function(p) Js.Str(p, "name").ToLowerInvariant().Contains(v.ToLowerInvariant()))
         If m IsNot Nothing Then Pick(m) Else Ui.Info(Me, "No product found for """ & v & """.")

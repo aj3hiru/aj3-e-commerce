@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF> <!-- only for the Windows image decoder (WIC): the shop's pictures are WebP -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RootNamespace>SriAndalStaff</RootNamespace>
     <AssemblyName>SriAndalStaff</AssemblyName>

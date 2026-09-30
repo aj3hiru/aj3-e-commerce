@@ -1033,19 +1033,8 @@ Public Class WebCombo
     End Sub
     Private _open As Boolean
 
-    Protected Overrides Function ProcessCmdKey(ByRef msg As Message, keyData As Keys) As Boolean
-        If keyData = Keys.F4 OrElse keyData = (Keys.Alt Or Keys.Down) OrElse keyData = (Keys.Alt Or Keys.Up) OrElse keyData = Keys.Space OrElse keyData = Keys.Enter Then
-            OpenList()
-            Return True
-        End If
-        Return MyBase.ProcessCmdKey(msg, keyData)
-    End Function
-
     Protected Overrides Sub WndProc(ByRef m As Message)
-        If m.Msg = &H201 OrElse m.Msg = &H203 Then ' WM_LBUTTONDOWN / DBLCLK: open our list, not the Windows one
-            OpenList()
-            Return
-        End If
+        ' the list itself is the Windows drop-down (the user prefers the native one)
         MyBase.WndProc(m)
         If m.Msg = WM_PAINT Then
             Using g = CreateGraphics()

@@ -22,28 +22,34 @@ Public Class WebMenu
     Private ReadOnly _bold As Font = Theme.Px(14, 600)
 
     Public Shared Sub Show(anchor As Control, items As IEnumerable(Of String), picked As Action(Of String), Optional at As Point? = Nothing, Optional userStyle As Boolean = False, Optional alignRight As Boolean = False)
-        Dim m As New WebMenu(items, picked, userStyle)
-        If anchor IsNot Nothing AndAlso Not userStyle AndAlso m.Width < anchor.Width AndAlso TypeOf anchor Is ComboBox Then m.Width = anchor.Width
-        Dim host As New ToolStripControlHost(m) With {.Margin = Padding.Empty, .Padding = Padding.Empty, .AutoSize = False, .Size = m.Size}
-        Dim dd As New ToolStripDropDown With {.Padding = Padding.Empty, .DropShadowEnabled = True, .BackColor = Color.White}
-        ' rounded corners like the website's popover
-        Using gp = Theme.RoundRect(New RectangleF(0, 0, m.Width, m.Height), Theme.Radius + 2)
-            dd.Region = New Region(gp)
-        End Using
-        dd.Items.Add(host)
-        m._dd = dd
-        AddHandler dd.Closed, Sub() dd.BeginInvoke(Sub() dd.Dispose())
-        Dim p As Point
+        ' The native Windows menu (the user prefers it): ticked = checked, "!" = red, "-" = separator, icons drawn in.
+        Dim cm As New ContextMenuStrip With {.RenderMode = ToolStripRenderMode.System, .ShowImageMargin = True, .ShowCheckMargin = False, .Font = Theme.Px(14)}
+        For Each it In items
+            If it = "-" Then cm.Items.Add(New ToolStripSeparator()) : Continue For
+            Dim danger = it.StartsWith("!"), ticked = it.StartsWith("*")
+            Dim p = it.TrimStart("!"c, "*"c).Split("|"c)
+            Dim key = p(0), label = If(p.Length > 1, p(1), p(0)), icon = If(p.Length > 2, p(2), "")
+            Dim mi As New ToolStripMenuItem(label.Replace("&", "&&")) With {.Checked = ticked, .Padding = New Padding(0, 3, 0, 3)}
+            If danger Then mi.ForeColor = Color.FromArgb(&HDC, &H35, &H45)
+            If icon <> "" Then
+                Dim bmp As New Bitmap(16, 16)
+                Using g = Graphics.FromImage(bmp)
+                    Icons.Draw(g, icon, New RectangleF(0, 0, 16, 16), If(danger, mi.ForeColor, Theme.G700))
+                End Using
+                mi.Image = bmp
+            End If
+            If ticked Then mi.Font = New Font(cm.Font, FontStyle.Bold)
+            AddHandler mi.Click, Sub() picked(key)
+            cm.Items.Add(mi)
+        Next
+        AddHandler cm.Closed, Sub() cm.BeginInvoke(Sub() cm.Dispose())
         If at.HasValue Then
-            p = at.Value
+            cm.Show(at.Value)
+        ElseIf anchor IsNot Nothing Then
+            cm.Show(anchor, New Point(If(alignRight, anchor.Width - cm.PreferredSize.Width, 0), anchor.Height + 2))
         Else
-            p = anchor.PointToScreen(New Point(If(alignRight, anchor.Width - m.Width, 0), anchor.Height + 2))
+            cm.Show(Cursor.Position)
         End If
-        ' open upwards when there's no room below (as on the website)
-        Dim wa = Screen.FromPoint(p).WorkingArea
-        If p.Y + m.Height > wa.Bottom AndAlso anchor IsNot Nothing Then p = New Point(p.X, anchor.PointToScreen(Point.Empty).Y - m.Height - 2)
-        If p.X + m.Width > wa.Right Then p = New Point(wa.Right - m.Width - 8, p.Y)
-        dd.Show(p)
     End Sub
 
     Private Sub New(items As IEnumerable(Of String), picked As Action(Of String), user As Boolean)

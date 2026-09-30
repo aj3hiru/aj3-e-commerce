@@ -178,8 +178,8 @@ Public Class OrdersPage
         If col("or2-c-items") Then t.Cols.Add(New TCol("Items", Nothing, 105, CellKind.Custom) With {.Key = "items", .Draw = AddressOf DrawItems})
         If col("or2-c-total") Then t.Cols.Add(New TCol("Total", Nothing, 110, CellKind.Custom) With {.Key = "total", .Sort = Function(o) Js.Num(o, "total"), .Draw = AddressOf DrawTotal})
         If col("or2-c-payment") Then t.Cols.Add(New TCol("Payment", Nothing, 125, CellKind.Custom) With {.Key = "payment", .Draw = AddressOf DrawPayment})
-        If col("or2-c-status") Then t.Cols.Add(New TCol("Status", Nothing, 165, CellKind.Custom) With {.Key = "status", .Sort = Function(o) Js.Str(o, "status"), .Draw = AddressOf DrawStatus})
-        If col("or2-c-agent") AndAlso Agents.Count > 0 Then t.Cols.Add(New TCol("Delivery agent", Nothing, 140, CellKind.Custom) With {.Key = "agent", .Draw = AddressOf DrawAgent})
+        If col("or2-c-status") Then t.Cols.Add(New TCol("Status", Nothing, 185, CellKind.Custom) With {.Key = "status", .Sort = Function(o) Js.Str(o, "status"), .Draw = AddressOf DrawStatus})
+        If col("or2-c-agent") AndAlso Agents.Count > 0 Then t.Cols.Add(New TCol("Delivery agent", Nothing, 160, CellKind.Custom) With {.Key = "agent", .Draw = AddressOf DrawAgent})
         If col("or2-c-actions") Then t.Cols.Add(New TCol("Actions", Nothing, 96, CellKind.Custom) With {.Key = "actions", .Draw = AddressOf DrawActions})
         t.RowHeight = If(Show("or2-d-compact"), 60, 76)
         t.RowClickable = False

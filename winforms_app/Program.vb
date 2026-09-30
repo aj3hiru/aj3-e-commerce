@@ -4,7 +4,9 @@ Imports System.Windows.Forms
 Public Module Program
     <STAThread>
     Public Sub Main(args As String())
-        Application.SetHighDpiMode(HighDpiMode.PerMonitorV2)
+        ' The pages are laid out in pixels (like the website). Windows scales the whole window at 125%/150%, with
+        ' GDI text drawn sharp — per-monitor mode made text bigger than its boxes (cropped titles and rows).
+        Application.SetHighDpiMode(HighDpiMode.DpiUnawareGdiScaled)
         Application.EnableVisualStyles()
         Application.SetCompatibleTextRenderingDefault(False)
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException)

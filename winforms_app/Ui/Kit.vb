@@ -735,6 +735,12 @@ Public Module Img
             If bytes IsNot Nothing AndAlso bytes.Length > 0 Then
                 im = Await Task.Run(Function() Shrink(bytes, size))
             End If
+            If im Is Nothing AndAlso Not File.Exists(src) AndAlso Not src.StartsWith("http") Then
+                ' no WebP decoder on this Windows: ask the website's image service for a JPEG
+                Dim url = AppState.I.Api.Server & "/_next/image?url=" & Uri.EscapeDataString("/" & src.TrimStart("/"c)) & "&w=" & If(size > 256, 640, 256) & "&q=85"
+                Dim jpg = Await AppState.I.Api.GetBytesAsync(url)
+                If jpg IsNot Nothing AndAlso jpg.Length > 0 Then im = Await Task.Run(Function() Shrink(jpg, size))
+            End If
         Catch
         End Try
         If im IsNot Nothing Then Mem(k) = im
@@ -753,6 +759,16 @@ Public Module Img
     End Function
 
     Private Function Shrink(bytes As Byte(), size As Integer) As Image
+        Dim im = Shrink_(bytes, size)
+        If im Is Nothing Then
+            ' WebP (the shop's pictures) and other formats GDI+ can't open: convert with Windows' decoder
+            Dim png = Wic.ToPng(bytes)
+            If png IsNot Nothing Then im = Shrink_(png, size)
+        End If
+        Return im
+    End Function
+
+    Private Function Shrink_(bytes As Byte(), size As Integer) As Image
         Try
             Using ms As New MemoryStream(bytes)
                 Using src = Image.FromStream(ms)
@@ -920,7 +936,7 @@ Public Class WebTable
         ' buttons never shrink (they'd be cut off)
         Dim shrinks = Function(c As TCol) c.Width > 0 AndAlso c.Kind <> CellKind.Actions AndAlso c.Key <> "actions"
         Dim fixedCols = all.Where(shrinks).Sum(Function(c) c.Width)
-        If flexCols > 0 AndAlso rest < wantFlex AndAlso fixedCols > 0 Then
+        If Grid AndAlso flexCols > 0 AndAlso rest < wantFlex AndAlso fixedCols > 0 Then ' list pages only: the Orders board keeps its pill columns wide
             Dim keep = fixedW - If(Selectable, 44, 0) - fixedCols
             scale = Math.Max(0.8, (Width - If(Selectable, 44, 0) - keep - wantFlex) / CDbl(fixedCols))
             rest = Math.Max(0, Width - If(Selectable, 44, 0) - keep - all.Where(shrinks).Sum(Function(c) CInt(c.Width * scale)))
@@ -1104,7 +1120,10 @@ Public Class WebTable
         Dim subText = If(c.Sub Is Nothing, "", If(c.Sub(r), ""))
         Select Case c.Kind
             Case CellKind.Custom
+                Dim clip = g.Clip
+                g.SetClip(cell) ' never paint into the next column
                 c.Draw?.Invoke(g, inner, r)
+                g.Clip = clip
             Case CellKind.Pill, CellKind.PillMenu
                 If txt = "" Then Return
                 Dim col = If(c.Colour Is Nothing, Fmt.StatusColor(txt), c.Colour(r))

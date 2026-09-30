@@ -295,8 +295,8 @@ Public Class MainForm
         End If
         Dim room = Math.Max(160, _actions.Left - _titleLeft - 16)
         If _current IsNot Nothing Then
-            Tr.DrawText(g, _current.PageTitle, _titleFont, New Rectangle(_titleLeft, 7, room, 30), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-            Tr.DrawText(g, _current.PageSubtitle, _subFont, New Rectangle(_titleLeft, 7 + 29 + 8, room, 21), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Tr.DrawText(g, _current.PageTitle, _titleFont, New Rectangle(_titleLeft, 10, room, 36), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis Or TextFormatFlags.VerticalCenter)
+            Tr.DrawText(g, _current.PageSubtitle, _subFont, New Rectangle(_titleLeft, 48, room, 24), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
         End If
         Dim s = AppState.I
         ' user pill: .header-user (bg gray-50, round) — avatar (purple gradient, first letter), name, role

@@ -121,11 +121,17 @@ Public Module Icons
     Private Function Tokens(s As String) As List(Of Tok)
         Dim res As New List(Of Tok)
         Dim i = 0
+        Dim arc = False, arg = 0 ' inside an arc command: its 4th and 5th numbers are one-digit flags ("a2 2 0 00-2-2")
         While i < s.Length
             Dim c = s(i)
             If Char.IsLetter(c) AndAlso c <> "e"c AndAlso c <> "E"c Then
                 res.Add(New Tok With {.C = c}) : i += 1
+                arc = c = "A"c OrElse c = "a"c : arg = 0
+            ElseIf arc AndAlso (arg Mod 7 = 3 OrElse arg Mod 7 = 4) AndAlso (c = "0"c OrElse c = "1"c) Then
+                res.Add(New Tok With {.IsNum = True, .V = If(c = "1"c, 1.0F, 0.0F)}) : i += 1
+                arg += 1
             ElseIf Char.IsDigit(c) OrElse c = "-"c OrElse c = "+"c OrElse c = "."c Then
+                arg += 1
                 Dim st = i
                 Dim seenDot = False, seenExp = False
                 If c = "-"c OrElse c = "+"c Then i += 1

@@ -19,6 +19,7 @@ Public Module Routes
             Case "/admin/ecommerce/product-tags" : Return New TagsPage()
             Case "/admin/ecommerce/product-reviews" : Return New ReviewsPage()
             Case "/admin/ecommerce/stock-out-products" : Return New StockOutPage()
+            Case "/admin/ecommerce/offers" : Return New OffersPage()
         End Select
         Return Nothing
     End Function

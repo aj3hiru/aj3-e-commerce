@@ -1981,6 +1981,16 @@ Public Class FormDialog
     Protected Overrides Sub OnLoad(e As EventArgs)
         MyBase.OnLoad(e)
         _error.Visible = False
+        Relayout()
+        CenterToParent()
+        Dim first = _inputs.Values.FirstOrDefault()
+        If first IsNot Nothing Then
+            ActiveControl = If(TypeOf first Is WInput, DirectCast(first, WInput).Box, first)
+        End If
+    End Sub
+
+    ''' <summary>Sizes the dialog to its fields (call after showing / hiding fields).</summary>
+    Public Sub Relayout()
         Dim w = ClientSize.Width
         Dim bh = _body.HeightFor(w)
         Dim maxH = CInt(Screen.FromControl(Me).WorkingArea.Height * 0.85) - _head.Height - _foot.Height
@@ -1988,14 +1998,10 @@ Public Class FormDialog
         ClientSize = New Size(w, sh + _head.Height + _foot.Height)
         _scroll.SetBounds(0, _head.Height, w, sh)
         Dim bw = If(bh > sh, w - SystemInformation.VerticalScrollBarWidth, w)
-        _body.SetBounds(0, 0, bw, _body.HeightFor(bw))
+        _body.SetBounds(0, _scroll.AutoScrollPosition.Y, bw, _body.HeightFor(bw))
         _scroll.AutoScrollMinSize = New Size(0, _body.Height)
         LayoutNested(_body)
         LayoutButtons()
-        Dim first = _inputs.Values.FirstOrDefault()
-        If first IsNot Nothing Then
-            ActiveControl = If(TypeOf first Is WInput, DirectCast(first, WInput).Box, first)
-        End If
     End Sub
 
     Public Sub LayoutButtons()
@@ -2214,6 +2220,14 @@ Public Class FormDialog
         _inputs.TryGetValue(key, c)
         Return c
     End Function
+
+    ''' <summary>Shows / hides a field (with its label); call Relayout after.</summary>
+    Public Sub ShowField(key As String, on_ As Boolean)
+        Dim c = Input(key)
+        If c Is Nothing Then Return
+        Dim f = TryCast(c.Parent, Field)
+        Kit.Show(If(CType(f, Control), c), on_)
+    End Sub
 End Class
 
 ''' <summary>The list pages' filter card: labelled drop-downs side by side (wrapping when narrow).</summary>
@@ -2254,5 +2268,115 @@ Public Class FilterCard
         Grid.SetBounds(Padding.Left, Padding.Top, w, Grid.HeightFor(w))
         Grid.PerformLayout()
         For Each f In Fields.Values : f.PerformLayout() : Next
+    End Sub
+End Class
+
+''' <summary>Simple bar chart (campaign sales by day, analytics by payment method…) with a hover tooltip.</summary>
+Public Class BarChart
+    Inherits Control
+    Public Values As New List(Of Double)
+    Public Labels As New List(Of String)
+    Public Tips As New List(Of String)
+    Public Property BarColor As Color = Theme.Blue
+    Public EmptyText As String = "Nothing yet."
+    Private _hover As Integer = -1
+    Public Sub New()
+        SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
+        BackColor = Color.White
+        Height = 230
+    End Sub
+    Private Function Plot() As RectangleF
+        Return New RectangleF(58, 10, Width - 70, Height - 40)
+    End Function
+    Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
+        MyBase.OnMouseMove(e)
+        If Values.Count = 0 Then Return
+        Dim p = Plot()
+        Dim i = CInt(Math.Floor((e.X - p.Left) / Math.Max(1, p.Width) * Values.Count))
+        If i < 0 OrElse i >= Values.Count Then i = -1
+        If i <> _hover Then _hover = i : Invalidate()
+    End Sub
+    Protected Overrides Sub OnMouseLeave(e As EventArgs)
+        MyBase.OnMouseLeave(e)
+        _hover = -1 : Invalidate()
+    End Sub
+    Protected Overrides Sub OnPaint(e As PaintEventArgs)
+        Dim g = e.Graphics
+        g.Clear(Color.White)
+        Theme.Smooth(g)
+        If Values.Count = 0 OrElse Values.All(Function(v) v = 0) Then
+            TextRenderer.DrawText(g, EmptyText, Theme.Body, ClientRectangle, Theme.G400, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+            Return
+        End If
+        Dim p = Plot()
+        Dim top = Math.Max(1.0, Values.Max() * 1.2)
+        Using pen As New Pen(Theme.G100)
+            For k = 0 To 4
+                Dim y = p.Bottom - p.Height * k / 4
+                g.DrawLine(pen, p.Left, y, p.Right, y)
+                TextRenderer.DrawText(g, LineChart.ShortMoney(top * k / 4), Theme.Small, New Rectangle(0, CInt(y) - 8, 52, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+            Next
+        End Using
+        Dim slot = p.Width / Values.Count
+        Dim bw = CSng(Math.Max(3, Math.Min(28, slot * 0.6)))
+        Dim labelEvery = Math.Max(1, CInt(Math.Ceiling(Values.Count / 12.0)))
+        For i = 0 To Values.Count - 1
+            Dim h = CSng(Values(i) / top * p.Height)
+            Dim x = p.Left + slot * i + (slot - bw) / 2
+            Using path = Theme.RoundRect(New RectangleF(x, p.Bottom - h, bw, Math.Max(1, h)), 3)
+                Using b As New SolidBrush(If(i = _hover, Theme.Darker(BarColor, 0.85), BarColor)) : g.FillPath(b, path) : End Using
+            End Using
+            If i < Labels.Count AndAlso i Mod labelEvery = 0 Then
+                TextRenderer.DrawText(g, Labels(i), Theme.Small, New Rectangle(CInt(p.Left + slot * i + slot / 2) - 40, CInt(p.Bottom) + 6, 80, 16), Theme.G500, TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
+            End If
+        Next
+        If _hover >= 0 Then
+            Dim t = If(_hover < Tips.Count, Tips(_hover), Theme.Money(Values(_hover)))
+            Dim sz = TextRenderer.MeasureText(t, Theme.BodyBold)
+            Dim x = CSng(Math.Min(Math.Max(0, p.Left + slot * _hover + slot / 2 - sz.Width / 2 - 8), Width - sz.Width - 16))
+            Using path = Theme.RoundRect(New RectangleF(x, 4, sz.Width + 16, 26), 5)
+                Using b As New SolidBrush(Theme.G900) : g.FillPath(b, path) : End Using
+            End Using
+            TextRenderer.DrawText(g, t, Theme.BodyBold, New Rectangle(CInt(x), 4, sz.Width + 16, 26), Color.White, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+        End If
+    End Sub
+End Class
+
+''' <summary>A big clickable choice (the website's page tabs with a hint line): icon, title, hint.</summary>
+Public Class ChoiceCard
+    Inherits Control
+    Public Property Glyph As String
+    Public Property Hint As String
+    Public Property Selected As Boolean
+    Private _hover As Boolean
+    Public Sub New(title As String, hint As String, glyph As String)
+        SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
+        Text = title : Me.Hint = hint : Me.Glyph = glyph
+        Height = 60 : Width = 316
+        Cursor = Cursors.Hand
+    End Sub
+    Protected Overrides Sub OnMouseEnter(e As EventArgs)
+        MyBase.OnMouseEnter(e)
+        _hover = True : Invalidate()
+    End Sub
+    Protected Overrides Sub OnMouseLeave(e As EventArgs)
+        MyBase.OnMouseLeave(e)
+        _hover = False : Invalidate()
+    End Sub
+    Protected Overrides Sub OnPaint(e As PaintEventArgs)
+        Dim g = e.Graphics
+        g.Clear(If(Parent?.BackColor, Theme.Page))
+        Theme.Smooth(g)
+        Using p = Theme.RoundRect(New RectangleF(1, 1, Width - 3, Height - 3), 10)
+            Using b As New SolidBrush(If(_hover AndAlso Not Selected, Theme.G50, Color.White)) : g.FillPath(b, p) : End Using
+            Using pen As New Pen(If(Selected, Theme.Blue, Theme.G200), If(Selected, 1.8F, 1.0F)) : g.DrawPath(pen, p) : End Using
+        End Using
+        Dim ir As New Rectangle(14, (Height - 34) \ 2, 34, 34)
+        Using p = Theme.RoundRect(New RectangleF(ir.X, ir.Y, ir.Width, ir.Height), 8)
+            Using b As New SolidBrush(If(Selected, Theme.Blue, Theme.G100)) : g.FillPath(b, p) : End Using
+        End Using
+        Using f = Theme.IconFont(12) : Theme.DrawCentered(g, Glyph, f, If(Selected, Color.White, Theme.G600), ir) : End Using
+        TextRenderer.DrawText(g, Text, Theme.BodyBold, New Rectangle(58, 11, Width - 66, 20), If(Selected, Color.FromArgb(&H1D, &H4E, &HD8), Theme.G800), TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        TextRenderer.DrawText(g, Hint, Theme.Small, New Rectangle(58, 32, Width - 66, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
     End Sub
 End Class

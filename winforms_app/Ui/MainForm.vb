@@ -158,6 +158,12 @@ Public Class MainForm
         Showing(p)
     End Sub
 
+    ''' <summary>Open a menu page and get it (to set a filter on it).</summary>
+    Public Function Go(key As String) As PageBase
+        Pick(key)
+        Return _current
+    End Function
+
     ''' <summary>Open a detail page on top of the current one (Back / Esc returns).</summary>
     Public Sub Push(p As PageBase)
         If _current IsNot Nothing Then _stack.Add((_currentKey, _current))

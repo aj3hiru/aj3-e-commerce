@@ -502,3 +502,72 @@ Public Module ProductActions
         Return If(Js.Num(p, "salePrice") > 0, Js.Num(p, "salePrice"), Js.Num(p, "price"))
     End Function
 End Module
+
+''' <summary>Sending a page's change (brands, tags, reviews, coupons…): shows at once, the page's fresh copy is
+''' fetched after the server confirms; offline it waits in the outbox.</summary>
+Public Module PageActions
+    ''' <summary>Returns Nothing when done (or queued), else the server's message.</summary>
+    Public Async Function SendAsync(owner As Control, item As OutboxItem, Optional pageName As String = Nothing, Optional done As String = "Saved.") As Task(Of String)
+        Dim r = Await AppState.I.SendNowAsync(item)
+        Dim mf = TryCast(owner?.FindForm(), MainForm)
+        If r.Outcome = ApiOutcome.Rejected OrElse r.Outcome = ApiOutcome.Forbidden OrElse r.Outcome = ApiOutcome.Unauthorized Then
+            mf?.Toast(r.Message, True)
+            Return r.Message
+        End If
+        If r.IsOk Then
+            mf?.Toast(done)
+            If pageName IsNot Nothing Then Await AppState.I.ReloadPageAsync(pageName)
+        Else
+            mf?.Toast(done & " It reaches the website when the internet is back.")
+        End If
+        Return Nothing
+    End Function
+
+    ''' <summary>One change per row (queued when offline), one message at the end.</summary>
+    Public Async Function EachAsync(owner As Control, rows As IEnumerable(Of JsonObject), make As Func(Of JsonObject, OutboxItem), done As String, Optional pageName As String = Nothing) As Task
+        Dim ok = 0, queued = 0
+        Dim err As String = Nothing
+        For Each row In rows.ToList()
+            Dim r = Await AppState.I.SendNowAsync(make(row))
+            If r.IsOk Then
+                ok += 1
+            ElseIf r.Outcome = ApiOutcome.Offline OrElse r.Outcome = ApiOutcome.Busy Then
+                queued += 1
+            ElseIf err Is Nothing Then
+                err = r.Message
+            End If
+        Next
+        Dim mf = TryCast(owner?.FindForm(), MainForm)
+        If err IsNot Nothing Then
+            mf?.Toast(If(ok + queued > 0, (ok + queued) & " done. " & err, err), True)
+        Else
+            mf?.Toast(done)
+        End If
+        If ok > 0 AndAlso pageName IsNot Nothing Then Await AppState.I.ReloadPageAsync(pageName)
+    End Function
+
+    Public Function PageRow(page As String, id As JsonNode, fields As JsonObject, Optional list As String = Nothing) As JsonObject
+        Dim e As New JsonObject From {{"kind", "page_row"}, {"page", page}, {"id", Js.Copy(id)}, {"fields", fields}}
+        If list IsNot Nothing Then e("list") = list
+        Return e
+    End Function
+
+    Public Function PageRowDelete(page As String, id As JsonNode, Optional list As String = Nothing) As JsonObject
+        Dim e As New JsonObject From {{"kind", "page_row_delete"}, {"page", page}, {"ids", New JsonArray(Js.Copy(id))}}
+        If list IsNot Nothing Then e("list") = list
+        Return e
+    End Function
+
+    Public Function PageRowNew(page As String, row As JsonObject, Optional list As String = Nothing) As JsonObject
+        Dim e As New JsonObject From {{"kind", "page_row_new"}, {"page", page}, {"row", row}}
+        If list IsNot Nothing Then e("list") = list
+        Return e
+    End Function
+
+    ''' <summary>Active / Inactive style menu at a point; picked(value).</summary>
+    Public Sub OnOffMenu(owner As Control, at As Point, isOn As Boolean, onLabel As String, offLabel As String, picked As Action(Of Boolean))
+        Ui.PopMenu(owner, {If(isOn, "*", "") & "1|" & onLabel, If(Not isOn, "*", "") & "0|" & offLabel}, Sub(k)
+                                                                                                          If (k = "1") <> isOn Then picked(k = "1")
+                                                                                                      End Sub, at)
+    End Sub
+End Module

@@ -14,6 +14,11 @@ Public Module Routes
             Case "/admin/deliveries?view=all" : Return New DeliveriesPage()
             Case "/admin/ecommerce/due" : Return New DuesPage()
             Case "/admin/ecommerce/sales-history" : Return New SalesHistoryPage()
+            Case "/admin/ecommerce/categories" : Return New CategoriesPage()
+            Case "/admin/ecommerce/brands" : Return New BrandsPage()
+            Case "/admin/ecommerce/product-tags" : Return New TagsPage()
+            Case "/admin/ecommerce/product-reviews" : Return New ReviewsPage()
+            Case "/admin/ecommerce/stock-out-products" : Return New StockOutPage()
         End Select
         Return Nothing
     End Function

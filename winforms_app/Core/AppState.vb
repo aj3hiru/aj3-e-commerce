@@ -377,7 +377,7 @@ Public Class AppState
             Enqueue(item)
         ElseIf r.IsOk Then
             SetOnline(True)
-            If item.Effect IsNot Nothing AndAlso Not {"product_new", "customer_new", "page_row_new"}.Contains(Js.Str(item.Effect, "kind")) Then
+            If item.Effect IsNot Nothing AndAlso Not {"product_new", "customer_new", "page_row_new", "set_row_new"}.Contains(Js.Str(item.Effect, "kind")) Then
                 ApplyEffect(item.Effect, True)
                 RaiseEvent DataChanged()
             End If
@@ -862,6 +862,10 @@ Public Class AppState
                 Dim np = TryCast(Js.Field(e, "product"), JsonObject)
                 Dim l = SetArray("products")
                 If Not Js.Objs(l).Any(Function(x) Js.Str(x, "localRef") <> "" AndAlso Js.Str(x, "localRef") = Js.Str(np, "localRef")) Then l.Insert(0, Js.Copy(np))
+            Case "set_row_new"
+                Dim row = TryCast(Js.Field(e, "row"), JsonObject)
+                Dim l = SetArray(Js.Str(e, "set"))
+                If Not Js.Objs(l).Any(Function(x) Js.Str(x, "localRef") <> "" AndAlso Js.Str(x, "localRef") = Js.Str(row, "localRef")) Then l.Insert(0, Js.Copy(row))
             Case "customer_new"
                 Dim nc = TryCast(Js.Field(e, "customer"), JsonObject)
                 Dim l = SetArray("customers")

@@ -43,3 +43,8 @@ Name: "{userdesktop}\Sri Andal Staff"; Filename: "{app}\SriAndalStaff.exe"; Task
 
 [Run]
 Filename: "{app}\SriAndalStaff.exe"; Description: "Open Sri Andal Staff now"; Flags: nowait postinstall skipifsilent
+
+[UninstallDelete]
+; Uninstalling signs out: the next install asks for the login again. The shop data and changes not sent yet
+; stay on the computer (nothing is lost), only the saved login token is removed.
+Type: files; Name: "{localappdata}\SriAndalStaff\token.bin"

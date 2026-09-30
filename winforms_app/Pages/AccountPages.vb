@@ -555,9 +555,12 @@ Public Class StaffAppPage
         Try
             Using http As New Net.Http.HttpClient() With {.Timeout = TimeSpan.FromSeconds(15)}
                 http.DefaultRequestHeaders.UserAgent.ParseAdd("SriAndalStaff")
-                Dim text = Await http.GetStringAsync("https://api.github.com/repos/aj3hiru/aj3-e-commerce/releases?per_page=20")
+                Dim text = Await http.GetStringAsync("https://api.github.com/repos/aj3hiru/aj3-e-commerce/releases?per_page=100")
                 Dim arr = TryCast(JsonNode.Parse(text), JsonArray)
-                _latest = Js.Objs(arr).FirstOrDefault(Function(r) Js.Str(r, "tag_name").StartsWith("winforms-v"))
+                ' GitHub's order is not by version: take the highest winforms-v… number
+                For Each r In Js.Objs(arr).Where(Function(x) Js.Str(x, "tag_name").StartsWith("winforms-v"))
+                    If _latest Is Nothing OrElse Newer(Js.Str(r, "tag_name").Replace("winforms-v", ""), Js.Str(_latest, "tag_name").Replace("winforms-v", "")) Then _latest = r
+                Next
             End Using
         Catch
         End Try
@@ -583,7 +586,8 @@ Public Class StaffAppPage
                 card.Add(Ui.Note(If(_checked, "Couldn't check for updates (no internet?).", "Checking for the newest version…")))
             Else
                 Dim latest = Js.Str(_latest, "tag_name").Replace("winforms-v", "")
-                Dim asset = Js.Objs(Js.Arr(_latest, "assets")).FirstOrDefault(Function(a) Js.Str(a, "name").EndsWith(".exe"))
+                Dim exes = Js.Objs(Js.Arr(_latest, "assets")).Where(Function(a) Js.Str(a, "name").EndsWith(".exe")).ToList()
+                Dim asset = If(exes.FirstOrDefault(Function(a) Js.Str(a, "name").Contains("Setup")), exes.FirstOrDefault()) ' the installer updates the installed copy
                 If Newer(latest, mine) Then
                     card.Add(New TextBlock("Version " & latest & " is available.", Theme.BodyBold, Fmt.AmberText))
                     Dim url = If(asset Is Nothing, Js.Str(_latest, "html_url"), Js.Str(asset, "browser_download_url"))

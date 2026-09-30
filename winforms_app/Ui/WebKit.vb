@@ -1004,10 +1004,33 @@ Public Class WebCombo
         End If
     End Sub
 
+    ''' <summary>The website's labelled filter box: a small grey caption above the chosen value, 48px tall.</summary>
+    Public Property Caption As String = ""
+    Public Property CaptionIcon As String = ""
+    Private Const CB_SETITEMHEIGHT As Integer = &H153
+    Private Declare Function SendMessage Lib "user32" Alias "SendMessageW" (hWnd As IntPtr, msg As Integer, wParam As IntPtr, lParam As IntPtr) As IntPtr
+    Protected Overrides Sub OnHandleCreated(e As EventArgs)
+        MyBase.OnHandleCreated(e)
+        If Caption <> "" Then SendMessage(Handle, CB_SETITEMHEIGHT, New IntPtr(-1), New IntPtr(42)) ' the closed box only; list rows keep their height
+    End Sub
+
     Private Sub Paint_(g As Graphics)
         g.Clear(Theme.Behind(Me))
         Theme.Smooth(g)
         Dim focus = Focused OrElse DroppedDown
+        If Caption <> "" Then
+            Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
+                Using b As New SolidBrush(If(Enabled, Color.White, Theme.G50)) : g.FillPath(b, p) : End Using
+                Using pen As New Pen(If(focus, Theme.Primary, If(_hot, Theme.G300, Theme.G200))) : g.DrawPath(pen, p) : End Using
+            End Using
+            Dim x = 12
+            If CaptionIcon <> "" Then Icons.Draw(g, CaptionIcon, New RectangleF(12, (Height - 16) / 2.0F, 16, 16), Theme.G500) : x = 38
+            Tr.DrawText(g, Caption, Theme.Px(12), New Rectangle(x, 6, Width - x - 30, 16), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Dim v = If(SelectedIndex >= 0, GetItemText(SelectedItem), "")
+            Tr.DrawText(g, v, Theme.Px(14, 500), New Rectangle(x, 23, Width - x - 30, 20), If(Enabled, Theme.G900, Theme.G400), TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Icons.Draw(g, "chevron-down", New RectangleF(Width - 26, (Height - 16) / 2.0F, 16, 16), Theme.G500)
+            Return
+        End If
         Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
             Using b As New SolidBrush(If(Enabled, Color.White, Theme.G50)) : g.FillPath(b, p) : End Using
             Using pen As New Pen(If(focus, Theme.Primary, If(_hot, Theme.G300, Theme.G200))) : g.DrawPath(pen, p) : End Using

@@ -306,13 +306,14 @@ Public Class Field
     End Sub
     Private ReadOnly Property InputH As Integer
         Get
+            If TypeOf Input Is WebCombo AndAlso DirectCast(Input, WebCombo).Caption <> "" Then Return 48
             If TypeOf Input Is ComboBox OrElse TypeOf Input Is DateTimePicker OrElse TypeOf Input Is NumericUpDown Then Return 32
             Return Input.Height
         End Get
     End Property
     Public Function HeightFor(width As Integer) As Integer Implements IFlowHeight.HeightFor
         Dim h = If(Caption.Text = "", 0, 24) + Flow.HeightOf(Input, width)
-        If TypeOf Input Is ComboBox OrElse TypeOf Input Is DateTimePicker Then h = If(Caption.Text = "", 0, 24) + 32
+        If TypeOf Input Is ComboBox OrElse TypeOf Input Is DateTimePicker Then h = If(Caption.Text = "", 0, 24) + InputH
         If Hint IsNot Nothing Then h += 4 + Hint.HeightFor(width)
         Return h
     End Function
@@ -590,21 +591,17 @@ End Module
 Public Module Gfx
     ''' <summary>Solid status pill ("Paid ▾"); returns its rectangle.</summary>
     Public Function Pill(g As Graphics, text As String, x As Integer, cy As Integer, bg As Color, Optional caret As Boolean = False, Optional fg As Color = Nothing) As Rectangle
-        Dim f = Theme.UiFont(8.25F, FontStyle.Bold)
-        Dim tw = Tr.MeasureText(text, f).Width
-        Dim w = tw + If(caret, 22, 12)
-        Dim r As New Rectangle(x, cy - 11, w, 22)
-        Using p = Theme.RoundRect(New RectangleF(r.X, r.Y, r.Width, r.Height), 3)
-            Using b As New SolidBrush(bg) : g.FillPath(b, p) : End Using
-        End Using
-        Dim c = If(fg = Color.Empty, Color.White, fg)
-        Tr.DrawText(g, text, f, New Rectangle(r.X + 6, r.Y, tw + 2, r.Height), c, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
-        If caret Then
-            Using fi = Theme.IconFont(6.5F)
-                Tr.DrawText(g, Theme.IcChevronDown, fi, New Rectangle(r.Right - 16, r.Y, 12, r.Height), c, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
-            End Using
-        End If
-        Return r
+        ' the website's status pill (.status-btn): the old app colours map onto its Bootstrap colours
+        Return Web.DrawPill(g, text, x, cy, WebTone(bg), caret)
+    End Function
+
+    Public Function WebTone(c As Color) As Color
+        If c.ToArgb() = Theme.Green.ToArgb() Then Return Web.PillSuccess
+        If c.ToArgb() = Theme.Red.ToArgb() OrElse c.ToArgb() = Theme.Danger.ToArgb() Then Return Web.PillDanger
+        If c.ToArgb() = Fmt.Yellow.ToArgb() Then Return Web.PillWarning
+        If c.ToArgb() = Theme.Grey.ToArgb() Then Return Web.PillSecondary
+        If c.ToArgb() = Theme.Cyan.ToArgb() Then Return Web.PillInfo
+        Return c
     End Function
 
     ''' <summary>Soft badge ("Admin", "Online", "Walk-in").</summary>
@@ -620,7 +617,7 @@ Public Module Gfx
     End Function
 
     Public Function PillWidth(text As String, Optional caret As Boolean = False) As Integer
-        Return Tr.MeasureText(text, Theme.UiFont(8.25F, FontStyle.Bold)).Width + If(caret, 22, 12)
+        Return Web.PillWidth(text, caret)
     End Function
 
     Public Sub Toggle(g As Graphics, r As Rectangle, on_ As Boolean)
@@ -1312,16 +1309,17 @@ Public Class ListCard
     Inherits Card
     Implements IFlowHeight
     Public ReadOnly Table As New WebTable()
-    Public ReadOnly Search As WInput = WInput.Make("Search...", Theme.IcSearch)
+    Public ReadOnly Search As WInput = WInput.Make("", Theme.IcSearch)
+    Private ReadOnly _searchL As New Label With {.Text = "Search:", .AutoSize = True, .Font = Theme.Px(15), .ForeColor = Theme.G900, .BackColor = Color.White}
     Private ReadOnly _per As ComboBox = Ui.Combo({"10", "25", "50", "100", "All"}, 70)
-    Private ReadOnly _bulk As WButton = WButton.Make("Bulk Actions", ChrW(&HE8FD), Theme.Primary, outline:=True)
-    Private ReadOnly _clearSel As New LinkLabel With {.Text = "Clear selection", .AutoSize = True, .LinkColor = Theme.G500, .ActiveLinkColor = Theme.G700, .LinkBehavior = LinkBehavior.HoverUnderline, .Font = Theme.Body}
-    Private ReadOnly _clearFilters As New LinkLabel With {.Text = "✕ Clear filters", .AutoSize = True, .LinkColor = Theme.Blue, .ActiveLinkColor = Theme.Blue, .LinkBehavior = LinkBehavior.HoverUnderline, .Font = Theme.BodyBold}
-    Private ReadOnly _selectAll As New CheckBox With {.Text = "Select All (0)", .AutoSize = True, .Font = Theme.Body, .ForeColor = Theme.G800, .BackColor = Color.White}
-    Private ReadOnly _showL As New Label With {.Text = "Show", .AutoSize = True, .Font = Theme.Body, .ForeColor = Theme.G800, .BackColor = Color.White}
-    Private ReadOnly _entriesL As New Label With {.Text = "entries", .AutoSize = True, .Font = Theme.Body, .ForeColor = Theme.G800, .BackColor = Color.White}
-    Private ReadOnly _info As New Label With {.AutoSize = True, .Font = Theme.Body, .ForeColor = Theme.G700, .BackColor = Color.White}
-    Private ReadOnly _pager As New FlowLayoutPanel With {.FlowDirection = FlowDirection.LeftToRight, .WrapContents = False, .BackColor = Color.White, .AutoSize = True}
+    Private ReadOnly _bulk As New HeadButton("Bulk Actions", "layers", Web.PillSecondary) With {.Height = 30}
+    Private ReadOnly _clearSel As New LinkLabel2("Clear selection", Theme.G500)
+    Private ReadOnly _clearFilters As New LinkLabel2("Clear filters", Web.Blue, "x")
+    Private ReadOnly _selectAll As New CheckLabel() With {.Text = "Select All (0)"}
+    Private ReadOnly _showL As New Label With {.Text = "Show", .AutoSize = True, .Font = Theme.Px(15), .ForeColor = Theme.G900, .BackColor = Color.White}
+    Private ReadOnly _entriesL As New Label With {.Text = "entries", .AutoSize = True, .Font = Theme.Px(15), .ForeColor = Theme.G900, .BackColor = Color.White}
+    Private ReadOnly _info As New Label With {.AutoSize = True, .Font = Theme.Px(15), .ForeColor = Theme.G800, .BackColor = Color.White}
+    Private ReadOnly _pager As New Pager()
     Private ReadOnly _extra As New HRow(8)
     Private _all As New List(Of JsonObject)
     Private _total As Integer
@@ -1341,8 +1339,14 @@ Public Class ListCard
     Public Sub New(Optional stateKey As String = Nothing)
         Me.StateKey = stateKey
         Padding = New Padding(16)
-        Search.Width = 260
-        Controls.AddRange(New Control() {_showL, _per, _entriesL, _selectAll, _bulk, _clearSel, _clearFilters, Search, Table, _info, _pager, _extra})
+        Padding = New Padding(20)
+        Search.Width = 240
+        Table.Modern = True : Table.Grid = True
+        Controls.AddRange(New Control() {_showL, _per, _entriesL, _selectAll, _bulk, _clearSel, _clearFilters, _searchL, Search, Table, _info, _pager, _extra})
+        AddHandler _pager.PageChanged, Sub()
+                                           _page = _pager.Page - 1
+                                           Rebuild()
+                                       End Sub
         _per.SelectedIndex = 1
         If stateKey IsNot Nothing Then
             Dim saved = Js.Int(Store.Read("list_" & stateKey), "per", 25)
@@ -1365,12 +1369,12 @@ Public Class ListCard
                                      End Sub
         AddHandler Table.SelectionChanged, Sub() SyncSelection()
         AddHandler Table.SortChanged, Sub() Rebuild()
-        AddHandler _clearSel.LinkClicked, Sub()
+        AddHandler _clearSel.Click, Sub()
                                               Table.Selected.Clear()
                                               SyncSelection()
                                               Table.Invalidate()
                                           End Sub
-        AddHandler _clearFilters.LinkClicked, Sub() RaiseEvent ClearFilters()
+        AddHandler _clearFilters.Click, Sub() RaiseEvent ClearFilters()
         AddHandler _bulk.Click, AddressOf ShowBulk
         AddHandler Search.TextChanged, Sub() RaiseEvent SearchChanged()
         Selectable = False
@@ -1394,6 +1398,7 @@ Public Class ListCard
         Set(value As Boolean)
             _searchOn = value
             Search.Visible = value
+            _searchL.Visible = value
         End Set
     End Property
 
@@ -1442,8 +1447,8 @@ Public Class ListCard
     Private Sub SyncSelection()
         _selectAll.Checked = _all.Count > 0 AndAlso _all.All(Function(r) Table.Selected.Contains(WebTable.IdOf(r)))
         _selectAll.Text = "Select All (" & Table.Selected.Count & ")"
+        _selectAll.Invalidate()
         _bulk.Text = If(Table.Selected.Count = 0, "Bulk Actions", "Bulk Actions (" & Table.Selected.Count & ")")
-        _bulk.Width = _bulk.PreferredWidth()
         _bulk.Enabled = Table.Selected.Count > 0
         _clearSel.Visible = Table.Selected.Count > 0
         PerformLayout()
@@ -1481,36 +1486,10 @@ Public Class ListCard
     End Function
 
     Private Sub BuildPager(pages As Integer)
-        _pager.SuspendLayout()
-        For Each c As Control In _pager.Controls.Cast(Of Control)().ToList() : c.Dispose() : Next
-        _pager.Controls.Clear()
-        If pages > 1 Then
-            _pager.Controls.Add(PageBtn("Previous", _page - 1, _page > 0, False))
-            Dim shown As New SortedSet(Of Integer) From {0, pages - 1, _page, Math.Max(0, _page - 1), Math.Min(pages - 1, _page + 1)}
-            Dim last = -1
-            For Each p In shown
-                If last >= 0 AndAlso p > last + 1 Then _pager.Controls.Add(New Label With {.Text = "…", .AutoSize = False, .Width = 22, .Height = 32, .TextAlign = ContentAlignment.MiddleCenter, .ForeColor = Theme.G500})
-                _pager.Controls.Add(PageBtn((p + 1).ToString(), p, True, p = _page))
-                last = p
-            Next
-            _pager.Controls.Add(PageBtn("Next", _page + 1, _page < pages - 1, False))
-        End If
-        _pager.ResumeLayout()
+        _pager.PageCount = pages
+        _pager.Page = _page + 1
+        _pager.Visible = pages > 1
     End Sub
-
-    Private Function PageBtn(text As String, target As Integer, enabled As Boolean, current As Boolean) As WButton
-        Dim b = WButton.Make(text, "", Theme.Primary, outline:=Not current)
-        b.Height = 32
-        b.Width = Math.Max(34, b.PreferredWidth() - 6)
-        b.Margin = New Padding(0, 0, 4, 0)
-        b.Enabled = enabled
-        AddHandler b.Click, Sub()
-                                If Not enabled OrElse current Then Return
-                                _page = target
-                                Rebuild()
-                            End Sub
-        Return b
-    End Function
 
     Private Sub ShowBulk(sender As Object, e As EventArgs)
         If Table.Selected.Count = 0 OrElse BulkItems.Count = 0 Then Return
@@ -1548,6 +1527,8 @@ Public Class ListCard
         Else
             Search.SetBounds(Width - Padding.Right - Search.Width, y, Search.Width, ToolH)
         End If
+        _searchL.Location = New Point(Search.Left - _searchL.Width - 8, Search.Top + (ToolH - _searchL.Height) \ 2)
+        If ToolRows(Width) = 2 Then _searchL.Visible = False
         y += ToolH + 10
         If _extra.Controls.Count > 0 Then
             Dim eh = _extra.HeightFor(w)
@@ -1559,7 +1540,7 @@ Public Class ListCard
         Table.SetBounds(Padding.Left, y, w, Table.HeightFor(w))
         y += Table.Height + 12
         _info.Location = New Point(Padding.Left, y + 8)
-        _pager.Location = New Point(Width - Padding.Right - _pager.PreferredSize.Width, y)
+        _pager.SetBounds(Width - Padding.Right - _pager.Width, y, _pager.Width, 40)
     End Sub
 End Class
 
@@ -1867,18 +1848,18 @@ Public Class MiniStat
         Dim g = e.Graphics
         g.Clear(Theme.Behind(Me))
         Theme.Smooth(g)
-        Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), 10)
+        Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
             Using b As New SolidBrush(Color.White) : g.FillPath(b, p) : End Using
             Using pen As New Pen(If(Selected, Color.FromArgb(&H93, &HC5, &HFD), Theme.G200), If(Selected, 2.0F, 1.0F)) : g.DrawPath(pen, p) : End Using
         End Using
-        Dim ir As New Rectangle(16, (Height - 44) \ 2, 44, 44)
-        Using p = Theme.RoundRect(New RectangleF(ir.X, ir.Y, ir.Width, ir.Height), 10)
-            Using b As New SolidBrush(Theme.Tint(Accent, 32)) : g.FillPath(b, p) : End Using
-        End Using
+        Dim ir As New Rectangle(20, (Height - 48) \ 2, 48, 48)
+        Using b As New SolidBrush(Theme.Tint(Accent, 28)) : g.FillEllipse(b, ir) : End Using
         Using f = Theme.IconFont(14) : Theme.DrawCentered(g, Glyph, f, Accent, ir) : End Using
-        Tr.DrawText(g, Caption, Theme.UiFont(8.75F), New Rectangle(72, ir.Y - 2, Width - 80, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-        Tr.DrawText(g, Value, Theme.UiFont(14.0F, FontStyle.Bold), New Rectangle(71, ir.Y + 15, Width - 80, 28), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-        If Note <> "" Then Tr.DrawText(g, Note, Theme.Small, New Rectangle(72, ir.Y + 42, Width - 80, 16), NoteColor, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        Dim hasNote = Note <> ""
+        Dim top = (Height - If(hasNote, 66, 50)) \ 2
+        Tr.DrawText(g, Value, Theme.Px(24, 700), New Rectangle(84, top, Width - 94, 30), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        Tr.DrawText(g, Caption, Theme.Px(14), New Rectangle(84, top + 31, Width - 94, 20), Theme.G600, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        If hasNote Then Tr.DrawText(g, Note, Theme.Px(12), New Rectangle(84, top + 50, Width - 94, 16), NoteColor, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
     End Sub
 End Class
 
@@ -2434,6 +2415,9 @@ Public Class FilterCard
         Controls.Add(Grid)
     End Sub
     Public Function Add(Of T As Control)(key As String, label As String, input As T) As T
+        ' drop-downs become the website's labelled filter boxes (caption inside the box)
+        Dim wc = TryCast(input, WebCombo)
+        If wc IsNot Nothing Then wc.Caption = label : label = ""
         Dim f As New Field(label, input)
         Fields(key) = f
         Grid.Add(f)

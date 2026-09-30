@@ -986,9 +986,10 @@ Public Class WebCombo
         DrawMode = DrawMode.OwnerDrawFixed
         FlatStyle = FlatStyle.Flat
         Font = Theme.Px(14)
-        ItemHeight = 30
+        ItemHeight = 20 ' rows of the open list: compact, like the plain Windows list (v0.2.0.3)
         IntegralHeight = False
         MaxDropDownItems = 12
+        DropDownHeight = 12 * 20 + 2
     End Sub
 
     Protected Overrides Sub OnMouseEnter(e As EventArgs)
@@ -1010,10 +1011,11 @@ Public Class WebCombo
         Dim inList = (e.State And DrawItemState.ComboBoxEdit) = 0
         Dim sel = (e.State And DrawItemState.Selected) = DrawItemState.Selected
         Dim cur = e.Index = SelectedIndex
-        Using b As New SolidBrush(If(inList AndAlso sel, Theme.G100, Color.White)) : g.FillRectangle(b, e.Bounds) : End Using
+        ' the open list looks like the plain Windows one: small text, blue highlight
+        Using b As New SolidBrush(If(inList AndAlso sel, SystemColors.Highlight, Color.White)) : g.FillRectangle(b, e.Bounds) : End Using
         Dim t = GetItemText(Items(e.Index))
-        Tr.DrawText(g, t, If(inList AndAlso cur, Theme.Px(14, 600), Theme.Px(14)), New Rectangle(e.Bounds.X + 10, e.Bounds.Y, e.Bounds.Width - 14, e.Bounds.Height),
-                    If(inList AndAlso cur, Theme.Primary, Theme.G800), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        Tr.DrawText(g, t, If(inList, Theme.Body, Theme.Px(14)), New Rectangle(e.Bounds.X + If(inList, 4, 10), e.Bounds.Y, e.Bounds.Width - 8, e.Bounds.Height),
+                    If(inList AndAlso sel, SystemColors.HighlightText, Theme.G800), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
     End Sub
 
     ''' <summary>Our own list (the website's popover) instead of the Windows drop-down.</summary>
@@ -1057,16 +1059,30 @@ Public Class WebCombo
         End Get
         Set(v As String)
             _caption = If(v, "")
-            If _caption <> "" AndAlso IsHandleCreated Then SendMessage(Handle, CB_SETITEMHEIGHT, New IntPtr(-1), New IntPtr(42))
+            ApplyEditHeight()
             Invalidate()
         End Set
     End Property
     Public Property CaptionIcon As String = ""
     Private Const CB_SETITEMHEIGHT As Integer = &H153
     Private Declare Function SendMessage Lib "user32" Alias "SendMessageW" (hWnd As IntPtr, msg As Integer, wParam As IntPtr, lParam As IntPtr) As IntPtr
+    ''' <summary>Height of the closed box (the list rows stay ItemHeight).</summary>
+    Private _editH As Integer = 30
+    Public Property EditHeight As Integer
+        Get
+            Return _editH
+        End Get
+        Set(v As Integer)
+            _editH = v
+            ApplyEditHeight()
+        End Set
+    End Property
+    Private Sub ApplyEditHeight()
+        If IsHandleCreated Then SendMessage(Handle, CB_SETITEMHEIGHT, New IntPtr(-1), New IntPtr(If(Caption <> "", 42, _editH)))
+    End Sub
     Protected Overrides Sub OnHandleCreated(e As EventArgs)
         MyBase.OnHandleCreated(e)
-        If Caption <> "" Then SendMessage(Handle, CB_SETITEMHEIGHT, New IntPtr(-1), New IntPtr(42)) ' the closed box only; list rows keep their height
+        ApplyEditHeight()
     End Sub
 
     Private Sub Paint_(g As Graphics)

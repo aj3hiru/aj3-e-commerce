@@ -84,7 +84,7 @@ Public Class DuesPage
         Body.Add(_filterCard)
 
         Ui.SetVal(_perPage, "10")
-        _perPage.ItemHeight = 32
+        DirectCast(_perPage, WebCombo).EditHeight = 32
         Dim searchLbl As New Label With {.Text = "Search:", .AutoSize = False, .Font = Theme.Px(15), .ForeColor = Theme.G900, .BackColor = Color.White,
                                          .TextAlign = ContentAlignment.MiddleLeft, .Width = Tr.MeasureText("Search:", Theme.Px(15)).Width + 2, .Height = 40}
         _searchBox.Width = searchLbl.Width + 8 + _search.Width

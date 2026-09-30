@@ -23,13 +23,15 @@ Public Class WebMenu
 
     Public Shared Sub Show(anchor As Control, items As IEnumerable(Of String), picked As Action(Of String), Optional at As Point? = Nothing, Optional userStyle As Boolean = False, Optional alignRight As Boolean = False)
         ' The native Windows menu (the user prefers it): ticked = checked, "!" = red, "-" = separator, icons drawn in.
-        Dim cm As New ContextMenuStrip With {.RenderMode = ToolStripRenderMode.System, .ShowImageMargin = True, .ShowCheckMargin = False, .Font = Theme.Px(14)}
-        For Each it In items
+        ' the compact Windows menu of v0.2.0.3 (what the user asked for): body font, check margin only when ticked
+        Dim list = items.ToList()
+        Dim cm As New ContextMenuStrip With {.Font = Theme.Body, .ShowImageMargin = list.Any(Function(i) i.Split("|"c).Length > 2), .ShowCheckMargin = list.Any(Function(i) i.StartsWith("*"))}
+        For Each it In list
             If it = "-" Then cm.Items.Add(New ToolStripSeparator()) : Continue For
             Dim danger = it.StartsWith("!"), ticked = it.StartsWith("*")
             Dim p = it.TrimStart("!"c, "*"c).Split("|"c)
             Dim key = p(0), label = If(p.Length > 1, p(1), p(0)), icon = If(p.Length > 2, p(2), "")
-            Dim mi As New ToolStripMenuItem(label.Replace("&", "&&")) With {.Checked = ticked, .Padding = New Padding(0, 3, 0, 3)}
+            Dim mi As New ToolStripMenuItem(label.Replace("&", "&&")) With {.Checked = ticked, .Padding = New Padding(4, 3, 4, 3)}
             If danger Then mi.ForeColor = Color.FromArgb(&HDC, &H35, &H45)
             If icon <> "" Then
                 Dim bmp As New Bitmap(16, 16)
@@ -38,7 +40,6 @@ Public Class WebMenu
                 End Using
                 mi.Image = bmp
             End If
-            If ticked Then mi.Font = New Font(cm.Font, FontStyle.Bold)
             AddHandler mi.Click, Sub() picked(key)
             cm.Items.Add(mi)
         Next

@@ -65,7 +65,7 @@ Public Class SalesHistoryPage
         Body.Add(_filterCard)
 
         Ui.SetVal(_perPage, "20")
-        _perPage.ItemHeight = 28
+        DirectCast(_perPage, WebCombo).EditHeight = 28
         Dim showLbl = Lbl("Show"), entriesLbl = Lbl("entries")
         _tools.Left.AddRange({showLbl, _perPage, entriesLbl})
         Dim right As New Panel With {.BackColor = Color.White, .Width = 220 + 8 + Tr.MeasureText("Search:", Theme.Px(14)).Width + 2, .Height = 36}
@@ -723,7 +723,7 @@ Public Class SalesFilterBar
         Height = RowH
         For Each c In Combos()
             c.Font = _bf
-            CType(c, ComboBox).ItemHeight = 25
+            DirectCast(c, WebCombo).EditHeight = 25
             Controls.Add(c)
             AddHandler c.SelectedIndexChanged, Sub() RaiseEvent Changed()
         Next

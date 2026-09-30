@@ -72,7 +72,7 @@ Public Class ProductsPage
         Body.Add(_filterCard)
 
         Ui.SetVal(_perPage, "20")
-        _perPage.ItemHeight = 28
+        DirectCast(_perPage, WebCombo).EditHeight = 28
         _tools.Left.AddRange({Lbl("Show"), _perPage, Lbl("entries"), _selAll, _bulk, _clearSel})
         _tools.Right = _clearFilters
         _section.Add(_tools)

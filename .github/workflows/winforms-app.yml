@@ -28,7 +28,7 @@ jobs:
         shell: pwsh
         run: |
           [xml]$p = Get-Content SriAndalStaff.vbproj
-          $ver = ($p.Project.PropertyGroup.Version | Where-Object { $_ })[0]
+          $ver = @($p.Project.PropertyGroup.Version | Where-Object { $_ })[0]
           "version=$ver.${{ github.run_number }}" >> $env:GITHUB_OUTPUT
       - name: Publish
         run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:Version=${{ steps.v.outputs.version }} -o out

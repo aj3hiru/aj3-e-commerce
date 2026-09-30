@@ -17,12 +17,19 @@ Public Class WebMenu
     Private _hover As Integer = -1
     Private _dd As ToolStripDropDown
     Private ReadOnly _font As Font = Theme.Px(14)
+    Private Const MaxH As Integer = 380
+    Private _full As Integer, _scroll As Integer
     Private ReadOnly _bold As Font = Theme.Px(14, 600)
 
     Public Shared Sub Show(anchor As Control, items As IEnumerable(Of String), picked As Action(Of String), Optional at As Point? = Nothing, Optional userStyle As Boolean = False, Optional alignRight As Boolean = False)
         Dim m As New WebMenu(items, picked, userStyle)
+        If anchor IsNot Nothing AndAlso Not userStyle AndAlso m.Width < anchor.Width AndAlso TypeOf anchor Is ComboBox Then m.Width = anchor.Width
         Dim host As New ToolStripControlHost(m) With {.Margin = Padding.Empty, .Padding = Padding.Empty, .AutoSize = False, .Size = m.Size}
         Dim dd As New ToolStripDropDown With {.Padding = Padding.Empty, .DropShadowEnabled = True, .BackColor = Color.White}
+        ' rounded corners like the website's popover
+        Using gp = Theme.RoundRect(New RectangleF(0, 0, m.Width, m.Height), Theme.Radius + 2)
+            dd.Region = New Region(gp)
+        End Using
         dd.Items.Add(host)
         m._dd = dd
         AddHandler dd.Closed, Sub() dd.BeginInvoke(Sub() dd.Dispose())
@@ -45,8 +52,8 @@ Public Class WebMenu
         _user = user
         BackColor = Color.White
         Cursor = Cursors.Hand
-        Dim y = If(user, 6, 8)
-        Dim w = 160
+        Dim y = 6
+        Dim w = 180
         For Each it In items
             If it = "-" Then
                 _rows.Add(New Row With {.Divider = True, .Y = y, .H = 9}) : y += 9
@@ -55,47 +62,83 @@ Public Class WebMenu
             Dim r As New Row With {.Danger = it.StartsWith("!"), .Ticked = it.StartsWith("*")}
             Dim p = it.TrimStart("!"c, "*"c).Split("|"c)
             r.Key = p(0) : r.Label = If(p.Length > 1, p(1), p(0)) : r.Icon = If(p.Length > 2, p(2), "")
-            r.Y = y : r.H = If(user, 37, 29)
+            r.Y = y : r.H = If(user, 37, 36)
             _rows.Add(r)
             y += r.H
-            w = Math.Max(w, Tr.MeasureText(r.Label, If(r.Ticked, _bold, _font)).Width + If(user, 21, 32) * 2 + If(r.Icon <> "" OrElse r.Ticked, 26, 0))
+            w = Math.Max(w, Tr.MeasureText(r.Label, If(r.Ticked, _bold, _font)).Width + 6 * 2 + 11 * 2 + If(r.Icon <> "", 26, 0) + If(r.Ticked, 26, 0))
         Next
-        Size = New Size(If(user, Math.Max(190, w), w), y + If(user, 6, 8))
+        _full = y + 6
+        ' long lists (customers, products) scroll inside the popover instead of running off the screen
+        Size = New Size(If(user, Math.Max(190, w), Math.Min(420, w + If(_full > MaxH, 8, 0))), Math.Min(_full, MaxH))
+        Dim tick = _rows.FindIndex(Function(r) r.Ticked)
+        If tick >= 0 AndAlso _full > Height Then _scroll = Math.Max(0, Math.Min(_full - Height, _rows(tick).Y - Height \ 2))
     End Sub
 
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Dim g = e.Graphics
         Theme.Smooth(g)
         g.Clear(Color.White)
-        Using pen As New Pen(Color.FromArgb(45, 0, 0, 0)) : g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1) : End Using
+        Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius + 2)
+            Using pen As New Pen(Theme.G200) : g.DrawPath(pen, p) : End Using
+        End Using
+        Dim clip = g.Clip
+        g.SetClip(New Rectangle(1, 1, Width - 2, Height - 2))
+        Dim sw = If(_full > Height, 8, 0)
         For k = 0 To _rows.Count - 1
             Dim r = _rows(k)
+            Dim ry = r.Y - _scroll
+            If ry + r.H < 0 OrElse ry > Height Then Continue For
             If r.Divider Then
-                Using pen As New Pen(If(_user, Theme.G100, Color.FromArgb(&HE9, &HEC, &HEF))) : g.DrawLine(pen, If(_user, 10, 0), r.Y + 4, Width - If(_user, 10, 0), r.Y + 4) : End Using
+                Using pen As New Pen(Theme.G100) : g.DrawLine(pen, 10, ry + 4, Width - 10 - sw, ry + 4) : End Using
                 Continue For
             End If
-            Dim rr = If(_user, New Rectangle(6, r.Y, Width - 12, r.H), New Rectangle(1, r.Y, Width - 2, r.H))
-            If k = _hover Then
-                Using p = Theme.RoundRect(New RectangleF(rr.X, rr.Y, rr.Width, rr.Height), If(_user, Theme.Radius, 0))
-                    Using b As New SolidBrush(If(_user, Theme.G50, Color.FromArgb(&HE9, &HEC, &HEF))) : g.FillPath(b, p) : End Using
+            Dim rr As New Rectangle(6, ry, Width - 12 - sw, r.H)
+            Dim picked = r.Ticked AndAlso Not _user
+            If picked OrElse k = _hover Then
+                Using p = Theme.RoundRect(New RectangleF(rr.X, rr.Y, rr.Width, rr.Height), Theme.Radius)
+                    Using b As New SolidBrush(If(picked, Color.FromArgb(&HF5, &HF3, &HFF), Theme.G50)) : g.FillPath(b, p) : End Using
                 End Using
             End If
-            Dim fg = If(r.Danger, Color.FromArgb(&HDC, &H35, &H45), If(_user, Theme.G800, Color.FromArgb(&H21, &H25, &H29)))
-            Dim x = rr.X + If(_user, 10, 16)
+            Dim fg = If(r.Danger, Color.FromArgb(&HDC, &H35, &H45), If(picked, Theme.Primary, Theme.G800))
+            Dim x = rr.X + 11
             If r.Icon <> "" Then
                 Icons.Draw(g, r.Icon, New RectangleF(x, rr.Y + (rr.Height - 14) / 2.0F, 16, 14), fg)
                 x += 26
-            ElseIf r.Ticked Then
-                Icons.Draw(g, "check", New RectangleF(x, rr.Y + (rr.Height - 14) / 2.0F, 14, 14), Theme.Primary)
-                x += 26
             End If
-            Tr.DrawText(g, r.Label, If(r.Ticked, _bold, _font), New Rectangle(x, rr.Y, rr.Right - x - 8, rr.Height), fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Dim right = rr.Right - 11
+            If r.Ticked Then
+                Icons.Draw(g, "check", New RectangleF(right - 12, rr.Y + (rr.Height - 12) / 2.0F, 12, 12), Theme.Primary, 2.5F)
+                right -= 20
+            End If
+            Tr.DrawText(g, r.Label, If(r.Ticked, _bold, _font), New Rectangle(x, rr.Y, right - x, rr.Height), fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
         Next
+        g.Clip = clip
+        If sw > 0 Then
+            ' thin scroll thumb
+            Dim th = Math.Max(30, CInt(Height * Height / CDbl(_full)))
+            Dim ty = CInt((Height - th) * _scroll / CDbl(_full - Height))
+            Using p = Theme.RoundRect(New RectangleF(Width - 7, ty + 3, 4, th - 6), 2)
+                Using b As New SolidBrush(Theme.G300) : g.FillPath(b, p) : End Using
+            End Using
+        End If
+    End Sub
+
+    Protected Overrides Sub OnMouseWheel(e As MouseEventArgs)
+        MyBase.OnMouseWheel(e)
+        If _full <= Height Then Return
+        _scroll = Math.Max(0, Math.Min(_full - Height, _scroll - Math.Sign(e.Delta) * 72))
+        _hover = RowAt(PointToClient(Cursor.Position))
+        Invalidate()
+    End Sub
+
+    Protected Overrides Sub OnMouseEnter(e As EventArgs)
+        MyBase.OnMouseEnter(e)
+        Focus() ' so the wheel scrolls the list
     End Sub
 
     Private Function RowAt(p As Point) As Integer
         For k = 0 To _rows.Count - 1
-            If Not _rows(k).Divider AndAlso p.Y >= _rows(k).Y AndAlso p.Y < _rows(k).Y + _rows(k).H Then Return k
+            If Not _rows(k).Divider AndAlso p.Y + _scroll >= _rows(k).Y AndAlso p.Y + _scroll < _rows(k).Y + _rows(k).H Then Return k
         Next
         Return -1
     End Function

@@ -2276,7 +2276,15 @@ Public Class FormDialog
         Return s
     End Function
 
-    Public Function AddDate(key As String, label As String, value As DateTime?, Optional withTime As Boolean = False, Optional optional_ As Boolean = False, Optional half As Boolean = False, Optional hint As String = Nothing) As DateTimePicker
+    Public Function AddDate(key As String, label As String, value As DateTime?, Optional withTime As Boolean = False, Optional optional_ As Boolean = False, Optional half As Boolean = False, Optional hint As String = Nothing) As Control
+        If Not withTime AndAlso Not optional_ Then
+            ' a plain date: the website-style date box (its own calendar pop-up), not the Windows picker
+            Dim d As New DateBox() With {.Height = 38, .Font = Theme.Px(14)}
+            d.Value = If(value, Date.Today)
+            Place(label, d, hint, half, False)
+            Track(key, d, label, False)
+            Return d
+        End If
         Dim p As New DateTimePicker With {.Font = Theme.Body, .Format = DateTimePickerFormat.Custom, .CustomFormat = If(withTime, "dd MMM yyyy  hh:mm tt", "dd MMM yyyy"), .ShowCheckBox = optional_}
         If value.HasValue Then p.Value = value.Value Else If optional_ Then p.Checked = False
         Place(label, p, hint, half, False)
@@ -2361,6 +2369,7 @@ Public Class FormDialog
             If p.ShowCheckBox AndAlso Not p.Checked Then Return ""
             Return p.Value.ToString("yyyy-MM-dd")
         End If
+        If TypeOf c Is DateBox Then Return DirectCast(c, DateBox).Value.ToString("yyyy-MM-dd")
         If TypeOf c Is WButton Then Return CStr(c.Tag)
         Return ""
     End Function
@@ -2376,6 +2385,7 @@ Public Class FormDialog
     Public Function DateOf(key As String) As DateTime?
         Dim c As Control = Nothing
         If Not _inputs.TryGetValue(key, c) Then Return Nothing
+        If TypeOf c Is DateBox Then Return DirectCast(c, DateBox).Value
         Dim p = TryCast(c, DateTimePicker)
         If p Is Nothing OrElse (p.ShowCheckBox AndAlso Not p.Checked) Then Return Nothing
         Return p.Value

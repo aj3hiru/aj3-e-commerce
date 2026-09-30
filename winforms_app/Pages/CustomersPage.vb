@@ -8,17 +8,18 @@ Public Class CustomersPage
     Inherits ScrollPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_customers2_display")
-    Private ReadOnly _export As WButton = Ui.Btn("Export", ChrW(&HE896), outline:=True)
-    Private ReadOnly _add As WButton = Ui.Btn("Add Customer", Theme.IcAdd, Theme.Blue)
-    Private ReadOnly _top As New Columns(2, 520, 16) With {.Stretch = True}
-    Private ReadOnly _growth As New CardBox("Customer Growth", ChrW(&HE9D2)) With {.Accent = Color.FromArgb(&H16, &HA3, &H4A)}
+    Private ReadOnly _export As New HeadButton("Export", "download")
+    Private ReadOnly _add As New HeadButton("Add Customer", "plus", Web.Blue)
+    Private ReadOnly _top As New Columns(2, 760, 20) With {.Stretch = True}
+    Private ReadOnly _growth As New IconCard("trending-up", "Customer Growth", Color.FromArgb(&H16, &HA3, &H4A))
     Private ReadOnly _growthNote As New TextBlock("", Theme.Body, Theme.G600)
     Private ReadOnly _chart As New LineChart() With {.Height = 190, .LineColor = Color.FromArgb(&H16, &HA3, &H4A)}
     Private ReadOnly _growthDates As New TextBlock("", Theme.Small, Theme.G500)
-    Private ReadOnly _metricsCard As New CardBox("Key Metrics", ChrW(&HE9D2)) With {.Accent = Color.FromArgb(&H16, &HA3, &H4A)}
+    Private ReadOnly _metricsCard As New IconCard("bar-chart-3", "Key Metrics", Color.FromArgb(&H16, &HA3, &H4A))
     Private ReadOnly _metricGrid As New Columns(2, 220, 12)
-    Private ReadOnly _m As New Dictionary(Of String, MiniStat)
-    Private ReadOnly _range As New RangeBar("today,7d,this_month,prev_month,this_year,custom", "this_month")
+    Private ReadOnly _m As New Dictionary(Of String, KeyTile)
+    Private ReadOnly _rangeCard As New CardBox(Nothing, "", 1)
+    Private ReadOnly _range As New RangeChips() With {.Outline = True, .Items = {"today|Today", "7days|7 Days", "this_month|This Month", "prev_month|Previous Month", "this_year|This Year"}}
     Private ReadOnly _filters As New FilterCard()
     Private ReadOnly _type As ComboBox = Ui.Filter({"all|All customers", "online|Online", "offline|Store"})
     Private ReadOnly _status As ComboBox = Ui.Filter({"all|All status", "active|Active", "inactive|Inactive"})
@@ -39,23 +40,14 @@ Public Class CustomersPage
     End Property
 
     Public Sub New()
-        Dim legend As New Drawn(20, Sub(g, r)
-                                        Dim x = 0
-                                        For Each it In {(Color.FromArgb(&H16, &HA3, &H4A), "This Period"), (Theme.Blue, "Previous Period")}
-                                            Using b As New SolidBrush(it.Item1) : g.FillEllipse(b, x, 6, 8, 8) : End Using
-                                            Tr.DrawText(g, it.Item2, Theme.Body, New Point(x + 14, 1), Theme.G700, TextFormatFlags.NoPadding)
-                                            x += Tr.MeasureText(it.Item2, Theme.Body).Width + 34
-                                        Next
-                                    End Sub)
-        _growth.Add(legend)
+        _growth.Legend = {(Color.FromArgb(&H16, &HA3, &H4A), "This Period"), (Web.Blue, "Previous Period")}
         _growth.Add(_growthNote)
         _growth.Add(_chart)
         _growth.Add(_growthDates)
         _chart.Formatter = Function(v) Math.Round(v).ToString("0")
         _top.Add(_growth)
-        For Each m In {("cus2-k-total", "All Customers", Theme.IcPeople, Color.FromArgb(5, &H96, &H69)), ("cus2-k-online", "Online Customers", Theme.IcShop, Theme.Blue),
-                       ("cus2-k-offline", "Store Customers", Theme.IcShop, Theme.Blue), ("cus2-k-dues", "With Dues", ChrW(&HE8C7), Color.FromArgb(&HF5, &H9E, &HB))}
-            Dim ms As New MiniStat(m.Item2, m.Item3, m.Item4) With {.Height = 92, .Cursor = Cursors.Hand}
+        For Each m In {("cus2-k-total", "users", "green"), ("cus2-k-online", "shopping-bag", "blue"), ("cus2-k-offline", "store", "navy"), ("cus2-k-dues", "wallet", "amber")}
+            Dim ms As New KeyTile(m.Item2, m.Item3) With {.Cursor = Cursors.Hand}
             Dim key = m.Item1
             AddHandler ms.Click, Sub() MetricClick(key)
             _m(key) = ms
@@ -64,7 +56,11 @@ Public Class CustomersPage
         _metricsCard.Add(_metricGrid)
         _top.Add(_metricsCard)
         Body.Add(_top)
-        Body.Add(_range)
+        _rangeCard.Add(_range)
+        Body.Add(_rangeCard)
+        For Each ic In {(_type, "users"), (_status, "circle-check"), (_dues, "wallet"), (_buying, "shopping-bag"), (_applies, "calendar-days")}
+            DirectCast(ic.Item1, WebCombo).CaptionIcon = ic.Item2
+        Next
         _filters.Add("cus2-f-type", "Customer Type", _type)
         _filters.Add("cus2-f-status", "Status", _status)
         _filters.Add("cus2-f-dues", "Dues", _dues)
@@ -106,6 +102,12 @@ Public Class CustomersPage
         BuildCols()
     End Sub
 
+    Private Function InRange(t As DateTime?) As Boolean
+        If Not t.HasValue Then Return False
+        Dim d = Fmt.IstDay(t)
+        Return d >= _range.From AndAlso d <= _range.To
+    End Function
+
     Private Sub Open(c As JsonObject)
         If Js.Int(c, "id") <= 0 Then Toast("This customer is still uploading — open it in a moment.") : Return
         Main?.Push(New CustomerProfilePage(Js.Int(c, "id")))
@@ -118,6 +120,7 @@ Public Class CustomersPage
             Case "cus2-k-offline" : Ui.SetVal(_type, "offline")
             Case "cus2-k-dues" : Ui.SetVal(_dues, "with")
         End Select
+        Refresh_()
     End Sub
 
     Private Function Orders(c As JsonObject) As Integer
@@ -195,7 +198,7 @@ Public Class CustomersPage
             _localOrders.TryGetValue(id, cur)
             _localOrders(id) = (cur.Item1 + 1, cur.Item2 + Js.Num(o, "total"))
         Next
-        Dim bought = s.List("orders").Where(Function(o) Not Js.IsNull(o, "customerId") AndAlso Js.Str(o, "status") <> "Canceled" AndAlso _range.Contains(Js.Time(o, "createdAt"))).Select(Function(o) Js.Int(o, "customerId")).ToHashSet()
+        Dim bought = s.List("orders").Where(Function(o) Not Js.IsNull(o, "customerId") AndAlso Js.Str(o, "status") <> "Canceled" AndAlso InRange(Js.Time(o, "createdAt"))).Select(Function(o) Js.Int(o, "customerId")).ToHashSet()
         Dim type = Ui.Val(_type), status = Ui.Val(_status), dues = Ui.Val(_dues), buying = Ui.Val(_buying), applies = Ui.Val(_applies)
         Dim list = all.Where(Function(c)
                                  If type = "online" AndAlso WalkIn(c) Then Return False
@@ -205,8 +208,8 @@ Public Class CustomersPage
                                  If dues = "without" AndAlso Js.Num(c, "due") > 0.004 Then Return False
                                  If buying = "buyers" AndAlso Not bought.Contains(Js.Int(c, "id")) Then Return False
                                  If buying = "never" AndAlso Orders(c) > 0 Then Return False
-                                 If applies = "created" AndAlso Not _range.Contains(Js.Time(c, "since")) Then Return False
-                                 If applies = "lastOrder" AndAlso Not _range.Contains(Js.Time(c, "lastOrderAt")) Then Return False
+                                 If applies = "created" AndAlso Not InRange(Js.Time(c, "since")) Then Return False
+                                 If applies = "lastOrder" AndAlso Not InRange(Js.Time(c, "lastOrderAt")) Then Return False
                                  Return _list.Matches(Js.Str(c, "name"), Js.Str(c, "phone"), Js.Str(c, "email"))
                              End Function).ToList()
         _shown = list
@@ -214,27 +217,22 @@ Public Class CustomersPage
 
         ' key metrics
         Dim withDue = all.Where(Function(c) Js.Num(c, "due") > 0.004).ToList()
-        _m("cus2-k-total").SetValue(all.Count.ToString("#,##0"), all.Where(Function(c) Js.Str(c, "status") = "active").Count() & " active · " & all.Where(Function(c) Js.Str(c, "status") <> "active").Count() & " inactive")
-        _m("cus2-k-online").SetValue(all.Where(Function(c) Not WalkIn(c)).Count().ToString("#,##0"), "signed up on the shop")
-        _m("cus2-k-offline").SetValue(all.Where(Function(c) WalkIn(c)).Count().ToString("#,##0"), "added at the counter")
-        _m("cus2-k-dues").SetValue(withDue.Count.ToString("#,##0"), Theme.Money(withDue.Sum(Function(c) Js.Num(c, "due"))) & " outstanding")
-        _m("cus2-k-total").Selected = type = "all" AndAlso dues = "all"
-        _m("cus2-k-online").Selected = type = "online"
-        _m("cus2-k-offline").Selected = type = "offline"
-        _m("cus2-k-dues").Selected = dues = "with"
+        _m("cus2-k-total").SetPlain("All Customers", all.Count.ToString("#,##0"), all.Where(Function(c) Js.Str(c, "status") = "active").Count() & " active · " & all.Where(Function(c) Js.Str(c, "status") <> "active").Count() & " inactive", type = "all" AndAlso dues = "all")
+        _m("cus2-k-online").SetPlain("Online Customers", all.Where(Function(c) Not WalkIn(c)).Count().ToString("#,##0"), "signed up on the shop", type = "online")
+        _m("cus2-k-offline").SetPlain("Store Customers", all.Where(Function(c) WalkIn(c)).Count().ToString("#,##0"), "added at the counter", type = "offline")
+        _m("cus2-k-dues").SetPlain("With Dues", withDue.Count.ToString("#,##0"), Theme.Money(withDue.Sum(Function(c) Js.Num(c, "due"))) & " outstanding", dues = "with")
         For Each kv In _m : Kit.Show(kv.Value, _display.IsOn("cus2-cards", kv.Key)) : Next
         Dim cardsOn = _display.IsOn("cus2-cards") AndAlso _m.Keys.Any(Function(k) _display.IsOn("cus2-cards", k))
         Kit.Show(_metricsCard, cardsOn)
         Kit.Show(_growth, _display.Item("cus2-chart"))
         Kit.Show(_top, cardsOn OrElse _display.Item("cus2-chart"))
-        Kit.Show(_range, _display.Item("cus2-range"))
+        Kit.Show(_rangeCard, _display.Item("cus2-range"))
         _filters.Apply(_display, "cus2-filters")
         Kit.Show(_filters, _display.IsOn("cus2-filters") AndAlso Kit.WantsVisible(_filters))
         Kit.Show(_list, _display.IsOn("cus2-table"))
 
         ' growth: joined per day, this period vs the one before
-        Dim b = _range.Bounds_()
-        Dim from = If(b.Item1, New DateTime(DateTime.Today.Year, DateTime.Today.Month, 1)), [to] = If(b.Item2, DateTime.Today)
+        Dim from As DateTime = _range.From, [to] As DateTime = _range.To
         Dim days = Math.Max(1, CInt(([to] - from).TotalDays) + 1)
         Dim prevFrom = from.AddDays(-days)
         Dim nowC(days - 1) As Double, prevC(days - 1) As Double

@@ -114,6 +114,8 @@ Public Class RangeChips
     Private ReadOnly _f14b As Font = Theme.Px(14, 700)
 
     Public Shared ReadOnly Presets As String() = {"today|Today", "yesterday|Yesterday", "7days|7 Days", "this_month|This Month", "prev_month|Previous Month"}
+    ''' <summary>The preset buttons this bar shows (a page can use its own list, e.g. Customers adds This Year).</summary>
+    Public Items As String() = Presets
     ''' <summary>White bordered preset buttons (Due page) instead of grey chips.</summary>
     Public Outline As Boolean
     ''' <summary>A grey hint line under the bar ("→ To filter the table by these dates…").</summary>
@@ -138,7 +140,7 @@ Public Class RangeChips
     ''' <summary>Width of "Showing: …" and the chips (the dates go on the same line when they fit, as on the website).</summary>
     Private Function ChipsWidth() As Integer
         Dim w = 16 + 24 + Tr.MeasureText("Showing:", _f14).Width + 6 + Tr.MeasureText(Showing, _f14b).Width + 16
-        For Each p In Presets : w += Tr.MeasureText(p.Split("|"c)(1), _chipFont).Width + 24 + 6 : Next
+        For Each p In Items : w += Tr.MeasureText(p.Split("|"c)(1), _chipFont).Width + 24 + 6 : Next
         Return w
     End Function
     Private Function DatesWidth() As Integer
@@ -164,7 +166,7 @@ Public Class RangeChips
     End Sub
 
     Public Shared Function RangeOf(key As String) As (Date, Date)
-        Dim t = Date.Today
+        Dim t = Fmt.IstToday()
         Dim first As New Date(t.Year, t.Month, 1)
         Select Case key
             Case "today" : Return (t, t)
@@ -172,13 +174,14 @@ Public Class RangeChips
             Case "7days" : Return (t.AddDays(-6), t)
             Case "this_month" : Return (first, t)
             Case "prev_month" : Return (first.AddMonths(-1), first.AddDays(-1))
+            Case "this_year" : Return (New Date(t.Year, 1, 1), t)
         End Select
         Return (t, t)
     End Function
 
     Public ReadOnly Property ActiveKey As String
         Get
-            For Each p In Presets
+            For Each p In Items
                 Dim k = p.Split("|"c)(0)
                 Dim r = RangeOf(k)
                 If r.Item1 = From AndAlso r.Item2 = [To] Then Return k
@@ -194,7 +197,7 @@ Public Class RangeChips
     Public ReadOnly Property Showing As String
         Get
             Dim k = ActiveKey
-            If k <> "" Then Return Presets.First(Function(p) p.StartsWith(k & "|")).Split("|"c)(1)
+            If k <> "" Then Return Items.First(Function(p) p.StartsWith(k & "|")).Split("|"c)(1)
             If From = [To] Then Return LongDate(From)
             Return LongDate(From) & " – " & LongDate([To])
         End Get
@@ -230,7 +233,7 @@ Public Class RangeChips
         x += Tr.MeasureText(sh, _f14b).Width + 16
         _chips = New List(Of (String, Rectangle))
         Dim act = ActiveKey
-        For Each p In Presets
+        For Each p In Items
             Dim kl = p.Split("|"c)
             Dim w = Tr.MeasureText(kl(1), _chipFont).Width + 24
             Dim r As New Rectangle(x, cy - 16, w, 32)
@@ -995,17 +998,61 @@ Public Class WebCombo
                     If(inList AndAlso cur, Theme.Primary, Theme.G800), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
     End Sub
 
+    ''' <summary>Our own list (the website's popover) instead of the Windows drop-down.</summary>
+    Public Sub OpenList()
+        If Not Enabled OrElse Items.Count = 0 Then Return
+        Focus()
+        _open = True : Invalidate()
+        Dim rows As New List(Of String)
+        For k = 0 To Items.Count - 1
+            rows.Add(If(k = SelectedIndex, "*", "") & k & "|" & GetItemText(Items(k)).Replace("|", "/"))
+        Next
+        WebMenu.Show(Me, rows, Sub(key)
+                                   Dim i = CInt(key)
+                                   If i <> SelectedIndex Then SelectedIndex = i
+                               End Sub)
+        _open = False : Invalidate()
+    End Sub
+    Private _open As Boolean
+
+    Protected Overrides Function ProcessCmdKey(ByRef msg As Message, keyData As Keys) As Boolean
+        If keyData = Keys.F4 OrElse keyData = (Keys.Alt Or Keys.Down) OrElse keyData = (Keys.Alt Or Keys.Up) OrElse keyData = Keys.Space OrElse keyData = Keys.Enter Then
+            OpenList()
+            Return True
+        End If
+        Return MyBase.ProcessCmdKey(msg, keyData)
+    End Function
+
     Protected Overrides Sub WndProc(ByRef m As Message)
+        If m.Msg = &H201 OrElse m.Msg = &H203 Then ' WM_LBUTTONDOWN / DBLCLK: open our list, not the Windows one
+            OpenList()
+            Return
+        End If
         MyBase.WndProc(m)
         If m.Msg = WM_PAINT Then
             Using g = CreateGraphics()
+                Paint_(g)
+            End Using
+        ElseIf (m.Msg = &H317 OrElse m.Msg = &H318) AndAlso m.WParam <> IntPtr.Zero Then
+            ' WM_PRINT / WM_PRINTCLIENT (DrawToBitmap, screenshots): draw our face there too
+            Using g = Graphics.FromHdc(m.WParam)
                 Paint_(g)
             End Using
         End If
     End Sub
 
     ''' <summary>The website's labelled filter box: a small grey caption above the chosen value, 48px tall.</summary>
-    Public Property Caption As String = ""
+    Private _caption As String = ""
+    Public Property Caption As String
+        Get
+            Return _caption
+        End Get
+        Set(v As String)
+            _caption = If(v, "")
+            If _caption <> "" AndAlso IsHandleCreated Then SendMessage(Handle, CB_SETITEMHEIGHT, New IntPtr(-1), New IntPtr(42))
+            Invalidate()
+        End Set
+    End Property
     Public Property CaptionIcon As String = ""
     Private Const CB_SETITEMHEIGHT As Integer = &H153
     Private Declare Function SendMessage Lib "user32" Alias "SendMessageW" (hWnd As IntPtr, msg As Integer, wParam As IntPtr, lParam As IntPtr) As IntPtr
@@ -1017,7 +1064,7 @@ Public Class WebCombo
     Private Sub Paint_(g As Graphics)
         g.Clear(Theme.Behind(Me))
         Theme.Smooth(g)
-        Dim focus = Focused OrElse DroppedDown
+        Dim focus = _open OrElse DroppedDown
         If Caption <> "" Then
             Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
                 Using b As New SolidBrush(If(Enabled, Color.White, Theme.G50)) : g.FillPath(b, p) : End Using

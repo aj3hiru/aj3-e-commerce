@@ -501,6 +501,13 @@ Public Class KeyTile
         Invalidate()
     End Sub
 
+    ''' <summary>A tile with plain text (Customers' Key Metrics); Active draws the blue ring of the chosen filter.</summary>
+    Public Sub SetPlain(label As String, value As String, [sub] As String, Optional active As Boolean = False)
+        _label = label : _value = value : _sub = [sub] : _arrow = "" : _subInk = Theme.G500 : _link = False : _active = active
+        Invalidate()
+    End Sub
+    Private _active As Boolean
+
     Public Sub SetDue(collected As Double, outstanding As Double)
         _label = "Today's Due Collection" : _value = Theme.Money(collected) : _arrow = ""
         _link = outstanding > 0.004
@@ -529,7 +536,7 @@ Public Class KeyTile
         Theme.Smooth(g)
         Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
             Using b As New SolidBrush(Color.White) : g.FillPath(b, p) : End Using
-            Using pen As New Pen(Theme.G100) : g.DrawPath(pen, p) : End Using
+            Using pen As New Pen(If(_active, Color.FromArgb(&H9C, &HBD, &HF5), Theme.G100), If(_active, 2, 1)) : g.DrawPath(pen, p) : End Using
         End Using
         Using b As New SolidBrush(_bg) : g.FillEllipse(b, 14, 14, 32, 32) : End Using
         Icons.Draw(g, _icon, New RectangleF(22, 22, 16, 16), Color.White)

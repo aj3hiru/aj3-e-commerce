@@ -874,6 +874,10 @@ Public Class WebTable
     ''' <summary>The newer website tables (Orders…): light heading, uppercase 12px titles, lucide sort arrows, no
     ''' column lines or stripes, hairline rows, blue ticks.</summary>
     Public Modern As Boolean
+    ''' <summary>DataTables look (Sales ledger): white header, normal-case bold labels with the sort icon at the right
+    ''' of the column, zebra rows, no outer border.</summary>
+    Public Ledger As Boolean
+    Private ReadOnly _ledHead As Font = Theme.Px(13, 600)
     ''' <summary>Hand cursor over these spots of a Custom cell (cell and point in table coordinates).</summary>
     Public HotSpot As Func(Of JsonObject, TCol, Rectangle, Point, Boolean)
     Public Event ActionClick(r As JsonObject, key As String)
@@ -1013,12 +1017,20 @@ Public Class WebTable
     Private ReadOnly _modHead As Font = Theme.Px(12, 600)
     Private Sub PaintModern(g As Graphics, e As PaintEventArgs, rects As List(Of (Col As TCol, X As Integer, W As Integer)))
         Theme.Smooth(g)
-        Using b As New SolidBrush(Web.HeadBg) : g.FillRectangle(b, 0, 0, Width, HeadHeight) : End Using
+        Using b As New SolidBrush(If(Ledger, Color.White, Web.HeadBg)) : g.FillRectangle(b, 0, 0, Width, HeadHeight) : End Using
         If Selectable Then
             Dim all = Rows.Count > 0 AndAlso Rows.All(Function(r) Selected.Contains(IdOf(r)))
             Web.DrawCheck(g, New Rectangle(14, HeadHeight \ 2 - 8, 16, 16), all)
         End If
         For Each c In rects
+            If Ledger Then
+                Tr.DrawText(g, c.Col.Header, _ledHead, New Rectangle(c.X + 12, 0, c.W - 40, HeadHeight), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                If c.Col.Sort IsNot Nothing Then
+                    Dim ic = If(c.Col Is SortCol, If(SortAsc, "arrow-up", "arrow-down"), "chevrons-up-down")
+                    Icons.Draw(g, ic, New RectangleF(c.X + c.W - 24, HeadHeight \ 2 - 7, 14, 14), If(c.Col Is SortCol, Theme.G600, Theme.G300))
+                End If
+                Continue For
+            End If
             Dim x = c.X + 12
             Tr.DrawSpaced(g, c.Col.Header.ToUpperInvariant(), _modHead, New Point(x, HeadHeight \ 2 - 8), If(c.Col Is SortCol, Theme.G800, Theme.G500), 0.6F)
             If c.Col.Sort IsNot Nothing Then
@@ -1039,7 +1051,7 @@ Public Class WebTable
                 Dim r = Rows(i)
                 Dim y = HeadHeight + i * RowHeight
                 Dim sel = Selectable AndAlso Selected.Contains(IdOf(r))
-                Dim bg = If(sel, Color.FromArgb(&HF1, &HF6, &HFF), If(i = _hoverRow, Web.RowHover, Color.White))
+                Dim bg = If(sel, Color.FromArgb(&HF1, &HF6, &HFF), If(i = _hoverRow, If(Ledger, Color.FromArgb(&HF3, &HFB, &HF7), Web.RowHover), If(Ledger AndAlso i Mod 2 = 1, Color.FromArgb(&HFA, &HFA, &HFB), Color.White)))
                 Using b As New SolidBrush(bg) : g.FillRectangle(b, 0, y, Width, RowHeight) : End Using
                 If RowColour IsNot Nothing Then
                     Dim rc = RowColour(r)
@@ -1054,6 +1066,7 @@ Public Class WebTable
                 Using p As New Pen(Web.Line) : g.DrawLine(p, 0, y + RowHeight - 1, Width, y + RowHeight - 1) : End Using
             Next
         End If
+        If Ledger Then Return
         Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
             Using pen As New Pen(Web.Line) : g.DrawPath(pen, p) : End Using
         End Using

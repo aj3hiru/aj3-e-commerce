@@ -882,11 +882,12 @@ Public Class LedgerFooter
     Implements IFlowHeight
     Public ReadOnly Pager As New Pager()
     Public Text_ As String = "", Total As String = "", Due As String = ""
-    Private ReadOnly _f As Font = Theme.Px(13), _fb As Font = Theme.Px(13, 700)
-    Public Sub New()
+    Private ReadOnly _f As Font, _fb As Font
+    Public Sub New(Optional size As Integer = 13)
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
         BackColor = Color.White
         Height = 40
+        _f = Theme.Px(size) : _fb = Theme.Px(size, 700)
         Controls.Add(Pager)
     End Sub
     Public Function HeightFor(width As Integer) As Integer Implements IFlowHeight.HeightFor
@@ -904,6 +905,7 @@ Public Class LedgerFooter
                        x += Tr.MeasureText(t, f).Width
                    End Sub
         part(Text_, _f, Theme.G600)
+        If Total = "" Then Return
         x += 10
         Using pen As New Pen(Theme.G300) : g.DrawLine(pen, x, y, x, y + 16) : End Using
         x += 10

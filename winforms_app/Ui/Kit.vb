@@ -877,6 +877,10 @@ Public Class WebTable
     ''' <summary>DataTables look (Sales ledger): white header, normal-case bold labels with the sort icon at the right
     ''' of the column, zebra rows, no outer border.</summary>
     Public Ledger As Boolean
+    ''' <summary>Bordered DataTables grid (Products): light grey header, cell borders, grey odd rows. Implies Ledger.</summary>
+    Public Grid As Boolean
+    Private Shared ReadOnly GridLine As Color = Color.FromArgb(&HDE, &HE2, &HE6)
+    Private ReadOnly _gridHead As Font = Theme.Px(14, 700)
     Private ReadOnly _ledHead As Font = Theme.Px(13, 600)
     ''' <summary>Hand cursor over these spots of a Custom cell (cell and point in table coordinates).</summary>
     Public HotSpot As Func(Of JsonObject, TCol, Rectangle, Point, Boolean)
@@ -1017,14 +1021,15 @@ Public Class WebTable
     Private ReadOnly _modHead As Font = Theme.Px(12, 600)
     Private Sub PaintModern(g As Graphics, e As PaintEventArgs, rects As List(Of (Col As TCol, X As Integer, W As Integer)))
         Theme.Smooth(g)
-        Using b As New SolidBrush(If(Ledger, Color.White, Web.HeadBg)) : g.FillRectangle(b, 0, 0, Width, HeadHeight) : End Using
+        If Grid Then Ledger = True
+        Using b As New SolidBrush(If(Grid, Color.FromArgb(&HF8, &HF9, &HFA), If(Ledger, Color.White, Web.HeadBg))) : g.FillRectangle(b, 0, 0, Width, HeadHeight) : End Using
         If Selectable Then
             Dim all = Rows.Count > 0 AndAlso Rows.All(Function(r) Selected.Contains(IdOf(r)))
             Web.DrawCheck(g, New Rectangle(14, HeadHeight \ 2 - 8, 16, 16), all)
         End If
         For Each c In rects
             If Ledger Then
-                Tr.DrawText(g, c.Col.Header, _ledHead, New Rectangle(c.X + 12, 0, c.W - 40, HeadHeight), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                Tr.DrawText(g, c.Col.Header, If(Grid, _gridHead, _ledHead), New Rectangle(c.X + 12, 0, c.W - 36, HeadHeight), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                 If c.Col.Sort IsNot Nothing Then
                     Dim ic = If(c.Col Is SortCol, If(SortAsc, "arrow-up", "arrow-down"), "chevrons-up-down")
                     Icons.Draw(g, ic, New RectangleF(c.X + c.W - 24, HeadHeight \ 2 - 7, 14, 14), If(c.Col Is SortCol, Theme.G600, Theme.G300))
@@ -1052,6 +1057,7 @@ Public Class WebTable
                 Dim y = HeadHeight + i * RowHeight
                 Dim sel = Selectable AndAlso Selected.Contains(IdOf(r))
                 Dim bg = If(sel, Color.FromArgb(&HF1, &HF6, &HFF), If(i = _hoverRow, If(Ledger, Color.FromArgb(&HF3, &HFB, &HF7), Web.RowHover), If(Ledger AndAlso i Mod 2 = 1, Color.FromArgb(&HFA, &HFA, &HFB), Color.White)))
+                If Grid AndAlso Not sel Then bg = If(i = _hoverRow, Color.FromArgb(&HEC, &HEC, &HEC), If(i Mod 2 = 0, Color.FromArgb(&HF2, &HF2, &HF2), Color.White))
                 Using b As New SolidBrush(bg) : g.FillRectangle(b, 0, y, Width, RowHeight) : End Using
                 If RowColour IsNot Nothing Then
                     Dim rc = RowColour(r)
@@ -1065,6 +1071,15 @@ Public Class WebTable
                 Next
                 Using p As New Pen(Web.Line) : g.DrawLine(p, 0, y + RowHeight - 1, Width, y + RowHeight - 1) : End Using
             Next
+        End If
+        If Grid Then
+            Dim bottom = If(Rows.Count = 0, Height - 1, Math.Min(Height - 1, HeadHeight + Rows.Count * RowHeight))
+            Using pen As New Pen(GridLine)
+                For y = HeadHeight To bottom Step RowHeight : g.DrawLine(pen, 0, y, Width, y) : Next
+                If Selectable Then g.DrawLine(pen, 44, 0, 44, bottom)
+                For Each c In rects : g.DrawLine(pen, c.X + c.W, 0, c.X + c.W, bottom) : Next
+                g.DrawRectangle(pen, 0, 0, Width - 1, bottom)
+            End Using
         End If
         If Ledger Then Return
         Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)

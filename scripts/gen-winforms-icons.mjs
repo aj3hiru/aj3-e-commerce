@@ -15,7 +15,7 @@ const files = [];
 (function walk(d) { for (const f of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, f.name); if (f.isDirectory()) walk(p); else if (/\.(tsx?|jsx?)$/.test(f.name)) files.push(p); } })(path.join(root, "src"));
 
 const lucide = new Set(["sliders-horizontal", "chevron-down", "chevron-up", "chevron-left", "chevron-right", "x", "check", "search", "plus", "minus", "refresh-cw", "cloud", "cloud-off", "wifi-off", "log-out", "user", "menu", "printer", "download", "upload", "trash-2", "pencil", "eye", "eye-off", "calendar", "filter", "arrow-left", "more-vertical", "more-horizontal", "external-link", "copy", "info", "circle-alert", "circle-check", "triangle-alert", "loader", "moon", "sun", "bell", "phone", "message-circle", "map-pin", "navigation"]);
-const fa = new Set();
+const fa = new Set(["faStar"]); // + icons the app draws that the website shows another way
 for (const f of files) {
   const s = fs.readFileSync(f, "utf8");
   for (const m of s.matchAll(/import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*["']lucide-react["']/g))

@@ -376,13 +376,12 @@ Public Class ReviewsPage
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_reviews2_display")
     Private ReadOnly _export As WButton = Ui.Btn("Export", ChrW(&HE896), outline:=True)
     Private ReadOnly _add As WButton = Ui.Btn("Add Review", Theme.IcAdd, Theme.Blue)
-    Private ReadOnly _rangeCard As New CardBox(Nothing, "", 12)
-    Private ReadOnly _range As New RangeBar("today,yesterday,7d,30d,this_month,prev_month,this_year,custom", "this_month")
-    Private ReadOnly _dateOn As New Switch("Show only reviews in these dates", False)
+    Private ReadOnly _rangeCard As New CardBox(Nothing, "", 1)
+    Private ReadOnly _range As New RangeChips() With {.Outline = True, .ToggleText = "Filter the table by this range"}
     Private ReadOnly _cards As New Columns(4, 200, 14)
     Private ReadOnly _m As New Dictionary(Of String, MiniStat)
-    Private ReadOnly _spread As New CardBox("Ratings Breakdown")
-    Private ReadOnly _bars As New Drawn(130, Nothing)
+    Private ReadOnly _spread As New IconCard("star", "Ratings Breakdown", Color.FromArgb(&HF5, &H9E, &HB))
+    Private ReadOnly _bars As New Drawn(146, Nothing)
     Private ReadOnly _filters As New FilterCard()
     Private ReadOnly _status As ComboBox = Ui.Filter({"all|All status", "pending|Pending", "approved|Approved", "rejected|Rejected"})
     Private ReadOnly _rating As ComboBox = Ui.Filter({"all|All ratings", "high|4★ and above", "low|2★ and below", "5|5 stars", "4|4 stars", "3|3 stars", "2|2 stars", "1|1 star"})
@@ -394,7 +393,7 @@ Public Class ReviewsPage
     Private _shown As New List(Of JsonObject)
 
     Public Overrides ReadOnly Property PageTitle As String = "Product Reviews"
-    Public Overrides ReadOnly Property PageSubtitle As String = "Approve what customers wrote before it shows on the shop"
+    Public Overrides ReadOnly Property PageSubtitle As String = "Read, approve and manage what customers say about your products"
     Public Overrides ReadOnly Property Actions As Control()
         Get
             Return {_display.Button, _export, _add}
@@ -403,7 +402,6 @@ Public Class ReviewsPage
 
     Public Sub New()
         _rangeCard.Add(_range)
-        _rangeCard.Add(_dateOn)
         Body.Add(_rangeCard)
         For Each m In {("rv2-k-total", "All Reviews", ChrW(&HE8BD), Theme.Blue), ("rv2-k-today", "Today", Theme.IcClock, Theme.Primary), ("rv2-k-pending", "Pending Reviews", Theme.IcClock, Color.FromArgb(&HD9, &H77, 6)),
                        ("rv2-k-approved", "Approved", Theme.IcDone, Color.FromArgb(5, &H96, &H69)), ("rv2-k-rejected", "Rejected", Theme.IcBlock, Theme.G500), ("rv2-k-average", "Average Rating", ChrW(&HE734), Color.FromArgb(&HF5, &H9E, &HB)),
@@ -413,12 +411,12 @@ Public Class ReviewsPage
             AddHandler ms.Click, Sub()
                                      ClearFilters()
                                      Select Case key
-                                         Case "rv2-k-today" : _range.Current = "today" : _range.Invalidate() : _dateOn.Checked = True
+                                         Case "rv2-k-today" : _range.SetRange(Fmt.IstToday(), Fmt.IstToday(), False) : _range.ToggleOn = True : _range.Invalidate()
                                          Case "rv2-k-pending" : Ui.SetVal(_status, "pending")
                                          Case "rv2-k-approved" : Ui.SetVal(_status, "approved")
                                          Case "rv2-k-rejected" : Ui.SetVal(_status, "rejected")
                                          Case "rv2-k-low" : Ui.SetVal(_rating, "low")
-                                         Case "rv2-k-range" : _dateOn.Checked = True
+                                         Case "rv2-k-range" : _range.ToggleOn = True : _range.Invalidate()
                                      End Select
                                      Refresh_()
                                  End Sub
@@ -428,7 +426,7 @@ Public Class ReviewsPage
         Body.Add(_cards)
         _bars.PaintIt = AddressOf PaintBars
         AddHandler _bars.MouseClick, Sub(s, e)
-                                         Dim n = 5 - Math.Min(4, Math.Max(0, e.Y \ 26))
+                                         Dim n = 5 - Math.Min(4, Math.Max(0, e.Y \ 30))
                                          ClearFilters()
                                          Ui.SetVal(_rating, n.ToString())
                                      End Sub
@@ -449,11 +447,8 @@ Public Class ReviewsPage
                                            ClearFilters()
                                            Refresh_()
                                        End Sub
-        AddHandler _range.Changed, Sub()
-                                       _dateOn.Checked = True
-                                       Refresh_()
-                                   End Sub
-        AddHandler _dateOn.Toggled, Sub() Refresh_()
+        AddHandler _range.Changed, Sub() Refresh_()
+        AddHandler _range.Toggled, Sub() Refresh_()
         AddHandler _list.Table.RowClick, Sub(r) Edit(r)
         AddHandler _list.Table.CellClick, Sub(r, c, cell)
                                               If c.Key = "status" AndAlso Js.Int(r, "id") > 0 Then
@@ -481,25 +476,36 @@ Public Class ReviewsPage
     Private Sub ClearFilters()
         _list.Search.Text = ""
         For Each c In {_status, _rating, _category, _product, _text} : c.SelectedIndex = 0 : Next
-        _dateOn.Checked = False
+        _range.ToggleOn = False : _range.Invalidate()
     End Sub
 
+    Private Function InRange(t As DateTime?) As Boolean
+        If Not t.HasValue Then Return False
+        Dim d = Fmt.IstDay(t)
+        Return d >= _range.From AndAlso d <= _range.To
+    End Function
+
+    ''' <summary>5 to 1 stars as on the website: amber bars against the most common rating, the count on the right.</summary>
     Private Sub PaintBars(g As Graphics, r As Rectangle)
-        Dim total = Math.Max(1, _all.Count)
+        Theme.Smooth(g)
+        Dim counts = Enumerable.Range(1, 5).ToDictionary(Function(n) n, Function(n) _all.Where(Function(x) Js.Int(x, "rating") = n).Count())
+        Dim top = Math.Max(1, counts.Values.Max())
+        Dim amber = Color.FromArgb(&HFB, &HBF, &H24)
         For n = 5 To 1 Step -1
-            Dim c = _all.Where(Function(x) Js.Int(x, "rating") = n).Count()
-            Dim y = (5 - n) * 26
-            Tr.DrawText(g, n & "★", Theme.Body, New Rectangle(0, y, 34, 22), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
-            Dim bw = r.Width - 34 - 110
-            Using p = Theme.RoundRect(New RectangleF(34, y + 7, bw, 8), 4)
+            Dim c = counts(n)
+            Dim y = (5 - n) * 30
+            Tr.DrawText(g, n.ToString(), Theme.Px(14), New Rectangle(0, y, 14, 22), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+            Icons.Draw(g, "fa-star", New RectangleF(14, y + 5, 12, 12), amber)
+            Dim bw = r.Width - 60 - 50
+            Using p = Theme.RoundRect(New RectangleF(60, y + 7, bw, 8), 4)
                 Using b As New SolidBrush(Theme.G100) : g.FillPath(b, p) : End Using
             End Using
             If c > 0 Then
-                Using p = Theme.RoundRect(New RectangleF(34, y + 7, CSng(bw * c / total), 8), 4)
-                    Using b As New SolidBrush(If(n >= 4, Color.FromArgb(&H10, &HB9, &H81), If(n = 3, Color.FromArgb(&HF5, &H9E, &HB), Color.FromArgb(&HEF, &H44, &H44)))) : g.FillPath(b, p) : End Using
+                Using p = Theme.RoundRect(New RectangleF(60, y + 7, CSng(bw * c / top), 8), 4)
+                    Using b As New SolidBrush(amber) : g.FillPath(b, p) : End Using
                 End Using
             End If
-            Tr.DrawText(g, "  " & c & " (" & CInt(c * 100 / total) & "%)", Theme.Body, New Rectangle(34 + bw, y, 110, 22), Theme.G600, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+            Tr.DrawText(g, c.ToString(), Theme.Px(14), New Rectangle(r.Width - 40, y, 40, 22), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.Right Or TextFormatFlags.NoPadding)
         Next
     End Sub
 
@@ -561,11 +567,11 @@ Public Class ReviewsPage
                                  If product <> 0 AndAlso Js.Int(r, "productId") <> product Then Return False
                                  Dim hasText = Js.Str(r, "reviewText").Trim() <> ""
                                  If text <> "all" AndAlso hasText <> (text = "with") Then Return False
-                                 If _dateOn.Checked AndAlso Not _range.Contains(Js.Time(r, "createdAt")) Then Return False
+                                 If _range.ToggleOn AndAlso Not InRange(Js.Time(r, "createdAt")) Then Return False
                                  Return _list.Matches(Js.Str(r, "customerName") & " " & Js.Str(r, "customerPhone") & " " & Js.Str(r, "orderNumber") & " " & Js.Str(r, "orderId") & " " & Js.Str(r, "productName") & " " & Js.Str(r, "categoryName") & " " & Js.Str(r, "brandName") & " " & Js.Str(r, "reviewText"))
                              End Function).ToList()
         _shown = list
-        Dim filtersOn = status <> "all" OrElse rating <> "all" OrElse text <> "all" OrElse category <> 0 OrElse product <> 0 OrElse _dateOn.Checked
+        Dim filtersOn = status <> "all" OrElse rating <> "all" OrElse text <> "all" OrElse category <> 0 OrElse product <> 0 OrElse _range.ToggleOn
         _list.SetRows(list, all.Count, filtersOn)
         Dim isDay = Function(r As JsonObject, d As DateTime) Js.Time(r, "createdAt").HasValue AndAlso Js.Time(r, "createdAt").Value.Date = d
         Dim avg = If(all.Count = 0, 0, all.Average(Function(r) Js.Num(r, "rating")))
@@ -576,13 +582,13 @@ Public Class ReviewsPage
         _m("rv2-k-rejected").SetValue(all.Where(Function(r) Js.Str(r, "status") = "rejected").Count().ToString(), "hidden from the shop")
         _m("rv2-k-average").SetValue(If(all.Count = 0, "—", avg.ToString("0.0") & "★"), "across all reviews")
         _m("rv2-k-low").SetValue(all.Where(Function(r) Js.Int(r, "rating") <= 2).Count().ToString(), "worth a look")
-        _m("rv2-k-range").SetValue(all.Where(Function(r) _range.Contains(Js.Time(r, "createdAt"))).Count().ToString(), _range.Text_)
+        _m("rv2-k-range").SetValue(all.Where(Function(r) InRange(Js.Time(r, "createdAt"))).Count().ToString(), RangeChips.LongDate(_range.From) & " – " & RangeChips.LongDate(_range.To))
         _m("rv2-k-total").Selected = Not filtersOn
         _m("rv2-k-pending").Selected = status = "pending"
         _m("rv2-k-approved").Selected = status = "approved"
         _m("rv2-k-rejected").Selected = status = "rejected"
         _m("rv2-k-low").Selected = rating = "low"
-        _m("rv2-k-range").Selected = _dateOn.Checked
+        _m("rv2-k-range").Selected = _range.ToggleOn
         For Each kv In _m : Kit.Show(kv.Value, _display.IsOn("rv2-cards", kv.Key)) : Next
         Kit.Show(_cards, _display.IsOn("rv2-cards"))
         Kit.Show(_rangeCard, _display.Item("rv2-range"))

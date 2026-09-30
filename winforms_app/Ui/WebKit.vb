@@ -120,6 +120,11 @@ Public Class RangeChips
     Public Outline As Boolean
     ''' <summary>A grey hint line under the bar ("→ To filter the table by these dates…").</summary>
     Public Note As String = ""
+    ''' <summary>A checkbox after the presets (Reviews: "Filter the table by this range").</summary>
+    Public ToggleText As String = ""
+    Public ToggleOn As Boolean
+    Public Event Toggled()
+    Private _toggleR As Rectangle
 
     Public Sub New()
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
@@ -141,6 +146,7 @@ Public Class RangeChips
     Private Function ChipsWidth() As Integer
         Dim w = 16 + 24 + Tr.MeasureText("Showing:", _f14).Width + 6 + Tr.MeasureText(Showing, _f14b).Width + 16
         For Each p In Items : w += Tr.MeasureText(p.Split("|"c)(1), _chipFont).Width + 24 + 6 : Next
+        If ToggleText <> "" Then w += 14 + 16 + 8 + Tr.MeasureText(ToggleText, _f14).Width
         Return w
     End Function
     Private Function DatesWidth() As Integer
@@ -250,6 +256,12 @@ Public Class RangeChips
             _chips.Add((kl(0), r))
             x += w + 6
         Next
+        If ToggleText <> "" Then
+            x += 8
+            Web.DrawCheck(g, New Rectangle(x, cy - 8, 16, 16), ToggleOn, Web.Blue)
+            Tr.DrawText(g, ToggleText, _f14, New Point(x + 24, cy - 10), Theme.G800, TextFormatFlags.NoPadding)
+            _toggleR = New Rectangle(x, cy - 12, 24 + Tr.MeasureText(ToggleText, _f14).Width, 24)
+        End If
         If Note <> "" Then
             Icons.Draw(g, "arrow-right", New RectangleF(16, Height - 21, 12, 12), Theme.G500)
             Tr.DrawText(g, Note, Theme.Px(12), New Point(34, Height - 23), Theme.G500, TextFormatFlags.NoPadding)
@@ -261,13 +273,19 @@ Public Class RangeChips
     Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
         MyBase.OnMouseMove(e)
         Dim h = _chips.FirstOrDefault(Function(c) c.R.Contains(e.Location)).Key
-        If h Is Nothing Then h = ""
+        If h Is Nothing Then h = If(ToggleText <> "" AndAlso _toggleR.Contains(e.Location), "#toggle", "")
         Cursor = If(h = "", Cursors.Default, Cursors.Hand)
         If h <> _hover Then _hover = h : Invalidate()
     End Sub
 
     Protected Overrides Sub OnMouseClick(e As MouseEventArgs)
         MyBase.OnMouseClick(e)
+        If ToggleText <> "" AndAlso _toggleR.Contains(e.Location) Then
+            ToggleOn = Not ToggleOn
+            Invalidate()
+            RaiseEvent Toggled()
+            Return
+        End If
         For Each c In _chips
             If c.R.Contains(e.Location) Then
                 Dim r = RangeOf(c.Key)

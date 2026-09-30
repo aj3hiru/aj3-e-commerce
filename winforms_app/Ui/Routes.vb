@@ -23,6 +23,8 @@ Public Module Routes
             Case "/push-notifications/push-manager2" : Return New PushPage()
             Case "/admin/ecommerce/reports" : Return New ReportsPage()
             Case "/admin/ecommerce/analytics" : Return New AnalyticsPage()
+            Case "/admin/ecommerce/gst-report" : Return New GstPage()
+            Case "/admin/ecommerce/tax-settings" : Return New TaxPage()
         End Select
         Return Nothing
     End Function

@@ -25,6 +25,10 @@ Public Module Routes
             Case "/admin/ecommerce/analytics" : Return New AnalyticsPage()
             Case "/admin/ecommerce/gst-report" : Return New GstPage()
             Case "/admin/ecommerce/tax-settings" : Return New TaxPage()
+            Case "/admin/pages" : Return New StaticPagesPage()
+            Case "/admin/file-manager" : Return New FilesPage()
+            Case "/admin/activity-logs" : Return New ActivityPage()
+            Case "/admin/cache-manager" : Return New CachePage()
         End Select
         Return Nothing
     End Function

@@ -165,7 +165,7 @@ Public Class FileGrid
         g.Clear(Theme.Page)
         Theme.Smooth(g)
         If Files.Count = 0 Then
-            TextRenderer.DrawText(g, "No files match.", Theme.Body, ClientRectangle, Theme.G400, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+            Tr.DrawText(g, "No files match.", Theme.Body, ClientRectangle, Theme.G400, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
             Return
         End If
         For i = 0 To Files.Count - 1
@@ -189,8 +189,8 @@ Public Class FileGrid
                 End Using
                 Using fnt = Theme.IconFont(26) : Theme.DrawCentered(g, ChrW(&HE8A5), fnt, If(Js.Str(f, "fileType") = "pdf", Theme.Danger, Theme.G500), th) : End Using
             End If
-            TextRenderer.DrawText(g, Js.Str(f, "name"), Theme.UiFont(8.5F, FontStyle.Bold), New Rectangle(r.X + 8, r.Y + 146, r.Width - 16, 18), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-            TextRenderer.DrawText(g, Js.Str(f, "categoryLabel") & " · " & If(Js.IsNull(f, "sizeBytes"), "Missing", Fmt.Bytes(Js.Num(f, "sizeBytes"))), Theme.UiFont(7.5F), New Rectangle(r.X + 8, r.Y + 166, r.Width - 16, 16), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Tr.DrawText(g, Js.Str(f, "name"), Theme.UiFont(8.5F, FontStyle.Bold), New Rectangle(r.X + 8, r.Y + 146, r.Width - 16, 18), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Tr.DrawText(g, Js.Str(f, "categoryLabel") & " · " & If(Js.IsNull(f, "sizeBytes"), "Missing", Fmt.Bytes(Js.Num(f, "sizeBytes"))), Theme.UiFont(7.5F), New Rectangle(r.X + 8, r.Y + 166, r.Width - 16, 16), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
             If Selecting Then Gfx.Check(g, New Rectangle(r.X + 12, r.Y + 12, 18, 18), Selected.Contains(id))
         Next
     End Sub
@@ -279,7 +279,7 @@ Public Class FilesPage
                                               Using pen As New Pen(Color.FromArgb(&HBF, &HDB, &HFE), 1.5F) With {.DashPattern = {4, 3}} : g.DrawPath(pen, p) : End Using
                                           End Using
                                           Using f = Theme.IconFont(16) : Theme.DrawCentered(g, ChrW(&HE898), f, Theme.Blue, New Rectangle(0, 12, r.Width, 30)) : End Using
-                                          TextRenderer.DrawText(g, "Click to choose files — Browse to upload", Theme.Body, New Rectangle(0, 46, r.Width, 22), Theme.G600, TextFormatFlags.HorizontalCenter)
+                                          Tr.DrawText(g, "Click to choose files — Browse to upload", Theme.Body, New Rectangle(0, 46, r.Width, 22), Theme.G600, TextFormatFlags.HorizontalCenter)
                                       End Sub) With {.Cursor = Cursors.Hand}
             AddHandler zone.Click, Async Sub() Await UploadAsync()
             Body.Add(zone)

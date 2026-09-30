@@ -607,27 +607,27 @@ Public Class OffersPage
                                       Dim title = Js.Str(c, "title")
                                       Dim tf = Theme.UiFont(10.5F, FontStyle.Bold)
                                       Dim offer = If(pct, N(Js.Num(c, "discountValue")) & "%", Theme.Money(Js.Num(c, "discountValue"))) & " OFF"
-                                      Dim ofw = TextRenderer.MeasureText(offer, Theme.UiFont(13.0F, FontStyle.Bold)).Width
-                                      TextRenderer.DrawText(g, offer, Theme.UiFont(13.0F, FontStyle.Bold), New Point(r.Right - ofw, 0), Theme.G900, TextFormatFlags.NoPadding)
-                                      TextRenderer.DrawText(g, If(pct, "Percentage", "Fixed Amount"), Theme.Small, New Rectangle(r.Right - 120, 24, 120, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
-                                      Dim tw = Math.Min(TextRenderer.MeasureText(title, tf).Width, r.Width - 56 - ofw - 120)
-                                      TextRenderer.DrawText(g, title, tf, New Rectangle(54, 0, tw + 2, 22), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                                      Dim ofw = Tr.MeasureText(offer, Theme.UiFont(13.0F, FontStyle.Bold)).Width
+                                      Tr.DrawText(g, offer, Theme.UiFont(13.0F, FontStyle.Bold), New Point(r.Right - ofw, 0), Theme.G900, TextFormatFlags.NoPadding)
+                                      Tr.DrawText(g, If(pct, "Percentage", "Fixed Amount"), Theme.Small, New Rectangle(r.Right - 120, 24, 120, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                                      Dim tw = Math.Min(Tr.MeasureText(title, tf).Width, r.Width - 56 - ofw - 120)
+                                      Tr.DrawText(g, title, tf, New Rectangle(54, 0, tw + 2, 22), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                                       pillRect = Gfx.Pill(g, If(Js.Bool(c, "paused"), "Paused", meta.Label), 54 + tw + 8, 11, If(Js.Bool(c, "paused"), Color.FromArgb(&HE, &HA5, &HE9), meta.Colour), True)
                                       Dim code = Js.Str(c, "code")
-                                      Dim cw = TextRenderer.MeasureText(code, New Font("Consolas", 10, FontStyle.Bold)).Width + 34
+                                      Dim cw = Tr.MeasureText(code, New Font("Consolas", 10, FontStyle.Bold)).Width + 34
                                       codeRect = New Rectangle(54, 28, cw, 26)
                                       Using p = Theme.RoundRect(New RectangleF(codeRect.X, codeRect.Y, codeRect.Width, codeRect.Height), 6)
                                           Using b As New SolidBrush(Fmt.BlueSoft) : g.FillPath(b, p) : End Using
                                           Using pen As New Pen(Color.FromArgb(&H93, &HC5, &HFD)) : g.DrawPath(pen, p) : End Using
                                       End Using
                                       Using f As New Font("Consolas", 10, FontStyle.Bold)
-                                          TextRenderer.DrawText(g, code, f, New Rectangle(codeRect.X + 8, codeRect.Y, cw, codeRect.Height), Theme.Blue, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+                                          Tr.DrawText(g, code, f, New Rectangle(codeRect.X + 8, codeRect.Y, cw, codeRect.Height), Theme.Blue, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
                                       End Using
-                                      Using f = Theme.IconFont(8) : TextRenderer.DrawText(g, ChrW(&HE8C8), f, New Rectangle(codeRect.Right - 22, codeRect.Y, 18, codeRect.Height), Theme.Blue, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding) : End Using
+                                      Using f = Theme.IconFont(8) : Tr.DrawText(g, ChrW(&HE8C8), f, New Rectangle(codeRect.Right - 22, codeRect.Y, 18, codeRect.Height), Theme.Blue, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding) : End Using
                                       Dim info = If(Js.Str(c, "appliesTo") = "all", "All Products", Js.Str(c, "target", Js.Str(c, "appliesTo"))) & "     " & Js.Int(c, "used") & " / " & Js.Int(c, "limit") & " used"
-                                      TextRenderer.DrawText(g, info, Theme.Body, New Rectangle(54, 60, r.Width - 54, 18), Theme.G600, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                                      Tr.DrawText(g, info, Theme.Body, New Rectangle(54, 60, r.Width - 54, 18), Theme.G600, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                                       If AtTime(c, "startsAt").HasValue OrElse AtTime(c, "endsAt").HasValue Then
-                                          TextRenderer.DrawText(g, If(AtTime(c, "startsAt").HasValue, Fmt.Day(AtTime(c, "startsAt")), "No start date") & " – " & If(AtTime(c, "endsAt").HasValue, Fmt.Day(AtTime(c, "endsAt")), "No end date"), Theme.Body, New Rectangle(54, 78, r.Width - 54, 18), Theme.G600, TextFormatFlags.NoPadding)
+                                          Tr.DrawText(g, If(AtTime(c, "startsAt").HasValue, Fmt.Day(AtTime(c, "startsAt")), "No start date") & " – " & If(AtTime(c, "endsAt").HasValue, Fmt.Day(AtTime(c, "endsAt")), "No end date"), Theme.Body, New Rectangle(54, 78, r.Width - 54, 18), Theme.G600, TextFormatFlags.NoPadding)
                                       End If
                                   End Sub)
         AddHandler head.MouseMove, Sub(s, e) head.Cursor = If(pillRect.Contains(e.Location) OrElse codeRect.Contains(e.Location), Cursors.Hand, Cursors.Default)

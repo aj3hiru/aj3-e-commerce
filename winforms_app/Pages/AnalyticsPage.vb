@@ -95,14 +95,14 @@ Public Class AnalyticsPage
                                                                                                                  Using br As New SolidBrush(Theme.Tint(colour, 28)) : g.FillPath(br, p) : End Using
                                                                                                              End Using
                                                                                                              Using f = Theme.IconFont(13) : Theme.DrawCentered(g, glyph, f, colour, New Rectangle(0, 8, 42, 42)) : End Using
-                                                                                                             TextRenderer.DrawText(g, label, Theme.Body, New Point(54, 0), Theme.G600, TextFormatFlags.NoPadding)
-                                                                                                             TextRenderer.DrawText(g, value, Theme.UiFont(14.0F, FontStyle.Bold), New Point(53, 18), Theme.G900, TextFormatFlags.NoPadding)
+                                                                                                             Tr.DrawText(g, label, Theme.Body, New Point(54, 0), Theme.G600, TextFormatFlags.NoPadding)
+                                                                                                             Tr.DrawText(g, value, Theme.UiFont(14.0F, FontStyle.Bold), New Point(53, 18), Theme.G900, TextFormatFlags.NoPadding)
                                                                                                              If _compare.Checked Then
                                                                                                                  Dim up = If(d, 1) >= 0
                                                                                                                  Dim txt = If(up, "↗ ", "↘ ") & If(d.HasValue, Math.Abs(d.Value).ToString("0.0") & "%", "New")
                                                                                                                  Dim c = If(up, Color.FromArgb(5, &H96, &H69), Color.FromArgb(&HDC, &H26, &H26))
-                                                                                                                 TextRenderer.DrawText(g, txt, Theme.UiFont(8.25F, FontStyle.Bold), New Point(54, 46), c, TextFormatFlags.NoPadding)
-                                                                                                                 TextRenderer.DrawText(g, "vs previous period", Theme.Small, New Point(54 + TextRenderer.MeasureText(txt, Theme.UiFont(8.25F, FontStyle.Bold)).Width + 6, 46), Theme.G500, TextFormatFlags.NoPadding)
+                                                                                                                 Tr.DrawText(g, txt, Theme.UiFont(8.25F, FontStyle.Bold), New Point(54, 46), c, TextFormatFlags.NoPadding)
+                                                                                                                 Tr.DrawText(g, "vs previous period", Theme.Small, New Point(54 + Tr.MeasureText(txt, Theme.UiFont(8.25F, FontStyle.Bold)).Width + 6, 46), Theme.G500, TextFormatFlags.NoPadding)
                                                                                                              End If
                                                                                                              Spark(g, New Rectangle(r.Right - 84, 14, 80, 30), pts, colour)
                                                                                                          End Sub))
@@ -186,25 +186,25 @@ Public Class AnalyticsPage
                                                                                   Using pen As New Pen(PayColor(kv.Key), 16) : g.DrawArc(pen, box.X + 8, box.Y + 8, box.Width - 16, box.Height - 16, a, sweep) : End Using
                                                                                   a += sweep
                                                                               Next
-                                                                              TextRenderer.DrawText(g, Theme.Money(payGrand), Theme.BodyBold, New Rectangle(box.X, box.Y + 62, box.Width, 20), Theme.G900, TextFormatFlags.HorizontalCenter)
-                                                                              TextRenderer.DrawText(g, "Net Sales", Theme.Small, New Rectangle(box.X, box.Y + 82, box.Width, 16), Theme.G500, TextFormatFlags.HorizontalCenter)
+                                                                              Tr.DrawText(g, Theme.Money(payGrand), Theme.BodyBold, New Rectangle(box.X, box.Y + 62, box.Width, 20), Theme.G900, TextFormatFlags.HorizontalCenter)
+                                                                              Tr.DrawText(g, "Net Sales", Theme.Small, New Rectangle(box.X, box.Y + 82, box.Width, 16), Theme.G500, TextFormatFlags.HorizontalCenter)
                                                                               Dim x = 190, cw = (r.Width - x) \ 3
-                                                                              TextRenderer.DrawText(g, "METHOD", Theme.Small, New Point(x, 6), Theme.G400, TextFormatFlags.NoPadding)
-                                                                              TextRenderer.DrawText(g, "AMOUNT", Theme.Small, New Point(x + cw, 6), Theme.G400, TextFormatFlags.NoPadding)
-                                                                              TextRenderer.DrawText(g, "% SHARE", Theme.Small, New Rectangle(x, 6, r.Width - x, 16), Theme.G400, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                                                                              Tr.DrawText(g, "METHOD", Theme.Small, New Point(x, 6), Theme.G400, TextFormatFlags.NoPadding)
+                                                                              Tr.DrawText(g, "AMOUNT", Theme.Small, New Point(x + cw, 6), Theme.G400, TextFormatFlags.NoPadding)
+                                                                              Tr.DrawText(g, "% SHARE", Theme.Small, New Rectangle(x, 6, r.Width - x, 16), Theme.G400, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
                                                                               Dim y = 28
                                                                               For Each kv In payRows
                                                                                   Using p As New Pen(Theme.G100) : g.DrawLine(p, x, y, r.Width, y) : End Using
                                                                                   Using br As New SolidBrush(PayColor(kv.Key)) : g.FillEllipse(br, x, y + 11, 10, 10) : End Using
-                                                                                  TextRenderer.DrawText(g, If(kv.Key = "Split", "Split Payment", kv.Key), Theme.Body, New Point(x + 16, y + 8), Theme.G800, TextFormatFlags.NoPadding)
-                                                                                  TextRenderer.DrawText(g, Theme.Money(kv.Value), Theme.Body, New Point(x + cw, y + 8), Theme.G700, TextFormatFlags.NoPadding)
-                                                                                  TextRenderer.DrawText(g, (Math.Round(kv.Value * 1000 / Math.Max(0.01, payGrand)) / 10) & "%", Theme.BodyBold, New Rectangle(x, y + 8, r.Width - x, 18), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                                                                                  Tr.DrawText(g, If(kv.Key = "Split", "Split Payment", kv.Key), Theme.Body, New Point(x + 16, y + 8), Theme.G800, TextFormatFlags.NoPadding)
+                                                                                  Tr.DrawText(g, Theme.Money(kv.Value), Theme.Body, New Point(x + cw, y + 8), Theme.G700, TextFormatFlags.NoPadding)
+                                                                                  Tr.DrawText(g, (Math.Round(kv.Value * 1000 / Math.Max(0.01, payGrand)) / 10) & "%", Theme.BodyBold, New Rectangle(x, y + 8, r.Width - x, 18), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
                                                                                   y += 34
                                                                               Next
                                                                               Using p As New Pen(Theme.G200) : g.DrawLine(p, x, y, r.Width, y) : End Using
-                                                                              TextRenderer.DrawText(g, "Total", Theme.BodyBold, New Point(x, y + 8), Theme.G900, TextFormatFlags.NoPadding)
-                                                                              TextRenderer.DrawText(g, Theme.Money(payGrand), Theme.BodyBold, New Point(x + cw, y + 8), Theme.G900, TextFormatFlags.NoPadding)
-                                                                              TextRenderer.DrawText(g, "100%", Theme.BodyBold, New Rectangle(x, y + 8, r.Width - x, 18), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                                                                              Tr.DrawText(g, "Total", Theme.BodyBold, New Point(x, y + 8), Theme.G900, TextFormatFlags.NoPadding)
+                                                                              Tr.DrawText(g, Theme.Money(payGrand), Theme.BodyBold, New Point(x + cw, y + 8), Theme.G900, TextFormatFlags.NoPadding)
+                                                                              Tr.DrawText(g, "100%", Theme.BodyBold, New Rectangle(x, y + 8, r.Width - x, 18), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
                                                                           End Sub))
             End If
             left.Add(card)
@@ -232,9 +232,9 @@ Public Class AnalyticsPage
                                         Dim cx = r.Width \ 2
                                         Using br As New SolidBrush(If(up, Color.FromArgb(&HD1, &HFA, &HE5), Color.FromArgb(&HFE, &HE2, &HE2))) : g.FillEllipse(br, cx - 20, 0, 40, 40) : End Using
                                         Using f = Theme.IconFont(13) : Theme.DrawCentered(g, If(up, ChrW(&HE70E), Theme.IcChevronDown), f, If(up, Color.FromArgb(5, &H96, &H69), Theme.Danger), New Rectangle(cx - 20, 0, 40, 40)) : End Using
-                                        TextRenderer.DrawText(g, If(up, "Great job! Your revenue is up", If(down, "Your revenue is down", "Revenue is steady")), Theme.BodyBold, New Rectangle(0, 46, r.Width, 20), Theme.G900, TextFormatFlags.HorizontalCenter)
-                                        If d.HasValue Then TextRenderer.DrawText(g, Math.Abs(d.Value).ToString("0.0") & "%", Theme.UiFont(17.0F, FontStyle.Bold), New Rectangle(0, 66, r.Width, 32), If(up, Color.FromArgb(5, &H96, &H69), Theme.Danger), TextFormatFlags.HorizontalCenter)
-                                        TextRenderer.DrawText(g, "vs previous period", Theme.Small, New Rectangle(0, 100, r.Width, 16), Theme.G500, TextFormatFlags.HorizontalCenter)
+                                        Tr.DrawText(g, If(up, "Great job! Your revenue is up", If(down, "Your revenue is down", "Revenue is steady")), Theme.BodyBold, New Rectangle(0, 46, r.Width, 20), Theme.G900, TextFormatFlags.HorizontalCenter)
+                                        If d.HasValue Then Tr.DrawText(g, Math.Abs(d.Value).ToString("0.0") & "%", Theme.UiFont(17.0F, FontStyle.Bold), New Rectangle(0, 66, r.Width, 32), If(up, Color.FromArgb(5, &H96, &H69), Theme.Danger), TextFormatFlags.HorizontalCenter)
+                                        Tr.DrawText(g, "vs previous period", Theme.Small, New Rectangle(0, 100, r.Width, 16), Theme.G500, TextFormatFlags.HorizontalCenter)
                                         Spark(g, New Rectangle(cx - 40, 118, 80, 28), rev.ToList(), If(up, Color.FromArgb(&H10, &HB9, &H81), Color.FromArgb(&HEF, &H44, &H44)))
                                     End Sub))
             right.Add(card)
@@ -249,8 +249,8 @@ Public Class AnalyticsPage
                                                 Using b As New SolidBrush(it.Item5) : g.FillPath(b, p) : End Using
                                             End Using
                                             Using f = Theme.IconFont(12) : Theme.DrawCentered(g, If(it.Item1 = 0, Theme.IcAddUser, Theme.IcPeople), f, it.Item4, New Rectangle(br.X, br.Y + 8, br.Width, 20)) : End Using
-                                            TextRenderer.DrawText(g, it.Item3.ToString(), Theme.UiFont(14.0F, FontStyle.Bold), New Rectangle(br.X, br.Y + 30, br.Width, 28), Theme.G900, TextFormatFlags.HorizontalCenter)
-                                            TextRenderer.DrawText(g, it.Item2, Theme.Small, New Rectangle(br.X, br.Y + 60, br.Width, 16), Theme.G600, TextFormatFlags.HorizontalCenter)
+                                            Tr.DrawText(g, it.Item3.ToString(), Theme.UiFont(14.0F, FontStyle.Bold), New Rectangle(br.X, br.Y + 30, br.Width, 28), Theme.G900, TextFormatFlags.HorizontalCenter)
+                                            Tr.DrawText(g, it.Item2, Theme.Small, New Rectangle(br.X, br.Y + 60, br.Width, 16), Theme.G600, TextFormatFlags.HorizontalCenter)
                                         Next
                                         If newC + retC > 0 Then
                                             Using p = Theme.RoundRect(New RectangleF(0, 94, r.Width, 8), 4)
@@ -276,8 +276,8 @@ Public Class AnalyticsPage
                                                                Dim y = i * 44
                                                                Dim name As String = Nothing
                                                                If kv.Key = -1 OrElse Not cats.TryGetValue(kv.Key, name) Then name = If(kv.Key = -1, "Uncategorized", "—")
-                                                               TextRenderer.DrawText(g, name, Theme.Body, New Point(0, y), Theme.G800, TextFormatFlags.NoPadding)
-                                                               TextRenderer.DrawText(g, Theme.Money(kv.Value), Theme.Body, New Rectangle(0, y, r.Width, 18), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                                                               Tr.DrawText(g, name, Theme.Body, New Point(0, y), Theme.G800, TextFormatFlags.NoPadding)
+                                                               Tr.DrawText(g, Theme.Money(kv.Value), Theme.Body, New Rectangle(0, y, r.Width, 18), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
                                                                Using p = Theme.RoundRect(New RectangleF(0, y + 22, r.Width, 8), 4)
                                                                    Using b As New SolidBrush(Theme.G100) : g.FillPath(b, p) : End Using
                                                                End Using

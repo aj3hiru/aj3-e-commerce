@@ -143,10 +143,10 @@ Public Class BarcodesPage
                                                                                            Dim n = 0
                                                                                            _qty.TryGetValue(Js.Int(p, "id"), n)
                                                                                            Using f = Theme.IconFont(11)
-                                                                                               TextRenderer.DrawText(g, ChrW(&HE738), f, New Rectangle(r.X, r.Y, 30, r.Height), Theme.G600, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
-                                                                                               TextRenderer.DrawText(g, Theme.IcAdd, f, New Rectangle(r.X + 80, r.Y, 30, r.Height), Theme.G600, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
+                                                                                               Tr.DrawText(g, ChrW(&HE738), f, New Rectangle(r.X, r.Y, 30, r.Height), Theme.G600, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
+                                                                                               Tr.DrawText(g, Theme.IcAdd, f, New Rectangle(r.X + 80, r.Y, 30, r.Height), Theme.G600, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
                                                                                            End Using
-                                                                                           TextRenderer.DrawText(g, n.ToString(), Theme.BodyBold, New Rectangle(r.X + 30, r.Y, 50, r.Height), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
+                                                                                           Tr.DrawText(g, n.ToString(), Theme.BodyBold, New Rectangle(r.X + 30, r.Y, 50, r.Height), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
                                                                                        End Sub, .Key = "qty"})
         _lines.Cols.Add(New TCol("", Nothing, 56, CellKind.Actions).Btn("remove", Theme.IcCancel, "Remove", Theme.Danger))
         AddHandler _lines.CellClick, Sub(p, c, cell)

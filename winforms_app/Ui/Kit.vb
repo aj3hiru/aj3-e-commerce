@@ -249,13 +249,13 @@ Public Class CardBox
         Dim x = Padding.Left
         If Not String.IsNullOrEmpty(Glyph) Then
             Using f = Theme.IconFont(11)
-                TextRenderer.DrawText(g, Glyph, f, New Rectangle(x, Padding.Top, 22, HeadH), Accent, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
+                Tr.DrawText(g, Glyph, f, New Rectangle(x, Padding.Top, 22, HeadH), Accent, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
             End Using
             x += 28
         End If
-        TextRenderer.DrawText(g, Title, Theme.CardTitle, New Rectangle(x, Padding.Top, Width - x - Padding.Right - Tools.Width, HeadH), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        Tr.DrawText(g, Title, Theme.CardTitle, New Rectangle(x, Padding.Top, Width - x - Padding.Right - Tools.Width, HeadH), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
         If Not String.IsNullOrEmpty(Subtitle) Then
-            TextRenderer.DrawText(g, Subtitle, Theme.Small, New Rectangle(Padding.Left, Padding.Top + HeadH - 2, Width - Padding.Horizontal, 20), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Tr.DrawText(g, Subtitle, Theme.Small, New Rectangle(Padding.Left, Padding.Top + HeadH - 2, Width - Padding.Horizontal, 20), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
         End If
     End Sub
 End Class
@@ -275,14 +275,14 @@ Public Class TextBlock
     End Sub
     Public Function HeightFor(width As Integer) As Integer Implements IFlowHeight.HeightFor
         If String.IsNullOrEmpty(Text) Then Return 0
-        Return TextRenderer.MeasureText(Text, Font, New Size(Math.Max(10, width), 10000), TextFormatFlags.WordBreak Or TextFormatFlags.NoPadding).Height + 2
+        Return Tr.MeasureText(Text, Font, New Size(Math.Max(10, width), 10000), TextFormatFlags.WordBreak Or TextFormatFlags.NoPadding).Height + 2
     End Function
     Protected Overrides Sub OnTextChanged(e As EventArgs)
         MyBase.OnTextChanged(e)
         Invalidate()
     End Sub
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
-        TextRenderer.DrawText(e.Graphics, Text, Font, ClientRectangle, Color_, TextFormatFlags.WordBreak Or TextFormatFlags.NoPadding Or If(Center, TextFormatFlags.HorizontalCenter, TextFormatFlags.Left))
+        Tr.DrawText(e.Graphics, Text, Font, ClientRectangle, Color_, TextFormatFlags.WordBreak Or TextFormatFlags.NoPadding Or If(Center, TextFormatFlags.HorizontalCenter, TextFormatFlags.Left))
     End Sub
 End Class
 
@@ -561,17 +561,17 @@ Public Module Gfx
     ''' <summary>Solid status pill ("Paid ▾"); returns its rectangle.</summary>
     Public Function Pill(g As Graphics, text As String, x As Integer, cy As Integer, bg As Color, Optional caret As Boolean = False, Optional fg As Color = Nothing) As Rectangle
         Dim f = Theme.UiFont(8.25F, FontStyle.Bold)
-        Dim tw = TextRenderer.MeasureText(text, f).Width
+        Dim tw = Tr.MeasureText(text, f).Width
         Dim w = tw + If(caret, 22, 12)
         Dim r As New Rectangle(x, cy - 11, w, 22)
         Using p = Theme.RoundRect(New RectangleF(r.X, r.Y, r.Width, r.Height), 3)
             Using b As New SolidBrush(bg) : g.FillPath(b, p) : End Using
         End Using
         Dim c = If(fg = Color.Empty, Color.White, fg)
-        TextRenderer.DrawText(g, text, f, New Rectangle(r.X + 6, r.Y, tw + 2, r.Height), c, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+        Tr.DrawText(g, text, f, New Rectangle(r.X + 6, r.Y, tw + 2, r.Height), c, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
         If caret Then
             Using fi = Theme.IconFont(6.5F)
-                TextRenderer.DrawText(g, Theme.IcChevronDown, fi, New Rectangle(r.Right - 16, r.Y, 12, r.Height), c, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
+                Tr.DrawText(g, Theme.IcChevronDown, fi, New Rectangle(r.Right - 16, r.Y, 12, r.Height), c, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
             End Using
         End If
         Return r
@@ -580,17 +580,17 @@ Public Module Gfx
     ''' <summary>Soft badge ("Admin", "Online", "Walk-in").</summary>
     Public Function Badge(g As Graphics, text As String, x As Integer, cy As Integer, fg As Color, bg As Color) As Rectangle
         Dim f = Theme.UiFont(8.0F, FontStyle.Bold)
-        Dim w = TextRenderer.MeasureText(text, f).Width + 12
+        Dim w = Tr.MeasureText(text, f).Width + 12
         Dim r As New Rectangle(x, cy - 10, w, 20)
         Using p = Theme.RoundRect(New RectangleF(r.X, r.Y, r.Width, r.Height), 3)
             Using b As New SolidBrush(bg) : g.FillPath(b, p) : End Using
         End Using
-        TextRenderer.DrawText(g, text, f, r, fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
+        Tr.DrawText(g, text, f, r, fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
         Return r
     End Function
 
     Public Function PillWidth(text As String, Optional caret As Boolean = False) As Integer
-        Return TextRenderer.MeasureText(text, Theme.UiFont(8.25F, FontStyle.Bold)).Width + If(caret, 22, 12)
+        Return Tr.MeasureText(text, Theme.UiFont(8.25F, FontStyle.Bold)).Width + If(caret, 22, 12)
     End Function
 
     Public Sub Toggle(g As Graphics, r As Rectangle, on_ As Boolean)
@@ -903,13 +903,13 @@ Public Class WebTable
             If c.Col.Sort IsNot Nothing Then
                 If c.Col Is SortCol Then label &= If(SortAsc, "  " & ChrW(&H25B2), "  " & ChrW(&H25BC)) Else label &= "  " & ChrW(&H21C5)
             End If
-            TextRenderer.DrawText(g, label, Theme.UiFont(8.75F, FontStyle.Bold), hr, If(c.Col Is SortCol, Theme.G900, Theme.G600), flags)
+            Tr.DrawText(g, label, Theme.UiFont(8.75F, FontStyle.Bold), hr, If(c.Col Is SortCol, Theme.G900, Theme.G600), flags)
         Next
         Using p As New Pen(border)
             g.DrawLine(p, 0, HeadHeight - 1, Width, HeadHeight - 1)
         End Using
         If Rows.Count = 0 Then
-            TextRenderer.DrawText(g, EmptyText, Theme.Body, New Rectangle(0, HeadHeight, Width, 90), Theme.G400, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+            Tr.DrawText(g, EmptyText, Theme.Body, New Rectangle(0, HeadHeight, Width, 90), Theme.G400, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
             Using p As New Pen(border) : g.DrawRectangle(p, 0, 0, Width - 1, Height - 1) : End Using
             Return
         End If
@@ -957,11 +957,11 @@ Public Class WebTable
                 Dim x = If(c.Right, inner.Right - w, If(c.Center, inner.X + (inner.Width - w) \ 2, inner.X))
                 Dim cy = cell.Y + cell.Height \ 2 - If(subText <> "", 8, 0)
                 Gfx.Pill(g, txt, x, cy, col, c.Kind = CellKind.PillMenu)
-                If subText <> "" Then TextRenderer.DrawText(g, subText, Theme.Small, New Rectangle(inner.X, cy + 13, inner.Width, 16), Theme.G500, hAlign Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                If subText <> "" Then Tr.DrawText(g, subText, Theme.Small, New Rectangle(inner.X, cy + 13, inner.Width, 16), Theme.G500, hAlign Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
             Case CellKind.Badge
                 If txt = "" Then Return
                 Dim col = If(c.Colour Is Nothing, Theme.Primary, c.Colour(r))
-                Dim w = TextRenderer.MeasureText(txt, Theme.UiFont(8.0F, FontStyle.Bold)).Width + 12
+                Dim w = Tr.MeasureText(txt, Theme.UiFont(8.0F, FontStyle.Bold)).Width + 12
                 Dim x = If(c.Right, inner.Right - w, If(c.Center, inner.X + (inner.Width - w) \ 2, inner.X))
                 Gfx.Badge(g, txt, x, cell.Y + cell.Height \ 2, col, Theme.Tint(col, 30))
             Case CellKind.Toggle
@@ -999,11 +999,11 @@ Public Class WebTable
     Private Shared Sub DrawTwoLines(g As Graphics, r As Rectangle, main As String, second As String, font As Font, col As Color, align As TextFormatFlags)
         Dim flags = align Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis Or TextFormatFlags.SingleLine
         If second = "" Then
-            TextRenderer.DrawText(g, main, font, r, col, flags Or TextFormatFlags.VerticalCenter)
+            Tr.DrawText(g, main, font, r, col, flags Or TextFormatFlags.VerticalCenter)
         Else
             Dim mid = r.Y + r.Height \ 2
-            TextRenderer.DrawText(g, main, font, New Rectangle(r.X, mid - 19, r.Width, 19), col, flags Or TextFormatFlags.Bottom)
-            TextRenderer.DrawText(g, second, Theme.Small, New Rectangle(r.X, mid + 1, r.Width, 18), Theme.G500, flags Or TextFormatFlags.Top)
+            Tr.DrawText(g, main, font, New Rectangle(r.X, mid - 19, r.Width, 19), col, flags Or TextFormatFlags.Bottom)
+            Tr.DrawText(g, second, Theme.Small, New Rectangle(r.X, mid + 1, r.Width, 18), Theme.G500, flags Or TextFormatFlags.Top)
         End If
     End Sub
 
@@ -1421,7 +1421,7 @@ Public Class RangeBar
     End Function
 
     Private Function BtnW(k As String) As Integer
-        Return TextRenderer.MeasureText(Label(k), Theme.BodyBold).Width + 22
+        Return Tr.MeasureText(Label(k), Theme.BodyBold).Width + 22
     End Function
 
     Public Function PreferredW() As Integer
@@ -1528,9 +1528,9 @@ Public Class RangeBar
         Next
         If ShowDates Then
             Using f = Theme.IconFont(9.5F)
-                TextRenderer.DrawText(g, Theme.IcCalendar, f, New Rectangle(x + 12, 0, 18, Height), Theme.G500, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+                Tr.DrawText(g, Theme.IcCalendar, f, New Rectangle(x + 12, 0, 18, Height), Theme.G500, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
             End Using
-            TextRenderer.DrawText(g, Text_, Theme.Body, New Rectangle(x + 34, 0, 230, Height), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+            Tr.DrawText(g, Text_, Theme.Body, New Rectangle(x + 34, 0, 230, Height), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
         End If
     End Sub
 
@@ -1603,7 +1603,7 @@ Public Class Tabs
         Dim x = 0
         For Each it In Items
             Dim t = Caption(it.Key, it.Label)
-            Dim w = TextRenderer.MeasureText(t, Theme.BodyBold).Width + 28
+            Dim w = Tr.MeasureText(t, Theme.BodyBold).Width + 28
             Dim r As New Rectangle(x, 0, w, Height)
             Dim on_ = it.Key = Current
             If Not on_ AndAlso it.Key = _hover Then
@@ -1679,9 +1679,9 @@ Public Class MiniStat
             Using b As New SolidBrush(Theme.Tint(Accent, 32)) : g.FillPath(b, p) : End Using
         End Using
         Using f = Theme.IconFont(14) : Theme.DrawCentered(g, Glyph, f, Accent, ir) : End Using
-        TextRenderer.DrawText(g, Caption, Theme.UiFont(8.75F), New Rectangle(72, ir.Y - 2, Width - 80, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-        TextRenderer.DrawText(g, Value, Theme.UiFont(14.0F, FontStyle.Bold), New Rectangle(71, ir.Y + 15, Width - 80, 28), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-        If Note <> "" Then TextRenderer.DrawText(g, Note, Theme.Small, New Rectangle(72, ir.Y + 42, Width - 80, 16), NoteColor, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        Tr.DrawText(g, Caption, Theme.UiFont(8.75F), New Rectangle(72, ir.Y - 2, Width - 80, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        Tr.DrawText(g, Value, Theme.UiFont(14.0F, FontStyle.Bold), New Rectangle(71, ir.Y + 15, Width - 80, 28), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        If Note <> "" Then Tr.DrawText(g, Note, Theme.Small, New Rectangle(72, ir.Y + 42, Width - 80, 16), NoteColor, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
     End Sub
 End Class
 
@@ -1697,7 +1697,7 @@ Public Class Switch
         _on = on_
         Height = 26
         Cursor = Cursors.Hand
-        Width = 44 + If(text = "", 0, TextRenderer.MeasureText(text, Theme.Body).Width + 10)
+        Width = 44 + If(text = "", 0, Tr.MeasureText(text, Theme.Body).Width + 10)
     End Sub
     Public Property Checked As Boolean
         Get
@@ -1711,7 +1711,7 @@ Public Class Switch
     End Property
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Gfx.Toggle(e.Graphics, New Rectangle(0, (Height - 20) \ 2, 38, 20), _on)
-        If Text <> "" Then TextRenderer.DrawText(e.Graphics, Text, Theme.Body, New Rectangle(46, 0, Width - 46, Height), If(Enabled, Theme.G800, Theme.G400), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+        If Text <> "" Then Tr.DrawText(e.Graphics, Text, Theme.Body, New Rectangle(46, 0, Width - 46, Height), If(Enabled, Theme.G800, Theme.G400), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
     End Sub
     Protected Overrides Sub OnClick(e As EventArgs)
         MyBase.OnClick(e)
@@ -1912,6 +1912,7 @@ Public Class FormDialog
 
     Public Sub New(title As String, Optional width As Integer = 560, Optional saveText As String = "Save")
         Icon = Theme.AppIcon
+        Tr.KeepAmpersands(Me)
         _title = title
         Text = title
         FormBorderStyle = FormBorderStyle.FixedDialog
@@ -1923,7 +1924,7 @@ Public Class FormDialog
         KeyPreview = True
         ClientSize = New Size(width, 300)
         AddHandler _head.Paint, Sub(s, e)
-                                    TextRenderer.DrawText(e.Graphics, _title, Theme.UiFont(12.0F, FontStyle.Bold), New Rectangle(24, 0, _head.Width - 48, _head.Height), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+                                    Tr.DrawText(e.Graphics, _title, Theme.UiFont(12.0F, FontStyle.Bold), New Rectangle(24, 0, _head.Width - 48, _head.Height), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
                                     Using p As New Pen(Theme.G200) : e.Graphics.DrawLine(p, 0, _head.Height - 1, _head.Width, _head.Height - 1) : End Using
                                 End Sub
         AddHandler _foot.Paint, Sub(s, e)
@@ -2313,7 +2314,7 @@ Public Class BarChart
         g.Clear(Color.White)
         Theme.Smooth(g)
         If Values.Count = 0 OrElse Values.All(Function(v) v = 0) Then
-            TextRenderer.DrawText(g, EmptyText, Theme.Body, ClientRectangle, Theme.G400, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+            Tr.DrawText(g, EmptyText, Theme.Body, ClientRectangle, Theme.G400, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
             Return
         End If
         Dim p = Plot()
@@ -2322,7 +2323,7 @@ Public Class BarChart
             For k = 0 To 4
                 Dim y = p.Bottom - p.Height * k / 4
                 g.DrawLine(pen, p.Left, y, p.Right, y)
-                TextRenderer.DrawText(g, LineChart.ShortMoney(top * k / 4), Theme.Small, New Rectangle(0, CInt(y) - 8, 52, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                Tr.DrawText(g, LineChart.ShortMoney(top * k / 4), Theme.Small, New Rectangle(0, CInt(y) - 8, 52, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
             Next
         End Using
         Dim slot = p.Width / Values.Count
@@ -2335,17 +2336,17 @@ Public Class BarChart
                 Using b As New SolidBrush(If(i = _hover, Theme.Darker(BarColor, 0.85), BarColor)) : g.FillPath(b, path) : End Using
             End Using
             If i < Labels.Count AndAlso i Mod labelEvery = 0 Then
-                TextRenderer.DrawText(g, Labels(i), Theme.Small, New Rectangle(CInt(p.Left + slot * i + slot / 2) - 40, CInt(p.Bottom) + 6, 80, 16), Theme.G500, TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
+                Tr.DrawText(g, Labels(i), Theme.Small, New Rectangle(CInt(p.Left + slot * i + slot / 2) - 40, CInt(p.Bottom) + 6, 80, 16), Theme.G500, TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
             End If
         Next
         If _hover >= 0 Then
             Dim t = If(_hover < Tips.Count, Tips(_hover), Theme.Money(Values(_hover)))
-            Dim sz = TextRenderer.MeasureText(t, Theme.BodyBold)
+            Dim sz = Tr.MeasureText(t, Theme.BodyBold)
             Dim x = CSng(Math.Min(Math.Max(0, p.Left + slot * _hover + slot / 2 - sz.Width / 2 - 8), Width - sz.Width - 16))
             Using path = Theme.RoundRect(New RectangleF(x, 4, sz.Width + 16, 26), 5)
                 Using b As New SolidBrush(Theme.G900) : g.FillPath(b, path) : End Using
             End Using
-            TextRenderer.DrawText(g, t, Theme.BodyBold, New Rectangle(CInt(x), 4, sz.Width + 16, 26), Color.White, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+            Tr.DrawText(g, t, Theme.BodyBold, New Rectangle(CInt(x), 4, sz.Width + 16, 26), Color.White, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
         End If
     End Sub
 End Class
@@ -2384,7 +2385,7 @@ Public Class ChoiceCard
             Using b As New SolidBrush(If(Selected, Theme.Blue, Theme.G100)) : g.FillPath(b, p) : End Using
         End Using
         Using f = Theme.IconFont(12) : Theme.DrawCentered(g, Glyph, f, If(Selected, Color.White, Theme.G600), ir) : End Using
-        TextRenderer.DrawText(g, Text, Theme.BodyBold, New Rectangle(58, 11, Width - 66, 20), If(Selected, Color.FromArgb(&H1D, &H4E, &HD8), Theme.G800), TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-        TextRenderer.DrawText(g, Hint, Theme.Small, New Rectangle(58, 32, Width - 66, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        Tr.DrawText(g, Text, Theme.BodyBold, New Rectangle(58, 11, Width - 66, 20), If(Selected, Color.FromArgb(&H1D, &H4E, &HD8), Theme.G800), TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        Tr.DrawText(g, Hint, Theme.Small, New Rectangle(58, 32, Width - 66, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
     End Sub
 End Class

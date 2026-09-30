@@ -50,7 +50,8 @@ Public Module Smoke
             AppState.I.Init()
             AppState.I.Api.Server = "http://127.0.0.1:9"
             Note("User: " & Js.Str(AppState.I.User, "username") & " (" & Js.Str(AppState.I.User, "role") & ")")
-            Dim main As New MainForm With {.WindowState = FormWindowState.Normal, .StartPosition = FormStartPosition.Manual, .Location = New Point(0, 0)}
+            ' Borderless, so the window can be 1440 wide (and page-tall) even on the build machine's small screen.
+            Dim main As New MainForm With {.WindowState = FormWindowState.Normal, .StartPosition = FormStartPosition.Manual, .Location = New Point(0, 0), .FormBorderStyle = FormBorderStyle.None, .MinimumSize = Size.Empty, .MaximumSize = New Size(4000, 8000)}
             main.Size = New Size(1440, 900)
             main.Show()
             Pump(800)

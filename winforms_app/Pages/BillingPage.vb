@@ -309,10 +309,10 @@ Public Class BillingPage
         Dim p = _found(e.Index)
         Dim g = e.Graphics
         Using b As New SolidBrush(If((e.State And DrawItemState.Selected) = DrawItemState.Selected, Theme.PrimarySoft, Color.White)) : g.FillRectangle(b, e.Bounds) : End Using
-        TextRenderer.DrawText(g, Js.Str(p, "name"), Theme.BodyBold, New Rectangle(e.Bounds.X + 12, e.Bounds.Y + 4, e.Bounds.Width - 140, 20), Theme.G900, TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
+        Tr.DrawText(g, Js.Str(p, "name"), Theme.BodyBold, New Rectangle(e.Bounds.X + 12, e.Bounds.Y + 4, e.Bounds.Width - 140, 20), Theme.G900, TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
         Dim stock = If(Js.Str(p, "type") = "physical" AndAlso Not Js.IsNull(p, "stock"), "Stock " & Js.Int(p, "stock") & "  ·  ", "")
-        TextRenderer.DrawText(g, stock & Js.Str(p, "barcode"), Theme.Small, New Point(e.Bounds.X + 12, e.Bounds.Y + 24), Theme.G500, TextFormatFlags.NoPadding)
-        TextRenderer.DrawText(g, Theme.Money(CartLine.ShelfPrice(p)), Theme.BodyBold, New Rectangle(e.Bounds.Right - 120, e.Bounds.Y, 108, e.Bounds.Height), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.VerticalCenter)
+        Tr.DrawText(g, stock & Js.Str(p, "barcode"), Theme.Small, New Point(e.Bounds.X + 12, e.Bounds.Y + 24), Theme.G500, TextFormatFlags.NoPadding)
+        Tr.DrawText(g, Theme.Money(CartLine.ShelfPrice(p)), Theme.BodyBold, New Rectangle(e.Bounds.Right - 120, e.Bounds.Y, 108, e.Bounds.Height), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.VerticalCenter)
         Using pen As New Pen(Theme.G100) : g.DrawLine(pen, e.Bounds.Left, e.Bounds.Bottom - 1, e.Bounds.Right, e.Bounds.Bottom - 1) : End Using
     End Sub
 
@@ -567,7 +567,7 @@ Public Class BillingPage
         Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, c.Width - 1.5F, c.Height - 1.5F), 10)
             Using b As New SolidBrush(Theme.G50) : e.Graphics.FillPath(b, p) : End Using
         End Using
-        TextRenderer.DrawText(e.Graphics, "Coupon Code", Theme.BodyBold, New Point(14, 12), Theme.G900, TextFormatFlags.NoPadding)
+        Tr.DrawText(e.Graphics, "Coupon Code", Theme.BodyBold, New Point(14, 12), Theme.G900, TextFormatFlags.NoPadding)
     End Sub
 
     Private Sub Relayout()
@@ -668,13 +668,13 @@ Public Class TotalsBox
         End Using
         Dim y = 14
         For Each r In {("Subtotal", Theme.Money(Subtotal), Theme.G900), ("Discount", "-" & Theme.Money(Discount), Theme.Danger), (If(TaxIncluded, "GST (incl.)", "GST"), If(TaxIncluded, "", "+") & Theme.Money(Gst), Theme.G900)}
-            TextRenderer.DrawText(g, r.Item1, Theme.Body, New Point(16, y), Theme.G700, TextFormatFlags.NoPadding)
-            TextRenderer.DrawText(g, r.Item2, Theme.Body, New Rectangle(16, y, Width - 32, 20), r.Item3, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+            Tr.DrawText(g, r.Item1, Theme.Body, New Point(16, y), Theme.G700, TextFormatFlags.NoPadding)
+            Tr.DrawText(g, r.Item2, Theme.Body, New Rectangle(16, y, Width - 32, 20), r.Item3, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
             y += 24
         Next
         Using pen As New Pen(Theme.G200) : g.DrawLine(pen, 16, y + 2, Width - 16, y + 2) : End Using
-        TextRenderer.DrawText(g, "Total", Theme.UiFont(11.0F, FontStyle.Bold), New Point(16, y + 10), Theme.G900, TextFormatFlags.NoPadding)
-        TextRenderer.DrawText(g, Theme.Money(Total), Theme.UiFont(13.0F, FontStyle.Bold), New Rectangle(16, y + 8, Width - 32, 26), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+        Tr.DrawText(g, "Total", Theme.UiFont(11.0F, FontStyle.Bold), New Point(16, y + 10), Theme.G900, TextFormatFlags.NoPadding)
+        Tr.DrawText(g, Theme.Money(Total), Theme.UiFont(13.0F, FontStyle.Bold), New Rectangle(16, y + 8, Width - 32, 26), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
     End Sub
 End Class
 
@@ -707,41 +707,41 @@ Public Class SummaryPanel
                 g.FillPath(b, p)
             End Using
         End Using
-        Using f = Theme.IconFont(11) : TextRenderer.DrawText(g, Theme.IcCard, f, New Rectangle(18, 12, 22, 28), Color.White, TextFormatFlags.VerticalCenter) : End Using
-        TextRenderer.DrawText(g, "Payment Summary", Theme.UiFont(10.5F, FontStyle.Bold), New Point(44, 17), Color.White, TextFormatFlags.NoPadding)
+        Using f = Theme.IconFont(11) : Tr.DrawText(g, Theme.IcCard, f, New Rectangle(18, 12, 22, 28), Color.White, TextFormatFlags.VerticalCenter) : End Using
+        Tr.DrawText(g, "Payment Summary", Theme.UiFont(10.5F, FontStyle.Bold), New Point(44, 17), Color.White, TextFormatFlags.NoPadding)
         Dim chip = Items & " items"
-        Dim cw = TextRenderer.MeasureText(chip, Theme.Small).Width + 14
+        Dim cw = Tr.MeasureText(chip, Theme.Small).Width + 14
         Using p = Theme.RoundRect(New RectangleF(Width - cw - 16, 15, cw, 22), 6)
             Using b As New SolidBrush(Color.FromArgb(64, Color.White)) : g.FillPath(b, p) : End Using
         End Using
-        TextRenderer.DrawText(g, chip, Theme.UiFont(8.5F, FontStyle.Bold), New Rectangle(Width - cw - 16, 15, cw, 22), Color.White, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+        Tr.DrawText(g, chip, Theme.UiFont(8.5F, FontStyle.Bold), New Rectangle(Width - cw - 16, 15, cw, 22), Color.White, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
         ' totals box
         Using p = Theme.RoundRect(New RectangleF(12, 50, Width - 24, 108), 8)
             Using b As New SolidBrush(Color.White) : g.FillPath(b, p) : End Using
         End Using
-        TextRenderer.DrawText(g, "Total Amount", Theme.Body, New Point(26, 66), Theme.G700, TextFormatFlags.NoPadding)
-        TextRenderer.DrawText(g, Theme.Money(Total), Theme.UiFont(15.0F, FontStyle.Bold), New Rectangle(26, 58, Width - 52, 32), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.VerticalCenter)
+        Tr.DrawText(g, "Total Amount", Theme.Body, New Point(26, 66), Theme.G700, TextFormatFlags.NoPadding)
+        Tr.DrawText(g, Theme.Money(Total), Theme.UiFont(15.0F, FontStyle.Bold), New Rectangle(26, 58, Width - 52, 32), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.VerticalCenter)
         Using pen As New Pen(Theme.G100) : g.DrawLine(pen, 26, 98, Width - 26, 98) : End Using
-        TextRenderer.DrawText(g, "Amount Received", Theme.Body, New Point(26, 108), Theme.G700, TextFormatFlags.NoPadding)
-        TextRenderer.DrawText(g, Theme.Money(Paid), Theme.BodyBold, New Rectangle(26, 106, Width - 52, 20), Theme.G900, TextFormatFlags.Right)
+        Tr.DrawText(g, "Amount Received", Theme.Body, New Point(26, 108), Theme.G700, TextFormatFlags.NoPadding)
+        Tr.DrawText(g, Theme.Money(Paid), Theme.BodyBold, New Rectangle(26, 106, Width - 52, 20), Theme.G900, TextFormatFlags.Right)
         Dim diff = Paid - Total
         If Math.Abs(diff) > 0.004 AndAlso Total > 0 Then
             Dim txt = If(diff > 0, "Return change", "Due (on credit)")
             Dim c = If(diff > 0, Theme.Green, Theme.Danger)
-            TextRenderer.DrawText(g, txt, Theme.Body, New Point(26, 132), c, TextFormatFlags.NoPadding)
-            TextRenderer.DrawText(g, Theme.Money(Math.Abs(diff)), Theme.BodyBold, New Rectangle(26, 130, Width - 52, 20), c, TextFormatFlags.Right)
+            Tr.DrawText(g, txt, Theme.Body, New Point(26, 132), c, TextFormatFlags.NoPadding)
+            Tr.DrawText(g, Theme.Money(Math.Abs(diff)), Theme.BodyBold, New Rectangle(26, 130, Width - 52, 20), c, TextFormatFlags.Right)
         End If
         ' white box for customer + payment
         Using p = Theme.RoundRect(New RectangleF(12, WhiteTop, Width - 24, h - WhiteTop - 12), 8)
             Using b As New SolidBrush(Color.White) : g.FillPath(b, p) : End Using
         End Using
         If ShowCustomer Then
-            Using f = Theme.IconFont(10) : TextRenderer.DrawText(g, Theme.IcUser, f, New Rectangle(24, WhiteTop + 10, 20, 24), Theme.Coral, TextFormatFlags.VerticalCenter) : End Using
-            TextRenderer.DrawText(g, "Customer", Theme.BodyBold, New Point(48, WhiteTop + 14), Theme.G900, TextFormatFlags.NoPadding)
+            Using f = Theme.IconFont(10) : Tr.DrawText(g, Theme.IcUser, f, New Rectangle(24, WhiteTop + 10, 20, 24), Theme.Coral, TextFormatFlags.VerticalCenter) : End Using
+            Tr.DrawText(g, "Customer", Theme.BodyBold, New Point(48, WhiteTop + 14), Theme.G900, TextFormatFlags.NoPadding)
         End If
         If ShowPayments Then
-            Using f = Theme.IconFont(10) : TextRenderer.DrawText(g, Theme.IcMoney, f, New Rectangle(24, PaymentTop, 20, 28), Theme.Coral, TextFormatFlags.VerticalCenter) : End Using
-            TextRenderer.DrawText(g, "Payment", Theme.BodyBold, New Point(48, PaymentTop + 5), Theme.G900, TextFormatFlags.NoPadding)
+            Using f = Theme.IconFont(10) : Tr.DrawText(g, Theme.IcMoney, f, New Rectangle(24, PaymentTop, 20, 28), Theme.Coral, TextFormatFlags.VerticalCenter) : End Using
+            Tr.DrawText(g, "Payment", Theme.BodyBold, New Point(48, PaymentTop + 5), Theme.G900, TextFormatFlags.NoPadding)
         End If
     End Sub
 End Class

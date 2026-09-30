@@ -41,8 +41,8 @@ Public Class SalesHistoryPage
                                         Dim x = 0
                                         For Each it In {(Color.FromArgb(&H16, &HA3, &H4A), "This Month"), (Theme.Blue, "Previous Month")}
                                             Using b As New SolidBrush(it.Item1) : g.FillEllipse(b, x, 6, 8, 8) : End Using
-                                            TextRenderer.DrawText(g, it.Item2, Theme.Body, New Point(x + 14, 1), Theme.G700, TextFormatFlags.NoPadding)
-                                            x += TextRenderer.MeasureText(it.Item2, Theme.Body).Width + 34
+                                            Tr.DrawText(g, it.Item2, Theme.Body, New Point(x + 14, 1), Theme.G700, TextFormatFlags.NoPadding)
+                                            x += Tr.MeasureText(it.Item2, Theme.Body).Width + 34
                                         Next
                                     End Sub)
         _chartCard.Add(legend)

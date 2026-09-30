@@ -236,9 +236,9 @@ Public Class CustomizerPage
         Dim label = If(BlockLabel.ContainsKey(Js.Str(b, "type")), BlockLabel(Js.Str(b, "type")), Js.Str(b, "type"))
         Dim isOpen = _open.Contains(id)
         Dim title As New Drawn(40, Sub(g, r)
-                                       Using f = Theme.IconFont(8) : TextRenderer.DrawText(g, If(isOpen, ChrW(&HE70D), ChrW(&HE76C)), f, New Rectangle(0, 0, 16, 40), Theme.G500, TextFormatFlags.VerticalCenter) : End Using
-                                       TextRenderer.DrawText(g, label, Theme.BodyBold, New Point(22, If(Js.Str(b, "title") = "", 12, 3)), If(Js.Bool(b, "enabled"), Theme.G900, Theme.G400), TextFormatFlags.NoPadding)
-                                       If Js.Str(b, "title") <> "" Then TextRenderer.DrawText(g, Js.Str(b, "title"), Theme.Small, New Rectangle(22, 22, r.Width - 22, 16), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                                       Using f = Theme.IconFont(8) : Tr.DrawText(g, If(isOpen, ChrW(&HE70D), ChrW(&HE76C)), f, New Rectangle(0, 0, 16, 40), Theme.G500, TextFormatFlags.VerticalCenter) : End Using
+                                       Tr.DrawText(g, label, Theme.BodyBold, New Point(22, If(Js.Str(b, "title") = "", 12, 3)), If(Js.Bool(b, "enabled"), Theme.G900, Theme.G400), TextFormatFlags.NoPadding)
+                                       If Js.Str(b, "title") <> "" Then Tr.DrawText(g, Js.Str(b, "title"), Theme.Small, New Rectangle(22, 22, r.Width - 22, 16), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                                    End Sub) With {.Cursor = Cursors.Hand}
         AddHandler title.Click, Sub()
                                     If Not _open.Remove(id) Then _open.Add(id)
@@ -418,8 +418,8 @@ Public Class CustomizerPage
                 row.Add(en)
             End If
             Dim txt As New Drawn(40, Sub(g, r)
-                                         TextRenderer.DrawText(g, Js.Str(it, "label"), Theme.BodyBold, New Point(0, 3), Theme.G900, TextFormatFlags.NoPadding)
-                                         TextRenderer.DrawText(g, Js.Str(it, "href") & If(Js.Bool(it, "autoCategories"), " · lists every category", ""), Theme.Small, New Rectangle(0, 22, r.Width, 16), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                                         Tr.DrawText(g, Js.Str(it, "label"), Theme.BodyBold, New Point(0, 3), Theme.G900, TextFormatFlags.NoPadding)
+                                         Tr.DrawText(g, Js.Str(it, "href") & If(Js.Bool(it, "autoCategories"), " · lists every category", ""), Theme.Small, New Rectangle(0, 22, r.Width, 16), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                                      End Sub) With {.Cursor = Cursors.Hand}
             AddHandler txt.Click, Sub() EditLink(items, it, simple)
             row.Add(txt)

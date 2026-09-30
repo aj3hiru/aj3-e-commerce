@@ -112,18 +112,18 @@ Public Class OrderDetailPage
         Dim statusRect As Rectangle, payRect As Rectangle
         Dim draw As New Drawn(84, Sub(g, r)
                                         Dim x = 0
-                                        TextRenderer.DrawText(g, Js.Str(o, "number"), Theme.UiFont(13.5F, FontStyle.Bold), New Point(x, 18), Theme.G900, TextFormatFlags.NoPadding)
-                                        Dim nw = TextRenderer.MeasureText(Js.Str(o, "number"), Theme.UiFont(13.5F, FontStyle.Bold)).Width
+                                        Tr.DrawText(g, Js.Str(o, "number"), Theme.UiFont(13.5F, FontStyle.Bold), New Point(x, 18), Theme.G900, TextFormatFlags.NoPadding)
+                                        Dim nw = Tr.MeasureText(Js.Str(o, "number"), Theme.UiFont(13.5F, FontStyle.Bold)).Width
                                         If on_("ov-h-type") Then
                                             If online Then Gfx.Badge(g, "Online order", x + nw + 12, 30, Theme.Primary, Theme.PrimarySoft) Else Gfx.Badge(g, "In-store bill", x + nw + 12, 30, Fmt.AmberText, Fmt.AmberSoft)
                                         End If
-                                        If on_("ov-h-date") Then TextRenderer.DrawText(g, Fmt.Stamp(Js.Time(o, "createdAt")), Theme.Body, New Point(x, 48), Theme.G600, TextFormatFlags.NoPadding)
+                                        If on_("ov-h-date") Then Tr.DrawText(g, Fmt.Stamp(Js.Time(o, "createdAt")), Theme.Body, New Point(x, 48), Theme.G600, TextFormatFlags.NoPadding)
                                         Dim rx = r.Right - 10
                                         If on_("ov-h-total") Then
                                             Dim t = Theme.Money(Js.Num(o, "total"))
-                                            Dim tw = TextRenderer.MeasureText(t, Theme.UiFont(15.0F, FontStyle.Bold)).Width
-                                            TextRenderer.DrawText(g, "Total", Theme.Small, New Rectangle(rx - tw, 16, tw, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
-                                            TextRenderer.DrawText(g, t, Theme.UiFont(15.0F, FontStyle.Bold), New Point(rx - tw, 34), Theme.G900, TextFormatFlags.NoPadding)
+                                            Dim tw = Tr.MeasureText(t, Theme.UiFont(15.0F, FontStyle.Bold)).Width
+                                            Tr.DrawText(g, "Total", Theme.Small, New Rectangle(rx - tw, 16, tw, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                                            Tr.DrawText(g, t, Theme.UiFont(15.0F, FontStyle.Bold), New Point(rx - tw, 34), Theme.G900, TextFormatFlags.NoPadding)
                                             rx -= tw + 20
                                         End If
                                         If on_("ov-h-pills") Then
@@ -167,9 +167,9 @@ Public Class OrderDetailPage
         Dim card As New Card With {.Height = If(st = "Canceled", 60, 96), .Padding = New Padding(20, 14, 20, 14)}
         Dim d As New Drawn(card.Height, Sub(g, r)
                                               If st = "Canceled" Then
-                                                  Using f = Theme.IconFont(13) : TextRenderer.DrawText(g, ChrW(&HEA39), f, New Rectangle(0, 0, 24, r.Height), Theme.Danger, TextFormatFlags.VerticalCenter) : End Using
+                                                  Using f = Theme.IconFont(13) : Tr.DrawText(g, ChrW(&HEA39), f, New Rectangle(0, 0, 24, r.Height), Theme.Danger, TextFormatFlags.VerticalCenter) : End Using
                                                   Dim why = Js.Str(o, "cancelReason")
-                                                  TextRenderer.DrawText(g, "This order was cancelled" & If(why <> "", " — " & why, "") & ".", Theme.BodyBold, New Rectangle(32, 0, r.Width - 32, r.Height), Color.FromArgb(&HB9, &H1C, &H1C), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+                                                  Tr.DrawText(g, "This order was cancelled" & If(why <> "", " — " & why, "") & ".", Theme.BodyBold, New Rectangle(32, 0, r.Width - 32, r.Height), Color.FromArgb(&HB9, &H1C, &H1C), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
                                                   Return
                                               End If
                                               Dim steps = {"Placed", "Accepted", "Out for delivery", "Delivered"}
@@ -186,7 +186,7 @@ Public Class OrderDetailPage
                                                   Dim glyph = If(k < reached OrElse (k = reached AndAlso k = 3) OrElse k <= 1, Theme.IcCheck, If(k = 2, Theme.IcTruck, Theme.IcPackage))
                                                   Using f = Theme.IconFont(11) : Theme.DrawCentered(g, glyph, f, If(k <= reached, Color.White, Theme.G400), circle) : End Using
                                                   Dim tw = 140
-                                                  TextRenderer.DrawText(g, steps(k), If(k <= reached, Theme.BodyBold, Theme.Body), New Rectangle(cx - tw \ 2, 44, tw, 20), If(k <= reached, Theme.G900, Theme.G400), TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
+                                                  Tr.DrawText(g, steps(k), If(k <= reached, Theme.BodyBold, Theme.Body), New Rectangle(cx - tw \ 2, 44, tw, 20), If(k <= reached, Theme.G900, Theme.G400), TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
                                               Next
                                           End Sub)
         d.Dock = DockStyle.Fill
@@ -360,8 +360,8 @@ Public Class OrderDetailPage
             Dim card As New CardBox("Customer")
             Dim nameRow As New Drawn(44, Sub(g, r)
                                              Gfx.Avatar(g, New Rectangle(0, 2, 40, 40), Js.Str(o, "customer"), Nothing)
-                                             TextRenderer.DrawText(g, Js.Str(o, "customer"), Theme.BodyBold, New Point(52, 4), Theme.G900, TextFormatFlags.NoPadding)
-                                             If cust IsNot Nothing Then TextRenderer.DrawText(g, "View profile", Theme.Body, New Point(52, 24), Theme.Blue, TextFormatFlags.NoPadding)
+                                             Tr.DrawText(g, Js.Str(o, "customer"), Theme.BodyBold, New Point(52, 4), Theme.G900, TextFormatFlags.NoPadding)
+                                             If cust IsNot Nothing Then Tr.DrawText(g, "View profile", Theme.Body, New Point(52, 24), Theme.Blue, TextFormatFlags.NoPadding)
                                          End Sub)
             If cust IsNot Nothing Then
                 nameRow.Cursor = Cursors.Hand

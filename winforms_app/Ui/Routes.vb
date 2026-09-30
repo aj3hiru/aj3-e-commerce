@@ -92,7 +92,8 @@ Public Module Routes
                 End If
             Next
         Next
-        If Not AppState.I.Allowed.Contains("deliveries") Then Return menu
+        ' Only delivery agents (people who deliver but don't run the orders) — the website shows admins no such link.
+        If Not AppState.I.Allowed.Contains("deliveries") OrElse AppState.I.Perm.OrdersView() Then Return menu
         If Js.Objs(menu).Any(Function(sec) Js.Objs(Js.Arr(sec, "links")).Any(Function(l) Js.Str(l, "href") = "app:deliveries")) Then Return menu
         Dim copy = menu
         Dim mine = Js.Obj("href", "app:deliveries", "label", "My Deliveries", "icon", "motorcycle")

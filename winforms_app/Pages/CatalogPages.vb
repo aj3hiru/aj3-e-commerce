@@ -274,8 +274,8 @@ Public Class TagsPage
             t.Cols.Add(New TCol("Tag", Nothing, 0, CellKind.Custom) With {.Flex = 20, .Sort = Function(x) Js.Str(x, "label").ToLowerInvariant(),
                 .Draw = Sub(g, r, x)
                             Using b As New SolidBrush(Fmt.ColorFromHex(Js.Str(x, "color"), Theme.G400)) : g.FillEllipse(b, r.X, r.Y + r.Height \ 2 - 6, 12, 12) : End Using
-                            TextRenderer.DrawText(g, Js.Str(x, "label"), Theme.BodyBold, New Rectangle(r.X + 20, r.Y + r.Height \ 2 - 18, r.Width - 20, 18), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis Or TextFormatFlags.Bottom)
-                            TextRenderer.DrawText(g, Js.Str(x, "slug"), Theme.Small, New Rectangle(r.X + 20, r.Y + r.Height \ 2 + 1, r.Width - 20, 16), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                            Tr.DrawText(g, Js.Str(x, "label"), Theme.BodyBold, New Rectangle(r.X + 20, r.Y + r.Height \ 2 - 18, r.Width - 20, 18), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis Or TextFormatFlags.Bottom)
+                            Tr.DrawText(g, Js.Str(x, "slug"), Theme.Small, New Rectangle(r.X + 20, r.Y + r.Height \ 2 + 1, r.Width - 20, 16), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                         End Sub})
         End If
         If col("tg2-c-group") Then t.Cols.Add(New TCol("Type", Function(x) If(Js.Str(x, "tagGroup") = "badge", "Badge", "Item type"), 0, CellKind.Badge) With {.Flex = 10, .Colour = Function(x) If(Js.Str(x, "tagGroup") = "badge", Theme.PrimaryDark, Color.FromArgb(&H1D, &H4E, &HD8))}.WithSort())
@@ -489,7 +489,7 @@ Public Class ReviewsPage
         For n = 5 To 1 Step -1
             Dim c = _all.Where(Function(x) Js.Int(x, "rating") = n).Count()
             Dim y = (5 - n) * 26
-            TextRenderer.DrawText(g, n & "★", Theme.Body, New Rectangle(0, y, 34, 22), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+            Tr.DrawText(g, n & "★", Theme.Body, New Rectangle(0, y, 34, 22), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
             Dim bw = r.Width - 34 - 110
             Using p = Theme.RoundRect(New RectangleF(34, y + 7, bw, 8), 4)
                 Using b As New SolidBrush(Theme.G100) : g.FillPath(b, p) : End Using
@@ -499,7 +499,7 @@ Public Class ReviewsPage
                     Using b As New SolidBrush(If(n >= 4, Color.FromArgb(&H10, &HB9, &H81), If(n = 3, Color.FromArgb(&HF5, &H9E, &HB), Color.FromArgb(&HEF, &H44, &H44)))) : g.FillPath(b, p) : End Using
                 End Using
             End If
-            TextRenderer.DrawText(g, "  " & c & " (" & CInt(c * 100 / total) & "%)", Theme.Body, New Rectangle(34 + bw, y, 110, 22), Theme.G600, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+            Tr.DrawText(g, "  " & c & " (" & CInt(c * 100 / total) & "%)", Theme.Body, New Rectangle(34 + bw, y, 110, 22), Theme.G600, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
         Next
     End Sub
 
@@ -527,7 +527,7 @@ Public Class ReviewsPage
                             Dim n = Js.Int(r, "rating")
                             Using f As New Font("Segoe UI Symbol", 11)
                                 For k = 1 To 5
-                                    TextRenderer.DrawText(g, "★", f, New Rectangle(rr.X + (k - 1) * 17, rr.Y, 17, rr.Height), If(k <= n, Color.FromArgb(&HF5, &H9E, &HB), Theme.G200), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+                                    Tr.DrawText(g, "★", f, New Rectangle(rr.X + (k - 1) * 17, rr.Y, 17, rr.Height), If(k <= n, Color.FromArgb(&HF5, &H9E, &HB), Theme.G200), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
                                 Next
                             End Using
                         End Sub})

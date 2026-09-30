@@ -78,6 +78,7 @@ Public Class MainForm
 
     Public Sub New()
         Icon = Theme.AppIcon
+        Tr.KeepAmpersands(Me)
         Text = "Sri Andal Staff"
         StartPosition = FormStartPosition.CenterScreen
         MinimumSize = New Size(1100, 700)
@@ -262,8 +263,8 @@ Public Class MainForm
         End If
         Dim room = Math.Max(120, _actions.Left - _titleLeft - 12)
         If _current IsNot Nothing Then
-            TextRenderer.DrawText(g, _current.PageTitle, Theme.Title, New Rectangle(_titleLeft, 10, room, 28), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-            TextRenderer.DrawText(g, _current.PageSubtitle, Theme.Small, New Rectangle(_titleLeft + 1, 39, room, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Tr.DrawText(g, _current.PageTitle, Theme.Title, New Rectangle(_titleLeft, 10, room, 28), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Tr.DrawText(g, _current.PageSubtitle, Theme.Small, New Rectangle(_titleLeft + 1, 39, room, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
         End If
         ' Sync status: just an icon (no "offline" text), with the number waiting to be sent.
         Dim s = AppState.I
@@ -279,7 +280,7 @@ Public Class MainForm
         Dim n = s.Pending + s.FailedCount
         If n > 0 Then
             Dim t = If(n > 99, "99+", n.ToString())
-            Dim bw = Math.Max(18, TextRenderer.MeasureText(t, Theme.UiFont(7.5F, FontStyle.Bold)).Width + 8)
+            Dim bw = Math.Max(18, Tr.MeasureText(t, Theme.UiFont(7.5F, FontStyle.Bold)).Width + 8)
             Using p = Theme.RoundRect(New RectangleF(x + 24, 7, bw, 18), 9)
                 Using b As New SolidBrush(Theme.Danger) : g.FillPath(b, p) : End Using
             End Using
@@ -295,9 +296,9 @@ Public Class MainForm
         End Using
         Dim av = Img.Get(Js.Str(s.User, "avatar"), 64, Sub() _header.Invalidate())
         Gfx.Avatar(g, New Rectangle(cx + 5, 17, 30, 30), name, av, Theme.Primary)
-        TextRenderer.DrawText(g, name, Theme.BodyBold, New Rectangle(cx + 42, 15, 116, 18), Theme.G900, TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
-        TextRenderer.DrawText(g, role, Theme.Small, New Rectangle(cx + 42, 32, 116, 16), Theme.G500, TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
-        Using f = Theme.IconFont(7) : TextRenderer.DrawText(g, Theme.IcChevronDown, f, New Rectangle(cx + 160, 12, 14, 40), Theme.G500, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding) : End Using
+        Tr.DrawText(g, name, Theme.BodyBold, New Rectangle(cx + 42, 15, 116, 18), Theme.G900, TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
+        Tr.DrawText(g, role, Theme.Small, New Rectangle(cx + 42, 32, 116, 16), Theme.G500, TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
+        Using f = Theme.IconFont(7) : Tr.DrawText(g, Theme.IcChevronDown, f, New Rectangle(cx + 160, 12, 14, 40), Theme.G500, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding) : End Using
     End Sub
 
     Private Sub HeaderClick(sender As Object, e As MouseEventArgs)
@@ -348,7 +349,7 @@ Public Class MainForm
     Public Sub Toast(text As String, Optional isError As Boolean = False)
         _toast.Text = text
         _toast.BackColor = If(isError, Theme.Danger, Theme.G900)
-        Dim w = Math.Min(620, TextRenderer.MeasureText(text, _toast.Font).Width + 40)
+        Dim w = Math.Min(620, Tr.MeasureText(text, _toast.Font).Width + 40)
         _toast.SetBounds(_host.Width - w - 24, _host.Height - 70, w, 44)
         _toast.Visible = True
         _toast.BringToFront()
@@ -474,7 +475,7 @@ Public Class Sidebar
         For Each it In _items
             If it.Section <> lastSection Then
                 If lastSection <> "" Then y += 10
-                TextRenderer.DrawText(g, it.Section, Theme.UiFont(7.5F, FontStyle.Bold), New Point(22, y), Theme.G400, TextFormatFlags.NoPadding)
+                Tr.DrawText(g, it.Section, Theme.UiFont(7.5F, FontStyle.Bold), New Point(22, y), Theme.G400, TextFormatFlags.NoPadding)
                 y += 22
                 lastSection = it.Section
             End If
@@ -488,7 +489,7 @@ Public Class Sidebar
         _contentH = y + _scroll + 20
         ' brand on top (drawn last so the list scrolls under it)
         Using b As New SolidBrush(Color.White) : g.FillRectangle(b, 0, 0, Width, 64) : End Using
-        TextRenderer.DrawText(g, Js.Str(AppState.I.Settings, "businessName", "Sri Andal Traders"), Theme.UiFont(13.0F, FontStyle.Bold), New Rectangle(20, 18, Width - 30, 30), Theme.Primary, TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
+        Tr.DrawText(g, Js.Str(AppState.I.Settings, "businessName", "Sri Andal Traders"), Theme.UiFont(13.0F, FontStyle.Bold), New Rectangle(20, 18, Width - 30, 30), Theme.Primary, TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
         Using p As New Pen(Theme.G100) : g.DrawLine(p, 0, 64, Width, 64) : End Using
         Using p As New Pen(Theme.G200) : g.DrawLine(p, Width - 1, 0, Width - 1, Height) : End Using
         If _contentH > Height Then
@@ -513,12 +514,12 @@ Public Class Sidebar
             End If
             Dim fg = If(active, Theme.Primary, If(it.Logout, Theme.Danger, Theme.G700))
             Using f = Theme.IconFont(If(depth = 0, 11, 9.5F))
-                TextRenderer.DrawText(g, it.Glyph, f, New Rectangle(r.X + 8, r.Y, 24, r.Height), If(active, Theme.Primary, If(it.Logout, Theme.Danger, Theme.G500)), TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
+                Tr.DrawText(g, it.Glyph, f, New Rectangle(r.X + 8, r.Y, 24, r.Height), If(active, Theme.Primary, If(it.Logout, Theme.Danger, Theme.G500)), TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
             End Using
-            TextRenderer.DrawText(g, it.Label, If(active, Theme.BodyBold, Theme.Body), New Rectangle(r.X + 40, r.Y, r.Width - 64, r.Height), fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Tr.DrawText(g, it.Label, If(active, Theme.BodyBold, Theme.Body), New Rectangle(r.X + 40, r.Y, r.Width - 64, r.Height), fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
             If it.Children.Count > 0 Then
                 Using f = Theme.IconFont(7)
-                    TextRenderer.DrawText(g, If(_open.Contains(it.Href), ChrW(&HE70E), Theme.IcChevronDown), f, New Rectangle(r.Right - 24, r.Y, 18, r.Height), Theme.G400, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
+                    Tr.DrawText(g, If(_open.Contains(it.Href), ChrW(&HE70E), Theme.IcChevronDown), f, New Rectangle(r.Right - 24, r.Y, 18, r.Height), Theme.G400, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
                 End Using
             End If
         End If
@@ -585,6 +586,7 @@ Public Class SyncCenter
 
     Public Sub New()
         Icon = Theme.AppIcon
+        Tr.KeepAmpersands(Me)
         Text = "Changes waiting to be sent"
         StartPosition = FormStartPosition.CenterParent
         ClientSize = New Size(860, 560)
@@ -650,6 +652,7 @@ Public Class QuickFind
 
     Public Sub New(main As MainForm)
         Icon = Theme.AppIcon
+        Tr.KeepAmpersands(Me)
         _main = main
         FormBorderStyle = FormBorderStyle.None
         StartPosition = FormStartPosition.CenterParent
@@ -734,8 +737,8 @@ Public Class QuickFind
         Dim sel = (e.State And DrawItemState.Selected) = DrawItemState.Selected
         Using b As New SolidBrush(If(sel, Theme.PrimarySoft, Color.White)) : e.Graphics.FillRectangle(b, e.Bounds) : End Using
         Gfx.Badge(e.Graphics, h.Kind, e.Bounds.X + 8, e.Bounds.Y + e.Bounds.Height \ 2, Theme.Primary, Theme.PrimaryLight)
-        TextRenderer.DrawText(e.Graphics, h.Label, Theme.BodyBold, New Rectangle(e.Bounds.X + 84, e.Bounds.Y, 300, e.Bounds.Height), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
-        TextRenderer.DrawText(e.Graphics, h.Sub, Theme.Small, New Rectangle(e.Bounds.X + 390, e.Bounds.Y, e.Bounds.Width - 396, e.Bounds.Height), Theme.G500, TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding Or TextFormatFlags.Right)
+        Tr.DrawText(e.Graphics, h.Label, Theme.BodyBold, New Rectangle(e.Bounds.X + 84, e.Bounds.Y, 300, e.Bounds.Height), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
+        Tr.DrawText(e.Graphics, h.Sub, Theme.Small, New Rectangle(e.Bounds.X + 390, e.Bounds.Y, e.Bounds.Width - 396, e.Bounds.Height), Theme.G500, TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding Or TextFormatFlags.Right)
     End Sub
 End Class
 
@@ -751,6 +754,7 @@ Public Class SetupForm
 
     Public Sub New()
         Icon = Theme.AppIcon
+        Tr.KeepAmpersands(Me)
         Text = "Sri Andal Staff"
         FormBorderStyle = FormBorderStyle.FixedSingle
         MaximizeBox = False
@@ -805,8 +809,8 @@ Public Class SetupForm
             Using b As New SolidBrush(Theme.Primary) : g.FillPath(b, p) : End Using
         End Using
         Using f = Theme.IconFont(14) : Theme.DrawCentered(g, Theme.IcShop, f, Color.White, New Rectangle(card.X + 24, card.Y + 24, 36, 36)) : End Using
-        TextRenderer.DrawText(g, "Getting everything ready", Theme.UiFont(12.5F, FontStyle.Bold), New Point(card.X + 72, card.Y + 22), Theme.G900, TextFormatFlags.NoPadding)
-        TextRenderer.DrawText(g, "One time only — after this every page opens instantly, even offline.", Theme.Small, New Point(card.X + 72, card.Y + 46), Theme.G500, TextFormatFlags.NoPadding)
+        Tr.DrawText(g, "Getting everything ready", Theme.UiFont(12.5F, FontStyle.Bold), New Point(card.X + 72, card.Y + 22), Theme.G900, TextFormatFlags.NoPadding)
+        Tr.DrawText(g, "One time only — after this every page opens instantly, even offline.", Theme.Small, New Point(card.X + 72, card.Y + 46), Theme.G500, TextFormatFlags.NoPadding)
         Dim bar As New Rectangle(card.X + 24, card.Y + 94, card.Width - 48, 10)
         Using p = Theme.RoundRect(New RectangleF(bar.X, bar.Y, bar.Width, bar.Height), 5)
             Using b As New SolidBrush(Theme.G100) : g.FillPath(b, p) : End Using
@@ -815,7 +819,7 @@ Public Class SetupForm
         Using p = Theme.RoundRect(New RectangleF(bar.X, bar.Y, fw, bar.Height), 5)
             Using b As New SolidBrush(Theme.Primary) : g.FillPath(b, p) : End Using
         End Using
-        TextRenderer.DrawText(g, CInt(Math.Floor(_pct * 100)) & "%", Theme.UiFont(18.0F, FontStyle.Bold), New Point(card.X + 22, card.Y + 116), Theme.G900, TextFormatFlags.NoPadding)
-        TextRenderer.DrawText(g, If(_waiting, "Waiting for internet… trying again by itself.", _step), Theme.Body, New Rectangle(card.X + 100, card.Y + 122, card.Width - 124, 24), If(_waiting, Theme.Danger, Theme.G600), TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        Tr.DrawText(g, CInt(Math.Floor(_pct * 100)) & "%", Theme.UiFont(18.0F, FontStyle.Bold), New Point(card.X + 22, card.Y + 116), Theme.G900, TextFormatFlags.NoPadding)
+        Tr.DrawText(g, If(_waiting, "Waiting for internet… trying again by itself.", _step), Theme.Body, New Rectangle(card.X + 100, card.Y + 122, card.Width - 124, 24), If(_waiting, Theme.Danger, Theme.G600), TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
     End Sub
 End Class

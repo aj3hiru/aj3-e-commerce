@@ -161,8 +161,8 @@ Public Class ProductsPage
                 .Draw = Sub(g, r, p)
                             Dim txt = If(Not Physical(p), "∞", If(Js.IsNull(p, "stock"), "—", Js.Int(p, "stock") & If(Js.Str(p, "unit") <> "", " " & Js.Str(p, "unit"), "")))
                             Dim col = If(IsOut(p), Color.FromArgb(&HDC, &H26, &H26), If(IsLow(p), Color.FromArgb(&HD9, &H77, 6), Theme.G900))
-                            Dim tw = TextRenderer.MeasureText(txt, Theme.BodyBold).Width
-                            TextRenderer.DrawText(g, txt, Theme.BodyBold, New Rectangle(r.X, r.Y, Math.Min(tw + 2, r.Width - 36), r.Height), col, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                            Dim tw = Tr.MeasureText(txt, Theme.BodyBold).Width
+                            Tr.DrawText(g, txt, Theme.BodyBold, New Rectangle(r.X, r.Y, Math.Min(tw + 2, r.Width - 36), r.Height), col, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                             If Physical(p) AndAlso Js.Int(p, "id") > 0 Then
                                 Dim b As New Rectangle(Math.Min(r.X + tw + 8, r.Right - 28), r.Y + r.Height \ 2 - 12, 28, 24)
                                 Using path = Theme.RoundRect(New RectangleF(b.X, b.Y, b.Width, b.Height), 4)
@@ -193,11 +193,11 @@ Public Class ProductsPage
                 .Draw = Sub(g, r, p)
                             Dim b As JsonObject = Nothing
                             If Not _badges.TryGetValue(Js.Str(p, "badgeTag"), b) Then
-                                TextRenderer.DrawText(g, "None", Theme.Body, r, Theme.G500, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+                                Tr.DrawText(g, "None", Theme.Body, r, Theme.G500, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
                                 Return
                             End If
                             Using br As New SolidBrush(Fmt.ColorFromHex(Js.Str(b, "color"), Theme.G500)) : g.FillEllipse(br, r.X, r.Y + r.Height \ 2 - 4, 8, 8) : End Using
-                            TextRenderer.DrawText(g, Js.Str(b, "label"), Theme.Body, New Rectangle(r.X + 14, r.Y, r.Width - 14, r.Height), Theme.G800, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                            Tr.DrawText(g, Js.Str(b, "label"), Theme.Body, New Rectangle(r.X + 14, r.Y, r.Width - 14, r.Height), Theme.G800, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                         End Sub})
         End If
         If on_("p2-c-item") Then t.Cols.Add(New TCol("Item Type", Function(p) ItemLabel(p), 0) With {.Flex = 10}.WithSort())

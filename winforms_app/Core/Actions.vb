@@ -378,8 +378,8 @@ Public Module DueActions
             amt.Text = Js.Num(d, "balance").ToString("0.00", Globalization.CultureInfo.InvariantCulture)
             amt.Width = 140
             Dim label As New Drawn(44, Sub(g, r)
-                                           TextRenderer.DrawText(g, Js.Str(d, "orderNumber", "Due"), Theme.BodyBold, New Point(0, 4), Theme.G900, TextFormatFlags.NoPadding)
-                                           TextRenderer.DrawText(g, "Balance " & Theme.Money(Js.Num(d, "balance")) & " · " & Fmt.Day(Js.Time(d, "createdAt")), Theme.Small, New Point(0, 24), Theme.G500, TextFormatFlags.NoPadding)
+                                           Tr.DrawText(g, Js.Str(d, "orderNumber", "Due"), Theme.BodyBold, New Point(0, 4), Theme.G900, TextFormatFlags.NoPadding)
+                                           Tr.DrawText(g, "Balance " & Theme.Money(Js.Num(d, "balance")) & " · " & Fmt.Day(Js.Time(d, "createdAt")), Theme.Small, New Point(0, 24), Theme.G500, TextFormatFlags.NoPadding)
                                        End Sub)
             row.Controls.AddRange(New Control() {sw, label, amt})
             AddHandler row.Layout, Sub()

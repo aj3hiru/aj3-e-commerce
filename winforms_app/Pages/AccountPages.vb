@@ -94,8 +94,8 @@ Public Class StaffPage
                             Dim idx = Js.Int(u, "id")
                             Dim im = Img.Get(Js.Str(u, "avatar"), 72, Sub() _list.Table.Invalidate())
                             Gfx.Avatar(g, av, name, im, AvatarColors(Math.Abs(idx) Mod AvatarColors.Length))
-                            TextRenderer.DrawText(g, name & If(IsMe(u), "  (you)", ""), Theme.BodyBold, New Rectangle(r.X + 48, r.Y + r.Height \ 2 - 19, r.Width - 48, 19), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-                            TextRenderer.DrawText(g, "@" & Js.Str(u, "username") & If(Js.Str(u, "phone") <> "", " · " & Js.Str(u, "phone"), "") & If(Js.Str(u, "email") <> "", " · " & Js.Str(u, "email"), ""), Theme.Small, New Rectangle(r.X + 48, r.Y + r.Height \ 2 + 1, r.Width - 48, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                            Tr.DrawText(g, name & If(IsMe(u), "  (you)", ""), Theme.BodyBold, New Rectangle(r.X + 48, r.Y + r.Height \ 2 - 19, r.Width - 48, 19), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                            Tr.DrawText(g, "@" & Js.Str(u, "username") & If(Js.Str(u, "phone") <> "", " · " & Js.Str(u, "phone"), "") & If(Js.Str(u, "email") <> "", " · " & Js.Str(u, "email"), ""), Theme.Small, New Rectangle(r.X + 48, r.Y + r.Height \ 2 + 1, r.Width - 48, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                         End Sub})
         End If
         If col("u2-c-role") Then
@@ -305,12 +305,12 @@ Public Class ProfilePage
                                        Gfx.Avatar(g, New Rectangle(cx - 42, 33, 84, 84), name, im, Color.FromArgb(&HF5, &HE6, &HF2))
                                        Using b As New SolidBrush(Theme.Magenta) : g.FillEllipse(b, cx + 18, 92, 26, 26) : End Using
                                        Using f = Theme.IconFont(8) : Theme.DrawCentered(g, ChrW(&HE722), f, Color.White, New Rectangle(cx + 18, 92, 26, 26)) : End Using
-                                       TextRenderer.DrawText(g, If(Js.Str(u, "avatar") = "", "Add photo", "Change photo"), Theme.Small, New Rectangle(0, 124, card.Width, 16), Theme.G500, TextFormatFlags.HorizontalCenter)
-                                       TextRenderer.DrawText(g, name, Theme.UiFont(12.5F, FontStyle.Bold), New Rectangle(0, 146, card.Width, 26), Theme.G800, TextFormatFlags.HorizontalCenter)
+                                       Tr.DrawText(g, If(Js.Str(u, "avatar") = "", "Add photo", "Change photo"), Theme.Small, New Rectangle(0, 124, card.Width, 16), Theme.G500, TextFormatFlags.HorizontalCenter)
+                                       Tr.DrawText(g, name, Theme.UiFont(12.5F, FontStyle.Bold), New Rectangle(0, 146, card.Width, 26), Theme.G800, TextFormatFlags.HorizontalCenter)
                                        Dim role = Js.Str(u, "roleLabel", Fmt.Title(Js.Str(u, "role")))
-                                       Dim w = TextRenderer.MeasureText(role, Theme.UiFont(8.0F, FontStyle.Bold)).Width + 12
+                                       Dim w = Tr.MeasureText(role, Theme.UiFont(8.0F, FontStyle.Bold)).Width + 12
                                        Gfx.Badge(g, role, cx - w \ 2, 188, Theme.Primary, Color.FromArgb(&HF3, &HE8, &HFF))
-                                       If Js.Time(u, "since").HasValue Then TextRenderer.DrawText(g, "Member since " & Js.Time(u, "since").Value.ToString("MMMM yyyy"), Theme.Small, New Rectangle(0, 212, card.Width, 16), Theme.G500, TextFormatFlags.HorizontalCenter)
+                                       If Js.Time(u, "since").HasValue Then Tr.DrawText(g, "Member since " & Js.Time(u, "since").Value.ToString("MMMM yyyy"), Theme.Small, New Rectangle(0, 212, card.Width, 16), Theme.G500, TextFormatFlags.HorizontalCenter)
                                    End Sub
             AddHandler card.MouseClick, Async Sub(s, e)
                                             If photoRect.Contains(e.Location) OrElse (e.Y > 120 AndAlso e.Y < 142) Then Await ChangePhotoAsync()
@@ -345,9 +345,9 @@ Public Class ProfilePage
                                                         Using b As New SolidBrush(Color.FromArgb(&HFC, &HE7, &HF6)) : g.FillPath(b, p) : End Using
                                                     End Using
                                                     Using f = Theme.IconFont(11) : Theme.DrawCentered(g, glyph, f, Theme.Magenta, New Rectangle(0, 10, 38, 38)) : End Using
-                                                    TextRenderer.DrawText(g, title, Theme.BodyBold, New Point(52, 12), Theme.G900, TextFormatFlags.NoPadding)
-                                                    TextRenderer.DrawText(g, subtitle, Theme.Small, New Point(52, 32), Theme.G500, TextFormatFlags.NoPadding)
-                                                    Using f = Theme.IconFont(9) : TextRenderer.DrawText(g, ChrW(&HE76C), f, New Rectangle(r.Right - 20, 0, 20, r.Height), Theme.G400, TextFormatFlags.VerticalCenter) : End Using
+                                                    Tr.DrawText(g, title, Theme.BodyBold, New Point(52, 12), Theme.G900, TextFormatFlags.NoPadding)
+                                                    Tr.DrawText(g, subtitle, Theme.Small, New Point(52, 32), Theme.G500, TextFormatFlags.NoPadding)
+                                                    Using f = Theme.IconFont(9) : Tr.DrawText(g, ChrW(&HE76C), f, New Rectangle(r.Right - 20, 0, 20, r.Height), Theme.G400, TextFormatFlags.VerticalCenter) : End Using
                                                 End Sub) With {.Cursor = Cursors.Hand}
                          AddHandler d.Click, Sub() click()
                          Return d
@@ -483,7 +483,7 @@ Public Class BackupPage
             Dim pct = Js.Int(_job, "percent")
             Dim st = Js.Str(_job, "status")
             card.Add(New Drawn(44, Sub(g, r)
-                                       TextRenderer.DrawText(g, pct & "%", Theme.UiFont(15.0F, FontStyle.Bold), New Rectangle(0, 0, r.Width, 26), Theme.G900, TextFormatFlags.Right)
+                                       Tr.DrawText(g, pct & "%", Theme.UiFont(15.0F, FontStyle.Bold), New Rectangle(0, 0, r.Width, 26), Theme.G900, TextFormatFlags.Right)
                                        Using p = Theme.RoundRect(New RectangleF(0, 30, r.Width, 10), 5)
                                            Using b As New SolidBrush(Theme.G100) : g.FillPath(b, p) : End Using
                                        End Using

@@ -37,8 +37,8 @@ Public Class KeyValues
             End If
             Dim h = If(r.Bold, LineHeight + 6, LineHeight)
             Dim f = If(r.Bold, Theme.UiFont(12.0F, FontStyle.Bold), Theme.Body)
-            TextRenderer.DrawText(g, r.Label, f, New Rectangle(x0, y, Width - x0, h), If(r.Bold, Theme.G900, Theme.G600), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-            TextRenderer.DrawText(g, r.Value, If(r.Bold, f, Theme.BodyBold), New Rectangle(x0, y, Width - x0, h), If(r.Colour = Color.Empty, Theme.G900, r.Colour), TextFormatFlags.VerticalCenter Or TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+            Tr.DrawText(g, r.Label, f, New Rectangle(x0, y, Width - x0, h), If(r.Bold, Theme.G900, Theme.G600), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Tr.DrawText(g, r.Value, If(r.Bold, f, Theme.BodyBold), New Rectangle(x0, y, Width - x0, h), If(r.Colour = Color.Empty, Theme.G900, r.Colour), TextFormatFlags.VerticalCenter Or TextFormatFlags.Right Or TextFormatFlags.NoPadding)
             y += h
         Next
     End Sub
@@ -56,7 +56,7 @@ Public Class Timeline
     End Sub
     Private Function ItemH(it As (Title As String, Meta As String, Note As String), w As Integer) As Integer
         Dim h = 20 + 18
-        If Not String.IsNullOrEmpty(it.Note) Then h += TextRenderer.MeasureText(it.Note, Theme.Body, New Size(Math.Max(20, w - 26), 1000), TextFormatFlags.WordBreak).Height
+        If Not String.IsNullOrEmpty(it.Note) Then h += Tr.MeasureText(it.Note, Theme.Body, New Size(Math.Max(20, w - 26), 1000), TextFormatFlags.WordBreak).Height
         Return h + 12
     End Function
     Public Function HeightFor(width As Integer) As Integer Implements IFlowHeight.HeightFor
@@ -67,7 +67,7 @@ Public Class Timeline
         Dim g = e.Graphics
         Theme.Smooth(g)
         If Items.Count = 0 Then
-            TextRenderer.DrawText(g, EmptyText, Theme.Body, New Point(0, 2), Theme.G500)
+            Tr.DrawText(g, EmptyText, Theme.Body, New Point(0, 2), Theme.G500)
             Return
         End If
         Dim y = 0
@@ -78,10 +78,10 @@ Public Class Timeline
                 Using p As New Pen(Theme.G200, 2) : g.DrawLine(p, 5, y + 14, 5, y + h + 4) : End Using
             End If
             Using b As New SolidBrush(Theme.Blue) : g.FillEllipse(b, 0, y + 4, 10, 10) : End Using
-            TextRenderer.DrawText(g, it.Title, Theme.BodyBold, New Rectangle(24, y, Width - 24, 20), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-            TextRenderer.DrawText(g, it.Meta, Theme.Small, New Rectangle(24, y + 20, Width - 24, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Tr.DrawText(g, it.Title, Theme.BodyBold, New Rectangle(24, y, Width - 24, 20), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Tr.DrawText(g, it.Meta, Theme.Small, New Rectangle(24, y + 20, Width - 24, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
             If Not String.IsNullOrEmpty(it.Note) Then
-                TextRenderer.DrawText(g, it.Note, Theme.Body, New Rectangle(24, y + 38, Width - 26, h - 50), Theme.G700, TextFormatFlags.WordBreak Or TextFormatFlags.NoPadding)
+                Tr.DrawText(g, it.Note, Theme.Body, New Rectangle(24, y + 38, Width - 26, h - 50), Theme.G700, TextFormatFlags.WordBreak Or TextFormatFlags.NoPadding)
             End If
             y += h
         Next

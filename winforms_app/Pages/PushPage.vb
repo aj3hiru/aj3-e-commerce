@@ -331,9 +331,9 @@ Public Class PushPage
                 Dim info As New Drawn(58, Sub(g, r)
                                               Dim im = Img.Get(tg.Image, 120, Sub() _preview?.Invalidate())
                                               Gfx.Thumb(g, New Rectangle(0, 1, 56, 56), im)
-                                              TextRenderer.DrawText(g, tg.Kicker.ToUpperInvariant(), Theme.UiFont(7.5F, FontStyle.Bold), New Point(68, 2), Theme.G500, TextFormatFlags.NoPadding)
-                                              TextRenderer.DrawText(g, tg.Name, Theme.BodyBold, New Rectangle(68, 18, r.Width - 68, 20), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-                                              TextRenderer.DrawText(g, tg.Meta, Theme.Small, New Rectangle(68, 38, r.Width - 68, 18), Theme.G600, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                                              Tr.DrawText(g, tg.Kicker.ToUpperInvariant(), Theme.UiFont(7.5F, FontStyle.Bold), New Point(68, 2), Theme.G500, TextFormatFlags.NoPadding)
+                                              Tr.DrawText(g, tg.Name, Theme.BodyBold, New Rectangle(68, 18, r.Width - 68, 20), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                                              Tr.DrawText(g, tg.Meta, Theme.Small, New Rectangle(68, 38, r.Width - 68, 18), Theme.G600, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                                           End Sub)
                 box.Add(info)
                 box.Tools.Add(Ui.Btn("Change", "", outline:=True, click:=Sub() Pick(_kind, shop)))
@@ -421,9 +421,9 @@ Public Class PushPage
         End Using
         Dim now = DateTime.Now
         Using f = Theme.UiFont(34.0F, FontStyle.Regular)
-            TextRenderer.DrawText(g, now.ToString("h:mm"), f, New Rectangle(screen.X, screen.Y + 50, screen.Width, 60), Color.FromArgb(220, 255, 255, 255), TextFormatFlags.HorizontalCenter)
+            Tr.DrawText(g, now.ToString("h:mm"), f, New Rectangle(screen.X, screen.Y + 50, screen.Width, 60), Color.FromArgb(220, 255, 255, 255), TextFormatFlags.HorizontalCenter)
         End Using
-        TextRenderer.DrawText(g, now.ToString("dddd, MMMM d", Globalization.CultureInfo.InvariantCulture), Theme.Body, New Rectangle(screen.X, screen.Y + 112, screen.Width, 20), Color.FromArgb(220, 255, 255, 255), TextFormatFlags.HorizontalCenter)
+        Tr.DrawText(g, now.ToString("dddd, MMMM d", Globalization.CultureInfo.InvariantCulture), Theme.Body, New Rectangle(screen.X, screen.Y + 112, screen.Width, 20), Color.FromArgb(220, 255, 255, 255), TextFormatFlags.HorizontalCenter)
         Dim imgUrl = _image.Text.Trim()
         Dim im = If(imgUrl = "", Nothing, Img.Get(imgUrl, 400, Sub() _preview?.Invalidate()))
         Dim cardH = 76 + If(im IsNot Nothing, 128, 0)
@@ -435,10 +435,10 @@ Public Class PushPage
             Using b As New SolidBrush(Theme.Blue) : g.FillPath(b, p) : End Using
         End Using
         Using f = Theme.IconFont(6.5F) : Theme.DrawCentered(g, ChrW(&HEA8F), f, Color.White, New Rectangle(card.X + 12, card.Y + 10, 16, 16)) : End Using
-        TextRenderer.DrawText(g, shop, Theme.UiFont(7.5F, FontStyle.Bold), New Rectangle(card.X + 33, card.Y + 10, card.Width - 80, 16), Color.FromArgb(&H55, &H55, &H55), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-        TextRenderer.DrawText(g, "now", Theme.UiFont(7.5F), New Rectangle(card.Right - 40, card.Y + 10, 28, 16), Color.FromArgb(&H55, &H55, &H55), TextFormatFlags.VerticalCenter Or TextFormatFlags.Right Or TextFormatFlags.NoPadding)
-        TextRenderer.DrawText(g, If(_title.Text = "", "Notification Title", _title.Text), Theme.BodyBold, New Rectangle(card.X + 12, card.Y + 30, card.Width - 24, 18), Color.FromArgb(&H22, &H22, &H22), TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-        TextRenderer.DrawText(g, If(_body.Text = "", "Notification body text...", _body.Text), Theme.Small, New Rectangle(card.X + 12, card.Y + 49, card.Width - 24, 26), Color.FromArgb(&H44, &H44, &H44), TextFormatFlags.NoPadding Or TextFormatFlags.WordBreak Or TextFormatFlags.EndEllipsis)
+        Tr.DrawText(g, shop, Theme.UiFont(7.5F, FontStyle.Bold), New Rectangle(card.X + 33, card.Y + 10, card.Width - 80, 16), Color.FromArgb(&H55, &H55, &H55), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        Tr.DrawText(g, "now", Theme.UiFont(7.5F), New Rectangle(card.Right - 40, card.Y + 10, 28, 16), Color.FromArgb(&H55, &H55, &H55), TextFormatFlags.VerticalCenter Or TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+        Tr.DrawText(g, If(_title.Text = "", "Notification Title", _title.Text), Theme.BodyBold, New Rectangle(card.X + 12, card.Y + 30, card.Width - 24, 18), Color.FromArgb(&H22, &H22, &H22), TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        Tr.DrawText(g, If(_body.Text = "", "Notification body text...", _body.Text), Theme.Small, New Rectangle(card.X + 12, card.Y + 49, card.Width - 24, 26), Color.FromArgb(&H44, &H44, &H44), TextFormatFlags.NoPadding Or TextFormatFlags.WordBreak Or TextFormatFlags.EndEllipsis)
         If im IsNot Nothing Then Gfx.Thumb(g, New Rectangle(card.X + 12, card.Y + 76, card.Width - 24, 120), im, 8)
     End Sub
 
@@ -512,7 +512,7 @@ Public Class PushPage
                                     Using b As New SolidBrush(Theme.Blue) : g.FillPath(b, p) : End Using
                                 End Using
                             End If
-                            TextRenderer.DrawText(g, (Math.Round(pct * 1000) / 10) & "%", Theme.Small, New Point(r.X, r.Y + r.Height \ 2 + 2), Theme.G500, TextFormatFlags.NoPadding)
+                            Tr.DrawText(g, (Math.Round(pct * 1000) / 10) & "%", Theme.Small, New Point(r.X, r.Y + r.Height \ 2 + 2), Theme.G500, TextFormatFlags.NoPadding)
                         End Sub})
         End If
         If h("pm2-h-counts") Then t.Cols.Add(New TCol("Sent / Failed", Function(c) Js.Int(c, "sent") & " / " & Js.Int(c, "failed"), 0, CellKind.Bold) With {.Flex = 9, .Colour = Function(c) Color.FromArgb(5, &H96, &H69)})
@@ -568,7 +568,7 @@ Public Class PushPage
                                                             For k = 0 To breakdown.Count - 1
                                                                 Dim b = breakdown(k)
                                                                 Dim y = k * 30
-                                                                TextRenderer.DrawText(g, Js.Str(b, "label"), Theme.Body, New Rectangle(0, y, 130, 20), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+                                                                Tr.DrawText(g, Js.Str(b, "label"), Theme.Body, New Rectangle(0, y, 130, 20), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
                                                                 Dim bw = r.Width - 200
                                                                 Using p = Theme.RoundRect(New RectangleF(130, y + 5, bw, 10), 5)
                                                                     Using br As New SolidBrush(Theme.G100) : g.FillPath(br, p) : End Using
@@ -578,7 +578,7 @@ Public Class PushPage
                                                                         Using br As New SolidBrush(BrowserColor(Js.Str(b, "browser"))) : g.FillPath(br, p) : End Using
                                                                     End Using
                                                                 End If
-                                                                TextRenderer.DrawText(g, Js.Int(b, "count").ToString(), Theme.BodyBold, New Rectangle(r.Width - 60, y, 60, 20), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                                                                Tr.DrawText(g, Js.Int(b, "count").ToString(), Theme.BodyBold, New Rectangle(r.Width - 60, y, 60, 20), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.Right Or TextFormatFlags.NoPadding)
                                                             Next
                                                         End Sub)
             card.Add(bars)
@@ -607,7 +607,7 @@ Public Class PushPage
             t.Cols.Add(New TCol("#", Function(r) Js.Str(r, "id"), 70) With {.Colour = Function(r) Theme.G500})
             t.Cols.Add(New TCol("Browser", Nothing, 0, CellKind.Custom) With {.Flex = 12, .Draw = Sub(g, rr, r)
                                                                                                    Using b As New SolidBrush(BrowserColor(Js.Str(r, "browser"))) : g.FillEllipse(b, rr.X, rr.Y + rr.Height \ 2 - 4, 8, 8) : End Using
-                                                                                                   TextRenderer.DrawText(g, Js.Str(r, "browserLabel"), Theme.Body, New Rectangle(rr.X + 16, rr.Y, rr.Width - 16, rr.Height), Theme.G800, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+                                                                                                   Tr.DrawText(g, Js.Str(r, "browserLabel"), Theme.Body, New Rectangle(rr.X + 16, rr.Y, rr.Width - 16, rr.Height), Theme.G800, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
                                                                                                End Sub})
             t.Cols.Add(New TCol("Push service", Function(r) Js.Str(r, "host"), 0) With {.Flex = 16, .Colour = Function(r) Theme.G600})
             t.Cols.Add(New TCol("Subscribed", Function(r) Fmt.Stamp(Js.Time(r, "createdAt")), 0) With {.Flex = 10, .Colour = Function(r) Theme.G600})

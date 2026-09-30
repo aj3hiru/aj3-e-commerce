@@ -82,10 +82,10 @@ Public Class BusinessPage
                     Using b As New SolidBrush(Soft) : g.FillPath(b, p) : End Using
                 End Using
             End If
-            Using f = Theme.IconFont(10) : TextRenderer.DrawText(g, it.Glyph, f, New Rectangle(8, y, 24, 40), If(on_, Theme.Magenta, Theme.G500), TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter) : End Using
-            TextRenderer.DrawText(g, it.Label, If(on_, Theme.BodyBold, Theme.Body), New Rectangle(40, y, r.Width - 60, 40), If(on_, Theme.Magenta, Theme.G700), TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis)
+            Using f = Theme.IconFont(10) : Tr.DrawText(g, it.Glyph, f, New Rectangle(8, y, 24, 40), If(on_, Theme.Magenta, Theme.G500), TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter) : End Using
+            Tr.DrawText(g, it.Label, If(on_, Theme.BodyBold, Theme.Body), New Rectangle(40, y, r.Width - 60, 40), If(on_, Theme.Magenta, Theme.G700), TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis)
             If it.Key = "gst" Then
-                Using f = Theme.IconFont(8) : TextRenderer.DrawText(g, ChrW(&HE76C), f, New Rectangle(r.Width - 24, y, 20, 40), Theme.G400, TextFormatFlags.VerticalCenter) : End Using
+                Using f = Theme.IconFont(8) : Tr.DrawText(g, ChrW(&HE76C), f, New Rectangle(r.Width - 24, y, 20, 40), Theme.G400, TextFormatFlags.VerticalCenter) : End Using
             End If
             _rects.Add((it.Key, rr))
             y += 42
@@ -421,7 +421,7 @@ Public Class BusinessPage
                                        Using br As New SolidBrush(Fmt.ColorFromHex(hex, Theme.Primary)) : g.FillEllipse(br, 2, 2, 26, 26) : End Using
                                        If on_ Then
                                            Using pen As New Pen(Theme.G900, 2.5F) : g.DrawEllipse(pen, 1, 1, 28, 28) : End Using
-                                           TextRenderer.DrawText(g, "✓", Theme.BodyBold, New Rectangle(0, 0, 30, 30), Color.White, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+                                           Tr.DrawText(g, "✓", Theme.BodyBold, New Rectangle(0, 0, 30, 30), Color.White, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
                                        End If
                                    End Sub) With {.Width = 30, .Cursor = Cursors.Hand}
             AddHandler d.Click, Sub()
@@ -620,7 +620,7 @@ Public Class BusinessPage
                                       Using br As New SolidBrush(Color.FromArgb(&HF0, &HFD, &HF4)) : g.FillPath(br, p) : End Using
                                       Using pen As New Pen(Color.FromArgb(&HBB, &HF7, &HD0)) : g.DrawPath(pen, p) : End Using
                                   End Using
-                                  TextRenderer.DrawText(g, "Credentials are stored server-side and never shown to customers.", Theme.BodyBold, New Rectangle(14, 0, r.Width - 20, 40), Color.FromArgb(4, &H78, &H57), TextFormatFlags.VerticalCenter)
+                                  Tr.DrawText(g, "Credentials are stored server-side and never shown to customers.", Theme.BodyBold, New Rectangle(14, 0, r.Width - 20, 40), Color.FromArgb(4, &H78, &H57), TextFormatFlags.VerticalCenter)
                               End Sub))
         Dim cards As New Columns(3, 160, 12)
         If prefs.IsOn("pm2-cards", "pm2-k-enabled") Then
@@ -646,13 +646,13 @@ Public Class BusinessPage
             Dim row As New Columns(3, 60, 10) With {.Weights = {8, 2, 2}}
             Dim info As New Drawn(46, Sub(g, r)
                                           Dim x = 0
-                                          TextRenderer.DrawText(g, Js.Str(cur, "label"), Theme.BodyBold, New Point(0, 2), Theme.G900, TextFormatFlags.NoPadding)
-                                          x = TextRenderer.MeasureText(Js.Str(cur, "label"), Theme.BodyBold).Width + 8
+                                          Tr.DrawText(g, Js.Str(cur, "label"), Theme.BodyBold, New Point(0, 2), Theme.G900, TextFormatFlags.NoPadding)
+                                          x = Tr.MeasureText(Js.Str(cur, "label"), Theme.BodyBold).Width + 8
                                           If Js.Bool(cur, "isDefault") Then x = Gfx.Badge(g, "Default", x, 11, Color.FromArgb(&H6D, &H28, &HD9), Color.FromArgb(&HF5, &HF3, &HFF)).Right + 6
                                           If Js.Bool(cur, "isEnabled") AndAlso Not Js.Bool(cur, "configured") Then Gfx.Badge(g, "Needs setup", x, 11, Color.FromArgb(&HB4, &H53, 9), Color.FromArgb(&HFF, &HFB, &HEB))
                                           Dim txt = Js.Str(cur, "text")
                                           If txt = "" Then PayBlurb.TryGetValue(Js.Str(cur, "key"), txt)
-                                          TextRenderer.DrawText(g, If(txt, ""), Theme.Small, New Rectangle(0, 24, r.Width, 20), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                                          Tr.DrawText(g, If(txt, ""), Theme.Small, New Rectangle(0, 24, r.Width, 20), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                                       End Sub)
             Dim sw As New Switch(If(Js.Bool(cur, "isEnabled"), "Active", "Inactive"), Js.Bool(cur, "isEnabled"))
             AddHandler sw.Toggled, Async Sub()
@@ -684,8 +684,8 @@ Public Class BusinessPage
                                            If isDef Then
                                                Using br As New SolidBrush(Theme.Blue) : g.FillEllipse(br, 5, 11, 8, 8) : End Using
                                            End If
-                                           TextRenderer.DrawText(g, Js.Str(cur, "label"), Theme.Body, New Point(26, 7), If(en, Theme.G800, Theme.G400), TextFormatFlags.NoPadding)
-                                           If Not en Then TextRenderer.DrawText(g, "Disabled", Theme.Small, New Rectangle(0, 0, r.Width, 30), Theme.G400, TextFormatFlags.Right Or TextFormatFlags.VerticalCenter)
+                                           Tr.DrawText(g, Js.Str(cur, "label"), Theme.Body, New Point(26, 7), If(en, Theme.G800, Theme.G400), TextFormatFlags.NoPadding)
+                                           If Not en Then Tr.DrawText(g, "Disabled", Theme.Small, New Rectangle(0, 0, r.Width, 30), Theme.G400, TextFormatFlags.Right Or TextFormatFlags.VerticalCenter)
                                        End Sub) With {.Cursor = If(Js.Bool(cur, "isEnabled"), Cursors.Hand, Cursors.Default)}
                 AddHandler d.Click, Async Sub()
                                         If Not Js.Bool(cur, "isEnabled") OrElse Js.Bool(cur, "isDefault") Then Return
@@ -758,7 +758,7 @@ Public Class BusinessPage
                                             Using br As New SolidBrush(If(live, Color.FromArgb(&HEC, &HFD, &HF5), Color.FromArgb(&HFF, &HFB, &HEB))) : g.FillPath(br, p) : End Using
                                             Using pen As New Pen(If(live, Color.FromArgb(&HA7, &HF3, &HD0), Color.FromArgb(&HFD, &HE6, &H8A))) : g.DrawPath(pen, p) : End Using
                                         End Using
-                                        TextRenderer.DrawText(g, If(live, "Mobile OTP login is live on your store.", "Customers log in with email/mobile + password. Set up Firebase to turn on OTP login."), Theme.BodyBold, New Rectangle(14, 0, r.Width - 20, 46), If(live, Color.FromArgb(6, &H5F, &H46), Color.FromArgb(&H92, &H40, &HE)), TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis)
+                                        Tr.DrawText(g, If(live, "Mobile OTP login is live on your store.", "Customers log in with email/mobile + password. Set up Firebase to turn on OTP login."), Theme.BodyBold, New Rectangle(14, 0, r.Width - 20, 46), If(live, Color.FromArgb(6, &H5F, &H46), Color.FromArgb(&H92, &H40, &HE)), TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis)
                                     End Sub)
         AddHandler otp.Toggled, Sub() status.Invalidate()
         For Each w In fb.Values
@@ -806,8 +806,8 @@ Public Class BusinessPage
                 p.Add(Of Control)(New Drawn(26, Sub(g, r)
                                         Theme.Smooth(g)
                                         Using br As New SolidBrush(Theme.Magenta) : g.FillEllipse(br, 0, 2, 22, 22) : End Using
-                                        TextRenderer.DrawText(g, num.ToString(), Theme.BodyBold, New Rectangle(0, 2, 22, 22), Color.White, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
-                                        TextRenderer.DrawText(g, txt, Theme.Body, New Rectangle(32, 0, r.Width - 32, 26), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis)
+                                        Tr.DrawText(g, num.ToString(), Theme.BodyBold, New Rectangle(0, 2, 22, 22), Color.White, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+                                        Tr.DrawText(g, txt, Theme.Body, New Rectangle(32, 0, r.Width - 32, 26), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis)
                                     End Sub))
             Next
             col.Add(p)

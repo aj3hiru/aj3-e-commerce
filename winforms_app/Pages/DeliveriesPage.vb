@@ -198,8 +198,8 @@ Public Class DeliveriesPage
                                                Using p = Theme.RoundRect(New RectangleF(br.X, br.Y, br.Width, br.Height), 6)
                                                    Using b As New SolidBrush(parts(k).Item4) : g.FillPath(b, p) : End Using
                                                End Using
-                                               TextRenderer.DrawText(g, parts(k).Item1, Theme.UiFont(10.5F, FontStyle.Bold), New Rectangle(br.X, br.Y + 6, br.Width, 20), parts(k).Item3, TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
-                                               TextRenderer.DrawText(g, parts(k).Item2, Theme.Small, New Rectangle(br.X, br.Y + 28, br.Width, 16), parts(k).Item3, TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
+                                               Tr.DrawText(g, parts(k).Item1, Theme.UiFont(10.5F, FontStyle.Bold), New Rectangle(br.X, br.Y + 6, br.Width, 20), parts(k).Item3, TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
+                                               Tr.DrawText(g, parts(k).Item2, Theme.Small, New Rectangle(br.X, br.Y + 28, br.Width, 16), parts(k).Item3, TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
                                            Next
                                        End Sub)
             card.Add(boxes)
@@ -208,20 +208,20 @@ Public Class DeliveriesPage
             For Each o In active
                 Dim oo = o
                 Dim line As New Drawn(42, Sub(g, r)
-                                              TextRenderer.DrawText(g, "#" & Js.Str(oo, "number"), Theme.BodyBold, New Point(0, 2), Theme.Blue, TextFormatFlags.NoPadding)
+                                              Tr.DrawText(g, "#" & Js.Str(oo, "number"), Theme.BodyBold, New Point(0, 2), Theme.Blue, TextFormatFlags.NoPadding)
                                               If on_("dv-a-status") Then
                                                   If Js.Str(oo, "status") = "Out for Delivery" Then
-                                                      Dim w = TextRenderer.MeasureText("On the way", Theme.UiFont(8.0F, FontStyle.Bold)).Width + 12
+                                                      Dim w = Tr.MeasureText("On the way", Theme.UiFont(8.0F, FontStyle.Bold)).Width + 12
                                                       Gfx.Badge(g, "On the way", r.Right - w, 11, Color.FromArgb(3, &H69, &HA1), Color.FromArgb(&HE0, &HF2, &HFE))
                                                   Else
-                                                      Dim w = TextRenderer.MeasureText("To pick up", Theme.UiFont(8.0F, FontStyle.Bold)).Width + 12
+                                                      Dim w = Tr.MeasureText("To pick up", Theme.UiFont(8.0F, FontStyle.Bold)).Width + 12
                                                       Gfx.Badge(g, "To pick up", r.Right - w, 11, Fmt.AmberText, Fmt.AmberSoft)
                                                   End If
                                               End If
                                               Dim parts As New List(Of String)
                                               If on_("dv-a-customer") Then parts.Add(Js.Str(oo, "customer") & " · " & Theme.Money(Js.Num(oo, "total")) & If(Js.Str(oo, "paymentStatus") <> "Paid", " (collect)", ""))
                                               If on_("dv-a-time") Then parts.Add("assigned " & Fmt.Ago(If(Js.Time(oo, "assignedAt"), Js.Time(oo, "createdAt"))))
-                                              TextRenderer.DrawText(g, String.Join(" · ", parts), Theme.Small, New Rectangle(0, 22, r.Width, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                                              Tr.DrawText(g, String.Join(" · ", parts), Theme.Small, New Rectangle(0, 22, r.Width, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                                           End Sub) With {.Cursor = Cursors.Hand}
                 AddHandler line.Click, Sub() Open(oo)
                 card.Add(line)

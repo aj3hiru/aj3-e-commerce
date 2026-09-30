@@ -163,19 +163,19 @@ Public Class ReportsPage
                                           End If
                                           Dim y = 0
                                           If on_("rb-head", "rb-h-name") Then
-                                              TextRenderer.DrawText(g, Js.Str(biz, "name"), Theme.UiFont(13.0F, FontStyle.Bold), New Point(x, y), Theme.Primary, TextFormatFlags.NoPadding) : y += 24
-                                              If Js.Str(biz, "tagline") <> "" Then TextRenderer.DrawText(g, Js.Str(biz, "tagline"), Theme.Small, New Point(x, y), Theme.G500, TextFormatFlags.NoPadding) : y += 16
+                                              Tr.DrawText(g, Js.Str(biz, "name"), Theme.UiFont(13.0F, FontStyle.Bold), New Point(x, y), Theme.Primary, TextFormatFlags.NoPadding) : y += 24
+                                              If Js.Str(biz, "tagline") <> "" Then Tr.DrawText(g, Js.Str(biz, "tagline"), Theme.Small, New Point(x, y), Theme.G500, TextFormatFlags.NoPadding) : y += 16
                                           End If
-                                          If on_("rb-head", "rb-h-address") AndAlso Js.Str(biz, "address") <> "" Then TextRenderer.DrawText(g, Js.Str(biz, "address"), Theme.Small, New Rectangle(x, y, rr.Width \ 2, 16), Theme.G700, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis) : y += 16
+                                          If on_("rb-head", "rb-h-address") AndAlso Js.Str(biz, "address") <> "" Then Tr.DrawText(g, Js.Str(biz, "address"), Theme.Small, New Rectangle(x, y, rr.Width \ 2, 16), Theme.G700, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis) : y += 16
                                           Dim phones = String.Join(", ", Js.Arr(biz, "phones").Select(Function(p) Js.Text(p)))
                                           If on_("rb-head", "rb-h-contact") AndAlso (phones <> "" OrElse Js.Str(biz, "email") <> "") Then
-                                              TextRenderer.DrawText(g, String.Join("  ·  ", {If(phones <> "", "Mobile: " & phones, ""), Js.Str(biz, "email")}.Where(Function(t) t <> "")), Theme.Small, New Rectangle(x, y, rr.Width \ 2, 16), Theme.G700, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis) : y += 16
+                                              Tr.DrawText(g, String.Join("  ·  ", {If(phones <> "", "Mobile: " & phones, ""), Js.Str(biz, "email")}.Where(Function(t) t <> "")), Theme.Small, New Rectangle(x, y, rr.Width \ 2, 16), Theme.G700, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis) : y += 16
                                           End If
-                                          If on_("rb-head", "rb-h-gstin") AndAlso Js.Str(biz, "gstin") <> "" Then TextRenderer.DrawText(g, "GSTIN: " & Js.Str(biz, "gstin"), Theme.UiFont(8.5F, FontStyle.Bold), New Point(x, y), Theme.G700, TextFormatFlags.NoPadding)
+                                          If on_("rb-head", "rb-h-gstin") AndAlso Js.Str(biz, "gstin") <> "" Then Tr.DrawText(g, "GSTIN: " & Js.Str(biz, "gstin"), Theme.UiFont(8.5F, FontStyle.Bold), New Point(x, y), Theme.G700, TextFormatFlags.NoPadding)
                                           Dim title = If(Js.Field(r, "selectedUser") IsNot Nothing, "Staff Report · " & Js.Str(Js.Field(r, "selectedUser"), "name"), "Sales Report")
-                                          TextRenderer.DrawText(g, title, Theme.UiFont(13.0F, FontStyle.Bold), New Rectangle(rr.Width \ 2, 0, rr.Width \ 2, 24), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
-                                          TextRenderer.DrawText(g, Js.Str(r, "rangeLabel"), Theme.Body, New Rectangle(rr.Width \ 2, 26, rr.Width \ 2, 20), Theme.G700, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
-                                          If on_("rb-head", "rb-h-generated") Then TextRenderer.DrawText(g, "Generated on " & Fmt.Stamp(Js.Time(r, "generatedAt")), Theme.Small, New Rectangle(rr.Width \ 2, 48, rr.Width \ 2, 18), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                                          Tr.DrawText(g, title, Theme.UiFont(13.0F, FontStyle.Bold), New Rectangle(rr.Width \ 2, 0, rr.Width \ 2, 24), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                                          Tr.DrawText(g, Js.Str(r, "rangeLabel"), Theme.Body, New Rectangle(rr.Width \ 2, 26, rr.Width \ 2, 20), Theme.G700, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                                          If on_("rb-head", "rb-h-generated") Then Tr.DrawText(g, "Generated on " & Fmt.Stamp(Js.Time(r, "generatedAt")), Theme.Small, New Rectangle(rr.Width \ 2, 48, rr.Width \ 2, 18), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
                                           Using p As New Pen(Theme.G300) With {.DashPattern = {4, 4}} : g.DrawLine(p, 0, rr.Height - 4, rr.Width, rr.Height - 4) : End Using
                                       End Sub)
             card.Add(head)
@@ -205,12 +205,12 @@ Public Class ReportsPage
                 Dim chipRow As New HRow(8)
                 For Each c In chips
                     Dim text = c
-                    Dim w = TextRenderer.MeasureText(text, Theme.BodyBold).Width + 24
+                    Dim w = Tr.MeasureText(text, Theme.BodyBold).Width + 24
                     chipRow.Add(New Drawn(32, Sub(g, rr)
                                                   Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, rr.Width - 1, rr.Height - 1), 8)
                                                       Using pen As New Pen(Theme.G200) : g.DrawPath(pen, p) : End Using
                                                   End Using
-                                                  TextRenderer.DrawText(g, text, Theme.Body, rr, Theme.G800, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+                                                  Tr.DrawText(g, text, Theme.Body, rr, Theme.G800, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
                                               End Sub) With {.Width = w})
                 Next
                 card.Add(chipRow)
@@ -342,16 +342,16 @@ Public Class ReportsPage
                                                                                     a += sweep
                                                                                 Next
                                                                             End If
-                                                                            TextRenderer.DrawText(g, Theme.Money(total), Theme.BodyBold, New Rectangle(box.X, box.Y + 58, box.Width, 20), Theme.G900, TextFormatFlags.HorizontalCenter)
-                                                                            TextRenderer.DrawText(g, "Total Sales", Theme.Small, New Rectangle(box.X, box.Y + 78, box.Width, 16), Theme.G500, TextFormatFlags.HorizontalCenter)
+                                                                            Tr.DrawText(g, Theme.Money(total), Theme.BodyBold, New Rectangle(box.X, box.Y + 58, box.Width, 20), Theme.G900, TextFormatFlags.HorizontalCenter)
+                                                                            Tr.DrawText(g, "Total Sales", Theme.Small, New Rectangle(box.X, box.Y + 78, box.Width, 16), Theme.G500, TextFormatFlags.HorizontalCenter)
                                                                             Dim x = 172
-                                                                            If pays.Count = 0 Then TextRenderer.DrawText(g, "No sales.", Theme.Body, New Point(x, 10), Theme.G500)
+                                                                            If pays.Count = 0 Then Tr.DrawText(g, "No sales.", Theme.Body, New Point(x, 10), Theme.G500)
                                                                             For i = 0 To pays.Count - 1
                                                                                 Dim y = 8 + i * 36
                                                                                 Using b As New SolidBrush(palette(i Mod palette.Length)) : g.FillRectangle(b, x, y + 4, 11, 11) : End Using
-                                                                                TextRenderer.DrawText(g, Js.Str(pays(i), "method"), Theme.Body, New Point(x + 18, y), Theme.G800, TextFormatFlags.NoPadding)
-                                                                                TextRenderer.DrawText(g, Theme.Money(Js.Num(pays(i), "amount")), Theme.Body, New Rectangle(x, y, rr.Width - x, 18), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
-                                                                                TextRenderer.DrawText(g, "(" & If(total > 0, (Js.Num(pays(i), "amount") / total * 100).ToString("0.0"), "0") & "%)", Theme.Small, New Rectangle(x, y + 17, rr.Width - x, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                                                                                Tr.DrawText(g, Js.Str(pays(i), "method"), Theme.Body, New Point(x + 18, y), Theme.G800, TextFormatFlags.NoPadding)
+                                                                                Tr.DrawText(g, Theme.Money(Js.Num(pays(i), "amount")), Theme.Body, New Rectangle(x, y, rr.Width - x, 18), Theme.G900, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                                                                                Tr.DrawText(g, "(" & If(total > 0, (Js.Num(pays(i), "amount") / total * 100).ToString("0.0"), "0") & "%)", Theme.Small, New Rectangle(x, y + 17, rr.Width - x, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
                                                                             Next
                                                                         End Sub)
             card.Add(donut)

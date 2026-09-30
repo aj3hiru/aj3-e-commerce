@@ -132,8 +132,8 @@ Public Class CustomerProfilePage
                                        Dim y = 72
                                        Dim name = If(Js.Str(c, "name").Trim() = "", "New customer (no name yet)", Js.Str(c, "name"))
                                        Dim nf = Theme.UiFont(14.0F, FontStyle.Bold)
-                                       TextRenderer.DrawText(g, name, nf, New Point(128, y), Theme.G900, TextFormatFlags.NoPadding)
-                                       Dim x = 128 + TextRenderer.MeasureText(name, nf).Width + 10
+                                       Tr.DrawText(g, name, nf, New Point(128, y), Theme.G900, TextFormatFlags.NoPadding)
+                                       Dim x = 128 + Tr.MeasureText(name, nf).Width + 10
                                        If online Then
                                            x = Gfx.Badge(g, "Online", x, y + 13, Color.White, Theme.Blue).Right + 8
                                        Else
@@ -147,7 +147,7 @@ Public Class CustomerProfilePage
                                            If phone <> "" Then parts.Add("☎ " & phone)
                                            If Js.Str(c, "email") <> "" Then parts.Add("✉ " & Js.Str(c, "email"))
                                            parts.Add("Customer since " & Fmt.Day(Js.Time(c, "since")))
-                                           TextRenderer.DrawText(g, String.Join("     ", parts), Theme.Body, New Rectangle(128, y, r.Width - 128, 20), Theme.G700, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                                           Tr.DrawText(g, String.Join("     ", parts), Theme.Body, New Rectangle(128, y, r.Width - 128, 20), Theme.G700, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                                            y += 24
                                        End If
                                        If on_("cp-h-login") AndAlso online Then
@@ -157,7 +157,7 @@ Public Class CustomerProfilePage
                                            y += 24
                                        End If
                                        If _display.Item("cp-address") AndAlso Js.Str(c, "address").Trim() <> "" Then
-                                           TextRenderer.DrawText(g, "⌖ " & Js.Str(c, "address"), Theme.Body, New Rectangle(128, y, r.Width - 128, 20), Theme.G700, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                                           Tr.DrawText(g, "⌖ " & Js.Str(c, "address"), Theme.Body, New Rectangle(128, y, r.Width - 128, 20), Theme.G700, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                                        End If
                                    End Sub)
         AddHandler info.MouseClick, Sub(s, e)

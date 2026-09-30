@@ -39,6 +39,7 @@ jobs:
         id: smoke
         shell: pwsh
         run: |
+          try { Set-DisplayResolution -Width 1920 -Height 1080 -Force -ErrorAction Stop } catch { Write-Host "screen size unchanged: $_" }
           $ok = $true
           New-Item -ItemType Directory -Force smoke-out | Out-Null
           foreach ($role in @("admin", "agent1", "cashier")) {

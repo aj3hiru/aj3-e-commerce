@@ -50,7 +50,7 @@ Public Class WButton
         Return b
     End Function
     Public Function PreferredWidth() As Integer
-        Dim w = TextRenderer.MeasureText(Text, Font).Width + 28
+        Dim w = Tr.MeasureText(Text, Font).Width + 28
         If Glyph <> "" Then w += 22
         Return w
     End Function
@@ -95,16 +95,16 @@ Public Class WButton
                 fg = Color.White
             End If
         End Using
-        Dim tw = TextRenderer.MeasureText(Text, Font).Width
+        Dim tw = Tr.MeasureText(Text, Font).Width
         Dim total = tw + If(Glyph <> "", 22, 0)
         Dim x = (Width - total) \ 2
         If Glyph <> "" Then
             Using f = Theme.IconFont(10)
-                TextRenderer.DrawText(g, Glyph, f, New Rectangle(x, 0, 18, Height), If(Outline AndAlso GlyphColor <> Color.Empty AndAlso Enabled, GlyphColor, fg), TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
+                Tr.DrawText(g, Glyph, f, New Rectangle(x, 0, 18, Height), If(Outline AndAlso GlyphColor <> Color.Empty AndAlso Enabled, GlyphColor, fg), TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
             End Using
             x += 22
         End If
-        TextRenderer.DrawText(g, Text, Font, New Rectangle(x, 0, tw + 2, Height), fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.Left Or TextFormatFlags.NoPadding)
+        Tr.DrawText(g, Text, Font, New Rectangle(x, 0, tw + 2, Height), fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.Left Or TextFormatFlags.NoPadding)
     End Sub
 End Class
 
@@ -156,7 +156,7 @@ Public Class WInput
         End Using
         If Glyph <> "" Then
             Using f = Theme.IconFont(10)
-                TextRenderer.DrawText(g, Glyph, f, New Rectangle(8, 0, 22, If(Box.Multiline, 38, Height)), Theme.G400, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
+                Tr.DrawText(g, Glyph, f, New Rectangle(8, 0, 22, If(Box.Multiline, 38, Height)), Theme.G400, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter)
             End Using
         End If
     End Sub
@@ -211,8 +211,8 @@ Public Class StatCard
         Using f = Theme.IconFont(13)
             Theme.DrawCentered(g, Glyph, f, Color.White, New Rectangle(16, 22, 40, 40))
         End Using
-        TextRenderer.DrawText(g, Caption, Theme.UiFont(9.0F), New Rectangle(68, 16, Width - 76, 18), Theme.G600, TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
-        TextRenderer.DrawText(g, Value, Theme.UiFont(15.0F, FontStyle.Bold), New Point(66, 36), Theme.G900, TextFormatFlags.NoPadding)
+        Tr.DrawText(g, Caption, Theme.UiFont(9.0F), New Rectangle(68, 16, Width - 76, 18), Theme.G600, TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
+        Tr.DrawText(g, Value, Theme.UiFont(15.0F, FontStyle.Bold), New Point(66, 36), Theme.G900, TextFormatFlags.NoPadding)
         If ShowTrend Then
             Dim txt = If(Trend.HasValue, If(Trend.Value >= 0, ChrW(&H2191) & " ", ChrW(&H2193) & " ") & Math.Abs(Math.Round(Trend.Value)).ToString() & "%", ChrW(&H2191) & " New")
             If Trend.HasValue AndAlso Trend.Value = 0 Then txt = "0%"
@@ -220,12 +220,12 @@ Public Class StatCard
             Dim c = If(up, Color.FromArgb(&H15, &H80, &H3D), Theme.Danger)
             Dim bg = If(up, Color.FromArgb(&HDC, &HFC, &HE7), Color.FromArgb(&HFE, &HE2, &HE2))
             Dim f = Theme.UiFont(8.0F, FontStyle.Bold)
-            Dim w = TextRenderer.MeasureText(txt, f).Width + 10
+            Dim w = Tr.MeasureText(txt, f).Width + 10
             Using p = Theme.RoundRect(New RectangleF(68, 70, w, 18), 4)
                 Using b As New SolidBrush(bg) : g.FillPath(b, p) : End Using
             End Using
-            TextRenderer.DrawText(g, txt, f, New Rectangle(68, 70, w, 18), c, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
-            TextRenderer.DrawText(g, "vs. previous period", Theme.UiFont(8.0F), New Point(68 + w + 6, 72), Theme.G500, TextFormatFlags.NoPadding)
+            Tr.DrawText(g, txt, f, New Rectangle(68, 70, w, 18), c, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+            Tr.DrawText(g, "vs. previous period", Theme.UiFont(8.0F), New Point(68 + w + 6, 72), Theme.G500, TextFormatFlags.NoPadding)
         End If
     End Sub
 End Class
@@ -255,15 +255,15 @@ Public Class Tile
                 Using b As New SolidBrush(Theme.Tint(Accent, 28)) : g.FillPath(b, p) : End Using
             End Using
             Using f = Theme.IconFont(15) : Theme.DrawCentered(g, Glyph, f, Accent, New Rectangle(16, 16, 46, 46)) : End Using
-            TextRenderer.DrawText(g, Caption, Theme.UiFont(9.0F), New Point(16, 72), Theme.G600, TextFormatFlags.NoPadding)
-            TextRenderer.DrawText(g, Value, Theme.UiFont(15.0F, FontStyle.Bold), New Point(15, 92), Accent, TextFormatFlags.NoPadding)
+            Tr.DrawText(g, Caption, Theme.UiFont(9.0F), New Point(16, 72), Theme.G600, TextFormatFlags.NoPadding)
+            Tr.DrawText(g, Value, Theme.UiFont(15.0F, FontStyle.Bold), New Point(15, 92), Accent, TextFormatFlags.NoPadding)
         Else
             Using p = Theme.RoundRect(New RectangleF(16, 16, 30, 30), 6)
                 Using b As New SolidBrush(Theme.Tint(Accent, 28)) : g.FillPath(b, p) : End Using
             End Using
             Using f = Theme.IconFont(10) : Theme.DrawCentered(g, Glyph, f, Accent, New Rectangle(16, 16, 30, 30)) : End Using
-            TextRenderer.DrawText(g, Caption, Theme.UiFont(9.0F), New Rectangle(56, 16, Width - 60, 30), Theme.G600, TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
-            TextRenderer.DrawText(g, Value, Theme.UiFont(14.0F, FontStyle.Bold), New Point(15, 56), Theme.G900, TextFormatFlags.NoPadding)
+            Tr.DrawText(g, Caption, Theme.UiFont(9.0F), New Rectangle(56, 16, Width - 60, 30), Theme.G600, TextFormatFlags.VerticalCenter Or TextFormatFlags.EndEllipsis Or TextFormatFlags.NoPadding)
+            Tr.DrawText(g, Value, Theme.UiFont(14.0F, FontStyle.Bold), New Point(15, 56), Theme.G900, TextFormatFlags.NoPadding)
         End If
     End Sub
 End Class
@@ -285,10 +285,10 @@ Public Class CardHeading
         g.Clear(Color.White)
         Dim x = 0
         If Glyph <> "" Then
-            Using f = Theme.IconFont(11) : TextRenderer.DrawText(g, Glyph, f, New Rectangle(0, 0, 22, Height), Accent, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter) : End Using
+            Using f = Theme.IconFont(11) : Tr.DrawText(g, Glyph, f, New Rectangle(0, 0, 22, Height), Accent, TextFormatFlags.VerticalCenter Or TextFormatFlags.HorizontalCenter) : End Using
             x = 28
         End If
-        TextRenderer.DrawText(g, Text, Theme.CardTitle, New Rectangle(x, 0, Width - x, Height), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+        Tr.DrawText(g, Text, Theme.CardTitle, New Rectangle(x, 0, Width - x, Height), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
     End Sub
 End Class
 
@@ -351,7 +351,7 @@ Public Class LineChart
             For k = 0 To 4
                 Dim y = plot.Bottom - plot.Height * k / 4
                 g.DrawLine(pen, plot.Left, y, plot.Right, y)
-                TextRenderer.DrawText(g, If(Formatter Is Nothing, ShortMoney(top * k / 4), Formatter(top * k / 4)), Theme.Small, New Rectangle(0, CInt(y) - 8, 52, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
+                Tr.DrawText(g, If(Formatter Is Nothing, ShortMoney(top * k / 4), Formatter(top * k / 4)), Theme.Small, New Rectangle(0, CInt(y) - 8, 52, 16), Theme.G500, TextFormatFlags.Right Or TextFormatFlags.NoPadding)
             Next
         End Using
         If Values.Count = 0 Then Return
@@ -376,17 +376,17 @@ Public Class LineChart
         Dim slots = Math.Max(Values.Count, Values2.Count)
         For i = 0 To Math.Min(Labels.Count, slots) - 1
             Dim lx = XAt(plot, i, slots)
-            TextRenderer.DrawText(g, Labels(i), Theme.Small, New Rectangle(CInt(lx) - 45, CInt(plot.Bottom) + 8, 90, 16), Theme.G500, TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
+            Tr.DrawText(g, Labels(i), Theme.Small, New Rectangle(CInt(lx) - 45, CInt(plot.Bottom) + 8, 90, 16), Theme.G500, TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
         Next
         If _hover >= 0 AndAlso _hover < p.Length Then
             Using b As New SolidBrush(LineColor) : g.FillEllipse(b, p(_hover).X - 4, p(_hover).Y - 4, 8, 8) : End Using
             Dim t = If(TipAt IsNot Nothing, TipAt(_hover), If(TipFormatter IsNot Nothing, TipFormatter(Values(_hover)), If(Formatter IsNot Nothing, Formatter(Values(_hover)), Theme.Money(Values(_hover)))))
-            Dim w = TextRenderer.MeasureText(t, Theme.BodyBold).Width + 16
+            Dim w = Tr.MeasureText(t, Theme.BodyBold).Width + 16
             Dim bx = Math.Min(Math.Max(0, p(_hover).X - w / 2), Width - w)
             Using path = Theme.RoundRect(New RectangleF(CSng(bx), p(_hover).Y - 36, w, 26), 5)
                 Using b As New SolidBrush(Theme.G900) : g.FillPath(b, path) : End Using
             End Using
-            TextRenderer.DrawText(g, t, Theme.BodyBold, New Rectangle(CInt(bx), CInt(p(_hover).Y) - 36, w, 26), Color.White, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+            Tr.DrawText(g, t, Theme.BodyBold, New Rectangle(CInt(bx), CInt(p(_hover).Y) - 36, w, 26), Color.White, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
         End If
     End Sub
     Public Shared Function ShortMoney(v As Double) As String
@@ -520,7 +520,7 @@ Public Class DisplayButton
         Width = PreferredWidth()
     End Sub
     Public Function PreferredWidth() As Integer
-        Return 12 + 14 + 8 + TextRenderer.MeasureText(Text, Font).Width + 8 + 12 + 12
+        Return 12 + 14 + 8 + Tr.MeasureText(Text, Font).Width + 8 + 12 + 12
     End Function
     Protected Overrides Sub OnMouseEnter(e As EventArgs)
         _hover = True : Invalidate() : MyBase.OnMouseEnter(e)
@@ -536,8 +536,8 @@ Public Class DisplayButton
             Using pen As New Pen(Theme.G200) : g.DrawPath(pen, p) : End Using
         End Using
         Icons.Draw(g, "sliders-horizontal", New RectangleF(12, (Height - 14) / 2.0F, 14, 14), Theme.G700)
-        Dim tw = TextRenderer.MeasureText(Text, Font).Width
-        TextRenderer.DrawText(g, Text, Font, New Rectangle(12 + 14 + 8, 0, tw + 2, Height), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+        Dim tw = Tr.MeasureText(Text, Font).Width
+        Tr.DrawText(g, Text, Font, New Rectangle(12 + 14 + 8, 0, tw + 2, Height), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
         Icons.Draw(g, If(Open, "chevron-up", "chevron-down"), New RectangleF(12 + 14 + 8 + tw + 8, (Height - 12) / 2.0F, 12, 12), Theme.G700)
     End Sub
 End Class
@@ -609,7 +609,7 @@ Public Class DisplayPanel
         Next
         For Each s In _opt.Singles : add("single", s.Key, s.Label, RowH) : Next
         For Each r In _rows
-            Dim tw = TextRenderer.MeasureText(r.Label, Font).Width
+            Dim tw = Tr.MeasureText(r.Label, Font).Width
             w = Math.Max(w, tw + 15 + 10 + 10 + 30 + Pad * 2 + If(r.Kind = "item", 40, 0))
         Next
         Dim maxH = CInt(Screen.PrimaryScreen.WorkingArea.Height * 0.7)
@@ -643,7 +643,7 @@ Public Class DisplayPanel
         For k = 0 To _rows.Count - 1
             Dim r = _rows(k)
             If r.Kind = "head" Then
-                TextRenderer.DrawText(g, r.Label, Theme.UiFont(8.0F, FontStyle.Bold), New Rectangle(Pad + 10, r.Y, Width, r.H - 4), Theme.G400, TextFormatFlags.Bottom Or TextFormatFlags.NoPadding)
+                Tr.DrawText(g, r.Label, Theme.UiFont(8.0F, FontStyle.Bold), New Rectangle(Pad + 10, r.Y, Width, r.H - 4), Theme.G400, TextFormatFlags.Bottom Or TextFormatFlags.NoPadding)
                 Continue For
             End If
             Dim inset = If(r.Kind = "item", 4, 0)
@@ -653,11 +653,11 @@ Public Class DisplayPanel
                     Using b As New SolidBrush(If(r.Kind = "item", Theme.G100, Theme.G50)) : g.FillPath(b, p) : End Using
                 End Using
             End If
-            Dim tw = TextRenderer.MeasureText(r.Label, Font).Width
+            Dim tw = Tr.MeasureText(r.Label, Font).Width
             Dim x = rr.X + 10
             If r.Kind = "item" Then x = rr.X + Math.Max(24, (rr.Width - (15 + 10 + tw)) \ 2)
             Gfx.Check(g, New Rectangle(x, rr.Y + (rr.Height - 15) \ 2, 15, 15), IsOnKey(r.Key))
-            TextRenderer.DrawText(g, r.Label, Font, New Rectangle(x + 25, rr.Y, rr.Right - x - 25 - If(r.Kind = "group", 28, 4), rr.Height), Theme.G800, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Tr.DrawText(g, r.Label, Font, New Rectangle(x + 25, rr.Y, rr.Right - x - 25 - If(r.Kind = "group", 28, 4), rr.Height), Theme.G800, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
             If r.Kind = "group" Then
                 r.Chevron = New Rectangle(rr.Right - 28, rr.Y + (rr.Height - 20) \ 2, 20, 20)
                 Icons.Draw(g, If(_opt.Expanded.Contains(r.Key), "chevron-up", "chevron-down"), New RectangleF(r.Chevron.X + 4, r.Chevron.Y + 4, 12, 12), Theme.G400)

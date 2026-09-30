@@ -34,9 +34,60 @@ Public Module Theme
     Public ReadOnly Danger As Color = Color.FromArgb(&HDC, &H26, &H26)
     Public ReadOnly Page As Color = Color.FromArgb(&HF9, &HFA, &HFB)
 
-    ' Segoe UI = the Windows system font (crisp at every size, native look).
+    ' Inter — the website's font (fonts\Inter-*.ttf, SIL Open Font License, built into the .exe). Loaded for
+    ' both GDI+ (Font objects) and GDI (TextRenderer); falls back to Segoe UI if that ever fails.
+    Private _fonts As PrivateFontCollection
+    Private ReadOnly _fontMem As New List(Of IntPtr)
+    Private _fontsTried As Boolean
+
+    <Runtime.InteropServices.DllImport("gdi32.dll")>
+    Private Function AddFontMemResourceEx(pbFont As IntPtr, cbFont As UInteger, pdv As IntPtr, ByRef pcFonts As UInteger) As IntPtr
+    End Function
+
+    Private Sub LoadFonts()
+        If _fontsTried Then Return
+        _fontsTried = True
+        Try
+            Dim asm = Reflection.Assembly.GetExecutingAssembly()
+            Dim pfc As New PrivateFontCollection()
+            For Each name In asm.GetManifestResourceNames().Where(Function(n) n.EndsWith(".ttf", StringComparison.OrdinalIgnoreCase))
+                Using st = asm.GetManifestResourceStream(name), ms As New IO.MemoryStream()
+                    st.CopyTo(ms)
+                    Dim data = ms.ToArray()
+                    Dim ptr = Runtime.InteropServices.Marshal.AllocCoTaskMem(data.Length)
+                    Runtime.InteropServices.Marshal.Copy(data, 0, ptr, data.Length)
+                    pfc.AddMemoryFont(ptr, data.Length)
+                    Dim n As UInteger = 0
+                    AddFontMemResourceEx(ptr, CUInt(data.Length), IntPtr.Zero, n)
+                    _fontMem.Add(ptr)
+                End Using
+            Next
+            If pfc.Families.Length > 0 Then _fonts = pfc
+        Catch
+            _fonts = Nothing
+        End Try
+    End Sub
+
+    Private Function Family(weight As Integer) As FontFamily
+        LoadFonts()
+        If _fonts Is Nothing Then Return Nothing
+        Dim want = If(weight >= 800, "Inter ExtraBold", If(weight >= 700, "Inter", If(weight >= 600, "Inter SemiBold", If(weight >= 500, "Inter Medium", "Inter"))))
+        Return _fonts.Families.FirstOrDefault(Function(f) f.Name = want)
+    End Function
+
+    ''' <summary>Inter at <paramref name="size"/> points (Bold = weight 700).</summary>
     Public Function UiFont(size As Single, Optional style As FontStyle = FontStyle.Regular) As Font
-        Return New Font("Segoe UI", size, style, GraphicsUnit.Point)
+        Return Px(size / 0.75F, If(style.HasFlag(FontStyle.Bold), 700, 400), style And Not FontStyle.Bold)
+    End Function
+
+    ''' <summary>Inter the way the website writes it: <paramref name="px"/> CSS pixels and a CSS font-weight
+    ''' (400 regular, 500 medium, 600 semibold, 700 bold, 800 extrabold).</summary>
+    Public Function Px(size As Single, Optional weight As Integer = 400, Optional extra As FontStyle = FontStyle.Regular) As Font
+        Dim fam = Family(weight)
+        Dim style = extra Or If(weight >= 700 AndAlso weight < 800, FontStyle.Bold, FontStyle.Regular)
+        If fam Is Nothing Then Return New Font("Segoe UI", size * 0.75F, If(weight >= 600, FontStyle.Bold, FontStyle.Regular) Or extra, GraphicsUnit.Point)
+        If Not fam.IsStyleAvailable(style) Then style = If(fam.IsStyleAvailable(FontStyle.Regular), FontStyle.Regular, FontStyle.Bold)
+        Return New Font(fam, size * 0.75F, style, GraphicsUnit.Point)
     End Function
 
     Public ReadOnly Body As Font = UiFont(9.75F)
@@ -143,7 +194,7 @@ Public Module Theme
     End Function
 
     Public Sub DrawCentered(g As Graphics, text As String, f As Font, c As Color, r As Rectangle)
-        TextRenderer.DrawText(g, text, f, r, c, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+        Tr.DrawText(g, text, f, r, c, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
     End Sub
     Private _appIcon As Icon
     ''' <summary>The software's icon (from the .exe) for every window's title bar and the taskbar.</summary>

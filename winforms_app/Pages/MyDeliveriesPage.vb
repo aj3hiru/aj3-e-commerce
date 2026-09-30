@@ -67,22 +67,22 @@ Public Class MyDeliveriesPage
         Dim items = Js.Arr(o, "items").Count
         Dim paid = Js.Str(o, "paymentStatus") = "Paid"
         Dim top As New Drawn(64, Sub(g, r)
-                                     TextRenderer.DrawText(g, Js.Str(o, "number"), Theme.UiFont(11.0F, FontStyle.Bold), New Point(0, 0), Theme.G900, TextFormatFlags.NoPadding)
+                                     Tr.DrawText(g, Js.Str(o, "number"), Theme.UiFont(11.0F, FontStyle.Bold), New Point(0, 0), Theme.G900, TextFormatFlags.NoPadding)
                                      Dim st = Js.Str(o, "status")
                                      Dim w = Gfx.PillWidth(st)
                                      Gfx.Pill(g, st, r.Width - w, 10, Fmt.StatusColor(st))
-                                     TextRenderer.DrawText(g, Js.Str(o, "customer"), Theme.BodyBold, New Point(0, 26), Theme.G800, TextFormatFlags.NoPadding)
-                                     TextRenderer.DrawText(g, Js.Str(o, "address"), Theme.Small, New Rectangle(0, 45, r.Width, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                                     Tr.DrawText(g, Js.Str(o, "customer"), Theme.BodyBold, New Point(0, 26), Theme.G800, TextFormatFlags.NoPadding)
+                                     Tr.DrawText(g, Js.Str(o, "address"), Theme.Small, New Rectangle(0, 45, r.Width, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                                  End Sub)
         card.Add(top)
         Dim bottom As New Columns(2, 60, 10) With {.Weights = {3, 2}}
         bottom.Add(New Drawn(34, Sub(g, r)
                                      Dim txt = items & " item" & If(items = 1, "", "s") & " · "
-                                     TextRenderer.DrawText(g, txt, Theme.Body, New Point(0, 8), Theme.G500, TextFormatFlags.NoPadding)
-                                     Dim x = TextRenderer.MeasureText(txt, Theme.Body).Width
+                                     Tr.DrawText(g, txt, Theme.Body, New Point(0, 8), Theme.G500, TextFormatFlags.NoPadding)
+                                     Dim x = Tr.MeasureText(txt, Theme.Body).Width
                                      Dim money = Theme.Money(Js.Num(o, "total"))
-                                     TextRenderer.DrawText(g, money, Theme.BodyBold, New Point(x, 8), Theme.G900, TextFormatFlags.NoPadding)
-                                     x += TextRenderer.MeasureText(money, Theme.BodyBold).Width + 10
+                                     Tr.DrawText(g, money, Theme.BodyBold, New Point(x, 8), Theme.G900, TextFormatFlags.NoPadding)
+                                     x += Tr.MeasureText(money, Theme.BodyBold).Width + 10
                                      Gfx.Badge(g, If(paid, "Paid", "Collect " & OrderActions.MethodLabel(Js.Str(o, "paymentMethod"))), x, 17, If(paid, Color.FromArgb(4, &H78, &H57), Fmt.AmberText), If(paid, Color.FromArgb(&HEC, &HFD, &HF5), Color.FromArgb(&HFF, &HFB, &HEB)))
                                  End Sub))
         Dim tools As New HRow(6) With {.RightAlign = True}

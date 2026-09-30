@@ -17,6 +17,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="fonts\*.ttf" />
     <None Remove="smoke\**" />
     <None Remove="smoke-out\**" />
   </ItemGroup>

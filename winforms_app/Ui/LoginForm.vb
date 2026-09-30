@@ -14,6 +14,7 @@ Public Class LoginForm
 
     Public Sub New()
         Icon = Theme.AppIcon
+        Tr.KeepAmpersands(Me)
         Text = "Sri Andal Staff — Log in"
         StartPosition = FormStartPosition.CenterScreen
         ClientSize = New Size(520, 560)

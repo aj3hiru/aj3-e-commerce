@@ -1552,6 +1552,7 @@ Public Class RangeBar
     Private _rects As New List(Of (Key As String, R As Rectangle))
     Private _hover As String = ""
     Public ShowDates As Boolean = True
+    Private _lastWant As Integer = -1
 
     Public Sub New(Optional keys As String = "today,yesterday,7d,30d,this_month,prev_month,custom", Optional current As String = "this_month")
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw Or ControlStyles.SupportsTransparentBackColor, True)
@@ -1666,7 +1667,16 @@ Public Class RangeBar
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Dim g = e.Graphics
         Theme.Smooth(g)
-        If Width <> PreferredW() Then Width = PreferredW() : Parent?.PerformLayout()
+        ' Resize only when the wanted width itself changes (e.g. a new range label) — never just because the parent
+        ' gave a different width, or paint and layout would keep undoing each other (the Due page hung on this).
+        Dim want = PreferredW()
+        If want <> _lastWant Then
+            _lastWant = want
+            If Width <> want Then BeginInvoke(Sub()
+                                                  Width = want
+                                                  Parent?.PerformLayout()
+                                              End Sub)
+        End If
         _rects = New List(Of (String, Rectangle))
         Dim x = 0
         If ShowDates Then

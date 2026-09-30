@@ -274,7 +274,7 @@ Public Class MainForm
         Dim w = 0
         For Each c As Control In _actions.Controls : w += c.Width + 12 : Next
         Dim right = _header.Width - 7 - UserPillWidth() - 12 - 40 - 12
-        _actions.SetBounds(right - w, 0, w, _header.Height)
+        _actions.SetBounds(right - w, 0, w, _header.Height - 1) ' leave the bottom border line visible
     End Sub
 
     Private Sub PaintHeader(sender As Object, e As PaintEventArgs)
@@ -584,7 +584,7 @@ Public Class SetupForm
         MaximizeBox = False
         StartPosition = FormStartPosition.CenterScreen
         ClientSize = New Size(520, 300)
-        BackColor = Color.FromArgb(&HF3, &HF3, &HF3)
+        BackColor = Theme.Page
         DoubleBuffered = True
         Font = Theme.Body
         _skip.Location = New Point(ClientSize.Width - 50 - _skip.Width, 222)
@@ -612,8 +612,14 @@ Public Class SetupForm
                                                        Invalidate()
                                                    End Sub, _full)
         If IsDisposed Then Return
-        ' an update that can't reach the internet just opens with what is saved
+        ' an update that can't reach the internet opens with what is saved — after the pages are prepared
         If ok OrElse Not _full Then
+            If Not ok Then _step = "Offline — opening with saved data…" : Invalidate()
+            Await AppState.I.WarmUpAsync(Sub(p, s)
+                                             _pct = p : _step = s
+                                             Invalidate()
+                                         End Sub)
+            If IsDisposed Then Return
             DialogResult = DialogResult.OK
             Return
         End If

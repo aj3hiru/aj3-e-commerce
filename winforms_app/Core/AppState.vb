@@ -856,11 +856,29 @@ Public Class AppState
         If Not Online Then Return False
         Store.Write("setup_box", New JsonObject From {{"key", SetupKey}})
         _lastPages = DateTime.Now
-        progress(1, "Ready")
+        progress(0.9, "Almost ready…")
         SetupNeeded = False
         _pagesChangedFlag = False
         RaiseEvent DataChanged()
         Return True
+    End Function
+
+    ''' <summary>Before the window opens: the whole sales history joined and every date read once, so no page
+    ''' has to do it later (pages open instantly). Runs off the window's thread; the loop isn't started yet.</summary>
+    Public Async Function WarmUpAsync(progress As Action(Of Double, String)) As Task
+        progress(0.92, "Preparing pages…")
+        Dim orders = AllOrders()
+        Dim dues = List("dues").Concat(PageList("dues_paid")).ToList()
+        Dim customers = List("customers")
+        Await Task.Run(Sub()
+                           For Each o In orders : Fmt.IstDay(Js.Time(o, "createdAt")) : Next
+                           For Each d In dues
+                               Fmt.IstDay(Js.Time(d, "createdAt")) : Fmt.IstDay(Js.Time(d, "promised"))
+                               For Each p In Js.Objs(Js.Arr(d, "payments")) : Fmt.IstDay(Js.Time(p, "at")) : Next
+                           Next
+                           For Each c In customers : Js.Time(c, "since") : Js.Time(c, "lastOrderAt") : Next
+                       End Sub)
+        progress(1, "Ready")
     End Function
 
     ' ───────────── changes that show at once (before the server confirms) ─────────────

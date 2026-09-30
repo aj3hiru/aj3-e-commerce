@@ -167,7 +167,7 @@ Public Class DuesPage
                 .Colour = Function(d) If(State(d) = "Paid", Theme.Green, If(State(d) = "Overdue", Color.FromArgb(&HDC, &H26, &H26), If(State(d) = "Partly", Fmt.Yellow, Theme.Grey)))})
         End If
         If on_("due2-c-actions") Then
-            t.Cols.Add(New TCol("Actions", Nothing, 110, CellKind.Actions) With {.ButtonsFor = Function(d) If(CanCollect() AndAlso Open(d), {"collect", "history"}, {"history"})}.Btn("collect", ChrW(&HE8C7), "Collect", Theme.Green).Btn("history", ChrW(&HE9F9), "Payment history", Theme.G700))
+            t.Cols.Add(New TCol("Actions", Nothing, 170, CellKind.Actions) With {.ButtonsFor = Function(d) If(CanCollect() AndAlso Open(d), {"collect", "history"}, {"history"})}.Btn("collect", "hand-coins", "Collect", Web.PillSuccess, Function(d) "Collect").Btn("history", "receipt", "Payment history", Web.PillSecondary, Function(d) Js.Arr(d, "payments").Count.ToString()))
         End If
         t.RowHeight = 66
         If t.SortCol Is Nothing OrElse Not t.Cols.Contains(t.SortCol) Then t.SortCol = t.Cols.FirstOrDefault(Function(c) c.Key = "promise") : t.SortAsc = True

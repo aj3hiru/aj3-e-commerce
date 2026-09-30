@@ -811,6 +811,8 @@ Public Class TCol
     Public Sort As Func(Of JsonObject, IComparable)
     ''' <summary>Row buttons for Actions: key, glyph, tip, colour.</summary>
     Public Buttons As New List(Of (Key As String, Glyph As String, Tip As String, Colour As Color))
+    ''' <summary>Text shown on a button (a pill like "Collect"), by key; a function of the row for counts.</summary>
+    Public ButtonText As New Dictionary(Of String, Func(Of JsonObject, String))
     ''' <summary>Which Actions buttons a row gets (Nothing = all).</summary>
     Public ButtonsFor As Func(Of JsonObject, IEnumerable(Of String))
     ''' <summary>Drawn by the page itself.</summary>
@@ -823,6 +825,18 @@ Public Class TCol
     Public Function Text(r As JsonObject) As String
         Return If(Value Is Nothing, "", If(Value(r), ""))
     End Function
+    ''' <summary>The website's IconAction colours: grey (view / print), blue (edit), red (delete), green (add), amber (warn).</summary>
+    Public Shared Function WebTone(c As Color) As Color
+        If c = Color.Empty Then Return Web.PillSecondary
+        Dim hue = c.GetHue(), sat = c.GetSaturation()
+        If sat < 0.2 Then Return Web.PillSecondary
+        If hue >= 345 OrElse hue < 15 Then Return Web.PillDanger
+        If hue >= 90 AndAlso hue < 170 Then Return Web.PillSuccess
+        If hue >= 30 AndAlso hue < 60 Then Return Web.PillWarning
+        If hue >= 190 AndAlso hue < 250 Then Return Web.PillPrimary
+        Return c
+    End Function
+
     Public Function WithSort(Optional f As Func(Of JsonObject, IComparable) = Nothing) As TCol
         If f IsNot Nothing Then
             Sort = f
@@ -831,8 +845,9 @@ Public Class TCol
         End If
         Return Me
     End Function
-    Public Function Btn(key As String, glyph As String, tip As String, Optional colour As Color = Nothing) As TCol
-        Buttons.Add((key, glyph, tip, If(colour = Color.Empty, Theme.G600, colour)))
+    Public Function Btn(key As String, glyph As String, tip As String, Optional colour As Color = Nothing, Optional text As Func(Of JsonObject, String) = Nothing) As TCol
+        Buttons.Add((key, glyph, tip, WebTone(colour)))
+        If text IsNot Nothing Then ButtonText(key) = text
         Return Me
     End Function
 End Class
@@ -910,15 +925,25 @@ Public Class WebTable
         Return res
     End Function
 
+    Private Shared ReadOnly BtnFont As Font = Theme.Px(13, 600)
+    Private Shared Function BtnWidth(c As TCol, key As String, r As JsonObject) As Integer
+        Dim f As Func(Of JsonObject, String) = Nothing
+        If Not c.ButtonText.TryGetValue(key, f) Then Return 34
+        Return 10 + 14 + 6 + Tr.MeasureText(f(r), BtnFont).Width + 10
+    End Function
+
     Private Function BtnRects(c As TCol, r As JsonObject, cell As Rectangle) As List(Of (Key As String, Rect As Rectangle, Glyph As String, Tip As String, Colour As Color))
         Dim keys = If(c.ButtonsFor Is Nothing, c.Buttons.Select(Function(b) b.Key), c.ButtonsFor(r)).ToHashSet()
         Dim res As New List(Of (String, Rectangle, String, String, Color))
         Dim shown = c.Buttons.Where(Function(b) keys.Contains(b.Key)).ToList()
-        Dim total = shown.Count * 30 + Math.Max(0, shown.Count - 1) * 4
+        ' the website's IconAction: 34px coloured squares (or a pill with its text), 6px apart
+        Dim widths = shown.Select(Function(b) BtnWidth(c, b.Key, r)).ToList()
+        Dim total = widths.Sum() + Math.Max(0, shown.Count - 1) * 6
         Dim x = If(c.Right, cell.Right - 10 - total, If(c.Center, cell.X + (cell.Width - total) \ 2, cell.X + 10))
-        For Each b In shown
-            res.Add((b.Key, New Rectangle(x, cell.Y + (cell.Height - 30) \ 2, 30, 30), b.Glyph, b.Tip, b.Colour))
-            x += 34
+        For k = 0 To shown.Count - 1
+            Dim b = shown(k)
+            res.Add((b.Key, New Rectangle(x, cell.Y + (cell.Height - 34) \ 2, widths(k), 34), b.Glyph, b.Tip, b.Colour))
+            x += widths(k) + 6
         Next
         Return res
     End Function
@@ -1074,12 +1099,19 @@ Public Class WebTable
             Case CellKind.Actions
                 For Each b In BtnRects(c, r, cell)
                     Dim hot = _hoverBtn.Row = rowIndex AndAlso _hoverBtn.Key = b.Key
-                    If hot Then
-                        Using p = Theme.RoundRect(New RectangleF(b.Rect.X, b.Rect.Y, b.Rect.Width, b.Rect.Height), 6)
-                            Using br As New SolidBrush(Theme.Tint(b.Colour, 30)) : g.FillPath(br, p) : End Using
-                        End Using
+                    Using p = Theme.RoundRect(New RectangleF(b.Rect.X, b.Rect.Y, b.Rect.Width, b.Rect.Height), Theme.Radius)
+                        Using br As New SolidBrush(If(hot, Color.FromArgb(217, b.Colour), b.Colour)) : g.FillPath(br, p) : End Using
+                    End Using
+                    Dim fg = If(b.Colour = Web.PillWarning, Theme.G800, Color.White)
+                    Dim label As Func(Of JsonObject, String) = Nothing
+                    Dim hasText = c.ButtonText.TryGetValue(b.Key, label)
+                    Dim ir = If(hasText, New RectangleF(b.Rect.X + 10, b.Rect.Y + 10, 14, 14), New RectangleF(b.Rect.X + 10, b.Rect.Y + 10, 14, 14))
+                    If Icons.Has(b.Glyph) Then
+                        Icons.Draw(g, b.Glyph, ir, fg)
+                    Else
+                        Using f = Theme.IconFont(9.5F) : Theme.DrawCentered(g, b.Glyph, f, fg, Rectangle.Round(ir)) : End Using
                     End If
-                    Using f = Theme.IconFont(10.5F) : Theme.DrawCentered(g, b.Glyph, f, b.Colour, b.Rect) : End Using
+                    If hasText Then Tr.DrawText(g, label(r), BtnFont, New Rectangle(b.Rect.X + 30, b.Rect.Y, b.Rect.Width - 34, b.Rect.Height), fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
                 Next
             Case Else
                 Dim font = If(c.Kind = CellKind.Bold OrElse c.Kind = CellKind.Link OrElse c.Kind = CellKind.Money, Theme.BodyBold, Theme.Body)

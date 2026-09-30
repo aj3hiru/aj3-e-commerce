@@ -46,7 +46,7 @@ Public Module Hints
                        lbl.BackColor = tb.BackColor
                        lbl.TextAlign = If(tb.TextAlign = HorizontalAlignment.Center, ContentAlignment.MiddleCenter, ContentAlignment.MiddleLeft)
                        lbl.Bounds = New Rectangle(tb.Left + 1, tb.Top, tb.Width - 1, tb.Height)
-                       lbl.Visible = text <> "" AndAlso tb.Visible AndAlso tb.Text = "" AndAlso Not tb.Focused
+                       lbl.Visible = text <> "" AndAlso tb.Visible AndAlso tb.Text = ""
                        If lbl.Visible Then lbl.BringToFront()
                    End Sub
         AddHandler lbl.Click, Sub() tb.Focus()

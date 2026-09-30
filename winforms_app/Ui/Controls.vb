@@ -141,7 +141,7 @@ Public Class WInput
         _hint.Text = _hintText
         _hint.Font = Box.Font
         _hint.TextAlign = If(Box.Multiline, ContentAlignment.TopLeft, ContentAlignment.MiddleLeft)
-        _hint.Visible = Box.Text = "" AndAlso Not Box.Focused AndAlso _hintText <> "" AndAlso Box.Enabled
+        _hint.Visible = Box.Text = "" AndAlso _hintText <> "" AndAlso Box.Enabled
     End Sub
     Public Shared Function Make(Optional placeholder As String = "", Optional glyph As String = "", Optional multiline As Boolean = False) As WInput
         Dim w As New WInput With {.Glyph = glyph}

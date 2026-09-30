@@ -553,7 +553,7 @@ Public Class SearchField
     Private ReadOnly _hint As New Label With {.AutoSize = False, .ForeColor = Theme.G400, .BackColor = Color.White, .TextAlign = ContentAlignment.MiddleLeft, .Cursor = Cursors.IBeam}
     Private Sub UpdateHint()
         If Box.PlaceholderText <> "" Then _hint.Text = Box.PlaceholderText : Box.PlaceholderText = "" ' pages that set the box's own hint
-        _hint.Visible = Box.Text = "" AndAlso Not Box.Focused AndAlso _hint.Text <> ""
+        _hint.Visible = Box.Text = "" AndAlso _hint.Text <> ""
     End Sub
 
     Public Overrides Property Text As String

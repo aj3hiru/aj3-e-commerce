@@ -515,13 +515,25 @@ Public Class DisplayButton
         BackColor = Color.Transparent
         Cursor = Cursors.Hand
         Text = "Display Options"
-        Font = Theme.UiFont(9.75F)
-        Height = 36
+        Font = Theme.Px(14, 500)
+        Height = 40
         Width = PreferredWidth()
     End Sub
+    ''' <summary>As on the website: the label shows only on wide screens (1536px and more); otherwise icon + chevron.</summary>
+    Public ReadOnly Property Wide As Boolean
+        Get
+            Dim f = FindForm()
+            Return If(f Is Nothing, Screen.PrimaryScreen.WorkingArea.Width, f.Width) >= 1536
+        End Get
+    End Property
     Public Function PreferredWidth() As Integer
+        If Not Wide Then Return 12 + 14 + 8 + 12 + 12
         Return 12 + 14 + 8 + Tr.MeasureText(Text, Font).Width + 8 + 12 + 12
     End Function
+    Protected Overrides Sub OnParentChanged(e As EventArgs)
+        MyBase.OnParentChanged(e)
+        Width = PreferredWidth()
+    End Sub
     Protected Overrides Sub OnMouseEnter(e As EventArgs)
         _hover = True : Invalidate() : MyBase.OnMouseEnter(e)
     End Sub
@@ -536,9 +548,64 @@ Public Class DisplayButton
             Using pen As New Pen(Theme.G200) : g.DrawPath(pen, p) : End Using
         End Using
         Icons.Draw(g, "sliders-horizontal", New RectangleF(12, (Height - 14) / 2.0F, 14, 14), Theme.G700)
-        Dim tw = Tr.MeasureText(Text, Font).Width
-        Tr.DrawText(g, Text, Font, New Rectangle(12 + 14 + 8, 0, tw + 2, Height), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+        Dim tw = If(Wide, Tr.MeasureText(Text, Font).Width, -8)
+        If Wide Then Tr.DrawText(g, Text, Font, New Rectangle(12 + 14 + 8, 0, tw + 2, Height), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
         Icons.Draw(g, If(Open, "chevron-up", "chevron-down"), New RectangleF(12 + 14 + 8 + tw + 8, (Height - 12) / 2.0F, 12, 12), Theme.G700)
+    End Sub
+End Class
+
+''' <summary>The website's white header button (Export, Import…): 40px, grey hairline border, 14px medium
+''' text with its lucide icon; light grey on hover. Primary = the filled purple/blue ones (Add…).</summary>
+Public Class HeadButton
+    Inherits Control
+    Private _hover As Boolean
+    Public Property Icon As String = ""
+    Public Property Fill As Color = Color.Empty
+    Public Sub New(text As String, Optional icon As String = "", Optional fill As Color = Nothing)
+        SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw Or ControlStyles.SupportsTransparentBackColor, True)
+        BackColor = Color.Transparent
+        Cursor = Cursors.Hand
+        Me.Text = text : Me.Icon = icon : Me.Fill = fill
+        Font = Theme.Px(14, If(fill = Color.Empty, 500, 600))
+        Height = 40
+        Width = PreferredWidth()
+    End Sub
+    Public Function PreferredWidth() As Integer
+        Return 14 + If(Icon <> "", 16 + 8, 0) + Tr.MeasureText(Text, Font).Width + 14
+    End Function
+    Protected Overrides Sub OnTextChanged(e As EventArgs)
+        MyBase.OnTextChanged(e)
+        Width = PreferredWidth()
+        Invalidate()
+    End Sub
+    Protected Overrides Sub OnMouseEnter(e As EventArgs)
+        _hover = True : Invalidate() : MyBase.OnMouseEnter(e)
+    End Sub
+    Protected Overrides Sub OnMouseLeave(e As EventArgs)
+        _hover = False : Invalidate() : MyBase.OnMouseLeave(e)
+    End Sub
+    Protected Overrides Sub OnEnabledChanged(e As EventArgs)
+        Invalidate() : MyBase.OnEnabledChanged(e)
+    End Sub
+    Protected Overrides Sub OnPaint(e As PaintEventArgs)
+        Dim g = e.Graphics
+        Theme.Smooth(g)
+        Dim filled = Fill <> Color.Empty
+        Dim fg = If(filled, Color.White, If(Enabled, Theme.G700, Theme.G400))
+        Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
+            If filled Then
+                Using b As New SolidBrush(If(Not Enabled, Theme.Tint(Fill, 120), If(_hover, Theme.Darker(Fill, 0.9), Fill))) : g.FillPath(b, p) : End Using
+            Else
+                Using b As New SolidBrush(If(_hover AndAlso Enabled, Theme.G50, Color.White)) : g.FillPath(b, p) : End Using
+                Using pen As New Pen(Theme.G200) : g.DrawPath(pen, p) : End Using
+            End If
+        End Using
+        Dim x = 14
+        If Icon <> "" Then
+            Icons.Draw(g, Icon, New RectangleF(x, (Height - 16) / 2.0F, 16, 16), fg)
+            x += 24
+        End If
+        Tr.DrawText(g, Text, Font, New Rectangle(x, 0, Width - x, Height), fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
     End Sub
 End Class
 

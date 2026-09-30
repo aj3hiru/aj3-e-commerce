@@ -35,6 +35,16 @@ Public Module Tr
         Return TextRenderer.MeasureText(dc, text, font, proposed, flags Or F)
     End Function
 
+    ''' <summary>Text with letter-spacing (CSS tracking), e.g. the sidebar's section titles.</summary>
+    Public Sub DrawSpaced(g As Graphics, text As String, font As Font, at As Point, color As Color, spacing As Single)
+        Dim x As Single = at.X
+        For Each ch In text
+            Dim s = ch.ToString()
+            TextRenderer.DrawText(g, s, font, New Point(CInt(x), at.Y), color, F Or TextFormatFlags.NoPadding)
+            x += TextRenderer.MeasureText(g, s, font, New Size(1000, 100), F Or TextFormatFlags.NoPadding).Width + spacing
+        Next
+    End Sub
+
     ''' <summary>Labels, check boxes and buttons under <paramref name="root"/> (now and later) show "&amp;" too.</summary>
     Public Sub KeepAmpersands(root As Control)
         Fix(root)

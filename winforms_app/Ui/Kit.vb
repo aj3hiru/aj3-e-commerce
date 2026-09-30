@@ -350,7 +350,7 @@ End Class
 Public MustInherit Class ScrollPage
     Inherits PageBase
     Protected ReadOnly Scroller As New Panel With {.Dock = DockStyle.Fill, .AutoScroll = True, .BackColor = Theme.Page}
-    Protected ReadOnly Body As New VStack(16) With {.Padding = New Padding(22, 20, 22, 26)}
+    Protected ReadOnly Body As New VStack(16) With {.Padding = New Padding(24)}
     Private _dirty As Boolean = True
     Private _laying As Boolean
 
@@ -1772,20 +1772,7 @@ End Class
 Partial Public Module Ui
     ''' <summary>Popup menu under a control. Items "key|Label", "-" (line), "!key|Label" (red), "*key|Label" (ticked).</summary>
     Public Sub PopMenu(anchor As Control, items As IEnumerable(Of String), picked As Action(Of String), Optional at As Point? = Nothing)
-        Dim m As New ContextMenuStrip With {.ShowImageMargin = False, .ShowCheckMargin = items.Any(Function(i) i.StartsWith("*")), .Font = Theme.Body}
-        For Each it In items
-            If it = "-" Then m.Items.Add(New ToolStripSeparator()) : Continue For
-            Dim danger = it.StartsWith("!"), ticked = it.StartsWith("*")
-            Dim s = it.TrimStart("!"c, "*"c)
-            Dim p = s.Split("|"c)
-            Dim key = p(0)
-            Dim mi As New ToolStripMenuItem(If(p.Length > 1, p(1), p(0))) With {.Checked = ticked, .Padding = New Padding(4, 3, 4, 3)}
-            If danger Then mi.ForeColor = Theme.Danger
-            AddHandler mi.Click, Sub() picked(key)
-            m.Items.Add(mi)
-        Next
-        AddHandler m.Closed, Sub() m.BeginInvoke(Sub() m.Dispose())
-        If at.HasValue Then m.Show(at.Value) Else m.Show(anchor, New Point(0, anchor.Height + 2))
+        WebMenu.Show(anchor, items, picked, at)
     End Sub
 
     Public Function Confirm(owner As Control, text As String, Optional title As String = "Are you sure?") As Boolean

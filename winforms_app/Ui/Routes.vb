@@ -11,6 +11,9 @@ Public Module Routes
             Case "/admin/ecommerce/customers" : Return New CustomersPage()
             Case "/admin/ecommerce/products" : Return New ProductsPage()
             Case "/admin/ecommerce/barcode-print" : Return New BarcodesPage()
+            Case "/admin/deliveries?view=all" : Return New DeliveriesPage()
+            Case "/admin/ecommerce/due" : Return New DuesPage()
+            Case "/admin/ecommerce/sales-history" : Return New SalesHistoryPage()
         End Select
         Return Nothing
     End Function

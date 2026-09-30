@@ -163,6 +163,18 @@ Public Class AppState
         Return Js.Objs(TryCast(v, JsonArray))
     End Function
 
+    ''' <summary>Orders on this computer: the synced recent ones plus the older sales ledger (15 months).</summary>
+    Public Function AllOrders() As List(Of JsonObject)
+        Dim recent = List("orders")
+        Dim ids = recent.Select(Function(o) Js.Int(o, "id")).ToHashSet()
+        Return PageList("sales_ledger").Where(Function(o) Not ids.Contains(Js.Int(o, "id"))).Concat(recent).ToList()
+    End Function
+
+    ''' <summary>A sale: a store bill, or an online order once delivered (not cancelled).</summary>
+    Public Shared Function IsSale(o As JsonObject) As Boolean
+        Return Js.Str(o, "status") <> "Canceled" AndAlso (Js.Str(o, "type") <> "online" OrElse Js.Str(o, "status") = "Delivered")
+    End Function
+
     ''' <summary>A page's data (Nothing when it was never downloaded).</summary>
     Public Function Page(name As String) As JsonNode
         Dim v As JsonNode = Nothing

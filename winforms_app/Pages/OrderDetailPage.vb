@@ -69,10 +69,7 @@ Public Class OrderDetailPage
     Protected Overrides Sub Reload()
         _o = Order()
         Body.SuspendLayout()
-        For Each c As Control In Body.Controls.Cast(Of Control)().ToList()
-            Body.Controls.Remove(c)
-            c.Dispose()
-        Next
+        ClearBody()
         If _o Is Nothing Then
             Body.Add(New CardBox()).Add(New TextBlock("This order is not on this computer yet. Press F5 to sync.", Theme.Body, Theme.G500))
             Body.ResumeLayout()

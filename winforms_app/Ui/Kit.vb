@@ -387,6 +387,17 @@ Public MustInherit Class ScrollPage
         Relayout()
     End Sub
 
+    ''' <summary>Empties the page (for pages rebuilt on every change). Controls in keep are detached, not destroyed.</summary>
+    Protected Sub ClearBody(ParamArray keep As Control())
+        For Each k In keep
+            k.Parent?.Controls.Remove(k)
+        Next
+        For Each c As Control In Body.Controls.Cast(Of Control)().ToList()
+            Body.Controls.Remove(c)
+            c.Dispose()
+        Next
+    End Sub
+
     Public Sub Relayout()
         If _laying Then Return
         _laying = True
@@ -1376,7 +1387,7 @@ End Class
 ''' with the dates shown. Fixed widths: nothing jumps when switching.</summary>
 Public Class RangeBar
     Inherits Control
-    Public Shared ReadOnly Presets As String() = {"today|Today", "yesterday|Yesterday", "7d|7 Days", "30d|30 Days", "this_month|This Month", "prev_month|Last Month", "this_year|This Year", "all|All Time", "custom|Custom"}
+    Public Shared ReadOnly Presets As String() = {"today|Today", "yesterday|Yesterday", "7d|7 Days", "week|This Week", "30d|30 Days", "this_month|This Month", "prev_month|Last Month", "this_year|This Year", "all|All Time", "custom|Custom"}
     Public Keys As New List(Of String)
     Public Current As String = "this_month"
     Public CustomFrom As DateTime = DateTime.Today.AddDays(-30)
@@ -1433,6 +1444,7 @@ Public Class RangeBar
             Case "today" : Return (t, t)
             Case "yesterday" : Return (t.AddDays(-1), t.AddDays(-1))
             Case "7d" : Return (t.AddDays(-6), t)
+            Case "week" : Return (t.AddDays(-CInt(t.DayOfWeek)), t)
             Case "30d" : Return (t.AddDays(-29), t)
             Case "this_month" : Return (New DateTime(t.Year, t.Month, 1), t)
             Case "prev_month"
@@ -1636,6 +1648,7 @@ Public Class MiniStat
     Public Property Caption As String = ""
     Public Property Value As String = ""
     Public Property Note As String = ""
+    Public Property NoteColor As Color = Theme.G500
     ''' <summary>Picked (a filter card that is on): blue border.</summary>
     Public Property Selected As Boolean
     Public Sub New(caption As String, glyph As String, accent As Color)
@@ -1662,7 +1675,7 @@ Public Class MiniStat
         Using f = Theme.IconFont(14) : Theme.DrawCentered(g, Glyph, f, Accent, ir) : End Using
         TextRenderer.DrawText(g, Caption, Theme.UiFont(8.75F), New Rectangle(72, ir.Y - 2, Width - 80, 18), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
         TextRenderer.DrawText(g, Value, Theme.UiFont(14.0F, FontStyle.Bold), New Rectangle(71, ir.Y + 15, Width - 80, 28), Theme.G900, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
-        If Note <> "" Then TextRenderer.DrawText(g, Note, Theme.Small, New Rectangle(72, ir.Y + 42, Width - 80, 16), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        If Note <> "" Then TextRenderer.DrawText(g, Note, Theme.Small, New Rectangle(72, ir.Y + 42, Width - 80, 16), NoteColor, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
     End Sub
 End Class
 

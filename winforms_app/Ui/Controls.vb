@@ -308,18 +308,23 @@ Public Class LineChart
     Private Function Pts(plot As RectangleF, top As Double, Optional vals As List(Of Double) = Nothing) As PointF()
         If vals Is Nothing Then vals = Values
         Dim n = vals.Count
+        Dim slots = Math.Max(Values.Count, Values2.Count)
         Dim a(n - 1) As PointF
         For i = 0 To n - 1
-            Dim x = plot.Left + If(n = 1, plot.Width / 2, plot.Width * i / (n - 1))
+            Dim x = XAt(plot, i, slots)
             Dim y = plot.Bottom - CSng(vals(i) / top) * plot.Height
             a(i) = New PointF(CSng(x), y)
         Next
         Return a
     End Function
+    Private Shared Function XAt(plot As RectangleF, i As Integer, slots As Integer) As Single
+        Return CSng(plot.Left + If(slots <= 1, plot.Width / 2, plot.Width * i / (slots - 1)))
+    End Function
+
     Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
         If Values.Count > 0 Then
             Dim plotW = Width - 70
-            Dim i = CInt(Math.Round((e.X - 58) / Math.Max(1, plotW) * (Values.Count - 1)))
+            Dim i = CInt(Math.Round((e.X - 58) / Math.Max(1, plotW) * (Math.Max(Values.Count, Values2.Count) - 1)))
             i = Math.Max(0, Math.Min(Values.Count - 1, i))
             If i <> _hover Then _hover = i : Invalidate()
         End If
@@ -362,9 +367,10 @@ Public Class LineChart
                 Using pen As New Pen(LineColor, 2.5F) : g.DrawPath(pen, path) : End Using
             End Using
         End If
-        For i = 0 To Labels.Count - 1
-            If i >= p.Length Then Exit For
-            TextRenderer.DrawText(g, Labels(i), Theme.Small, New Rectangle(CInt(p(i).X) - 30, CInt(plot.Bottom) + 8, 60, 16), Theme.G500, TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
+        Dim slots = Math.Max(Values.Count, Values2.Count)
+        For i = 0 To Math.Min(Labels.Count, slots) - 1
+            Dim lx = XAt(plot, i, slots)
+            TextRenderer.DrawText(g, Labels(i), Theme.Small, New Rectangle(CInt(lx) - 45, CInt(plot.Bottom) + 8, 90, 16), Theme.G500, TextFormatFlags.HorizontalCenter Or TextFormatFlags.NoPadding)
         Next
         If _hover >= 0 AndAlso _hover < p.Length Then
             Using b As New SolidBrush(LineColor) : g.FillEllipse(b, p(_hover).X - 4, p(_hover).Y - 4, 8, 8) : End Using

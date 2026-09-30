@@ -50,10 +50,7 @@ Public Class CustomerProfilePage
         _c = s.List("customers").FirstOrDefault(Function(x) Js.Int(x, "id") = _id)
         HeaderChanged()
         Body.SuspendLayout()
-        For Each old As Control In Body.Controls.Cast(Of Control)().ToList()
-            Body.Controls.Remove(old)
-            old.Dispose()
-        Next
+        ClearBody()
         If _c Is Nothing Then
             Body.Add(New CardBox()).Add(New TextBlock("Customer not found on this computer. Press F5 to sync.", Theme.Body, Theme.G500))
             Body.ResumeLayout()

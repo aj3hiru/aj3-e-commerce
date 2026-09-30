@@ -165,11 +165,17 @@ async function handleGET(_req: NextRequest, { params }: { params: Promise<{ name
         mapUrl: a.lat !== null && a.lng !== null ? `https://maps.google.com/?q=${Number(a.lat)},${Number(a.lng)}` : null,
       })));
     }
-    case "sales_ledger": {
-      // Analytics / GST report / Sales history for any period, offline: every sale of the last ~15 months (not cancelled).
+    case "sales_ledger":
+    case "sales_ledger_old":
+    case "sales_ledger_recent": {
+      // Analytics / GST report / Sales history for any period, offline. The Windows software keeps the whole
+      // history: "_old" = everything before the last 60 days (fetched at login, then daily), "_recent" = the
+      // last 60 days (every sync). Plain "sales_ledger" (older apps) = the last ~15 months. Cancelled left out.
       if (!hasPermission(p, "ecommerce", "manage_orders") && !hasPermission(p, "ecommerce", "manage_billing")) return deny();
+      const cut = new Date(Date.now() - 60 * 86_400_000);
+      const createdAt = name === "sales_ledger_old" ? { lt: cut } : name === "sales_ledger_recent" ? { gte: cut } : { gte: new Date(Date.now() - 460 * 86_400_000) };
       const rows = await prisma.ecomOrder.findMany({
-        where: { orderStatus: { not: "Canceled" }, createdAt: { gte: new Date(Date.now() - 460 * 86_400_000) } }, orderBy: { id: "asc" }, take: 60000,
+        where: { orderStatus: { not: "Canceled" }, createdAt }, orderBy: { id: "asc" }, take: 500000,
         select: {
           id: true, orderNumber: true, orderType: true, orderStatus: true, paymentStatus: true, paymentMethod: true, customerId: true, customerName: true, createdAt: true,
           totalAmount: true, subtotalAmount: true, gstAmount: true, discountAmount: true, deliveryCharge: true,

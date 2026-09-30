@@ -88,7 +88,7 @@ Public Class AppState
     Public Shared ReadOnly I As New AppState()
 
     ''' <summary>Data behind the website's other admin pages (/api/app/v1/page/&lt;name&gt;), all kept on the computer.</summary>
-    Public Shared ReadOnly PageNames As String() = {"brands", "tags", "reviews", "campaigns", "coupons", "pages", "files", "activity", "push", "business", "customizer", "cache", "backups", "deliveries", "dues_paid", "addresses", "customer_orders", "coupon_activity", "sales_ledger", "payments"}
+    Public Shared ReadOnly PageNames As String() = {"brands", "tags", "reviews", "campaigns", "coupons", "pages", "files", "activity", "push", "business", "customizer", "cache", "backups", "deliveries", "dues_paid", "addresses", "customer_orders", "coupon_activity", "sales_ledger_old", "sales_ledger_recent", "payments"}
     Private Shared ReadOnly SetupKey As String = "w1:" & String.Join(",", PageNames)
 
     Public ReadOnly Api As New ApiClient()
@@ -166,9 +166,39 @@ Public Class AppState
 
     ''' <summary>Orders on this computer: the synced recent ones plus the older sales ledger (15 months).</summary>
     Public Function AllOrders() As List(Of JsonObject)
+        Return New List(Of JsonObject)(AllOrdersCached())
+    End Function
+
+    Private Function AllOrdersPlain() As List(Of JsonObject)
         Dim recent = List("orders")
         Dim ids = recent.Select(Function(o) Js.Int(o, "id")).ToHashSet()
         Return PageList("sales_ledger").Where(Function(o) Not ids.Contains(Js.Int(o, "id"))).Concat(recent).ToList()
+    End Function
+
+    ' The whole sales history, joined once and reused until any part changes (opening any range is instant).
+    Private _allKey As (JsonNode, JsonNode, JsonNode, JsonNode, Integer, Integer)
+    Private _all As List(Of JsonObject)
+    Private Function AllOrdersCached() As List(Of JsonObject)
+        Dim o As JsonNode = Nothing, a As JsonNode = Page("sales_ledger_old"), b As JsonNode = Page("sales_ledger_recent"), c As JsonNode = Page("sales_ledger")
+        Sets.TryGetValue("orders", o)
+        Dim k = (o, a, b, c, If(TryCast(o, JsonArray)?.Count, 0), If(TryCast(b, JsonArray)?.Count, 0))
+        If _all IsNot Nothing AndAlso _allKey.Equals(k) Then Return _all
+        Dim recent = List("orders")
+        Dim ids = recent.Select(Function(x) Js.Int(x, "id")).ToHashSet()
+        Dim hist As New List(Of JsonObject)
+        Dim seen As New HashSet(Of Integer)
+        ' the newer parts first, so an order in two parts is taken from the fresher one
+        For Each part In {PageList("sales_ledger_recent"), PageList("sales_ledger_old"), PageList("sales_ledger")}
+            For Each x In part
+                Dim id = Js.Int(x, "id")
+                If ids.Contains(id) OrElse Not seen.Add(id) Then Continue For
+                hist.Add(x)
+            Next
+        Next
+        hist.Sort(Function(p, q) Js.Int(p, "id").CompareTo(Js.Int(q, "id")))
+        hist.AddRange(recent)
+        _all = hist : _allKey = k
+        Return _all
     End Function
 
     ''' <summary>A sale: a store bill, or an online order once delivered (not cancelled).</summary>
@@ -610,7 +640,9 @@ Public Class AppState
         Dim changed = False
         Try
             Dim off = False
-            Await Pool(PageNames.ToList(), 5, Async Function(n)
+            ' years of old sales change rarely: fetched at login (setup) and then about once a day
+            Dim names = PageNames.Where(Function(n) force OrElse n <> "sales_ledger_old" OrElse Page(n) Is Nothing OrElse Not PageAt.ContainsKey(n) OrElse DateTime.UtcNow - PageAt(n).ToUniversalTime() > TimeSpan.FromHours(20)).ToList()
+            Await Pool(names, 5, Async Function(n)
                                                    Dim o = Await ReloadPageAsync(n, False)
                                                    If o = ApiOutcome.Offline Then off = True
                                                    If o = ApiOutcome.Ok Then changed = True

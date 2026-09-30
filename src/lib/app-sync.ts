@@ -186,10 +186,10 @@ async function buildDues() {
   return rows.map((c) => dueOut(c, staff));
 }
 
-/** Dues paid off in the last 180 days — the Due page's "Fully paid" / "All dues" (page data, not the dues set). */
+/** Every due paid off (all time) — the Due page's "Fully paid" / "All dues" and receipts (page data, not the dues set). */
 export async function paidDues() {
   const [rows, staff] = await Promise.all([
-    prisma.ecomCredit.findMany({ where: { status: "paid", createdAt: { gte: new Date(Date.now() - 180 * DAY) } }, orderBy: { createdAt: "desc" }, take: 5000, select: DUE_SELECT }),
+    prisma.ecomCredit.findMany({ where: { status: "paid" }, orderBy: { createdAt: "desc" }, take: 100000, select: DUE_SELECT }),
     staffNames(),
   ]);
   return rows.map((c) => dueOut(c, staff));

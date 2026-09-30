@@ -193,7 +193,7 @@ Public Class ProductsPage
                 .Draw = Sub(g, r, p)
                             Dim b As JsonObject = Nothing
                             If Not _badges.TryGetValue(Js.Str(p, "badgeTag"), b) Then
-                                Tr.DrawText(g, "None", Theme.Body, r, Theme.G500, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+                                Tr.DrawText(g, TypeLabel(p), Theme.Body, r, Theme.G500, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
                                 Return
                             End If
                             Using br As New SolidBrush(Fmt.ColorFromHex(Js.Str(b, "color"), Theme.G500)) : g.FillEllipse(br, r.X, r.Y + r.Height \ 2 - 4, 8, 8) : End Using

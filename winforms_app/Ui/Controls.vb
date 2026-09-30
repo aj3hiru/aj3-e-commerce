@@ -799,7 +799,7 @@ Partial Public Module Ui
 
     ''' <summary>A native Windows drop-down with the app's font.</summary>
     Public Function Combo(items As IEnumerable(Of String), Optional width As Integer = 200) As ComboBox
-        Dim c As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList, .Font = Theme.Body, .Width = width, .FlatStyle = FlatStyle.System}
+        Dim c As New WebCombo With {.Width = width}
         For Each i In items : c.Items.Add(i) : Next
         If c.Items.Count > 0 Then c.SelectedIndex = 0
         Return c

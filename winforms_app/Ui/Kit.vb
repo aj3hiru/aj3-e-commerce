@@ -1525,12 +1525,27 @@ Public Class RangeBar
         Return k
     End Function
 
+    Private Shared ReadOnly ChipFont As Font = Theme.Px(13, 500)
+    Private Shared ReadOnly ShowFont As Font = Theme.Px(14)
+    Private Shared ReadOnly ShowBold As Font = Theme.Px(14, 700)
+
+    Private Function ChipText(k As String) As String
+        If k = "custom" AndAlso Current = "custom" Then Return Fmt.Day(CustomFrom) & " – " & Fmt.Day(CustomTo)
+        Return Label(k)
+    End Function
+
     Private Function BtnW(k As String) As Integer
-        Return Tr.MeasureText(Label(k), Theme.BodyBold).Width + 22
+        Return Tr.MeasureText(ChipText(k), ChipFont).Width + 24 + If(k = "custom", 20, 0)
+    End Function
+
+    ''' <summary>"Showing: This Month" (the website's range bar), shown before the chips.</summary>
+    Private Function ShowingW() As Integer
+        If Not ShowDates Then Return 0
+        Return 24 + Tr.MeasureText("Showing:", ShowFont).Width + 6 + Tr.MeasureText(If(Current = "custom", "Custom dates", Label(Current)), ShowBold).Width + 16
     End Function
 
     Public Function PreferredW() As Integer
-        Return Keys.Sum(Function(k) BtnW(k)) + If(ShowDates, 250, 0)
+        Return ShowingW() + Keys.Sum(Function(k) BtnW(k) + 6)
     End Function
 
     Public ReadOnly Property From As DateTime?
@@ -1606,37 +1621,34 @@ Public Class RangeBar
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Dim g = e.Graphics
         Theme.Smooth(g)
+        If Width <> PreferredW() Then Width = PreferredW() : Parent?.PerformLayout()
         _rects = New List(Of (String, Rectangle))
         Dim x = 0
-        Dim total = Keys.Sum(Function(k) BtnW(k))
-        Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, total - 1, Height - 1), 7)
-            Using b As New SolidBrush(Color.White) : g.FillPath(b, p) : End Using
-            Using pen As New Pen(Theme.G300) : g.DrawPath(pen, p) : End Using
-        End Using
+        If ShowDates Then
+            Icons.Draw(g, "calendar-days", New RectangleF(0, (Height - 16) / 2.0F, 16, 16), Theme.G500)
+            x = 24
+            Tr.DrawText(g, "Showing:", ShowFont, New Rectangle(x, 0, 200, Height), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+            x += Tr.MeasureText("Showing:", ShowFont).Width + 6
+            Dim t = If(Current = "custom", "Custom dates", Label(Current))
+            Tr.DrawText(g, t, ShowBold, New Rectangle(x, 0, 300, Height), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+            x += Tr.MeasureText(t, ShowBold).Width + 16
+        End If
         For Each k In Keys
             Dim w = BtnW(k)
-            Dim r As New Rectangle(x, 0, w, Height)
+            Dim r As New Rectangle(x, (Height - 32) \ 2, w, 32)
             Dim on_ = k = Current
-            If on_ Then
-                Using p = Theme.RoundRect(New RectangleF(r.X + 3, r.Y + 3, r.Width - 6, r.Height - 6), 5)
-                    Using b As New SolidBrush(Theme.Primary) : g.FillPath(b, p) : End Using
-                End Using
-            ElseIf k = _hover Then
-                Using p = Theme.RoundRect(New RectangleF(r.X + 3, r.Y + 3, r.Width - 6, r.Height - 6), 5)
-                    Using b As New SolidBrush(Theme.G100) : g.FillPath(b, p) : End Using
-                End Using
-            End If
-            ' always the bold font (same width in both states: no jumping)
-            Theme.DrawCentered(g, Label(k), Theme.BodyBold, If(on_, Color.White, Theme.G700), r)
-            _rects.Add((k, r))
-            x += w
-        Next
-        If ShowDates Then
-            Using f = Theme.IconFont(9.5F)
-                Tr.DrawText(g, Theme.IcCalendar, f, New Rectangle(x + 12, 0, 18, Height), Theme.G500, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+            Using p = Theme.RoundRect(New RectangleF(r.X, r.Y, r.Width, r.Height), Theme.Radius)
+                Using b As New SolidBrush(If(on_, Web.Blue, If(k = _hover, Theme.G200, Theme.G100))) : g.FillPath(b, p) : End Using
             End Using
-            Tr.DrawText(g, Text_, Theme.Body, New Rectangle(x + 34, 0, 230, Height), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
-        End If
+            Dim tx = r.X + 12
+            If k = "custom" Then
+                Icons.Draw(g, "calendar", New RectangleF(tx, r.Y + 9, 14, 14), If(on_, Color.White, Theme.G700))
+                tx += 20
+            End If
+            Tr.DrawText(g, ChipText(k), ChipFont, New Rectangle(tx, r.Y, w, 32), If(on_, Color.White, Theme.G700), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+            _rects.Add((k, r))
+            x += w + 6
+        Next
     End Sub
 
     Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
@@ -1890,7 +1902,7 @@ Partial Public Module Ui
 
     ''' <summary>Filter drop-down with "All" first; values are "value|Label" or plain.</summary>
     Public Function Filter(items As IEnumerable(Of String), Optional width As Integer = 180) As ComboBox
-        Dim c As New ComboBox With {.DropDownStyle = ComboBoxStyle.DropDownList, .Font = Theme.Body, .Width = width, .FlatStyle = FlatStyle.System, .DisplayMember = "Label", .ValueMember = "Value"}
+        Dim c As New WebCombo With {.Width = width, .DisplayMember = "Label", .ValueMember = "Value"}
         For Each i In items
             Dim p = i.Split("|"c)
             c.Items.Add(New Opt(p(0), If(p.Length > 1, p(1), p(0))))

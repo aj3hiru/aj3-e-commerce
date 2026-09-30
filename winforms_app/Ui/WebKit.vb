@@ -921,3 +921,68 @@ Public Class PillTabs
         Next
     End Sub
 End Class
+
+''' <summary>A dropdown drawn like the website's selects: white, grey hairline, rounded, chevron icon; its list has roomy
+''' rows with a light-grey hover and the chosen one in purple. Still a real ComboBox (keyboard, same code everywhere).</summary>
+Public Class WebCombo
+    Inherits ComboBox
+    Private Const WM_PAINT As Integer = &HF
+    Private _hot As Boolean
+
+    Public Sub New()
+        DropDownStyle = ComboBoxStyle.DropDownList
+        DrawMode = DrawMode.OwnerDrawFixed
+        FlatStyle = FlatStyle.Flat
+        Font = Theme.Px(14)
+        ItemHeight = 30
+        IntegralHeight = False
+        MaxDropDownItems = 12
+    End Sub
+
+    Protected Overrides Sub OnMouseEnter(e As EventArgs)
+        MyBase.OnMouseEnter(e) : _hot = True : Invalidate()
+    End Sub
+    Protected Overrides Sub OnMouseLeave(e As EventArgs)
+        MyBase.OnMouseLeave(e) : _hot = False : Invalidate()
+    End Sub
+    Protected Overrides Sub OnSelectedIndexChanged(e As EventArgs)
+        MyBase.OnSelectedIndexChanged(e) : Invalidate()
+    End Sub
+    Protected Overrides Sub OnEnabledChanged(e As EventArgs)
+        MyBase.OnEnabledChanged(e) : Invalidate()
+    End Sub
+
+    Protected Overrides Sub OnDrawItem(e As DrawItemEventArgs)
+        If e.Index < 0 Then Return
+        Dim g = e.Graphics
+        Dim inList = (e.State And DrawItemState.ComboBoxEdit) = 0
+        Dim sel = (e.State And DrawItemState.Selected) = DrawItemState.Selected
+        Dim cur = e.Index = SelectedIndex
+        Using b As New SolidBrush(If(inList AndAlso sel, Theme.G100, Color.White)) : g.FillRectangle(b, e.Bounds) : End Using
+        Dim t = GetItemText(Items(e.Index))
+        Tr.DrawText(g, t, If(inList AndAlso cur, Theme.Px(14, 600), Theme.Px(14)), New Rectangle(e.Bounds.X + 10, e.Bounds.Y, e.Bounds.Width - 14, e.Bounds.Height),
+                    If(inList AndAlso cur, Theme.Primary, Theme.G800), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+    End Sub
+
+    Protected Overrides Sub WndProc(ByRef m As Message)
+        MyBase.WndProc(m)
+        If m.Msg = WM_PAINT Then
+            Using g = CreateGraphics()
+                Paint_(g)
+            End Using
+        End If
+    End Sub
+
+    Private Sub Paint_(g As Graphics)
+        g.Clear(Theme.Behind(Me))
+        Theme.Smooth(g)
+        Dim focus = Focused OrElse DroppedDown
+        Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
+            Using b As New SolidBrush(If(Enabled, Color.White, Theme.G50)) : g.FillPath(b, p) : End Using
+            Using pen As New Pen(If(focus, Theme.Primary, If(_hot, Theme.G300, Theme.G200))) : g.DrawPath(pen, p) : End Using
+        End Using
+        Dim t = If(SelectedIndex >= 0, GetItemText(SelectedItem), "")
+        Tr.DrawText(g, t, Font, New Rectangle(10, 0, Width - 10 - 28, Height), If(Enabled, Theme.G800, Theme.G400), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+        Icons.Draw(g, "chevron-down", New RectangleF(Width - 24, (Height - 14) / 2.0F, 14, 14), Theme.G500)
+    End Sub
+End Class

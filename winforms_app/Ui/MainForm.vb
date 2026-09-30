@@ -229,6 +229,8 @@ Public Class MainForm
         _toast.BringToFront()
         RefreshHeader()
         ResumeLayout()
+        Hints.AttachAll(p)
+        Hints.AttachAll(_actions)
         p.OnOpened()
     End Sub
 

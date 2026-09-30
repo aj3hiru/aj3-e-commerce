@@ -2155,6 +2155,7 @@ Public Class FormDialog
     End Sub
 
     Protected Overrides Sub OnLoad(e As EventArgs)
+        Hints.AttachAll(Me)
         MyBase.OnLoad(e)
         _error.Visible = False
         Relayout()

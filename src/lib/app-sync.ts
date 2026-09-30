@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getBusinessRow } from "@/lib/business-row";
 import { campaignSalePrices } from "@/lib/campaign-pricing";
 import { roleLabel } from "@/lib/roles";
+import { listDeliveryAgents } from "@/lib/order-workflow";
 import { normalizePermissions } from "@/lib/permissions";
 import { cached } from "@/lib/cache";
 import type { AdminSession } from "@/lib/admin-auth";
@@ -51,9 +52,10 @@ function countPerms(v: unknown): number {
 const staffName = (u: { username: string; firstName: string | null; lastName: string | null }) => [u.firstName, u.lastName].filter(Boolean).join(" ").trim() || u.username;
 
 async function buildSettings() {
-  const [b, taxMode, tags] = await Promise.all([
+  const [b, taxMode, tags, pays] = await Promise.all([
     getBusinessRow(), getTaxMode(),
     prisma.ecomProductTag.findMany({ orderBy: { sortOrder: "asc" }, select: { slug: true, label: true, color: true, tagGroup: true } }),
+    prisma.ecomPaymentSettings.findMany({ select: { methodKey: true, name: true } }),
   ]);
   const phones = Array.isArray(b?.contactNumbers) ? (b!.contactNumbers as unknown[]).filter((x): x is string => typeof x === "string" && !!x.trim()) : b?.phone ? [b.phone] : [];
   return {
@@ -61,6 +63,8 @@ async function buildSettings() {
     email: b?.email ?? null, gstin: b?.showGstinOnInvoice ? b?.gstin ?? null : null,
     printerFormat: b?.printerFormat ?? "thermal_80", posPrintMode: b?.posPrintMode ?? "both",
     paymentMethods: ["Cash", "UPI", "Card", "Other"],
+    // Storefront orders keep the method key ("cod"); the website shows its name ("Cash On Delivery").
+    paymentNames: Object.fromEntries(pays.map((m) => [m.methodKey, m.name])),
     pricesIncludeTax: taxMode.pricesIncludeTax,
     // Products table "Type" (badge, with its colour) and "Item Type" columns, as on the website.
     badges: tags.filter((t) => t.tagGroup === "badge").map((t) => ({ slug: t.slug, label: t.label, color: t.color })),
@@ -108,7 +112,7 @@ async function buildCustomers() {
 }
 
 const ORDER_SELECT = {
-  id: true, orderNumber: true, orderType: true, orderStatus: true, paymentStatus: true, paymentMethod: true, customerId: true, customerName: true,
+  id: true, orderNumber: true, orderType: true, orderStatus: true, paymentStatus: true, paymentMethod: true, customerId: true, customerName: true, customerEmail: true, isGuest: true,
   totalAmount: true, subtotalAmount: true, discountAmount: true, gstAmount: true, deliveryCharge: true, paidAmount: true, shippingAddress: true, shippingLat: true, shippingLng: true,
   deliveryAgentId: true, assignedAt: true, deliveredAt: true, cancelReason: true, createdAt: true,
   customer: { select: { phone: true } },
@@ -123,7 +127,7 @@ function orderOut(o: OrderRow) {
   const due = o.credits.reduce((s, c) => s + (c.status === "paid" ? 0 : Math.max(0, Number(c.amount) - Number(c.amountPaid))), 0);
   return {
     id: o.id, number: o.orderNumber, type: o.orderType, status: o.orderStatus, paymentStatus: o.paymentStatus, paymentMethod: o.paymentMethod,
-    customerId: o.customerId, customer: o.customerName, phone: o.customer?.phone ?? null, total: Number(o.totalAmount), subtotal: Number(o.subtotalAmount),
+    customerId: o.customerId, customer: o.customerName, email: o.customerEmail, guest: o.isGuest, phone: o.customer?.phone ?? null, total: Number(o.totalAmount), subtotal: Number(o.subtotalAmount),
     discount: Number(o.discountAmount), gst: Number(o.gstAmount), delivery: Number(o.deliveryCharge), paid: Number(o.paidAmount), due: Math.round(due * 100) / 100,
     address: o.shippingAddress, lat: num(o.shippingLat), lng: num(o.shippingLng), agentId: o.deliveryAgentId, assignedAt: iso(o.assignedAt),
     deliveredAt: iso(o.deliveredAt), cancelReason: o.cancelReason, createdAt: o.createdAt.toISOString(), rev: o.events[0]?.id ?? 0,
@@ -191,7 +195,7 @@ export async function paidDues() {
 
 /** Tables each set is built from — any write to them rebuilds the set (lib/cache.ts). */
 const DEPS: Record<SetName, string[]> = {
-  settings: ["EcomBusinessSettings", "EcomProductTag"],
+  settings: ["EcomBusinessSettings", "EcomProductTag", "EcomPaymentSettings"],
   products: ["EcomProduct", "EcomProductSize", "EcomCampaign", "EcomCampaignTarget"],
   categories: ["EcomCategory"],
   brands: ["EcomBrand"],
@@ -225,8 +229,12 @@ async function buildFresh(name: SetName, session: AdminSession): Promise<unknown
     case "orders": return buildOrders();
     case "dues": return buildDues();
     case "deliveries": return buildDeliveries(session.userId);
-    case "agents": return (await prisma.user.findMany({ where: { status: "active", OR: [{ role: "delivery_agent" }] }, orderBy: { username: "asc" }, select: { id: true, username: true, firstName: true, lastName: true, phone: true } }))
-      .map((u) => ({ id: u.id, name: staffName(u), phone: u.phone }));
+    // Same list and names as the website's order pages (listDeliveryAgents): anyone active who delivers, by username.
+    case "agents": {
+      const [list, users] = await Promise.all([listDeliveryAgents(), prisma.user.findMany({ select: { id: true, firstName: true, lastName: true, username: true, phone: true } })]);
+      const byId = new Map(users.map((u) => [u.id, u]));
+      return list.map((a) => ({ id: a.id, name: a.name, fullName: byId.get(a.id) ? staffName(byId.get(a.id)!) : a.name, phone: byId.get(a.id)?.phone ?? null }));
+    }
     case "staff": return (await prisma.user.findMany({ orderBy: { username: "asc" }, select: { id: true, username: true, firstName: true, lastName: true, email: true, phone: true, role: true, status: true, avatar: true, createdAt: true, permissions: true } }))
       .map((u) => ({
         id: u.id, username: u.username, name: staffName(u), firstName: u.firstName, lastName: u.lastName, email: u.email, phone: u.phone, role: u.role, roleLabel: roleLabel(u.role), status: u.status,

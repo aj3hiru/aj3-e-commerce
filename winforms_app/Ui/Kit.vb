@@ -492,6 +492,36 @@ Public Module Fmt
         End Select
     End Function
 
+    ' The website shows every date in India time (IST), whatever the computer's own clock is set to.
+    Private _ist As TimeZoneInfo
+    Public Function ToIst(v As DateTime) As DateTime
+        If _ist Is Nothing Then
+            Try
+                _ist = TimeZoneInfo.FindSystemTimeZoneById("India Standard Time")
+            Catch
+                _ist = TimeZoneInfo.CreateCustomTimeZone("IST", TimeSpan.FromMinutes(330), "IST", "IST")
+            End Try
+        End If
+        Return TimeZoneInfo.ConvertTime(v, _ist)
+    End Function
+
+    ''' <summary>"30 Sep 2026, 8:47 PM" in India time (the website's fmtDateTime).</summary>
+    Public Function IstStamp(v As DateTime?) As String
+        If Not v.HasValue Then Return ""
+        Dim d = ToIst(v.Value)
+        Return d.ToString("dd MMM yyyy, h:mm ", Globalization.CultureInfo.InvariantCulture) & If(d.Hour < 12, "AM", "PM")
+    End Function
+
+    ''' <summary>The India-time calendar day of an instant.</summary>
+    Public Function IstDay(v As DateTime?) As Date
+        If Not v.HasValue Then Return Date.MinValue
+        Return ToIst(v.Value).Date
+    End Function
+
+    Public Function IstToday() As Date
+        Return ToIst(DateTime.Now).Date
+    End Function
+
     Public Function Day(v As DateTime?) As String
         If Not v.HasValue Then Return ""
         Return v.Value.ToString("dd MMM yyyy", CultureInfo.InvariantCulture)
@@ -824,6 +854,13 @@ Public Class WebTable
     Public Event RowClick(r As JsonObject)
     Public Event RowDoubleClick(r As JsonObject)
     Public Event CellClick(r As JsonObject, c As TCol, cell As Rectangle)
+    ''' <summary>A click inside a Custom cell, with the cell and the point (both in the table's own coordinates).</summary>
+    Public Event CellClickAt(r As JsonObject, c As TCol, cell As Rectangle, pt As Point)
+    ''' <summary>The newer website tables (Orders…): light heading, uppercase 12px titles, lucide sort arrows, no
+    ''' column lines or stripes, hairline rows, blue ticks.</summary>
+    Public Modern As Boolean
+    ''' <summary>Hand cursor over these spots of a Custom cell (cell and point in table coordinates).</summary>
+    Public HotSpot As Func(Of JsonObject, TCol, Rectangle, Point, Boolean)
     Public Event ActionClick(r As JsonObject, key As String)
     Public Event SortChanged()
     Public Event SelectionChanged()
@@ -844,8 +881,10 @@ Public Class WebTable
         Return v.ToJsonString().Trim(""""c)
     End Function
 
+    ''' <summary>Room kept for at least this many rows (the website keeps the table's height while filtering).</summary>
+    Public MinRows As Integer
     Public Function HeightFor(width As Integer) As Integer Implements IFlowHeight.HeightFor
-        Return HeadHeight + If(Rows.Count = 0, 90, Rows.Count * RowHeight) + 1
+        Return HeadHeight + Math.Max(If(Rows.Count = 0, If(Modern, 120, 90), Rows.Count * RowHeight), MinRows * RowHeight) + 1
     End Function
 
     Private Function Widths() As List(Of Integer)
@@ -890,6 +929,10 @@ Public Class WebTable
         Dim rects = ColRects()
         Dim border = Color.FromArgb(&HDE, &HE2, &HE6)
         ' heading
+        If Modern Then
+            PaintModern(g, e, rects)
+            Return
+        End If
         Using b As New SolidBrush(Theme.G50) : g.FillRectangle(b, 0, 0, Width, HeadHeight) : End Using
         If Selectable Then
             Dim all = Rows.Count > 0 AndAlso Rows.All(Function(r) Selected.Contains(IdOf(r)))
@@ -940,6 +983,55 @@ Public Class WebTable
             If Selectable Then g.DrawLine(p, 44, 0, 44, HeadHeight + Rows.Count * RowHeight)
         End Using
         Using p As New Pen(border) : g.DrawRectangle(p, 0, 0, Width - 1, Height - 1) : End Using
+    End Sub
+
+    Private ReadOnly _modHead As Font = Theme.Px(12, 600)
+    Private Sub PaintModern(g As Graphics, e As PaintEventArgs, rects As List(Of (Col As TCol, X As Integer, W As Integer)))
+        Theme.Smooth(g)
+        Using b As New SolidBrush(Web.HeadBg) : g.FillRectangle(b, 0, 0, Width, HeadHeight) : End Using
+        If Selectable Then
+            Dim all = Rows.Count > 0 AndAlso Rows.All(Function(r) Selected.Contains(IdOf(r)))
+            Web.DrawCheck(g, New Rectangle(14, HeadHeight \ 2 - 8, 16, 16), all)
+        End If
+        For Each c In rects
+            Dim x = c.X + 12
+            Tr.DrawSpaced(g, c.Col.Header.ToUpperInvariant(), _modHead, New Point(x, HeadHeight \ 2 - 8), If(c.Col Is SortCol, Theme.G800, Theme.G500), 0.6F)
+            If c.Col.Sort IsNot Nothing Then
+                Dim tw = 0
+                For Each ch In c.Col.Header.ToUpperInvariant() : tw += Tr.MeasureText(g, ch.ToString(), _modHead, New Size(100, 100), TextFormatFlags.NoPadding).Width + 1 : Next
+                Dim ic = If(c.Col Is SortCol, If(SortAsc, "arrow-up", "arrow-down"), "chevrons-up-down")
+                Icons.Draw(g, ic, New RectangleF(x + tw + 5, HeadHeight \ 2 - 7, 14, 14), If(c.Col Is SortCol, Web.Blue, Theme.G300))
+            End If
+        Next
+        Using p As New Pen(Color.FromArgb(&HE6, &HE8, &HEF)) : g.DrawLine(p, 0, HeadHeight - 1, Width, HeadHeight - 1) : End Using
+        If Rows.Count = 0 Then
+            Tr.DrawText(g, EmptyText, Theme.Px(14), New Rectangle(0, HeadHeight, Width, Height - HeadHeight), Theme.G500, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
+        Else
+            Dim clip = e.ClipRectangle
+            Dim first = Math.Max(0, (clip.Top - HeadHeight) \ RowHeight)
+            Dim last = Math.Min(Rows.Count - 1, (clip.Bottom - HeadHeight) \ RowHeight + 1)
+            For i = first To last
+                Dim r = Rows(i)
+                Dim y = HeadHeight + i * RowHeight
+                Dim sel = Selectable AndAlso Selected.Contains(IdOf(r))
+                Dim bg = If(sel, Color.FromArgb(&HF1, &HF6, &HFF), If(i = _hoverRow, Web.RowHover, Color.White))
+                Using b As New SolidBrush(bg) : g.FillRectangle(b, 0, y, Width, RowHeight) : End Using
+                If RowColour IsNot Nothing Then
+                    Dim rc = RowColour(r)
+                    If rc <> Color.Empty Then
+                        Using b As New SolidBrush(rc) : g.FillRectangle(b, 0, y, 3, RowHeight) : End Using
+                    End If
+                End If
+                If Selectable Then Web.DrawCheck(g, New Rectangle(14, y + RowHeight \ 2 - 8, 16, 16), sel)
+                For Each c In rects
+                    DrawCell(g, c.Col, r, New Rectangle(c.X + 2, y, c.W - 4, RowHeight), i)
+                Next
+                Using p As New Pen(Web.Line) : g.DrawLine(p, 0, y + RowHeight - 1, Width, y + RowHeight - 1) : End Using
+            Next
+        End If
+        Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
+            Using pen As New Pen(Web.Line) : g.DrawPath(pen, p) : End Using
+        End Using
     End Sub
 
     Private Sub DrawCell(g As Graphics, c As TCol, r As JsonObject, cell As Rectangle, rowIndex As Integer)
@@ -1029,6 +1121,9 @@ Public Class WebTable
                     Next
                 ElseIf c.Col.Kind = CellKind.PillMenu OrElse c.Col.Kind = CellKind.Toggle OrElse c.Col.Kind = CellKind.Link Then
                     hand = True
+                ElseIf c.Col.Kind = CellKind.Custom AndAlso HotSpot IsNot Nothing Then
+                    Dim inner = If(Modern, New Rectangle(cell.X + 12, cell.Y, cell.Width - 24, cell.Height), New Rectangle(cell.X + 10, cell.Y, cell.Width - 20, cell.Height))
+                    If HotSpot(Rows(i), c.Col, inner, e.Location) Then hand = True : HoverPoint = e.Location
                 End If
             Next
             If _rowClickable Then hand = True
@@ -1046,6 +1141,8 @@ Public Class WebTable
         End If
     End Sub
 
+    ''' <summary>Where the mouse is over the table (Custom cells use it for hover looks).</summary>
+    Public HoverPoint As Point
     Private _rowClickable As Boolean
     ''' <summary>The whole row opens something (pointer cursor over rows).</summary>
     Public Property RowClickable As Boolean
@@ -1115,6 +1212,14 @@ Public Class WebTable
                     End If
                 Next
                 Return
+            End If
+            If c.Col.Kind = CellKind.Custom Then
+                Dim inner As New Rectangle(cell.X + 10, cell.Y, cell.Width - 20, cell.Height)
+                If Modern Then inner = New Rectangle(cell.X + 12, cell.Y, cell.Width - 24, cell.Height)
+                If HotSpot IsNot Nothing AndAlso HotSpot(row, c.Col, inner, e.Location) Then
+                    RaiseEvent CellClickAt(row, c.Col, inner, e.Location)
+                    Return
+                End If
             End If
             If c.Col.Kind = CellKind.PillMenu OrElse c.Col.Kind = CellKind.Toggle OrElse c.Col.Kind = CellKind.Link OrElse c.Col.Kind = CellKind.Custom Then
                 RaiseEvent CellClick(row, c.Col, RectangleToScreen(cell))

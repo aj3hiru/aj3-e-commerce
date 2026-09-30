@@ -149,12 +149,48 @@ Public Module OrderActions
         Return 0
     End Function
 
+    ''' <summary>The payment pill: Paid ↔ Unpaid (as the website's pill, the server keeps its rules).</summary>
+    Public Sub SetPayment(o As JsonObject, status As String, Optional owner As Control = Nothing)
+        Dim f = Js.Obj("paymentStatus", status)
+        If status = "Paid" Then f("due") = 0 : f("paid") = Js.Num(o, "total")
+        Act(o, Js.Str(o, "number") & " marked " & status, Js.Obj("action", "update_payment", "paymentStatus", status), f, owner:=owner)
+    End Sub
+
+    ''' <summary>The status pill: any status (the server refuses what this person may not do).</summary>
+    Public Sub SetStatusAny(o As JsonObject, status As String, Optional owner As Control = Nothing)
+        If status = "Canceled" Then RejectWithReason(o, owner, "Cancel") : Return
+        Dim f = Js.Obj("status", status)
+        If status = "Delivered" Then f("deliveredAt") = DateTime.UtcNow.ToString("o")
+        Act(o, Js.Str(o, "number") & " is now " & status, Js.Obj("action", "update_status", "orderStatus", status), f, owner:=owner)
+    End Sub
+
+    Public ReadOnly RejectReasons As String() = {"Out of stock", "Can't deliver to this area", "Customer asked to cancel", "Duplicate order", "Suspicious / fake order"}
+
+    ''' <summary>The website's Reject box: "Why reject …?", the reasons (or Other + text), then Reject order.</summary>
+    Public Sub RejectWithReason(o As JsonObject, owner As Control, Optional verb As String = "Reject")
+        Dim f As New FormDialog("Why " & verb.ToLowerInvariant() & " " & Js.Str(o, "number") & "?", 380, verb & " order")
+        f.SaveButton.Fill = Color.FromArgb(&HDC, &H26, &H26)
+        f.AddPick("reason", "Reason", RejectReasons.Concat({"Other"}).Select(Function(r) r & "|" & r), RejectReasons(0))
+        Dim other = f.AddText("other", "Type the reason", "")
+        f.ShowField("other", False)
+        AddHandler CType(f.Input("reason"), ComboBox).SelectedIndexChanged, Sub()
+                                                                               f.ShowField("other", f.Val("reason") = "Other")
+                                                                               f.Relayout()
+                                                                           End Sub
+        f.Validator = Function(d) If(d.Val("reason") = "Other" AndAlso d.Val("other").Trim() = "", "Type the reason.", Nothing)
+        If f.ShowDialog(owner?.FindForm()) <> DialogResult.OK Then Return
+        Dim why = If(f.Val("reason") = "Other", f.Val("other").Trim(), f.Val("reason"))
+        Act(o, Js.Str(o, "number") & " " & If(verb = "Reject", "rejected", "canceled"), Js.Obj("action", "update_status", "orderStatus", "Canceled", "note", why), Js.Obj("status", "Canceled", "cancelReason", why), owner:=owner)
+    End Sub
+
+    ''' <summary>The payment method as the website shows it: a shop order's key ("cod") becomes its name.</summary>
     Public Function MethodLabel(m As String) As String
-        Select Case m
-            Case "COD" : Return "Cash On Delivery"
-            Case "" : Return "—"
-            Case Else : Return m
-        End Select
+        If m = "" Then Return "—"
+        Dim names = TryCast(Js.Field(AppState.I.Settings, "paymentNames"), JsonObject)
+        Dim n = Js.Str(names, m)
+        If n <> "" Then Return n
+        If m.ToLowerInvariant() = "cod" Then Return "Cash On Delivery"
+        Return m
     End Function
 
     ''' <summary>Print an order's bill on the paper chosen in Business Settings (thermal 58 / 80 mm or A4).</summary>

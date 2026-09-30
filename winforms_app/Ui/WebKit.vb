@@ -1036,6 +1036,7 @@ Public Class WebCombo
         ElseIf (m.Msg = &H317 OrElse m.Msg = &H318) AndAlso m.WParam <> IntPtr.Zero Then
             ' WM_PRINT / WM_PRINTCLIENT (DrawToBitmap, screenshots): draw our face there too
             Using g = Graphics.FromHdc(m.WParam)
+                g.SetClip(New Rectangle(0, 0, Width, Height)) ' the DC can be the whole window's: only touch our box
                 Paint_(g)
             End Using
         End If

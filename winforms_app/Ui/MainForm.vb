@@ -569,12 +569,14 @@ End Class
 Public Class SetupForm
     Inherits Form
     Private _pct As Double
-    Private _step As String = "Connecting"
+    Private _step As String = "Connecting…"
+    Private ReadOnly _full As Boolean
     Private _waiting As Boolean
     Private ReadOnly _skip As WButton = WButton.Make("Open with what is saved", "", Theme.Primary, outline:=True)
     Private ReadOnly _retry As New Timer With {.Interval = 5000}
 
-    Public Sub New()
+    Public Sub New(Optional full As Boolean = True)
+        _full = full
         Icon = Theme.AppIcon
         Tr.KeepAmpersands(Me)
         Text = "Sri Andal Staff"
@@ -608,9 +610,10 @@ Public Class SetupForm
         Dim ok = Await AppState.I.DownloadAllAsync(Sub(p, s)
                                                        _pct = p : _step = s
                                                        Invalidate()
-                                                   End Sub)
+                                                   End Sub, _full)
         If IsDisposed Then Return
-        If ok Then
+        ' an update that can't reach the internet just opens with what is saved
+        If ok OrElse Not _full Then
             DialogResult = DialogResult.OK
             Return
         End If
@@ -631,8 +634,8 @@ Public Class SetupForm
             Using b As New SolidBrush(Theme.Primary) : g.FillPath(b, p) : End Using
         End Using
         Using f = Theme.IconFont(14) : Theme.DrawCentered(g, Theme.IcShop, f, Color.White, New Rectangle(card.X + 24, card.Y + 24, 36, 36)) : End Using
-        Tr.DrawText(g, "Getting everything ready", Theme.UiFont(12.5F, FontStyle.Bold), New Point(card.X + 72, card.Y + 22), Theme.G900, TextFormatFlags.NoPadding)
-        Tr.DrawText(g, "One time only — after this every page opens instantly, even offline.", Theme.Small, New Point(card.X + 72, card.Y + 46), Theme.G500, TextFormatFlags.NoPadding)
+        Tr.DrawText(g, If(_full, "Getting everything ready", "Updating your data"), Theme.UiFont(12.5F, FontStyle.Bold), New Point(card.X + 72, card.Y + 22), Theme.G900, TextFormatFlags.NoPadding)
+        Tr.DrawText(g, If(_full, "One time only — after this every page opens instantly, even offline.", "Only what changed since last time — takes a moment."), Theme.Small, New Point(card.X + 72, card.Y + 46), Theme.G500, TextFormatFlags.NoPadding)
         Dim bar As New Rectangle(card.X + 24, card.Y + 94, card.Width - 48, 10)
         Using p = Theme.RoundRect(New RectangleF(bar.X, bar.Y, bar.Width, bar.Height), 5)
             Using b As New SolidBrush(Theme.G100) : g.FillPath(b, p) : End Using

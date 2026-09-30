@@ -25,9 +25,9 @@ Public Module Program
                     If login.ShowDialog() <> DialogResult.OK Then Return
                 End Using
             End If
-            ' One-time full download (first login / after an update with new pages), with a % bar.
-            If AppState.I.SetupNeeded AndAlso AppState.I.Online Then
-                Using setup As New SetupForm()
+            ' At login / start: the first time everything is collected; after that only what changed (with a % bar).
+            If AppState.I.SetupNeeded OrElse AppState.I.Sets.Count > 0 Then
+                Using setup As New SetupForm(AppState.I.SetupNeeded)
                     If setup.ShowDialog() <> DialogResult.OK Then Return
                 End Using
             End If

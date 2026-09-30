@@ -824,31 +824,35 @@ Public Class AppState
 
     ''' <summary>Everything the software can show, downloaded once after login (with a % shown): data, menu,
     ''' dashboard, every page, reports, product forms and order histories. False when the internet dropped.</summary>
-    Public Async Function DownloadAllAsync(progress As Action(Of Double, String)) As Task(Of Boolean)
-        progress(0.02, "Connecting")
+    ''' <summary>At login: full = the first time (everything); otherwise only what changed since last time.
+    ''' The steps are shown in plain words only ("Collecting data…"), with a %.</summary>
+    Public Async Function DownloadAllAsync(progress As Action(Of Double, String), Optional full As Boolean = True) As Task(Of Boolean)
+        progress(0.02, "Connecting…")
         Await PushAsync()
-        progress(0.05, "Products, orders and customers")
+        progress(0.05, If(full, "Collecting data…", "Checking for updates…"))
         LastError = Nothing
-        Await PullAsync(Nothing, True)
+        Await PullAsync(Nothing, full)
         If Not Online OrElse LastError IsNot Nothing Then Return False
-        progress(0.18, "Menu and your account")
+        progress(0.18, "Collecting data…")
         Await RefreshMeAsync()
         Await RefreshExtrasAsync(True)
         Await LoadWebDashboardsAsync()
-        progress(0.22, "Pages")
+        progress(0.22, "Collecting data…")
         Dim off = False
-        Await Pool(PageNames.ToList(), 5, Async Function(n)
+        ' an update skips the years of old sales when they were fetched today (they rarely change)
+        Dim names = PageNames.Where(Function(n) full OrElse n <> "sales_ledger_old" OrElse Page(n) Is Nothing OrElse Not PageAt.ContainsKey(n) OrElse DateTime.UtcNow - PageAt(n).ToUniversalTime() > TimeSpan.FromHours(20)).ToList()
+        Await Pool(names, 5, Async Function(n)
                                               Dim o = Await ReloadPageAsync(n, False)
                                               If o = ApiOutcome.Offline Then off = True
                                               Return Not off
-                                          End Function, Sub(d) progress(0.22 + 0.28 * d / PageNames.Length, "Pages (" & d & " of " & PageNames.Length & ")"))
+                                          End Function, Sub(d) progress(0.22 + 0.28 * d / names.Count, "Collecting data…"))
         If off Then Return False
-        progress(0.5, "Reports")
+        progress(0.5, "Preparing reports…")
         Await LoadReportsAsync()
-        progress(0.55, "Product details")
-        Await LoadProductDetailsAsync(Sub(d, t) progress(0.55 + 0.25 * d / Math.Max(1, t), "Product details (" & d & " of " & t & ")"))
-        progress(0.8, "Order histories")
-        Await LoadOrderHistoriesAsync(Sub(d, t) progress(0.8 + 0.19 * d / Math.Max(1, t), "Order histories (" & d & " of " & t & ")"))
+        progress(0.55, "Collecting data…")
+        Await LoadProductDetailsAsync(Sub(d, t) progress(0.55 + 0.25 * d / Math.Max(1, t), "Collecting data…"))
+        progress(0.8, "Almost ready…")
+        Await LoadOrderHistoriesAsync(Sub(d, t) progress(0.8 + 0.19 * d / Math.Max(1, t), "Almost ready…"))
         If Not Online Then Return False
         Store.Write("setup_box", New JsonObject From {{"key", SetupKey}})
         _lastPages = DateTime.Now

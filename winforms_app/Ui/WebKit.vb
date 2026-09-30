@@ -131,8 +131,17 @@ Public Class RangeChips
         SyncPickers()
     End Sub
 
+    ''' <summary>Width of "Showing: …" and the chips (the dates go on the same line when they fit, as on the website).</summary>
+    Private Function ChipsWidth() As Integer
+        Dim w = 16 + 24 + Tr.MeasureText("Showing:", _f14).Width + 6 + Tr.MeasureText(Showing, _f14b).Width + 16
+        For Each p In Presets : w += Tr.MeasureText(p.Split("|"c)(1), _chipFont).Width + 24 + 6 : Next
+        Return w
+    End Function
+    Private Function DatesWidth() As Integer
+        Return 16 + 130 + 8 + 18 + 8 + 130 + 8 + _apply.Width + 16
+    End Function
     Public Function HeightFor(width As Integer) As Integer Implements IFlowHeight.HeightFor
-        Return If(width < 1100, 100, 58)
+        Return If(ChipsWidth() + DatesWidth() > width, 100, 58)
     End Function
 
     Private Sub UpdateApply()
@@ -513,7 +522,7 @@ Public Class SearchField
 
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Dim g = e.Graphics
-        g.Clear(If(Parent?.BackColor, Color.White))
+        g.Clear(Theme.Behind(Me))
         Theme.Smooth(g)
         Dim focus = Box.Focused
         If focus Then

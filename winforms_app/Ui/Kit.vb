@@ -1773,7 +1773,7 @@ Public Class MiniStat
     End Sub
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Dim g = e.Graphics
-        g.Clear(If(Parent?.BackColor, Theme.Page))
+        g.Clear(Theme.Behind(Me))
         Theme.Smooth(g)
         Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), 10)
             Using b As New SolidBrush(Color.White) : g.FillPath(b, p) : End Using
@@ -2466,7 +2466,7 @@ Public Class ChoiceCard
     End Sub
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Dim g = e.Graphics
-        g.Clear(If(Parent?.BackColor, Theme.Page))
+        g.Clear(Theme.Behind(Me))
         Theme.Smooth(g)
         Using p = Theme.RoundRect(New RectangleF(1, 1, Width - 3, Height - 3), 10)
             Using b As New SolidBrush(If(_hover AndAlso Not Selected, Theme.G50, Color.White)) : g.FillPath(b, p) : End Using

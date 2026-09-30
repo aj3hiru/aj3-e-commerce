@@ -19,7 +19,7 @@ Public Class Card
     End Sub
     Protected Overrides Sub OnPaintBackground(e As PaintEventArgs)
         Dim g = e.Graphics
-        g.Clear(If(Parent?.BackColor, Theme.Page))
+        g.Clear(Theme.Behind(Me))
         Theme.Smooth(g)
         Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), 10)
             Using b As New SolidBrush(Color.White) : g.FillPath(b, p) : End Using
@@ -148,7 +148,7 @@ Public Class WInput
     End Sub
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Dim g = e.Graphics
-        g.Clear(If(Parent?.BackColor, Color.White))
+        g.Clear(Theme.Behind(Me))
         Theme.Smooth(g)
         Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), 6)
             Using b As New SolidBrush(If(Enabled, Color.White, Theme.G50)) : g.FillPath(b, p) : End Using
@@ -194,7 +194,7 @@ Public Class StatCard
     End Sub
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Dim g = e.Graphics
-        g.Clear(If(Parent?.BackColor, Theme.Page))
+        g.Clear(Theme.Behind(Me))
         Theme.Smooth(g)
         Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), 10)
             Using b As New SolidBrush(Color.White) : g.FillPath(b, p) : End Using
@@ -244,7 +244,7 @@ Public Class Tile
     End Sub
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Dim g = e.Graphics
-        g.Clear(If(Parent?.BackColor, Color.White))
+        g.Clear(Theme.Behind(Me))
         Theme.Smooth(g)
         Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), 8)
             Using b As New SolidBrush(Color.White) : g.FillPath(b, p) : End Using

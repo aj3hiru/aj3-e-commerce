@@ -662,6 +662,34 @@ Public Class AppState
         Await Task.WhenAll(all)
     End Function
 
+    ' ───────────── the website's dashboard (same view and numbers), kept per range for offline ─────────────
+    Public Shared Function WebDashKey(query As String) As String
+        Return "webdash_" & query
+    End Function
+
+    ''' <summary>The website's dashboard for this person ("range=today", "range=custom&amp;from=…&amp;to=…"), fetched now;
+    ''' Nothing when offline (the last one kept is then shown).</summary>
+    Public Async Function FetchWebDashboardAsync(query As String) As Task(Of JsonObject)
+        Dim r = Await Api.GetAsync("/api/app/v1/web-dashboard?" & query, 60)
+        If r.Outcome = ApiOutcome.Unauthorized Then RaiseEvent NeedLogin() : Return Nothing
+        If Not r.IsOk Then Return Nothing
+        Dim d = TryCast(Js.Copy(r.Data), JsonObject)
+        d("at") = DateTime.UtcNow.ToString("o")
+        Store.Write(WebDashKey(query), d)
+        Return d
+    End Function
+
+    Public Function CachedWebDashboard(query As String) As JsonObject
+        Return TryCast(Store.Read(WebDashKey(query)), JsonObject)
+    End Function
+
+    Private Async Function LoadWebDashboardsAsync() As Task
+        Await Pool({"today", "yesterday", "7days", "this_month", "prev_month"}.ToList(), 3, Async Function(rg)
+                                                                                                 Await FetchWebDashboardAsync("range=" & rg)
+                                                                                                 Return Online
+                                                                                             End Function)
+    End Function
+
     Private _lastExtras As DateTime = DateTime.MinValue
     ''' <summary>Dashboard numbers and the product form's choices, kept on the computer.</summary>
     Private Async Function RefreshExtrasAsync(Optional force As Boolean = False) As Task
@@ -761,6 +789,7 @@ Public Class AppState
         progress(0.18, "Menu and your account")
         Await RefreshMeAsync()
         Await RefreshExtrasAsync(True)
+        Await LoadWebDashboardsAsync()
         progress(0.22, "Pages")
         Dim off = False
         Await Pool(PageNames.ToList(), 5, Async Function(n)

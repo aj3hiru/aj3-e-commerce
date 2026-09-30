@@ -209,4 +209,13 @@ Public Module Theme
             Return _appIcon
         End Get
     End Property
+    ''' <summary>The colour behind a control: the first parent that isn't transparent (the page grey by default).</summary>
+    Public Function Behind(c As Control) As Color
+        Dim p = c?.Parent
+        While p IsNot Nothing
+            If p.BackColor.A = 255 Then Return p.BackColor
+            p = p.Parent
+        End While
+        Return Page
+    End Function
 End Module

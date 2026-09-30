@@ -290,18 +290,24 @@ Public Module Receipts
     End Sub
 End Module
 
-''' <summary>Saves a table as a CSV file (opens in Excel), like the website's Export button.</summary>
+''' <summary>Saves a table as an Excel file (or CSV), like the website's Export button.</summary>
 Public Module Export
     Public Sub Csv(owner As Control, title As String, headers As IEnumerable(Of String), rows As IEnumerable(Of IEnumerable(Of Object)))
-        Using d As New SaveFileDialog With {.Filter = "CSV (Excel)|*.csv", .FileName = title.Replace("/", "-") & " " & DateTime.Now.ToString("yyyy-MM-dd") & ".csv"}
+        Dim head = headers.ToList()
+        Dim data = rows.Select(Function(r) r.ToList()).ToList()
+        Using d As New SaveFileDialog With {.Filter = "Excel workbook|*.xlsx|CSV (comma separated)|*.csv", .FileName = title.Replace("/", "-").Replace(":", "-") & " " & DateTime.Now.ToString("yyyy-MM-dd")}
             If d.ShowDialog(owner?.FindForm()) <> DialogResult.OK Then Return
-            Dim sb As New StringBuilder()
-            sb.AppendLine(String.Join(",", headers.Select(AddressOf Cell)))
-            For Each r In rows
-                sb.AppendLine(String.Join(",", r.Select(AddressOf Cell)))
-            Next
             Try
-                File.WriteAllText(d.FileName, sb.ToString(), New UTF8Encoding(True))
+                If d.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase) Then
+                    Dim sb As New StringBuilder()
+                    sb.AppendLine(String.Join(",", head.Select(AddressOf Cell)))
+                    For Each r In data : sb.AppendLine(String.Join(",", r.Select(AddressOf Cell))) : Next
+                    File.WriteAllText(d.FileName, sb.ToString(), New UTF8Encoding(True))
+                Else
+                    Dim sh As New Xlsx.Sheet(title, head)
+                    For Each r In data : sh.Rows.Add(r) : Next
+                    Xlsx.Save(d.FileName, {sh})
+                End If
                 TryCast(owner?.FindForm(), MainForm)?.Toast("Saved " & Path.GetFileName(d.FileName))
             Catch ex As Exception
                 MessageBox.Show(owner?.FindForm(), "Could not save the file: " & ex.Message, "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning)

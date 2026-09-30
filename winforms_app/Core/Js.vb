@@ -67,11 +67,19 @@ Public Module Js
     End Function
 
     ''' <summary>An ISO time from the server as this computer's local time (Nothing when missing).</summary>
+    ' Parsed dates are kept: pages go through years of orders many times, and parsing was most of the work.
+    Private ReadOnly _times As New System.Collections.Concurrent.ConcurrentDictionary(Of String, DateTime?)
+
     Public Function Time(n As JsonNode, key As String) As DateTime?
         Dim s = Str(n, key)
+        If s = "" Then Return Nothing
+        Dim hit As DateTime? = Nothing
+        If _times.TryGetValue(s, hit) Then Return hit
         Dim d As DateTimeOffset
-        If s <> "" AndAlso DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, d) Then Return d.LocalDateTime
-        Return Nothing
+        Dim v As DateTime? = If(DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, d), d.LocalDateTime, CType(Nothing, DateTime?))
+        If _times.Count > 400000 Then _times.Clear()
+        _times(s) = v
+        Return v
     End Function
 
     Public Function Copy(n As JsonNode) As JsonNode

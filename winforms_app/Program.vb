@@ -16,7 +16,11 @@ Public Module Program
             Smoke.Run(args(1))
             Return
         End If
-        AddHandler Application.ThreadException, Sub(s, e) Crash.Show(e.Exception)
+        ' A late callback touching a page that was already closed is harmless: logged, no error box.
+        AddHandler Application.ThreadException, Sub(s, e)
+                                                    If TypeOf e.Exception Is ObjectDisposedException Then Crash.Log(e.Exception) : Return
+                                                    Crash.Show(e.Exception)
+                                                End Sub
         AddHandler AppDomain.CurrentDomain.UnhandledException, Sub(s, e) Crash.Log(TryCast(e.ExceptionObject, Exception))
         AppState.I.Init()
         Do
@@ -61,6 +65,7 @@ Public Module Crash
 
     Public Sub Show(ex As Exception)
         Log(ex)
+        If TypeOf ex Is ObjectDisposedException OrElse TypeOf ex?.InnerException Is ObjectDisposedException Then Return ' a closed page's late callback
         If _showing Then Return
         _showing = True
         Try

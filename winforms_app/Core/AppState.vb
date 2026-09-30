@@ -913,8 +913,14 @@ Public Class AppState
                     If pays Is Nothing Then pays = New JsonArray() : d("payments") = pays
                     pays.Add(New JsonObject From {{"receipt", Nothing}, {"amount", a}, {"method", Js.Str(e, "method", "Cash")}, {"at", DateTime.UtcNow.ToString("o")}})
                 Next
+                ' a due paid off moves to the paid list at once (the Due page's "Fully paid", Sales History's "Due Cleared")
+                Dim paidPage = TryCast(Page("dues_paid"), JsonArray)
                 For ix = dues.Count - 1 To 0 Step -1
-                    If Js.Num(dues(ix), "balance") <= 0.004 Then dues.RemoveAt(ix)
+                    If Js.Num(dues(ix), "balance") <= 0.004 Then
+                        Dim moved = Js.Copy(dues(ix))
+                        dues.RemoveAt(ix)
+                        If paidPage IsNot Nothing AndAlso Not Js.Objs(paidPage).Any(Function(x) Js.Same(Js.Field(x, "id"), Js.Field(moved, "id"))) Then paidPage.Insert(0, moved)
+                    End If
                 Next
             Case "product", "set_row", "customer", "staff", "due"
                 Dim setName = Select_(kind, Js.Str(e, "set"))

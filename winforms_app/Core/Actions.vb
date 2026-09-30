@@ -548,6 +548,7 @@ Public Module DueActions
                            .Effect = New JsonObject From {{"kind", "due_payment"}, {"method", method}, {"amounts", map}}, .Refresh = New List(Of String) From {"dues", "customers", "orders"}}
                        Dim res = Await AppState.I.SendNowAsync(item)
                        If res.Outcome = ApiOutcome.Rejected OrElse res.Outcome = ApiOutcome.Forbidden Then Return res.Message
+                       If res.IsOk Then Dim unusedPaid = AppState.I.ReloadPageAsync("dues_paid") ' receipts numbers from the server
                        Dim m = System.Text.RegularExpressions.Regex.Match(Js.Str(res.Data, "redirect"), "RCPT\d+")
                        Dim receiptNo = If(res.IsOk, If(m.Success, m.Value, "Receipt"), "Pending")
                        TryCast(owner?.FindForm(), MainForm)?.Toast(If(res.IsOk, "Payment recorded (" & receiptNo & ").", "Payment recorded — it is sent when the internet is back."))

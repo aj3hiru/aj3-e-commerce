@@ -385,8 +385,14 @@ Public MustInherit Class ScrollPage
     End Sub
 
     Public Sub Refresh_()
+        If IsDisposed OrElse Disposing Then Return ' a late answer for a page that was closed
         Reload()
         Relayout()
+    End Sub
+
+    Protected Overrides Sub Dispose(disposing As Boolean)
+        If disposing Then RemoveHandler AppState.I.DataChanged, AddressOf OnData
+        MyBase.Dispose(disposing)
     End Sub
 
     Public Overrides Function ContentHeight() As Integer
@@ -405,7 +411,7 @@ Public MustInherit Class ScrollPage
     End Sub
 
     Public Sub Relayout()
-        If _laying Then Return
+        If _laying OrElse IsDisposed Then Return
         _laying = True
         Try
             Dim w = Scroller.ClientSize.Width
@@ -514,9 +520,16 @@ Public Module Fmt
     End Function
 
     ''' <summary>The India-time calendar day of an instant.</summary>
+    Private ReadOnly _days As New System.Collections.Concurrent.ConcurrentDictionary(Of Long, Date)
     Public Function IstDay(v As DateTime?) As Date
         If Not v.HasValue Then Return Date.MinValue
-        Return ToIst(v.Value).Date
+        Dim k = v.Value.Ticks
+        Dim d As Date
+        If _days.TryGetValue(k, d) Then Return d
+        d = ToIst(v.Value).Date
+        If _days.Count > 400000 Then _days.Clear()
+        _days(k) = d
+        Return d
     End Function
 
     Public Function IstToday() As Date

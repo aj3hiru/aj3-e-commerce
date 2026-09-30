@@ -26,7 +26,7 @@ Public Class StaffPage
     Private Shared ReadOnly AvatarColors As Color() = {Color.FromArgb(&HBE, &H18, &H5D), Color.FromArgb(&H1D, &H4E, &HD8), Color.FromArgb(&HA1, &H62, 7), Color.FromArgb(&H37, &H30, &HA3), Color.FromArgb(4, &H78, &H57), Theme.Primary, Color.FromArgb(&HB9, &H1C, &H1C)}
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("user_manager2_display")
-    Private ReadOnly _add As WButton = Ui.Btn("Add Staff", Theme.IcAdd, Theme.Magenta)
+    Private ReadOnly _add As New HeadButton("Add Staff", "plus", Theme.Magenta)
     Private ReadOnly _cards As New Columns(4, 200, 14)
     Private ReadOnly _m As New Dictionary(Of String, MiniStat)
     Private ReadOnly _filters As New FilterCard()
@@ -416,7 +416,7 @@ Public Class BackupPage
     Inherits ScrollPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("app_backup_display")
-    Private ReadOnly _backup As WButton = Ui.Btn("Back up now", ChrW(&HE74E), Theme.Blue)
+    Private ReadOnly _backup As New HeadButton("Back up now", "save", Web.Blue)
     Private ReadOnly _poll As New Timer With {.Interval = 1000}
     Private _job As JsonObject
     Private ReadOnly _log As New List(Of JsonObject)
@@ -424,7 +424,7 @@ Public Class BackupPage
     Private _from As Integer
 
     Public Overrides ReadOnly Property PageTitle As String = "Backup & Restore"
-    Public Overrides ReadOnly Property PageSubtitle As String = "A complete copy of your store — keep it safe, restore it any time"
+    Public Overrides ReadOnly Property PageSubtitle As String = "A complete copy of your store — download it, keep it safe, and restore it whenever you need"
     Public Overrides ReadOnly Property Actions As Control()
         Get
             Return {_display.Button, _backup}
@@ -531,7 +531,7 @@ Public Class StaffAppPage
     Private _checked As Boolean
 
     Public Overrides ReadOnly Property PageTitle As String = "Staff App"
-    Public Overrides ReadOnly Property PageSubtitle As String = "Windows software and the Android app for your team"
+    Public Overrides ReadOnly Property PageSubtitle As String = "Billing, orders, deliveries and more on your phone and computer — works offline"
     Public Overrides ReadOnly Property Actions As Control()
         Get
             Return {_display.Button}

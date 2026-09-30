@@ -12,9 +12,9 @@ Public Class OffersPage
     Private ReadOnly _coupDisplay As DisplayOptions = DisplayOptions.For("ecom_coupons2_display")
     Private ReadOnly _tabCamp As New ChoiceCard("Campaign Offers", "Automatic price drops — no code needed", ChrW(&HE8C1))
     Private ReadOnly _tabCoup As New ChoiceCard("Coupons", "Codes customers enter at checkout", Theme.IcTicket)
-    Private ReadOnly _export As WButton = Ui.Btn("Export", ChrW(&HE896), outline:=True)
-    Private ReadOnly _newCamp As WButton = Ui.Btn("New Campaign", Theme.IcAdd, Theme.Blue)
-    Private ReadOnly _newCoup As WButton = Ui.Btn("New Coupon", Theme.IcAdd, Theme.Blue)
+    Private ReadOnly _export As New HeadButton("Export", "download")
+    Private ReadOnly _newCamp As New HeadButton("New Campaign", "plus", Web.Blue)
+    Private ReadOnly _newCoup As New HeadButton("New Coupon", "plus", Web.Blue)
     Private ReadOnly _campSearch As WInput = WInput.Make("Search campaigns…", Theme.IcSearch)
     Private ReadOnly _offerSearch As WInput = WInput.Make("Search products on offer…", Theme.IcSearch)
     Private ReadOnly _coupSearch As WInput = WInput.Make("Search coupons…", Theme.IcSearch)
@@ -27,7 +27,7 @@ Public Class OffersPage
     Public Overrides ReadOnly Property PageTitle As String = "Offers & Coupons"
     Public Overrides ReadOnly Property PageSubtitle As String
         Get
-            Return If(Mode = "campaigns", "Campaign offers drop prices automatically — no code needed", "Coupon codes customers enter at checkout")
+            Return If(Mode = "campaigns", "Campaign offers — timed price drops on products, categories or brands", "Coupon codes customers enter at checkout")
         End Get
     End Property
     Public Overrides ReadOnly Property Actions As Control()

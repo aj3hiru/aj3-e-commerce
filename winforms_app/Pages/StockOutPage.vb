@@ -9,7 +9,7 @@ Public Class StockOutPage
     Inherits ScrollPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_stock_out2_display")
-    Private ReadOnly _export As WButton = Ui.Btn("Export", ChrW(&HE896), outline:=True)
+    Private ReadOnly _export As New HeadButton("Export", "download")
     Private ReadOnly _cards As New Columns(4, 200, 14)
     Private ReadOnly _m As New Dictionary(Of String, MiniStat)
     Private ReadOnly _filters As New FilterCard()

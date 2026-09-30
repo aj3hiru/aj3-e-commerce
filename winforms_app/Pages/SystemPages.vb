@@ -10,7 +10,7 @@ Public Class StaticPagesPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_pages_display")
     Private ReadOnly _edDisplay As DisplayOptions = DisplayOptions.For("ecom_page_editor_display")
-    Private ReadOnly _add As WButton = Ui.Btn("New Page", Theme.IcAdd, Theme.Blue)
+    Private ReadOnly _add As New HeadButton("New Page", "plus", Web.Blue)
     Private ReadOnly _cards As New Columns(3, 200, 14)
     Private ReadOnly _m As New Dictionary(Of String, MiniStat)
     Private ReadOnly _tabs As New Tabs("all|All", "published|Published", "draft|Draft")
@@ -208,7 +208,7 @@ Public Class FilesPage
     Inherits ScrollPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("file_manager2_display")
-    Private ReadOnly _upload As WButton = Ui.Btn("Upload", ChrW(&HE898), Theme.Blue)
+    Private ReadOnly _upload As New HeadButton("Upload", "upload", Web.Blue)
     Private ReadOnly _search As WInput = WInput.Make("Search files…", Theme.IcSearch)
     Private ReadOnly _type As ComboBox = Ui.Filter({"all|All Types", "image|Images", "pdf|PDFs", "video|Videos", "document|Documents", "archive|Archives"}, 150)
     Private ReadOnly _cat As ComboBox = Ui.Filter({"all|All Categories", "media|Media Library", "product|Product Images", "category|Category Icons", "brand|Brand Logos", "banner|Homepage Banners", "payment|Payment Icons", "logo|Site Logo", "author|Author Photos"}, 180)
@@ -219,7 +219,7 @@ Public Class FilesPage
     Private _active As JsonObject
 
     Public Overrides ReadOnly Property PageTitle As String = "File Manager"
-    Public Overrides ReadOnly Property PageSubtitle As String = "Every image and file used on the site"
+    Public Overrides ReadOnly Property PageSubtitle As String = "Every file and image used across your store, in one place"
     Public Overrides ReadOnly Property Actions As Control()
         Get
             Return {_display.Button, _upload}
@@ -430,7 +430,7 @@ Public Class ActivityPage
     Private Shared ReadOnly FailedActs As String() = {"login_blocked", "login_denied"}
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("activity_logs2_display")
-    Private ReadOnly _export As WButton = Ui.Btn("Export", ChrW(&HE896), outline:=True)
+    Private ReadOnly _export As New HeadButton("Export", "download")
     Private ReadOnly _cards As New Columns(4, 200, 14)
     Private ReadOnly _m As New Dictionary(Of String, MiniStat)
     Private ReadOnly _filters As New FilterCard()
@@ -443,7 +443,7 @@ Public Class ActivityPage
     Private _shown As New List(Of JsonObject)
 
     Public Overrides ReadOnly Property PageTitle As String = "Activity Logs"
-    Public Overrides ReadOnly Property PageSubtitle As String = "Who did what, and when"
+    Public Overrides ReadOnly Property PageSubtitle As String = "Monitor system activities and audit trail across EduMint24"
     Public Overrides ReadOnly Property Actions As Control()
         Get
             Return {_display.Button, _export}
@@ -566,7 +566,7 @@ Public Class CachePage
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("cache_manager2_display")
 
     Public Overrides ReadOnly Property PageTitle As String = "Cache Manager"
-    Public Overrides ReadOnly Property PageSubtitle As String = "Refresh the shop when a change does not show up"
+    Public Overrides ReadOnly Property PageSubtitle As String = "Refresh cached pages and Redis, section by section"
     Public Overrides ReadOnly Property Actions As Control()
         Get
             Return {_display.Button}

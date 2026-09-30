@@ -8,8 +8,8 @@ Public Class BrandsPage
     Inherits ScrollPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_brands2_display")
-    Private ReadOnly _export As WButton = Ui.Btn("Export", ChrW(&HE896), outline:=True)
-    Private ReadOnly _add As WButton = Ui.Btn("Add Brand", Theme.IcAdd, Theme.Blue)
+    Private ReadOnly _export As New HeadButton("Export", "download")
+    Private ReadOnly _add As New HeadButton("Add Brand", "plus", Web.Blue)
     Private ReadOnly _cards As New Columns(4, 200, 14)
     Private ReadOnly _m As New Dictionary(Of String, MiniStat)
     Private ReadOnly _filters As New FilterCard()
@@ -189,8 +189,9 @@ Public Class TagsPage
     Inherits ScrollPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_product_tags2_display")
-    Private ReadOnly _addType As WButton = Ui.Btn("Add Item Type", Theme.IcAdd, outline:=True)
-    Private ReadOnly _addBadge As WButton = Ui.Btn("Add Badge", Theme.IcAdd, Theme.Blue)
+    Private ReadOnly _exportTags As New HeadButton("Export", "download")
+    Private ReadOnly _addTag As New HeadButton("Add Tag", "plus", Web.Blue)
+    Private _tagRows As New List(Of JsonObject)
     Private ReadOnly _cards As New Columns(4, 200, 14)
     Private ReadOnly _m As New Dictionary(Of String, MiniStat)
     Private ReadOnly _orphans As New CardBox(Nothing, "", 12)
@@ -202,10 +203,10 @@ Public Class TagsPage
     Private ReadOnly _list As New ListCard("tags")
 
     Public Overrides ReadOnly Property PageTitle As String = "Badge Tags & Item Types"
-    Public Overrides ReadOnly Property PageSubtitle As String = "Badges shown on product photos, and the kinds of items you sell (sales: last 12 months)"
+    Public Overrides ReadOnly Property PageSubtitle As String = "The labels on your products, and how much each one sells"
     Public Overrides ReadOnly Property Actions As Control()
         Get
-            Return {_display.Button, _addType, _addBadge}
+            Return {_display.Button, _exportTags, _addTag}
         End Get
     End Property
 
@@ -255,8 +256,8 @@ Public Class TagsPage
                                          BuildCols()
                                          Refresh_()
                                      End Sub
-        AddHandler _addType.Click, Sub() Edit(Nothing, "item_type")
-        AddHandler _addBadge.Click, Sub() Edit(Nothing, "badge")
+        AddHandler _addTag.Click, Sub() Edit(Nothing, If(Ui.Val(_group) = "item_type", "item_type", "badge"))
+        AddHandler _exportTags.Click, Sub() ExportTags()
         BuildCols()
     End Sub
 
@@ -313,6 +314,7 @@ Public Class TagsPage
                                  If usage = "nosales" AndAlso Js.Int(t, "unitsSold") > 0 Then Return False
                                  Return _list.Matches(Js.Str(t, "label") & " " & Js.Str(t, "slug"))
                              End Function).ToList()
+        _tagRows = list
         _list.SetRows(list, all.Count, group <> "all" OrElse status <> "all" OrElse usage <> "all")
         _m("tg2-k-badges").SetValue(badges.Count.ToString(), "shown on product cards")
         _m("tg2-k-types").SetValue((all.Count - badges.Count).ToString(), "how products are grouped")
@@ -347,12 +349,22 @@ Public Class TagsPage
             .Label = "Delete tag: " & Js.Str(x, "label"), .Refresh = New List(Of String) From {"settings", "products"}, .Effect = PageActions.PageRowDelete("tags", Js.Field(x, "id"))}, """" & Js.Str(t, "label") & """ deleted.")
     End Function
 
+    ''' <summary>Export (as on the website): the tags shown, with products and sales.</summary>
+    Private Sub ExportTags()
+        If _tagRows.Count = 0 Then Toast("There is nothing to export.", True) : Return
+        Export.Csv(Me, "badge-tags-" & Date.Today.ToString("yyyy-MM-dd"), {"ID", "Type", "Name", "Code", "Colour", "Order", "Status", "Products", "Units Sold", "Revenue"},
+                   _tagRows.Select(Function(x) CType({CObj(Js.Int(x, "id")), If(Js.Str(x, "tagGroup") = "badge", "Badge Tag", "Item Type"), Js.Str(x, "label"), Js.Str(x, "slug"), Js.Str(x, "color"),
+                                                     CObj(Js.Int(x, "sortOrder")), Js.Str(x, "status"), CObj(Js.Int(x, "products")), CObj(Js.Int(x, "unitsSold")), Js.Num(x, "revenue").ToString("0.00")}, IEnumerable(Of Object))))
+    End Sub
+
     Private Sub Edit(t As JsonObject, group As String)
         Dim f As New FormDialog(If(t Is Nothing, If(group = "badge", "Add badge tag", "Add item type"), "Edit " & Js.Str(t, "label")), 460)
+        If t Is Nothing Then f.AddPick("group", "Type", {"badge|Badge tag (shown on the product photo)", "item_type|Item type (how products are grouped)"}, group)
         f.AddText("label", "Name", Js.Str(t, "label"), required:=True, placeholder:=If(group = "badge", "e.g. Best Seller", "e.g. Combo Pack"))
         f.AddColor("color", "Colour", Js.Str(t, "color", If(group = "badge", "#16A34A", "#2563EB")), half:=True)
         f.AddNumber("order", "Order", If(t Is Nothing, 0, Js.Int(t, "sortOrder")), half:=True)
         f.OnSave = Async Function(d)
+                       If t Is Nothing Then group = d.Val("group")
                        Dim body = Js.Obj("label", d.Val("label").Trim(), "tagGroup", Js.Str(t, "tagGroup", group), "color", d.Val("color"), "sortOrder", CInt(d.Num("order")), "slug", Js.Str(t, "slug"))
                        Dim item As New OutboxItem With {.Method = If(t Is Nothing, "POST", "PUT"), .Path = If(t Is Nothing, "/api/ecommerce/product-tags2", "/api/ecommerce/product-tags2/" & Js.Int(t, "id")),
                            .Label = "Tag: " & d.Val("label").Trim(), .Body = body, .Refresh = New List(Of String) From {"settings"}}
@@ -374,8 +386,8 @@ Public Class ReviewsPage
     Inherits ScrollPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_reviews2_display")
-    Private ReadOnly _export As WButton = Ui.Btn("Export", ChrW(&HE896), outline:=True)
-    Private ReadOnly _add As WButton = Ui.Btn("Add Review", Theme.IcAdd, Theme.Blue)
+    Private ReadOnly _export As New HeadButton("Export", "download")
+    Private ReadOnly _add As New HeadButton("Add Review", "plus", Web.Blue)
     Private ReadOnly _rangeCard As New CardBox(Nothing, "", 1)
     Private ReadOnly _range As New RangeChips() With {.Outline = True, .ToggleText = "Filter the table by this range"}
     Private ReadOnly _cards As New Columns(4, 200, 14)

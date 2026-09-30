@@ -584,6 +584,8 @@ Public Class HeadButton
     Private _hover As Boolean
     Public Property Icon As String = ""
     Public Property Fill As Color = Color.Empty
+    ''' <summary>A small chevron after the text (a button that opens a menu, e.g. Export ▾).</summary>
+    Public Property Caret As Boolean
     Public Sub New(text As String, Optional icon As String = "", Optional fill As Color = Nothing)
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw Or ControlStyles.SupportsTransparentBackColor, True)
         BackColor = Color.Transparent
@@ -594,7 +596,7 @@ Public Class HeadButton
         Width = PreferredWidth()
     End Sub
     Public Function PreferredWidth() As Integer
-        Return 14 + If(Icon <> "", 16 + 8, 0) + Tr.MeasureText(Text, Font).Width + 14
+        Return 14 + If(Icon <> "", 16 + 8, 0) + Tr.MeasureText(Text, Font).Width + If(Caret, 6 + 14, 0) + 14
     End Function
     Protected Overrides Sub OnTextChanged(e As EventArgs)
         MyBase.OnTextChanged(e)
@@ -629,6 +631,7 @@ Public Class HeadButton
             x += 24
         End If
         Tr.DrawText(g, Text, Font, New Rectangle(x, 0, Width - x, Height), fg, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+        If Caret Then Icons.Draw(g, "chevron-down", New RectangleF(x + Tr.MeasureText(Text, Font).Width + 6, (Height - 14) / 2.0F, 14, 14), fg)
     End Sub
 End Class
 

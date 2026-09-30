@@ -13,9 +13,9 @@ Public Class CustomizerPage
         {"soldBy", "Sold by"}, {"highlights", "Highlights"}, {"reviews", "Ratings & reviews"}, {"assurance", "Assurance badges"}, {"actions", "Add to Cart / Buy Now"}, {"related", "Related products"}}
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_customizer_display")
-    Private ReadOnly _view As WButton = Ui.Btn("View shop", ChrW(&HE8A7), outline:=True)
-    Private ReadOnly _draft As WButton = Ui.Btn("Save draft", Theme.IcSave, outline:=True)
-    Private ReadOnly _publish As WButton = Ui.Btn("Publish", ChrW(&HE724), Theme.Magenta)
+    Private ReadOnly _view As New HeadButton("View shop", "external-link")
+    Private ReadOnly _draft As New HeadButton("Save draft", "save")
+    Private ReadOnly _publish As New HeadButton("Publish", "send", Theme.Magenta)
     Private _tabs As Tabs
     Private _tab As String
     Private _home, _product, _store, _header As JsonObject
@@ -24,7 +24,7 @@ Public Class CustomizerPage
     Private ReadOnly _open As New HashSet(Of String)
 
     Public Overrides ReadOnly Property PageTitle As String = "Store Customizer"
-    Public Overrides ReadOnly Property PageSubtitle As String = "How your shop looks — homepage, product page, menus and footer"
+    Public Overrides ReadOnly Property PageSubtitle As String = "Design your storefront with a live preview — homepage, product page, header and footer"
     Public Overrides ReadOnly Property Actions As Control()
         Get
             Return {_display.Button, _view, _draft, _publish}

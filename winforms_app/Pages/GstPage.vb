@@ -8,8 +8,8 @@ Public Class GstPage
     Inherits ScrollPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("app_gst_display")
-    Private ReadOnly _export As WButton = Ui.Btn("Export sheet", ChrW(&HE9F9), outline:=True)
-    Private ReadOnly _print As WButton = Ui.Btn("Print / PDF", Theme.IcPrint, outline:=True)
+    Private ReadOnly _export As New HeadButton("Export sheet", "file-text")
+    Private ReadOnly _print As New HeadButton("Print / PDF", "printer")
     Private ReadOnly _period As New Tabs("month|This month", "prev|Last month", "quarter|This quarter", "year|This financial year", "custom|Custom dates…")
     Private ReadOnly _channel As New Tabs("all|All sales", "offline|Store", "online|Online")
     Private ReadOnly _tabs As New Tabs("rate|Rate-wise", "hsn|HSN-wise", "product|Product-wise", "invoice|Invoice-wise")

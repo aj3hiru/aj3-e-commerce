@@ -40,7 +40,7 @@ Public Class BusinessPage
     Private _saving As Boolean
 
     Public Overrides ReadOnly Property PageTitle As String = "Business Settings"
-    Public Overrides ReadOnly Property PageSubtitle As String = "Your shop details, invoices, tax and delivery"
+    Public Overrides ReadOnly Property PageSubtitle As String = "Your business profile, SEO details, and everything that appears on invoices and your storefront"
     Public Overrides ReadOnly Property Actions As Control()
         Get
             Return {_display.Button}

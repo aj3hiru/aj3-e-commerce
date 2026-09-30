@@ -12,7 +12,7 @@ Public Class ProductsPage
     Private Const LowLimit As Integer = 5
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_products2_display")
     Private ReadOnly _search As New SearchField("Search products, SKU, barcode…", 250) With {.Height = 40}
-    Private ReadOnly _export As New HeadButton("Export", "download")
+    Private ReadOnly _export As New HeadButton("Export", "download") With {.Caret = True}
     Private ReadOnly _add As New HeadButton("Add Product", "plus", Color.FromArgb(&HF9, &H73, &H16))
     Private ReadOnly _cards As New Columns(4, 200, 16)
     Private ReadOnly _m As New Dictionary(Of String, ProdStatCard)
@@ -54,7 +54,7 @@ Public Class ProductsPage
     End Function
 
     Public Sub New()
-        _export.Text = "Export  "
+        _export.Width = _export.PreferredWidth()
         For Each m In {("p2-k-total", "shopping-bag", "orange"), ("p2-k-published", "badge-check", "green"), ("p2-k-low", "triangle-alert", "amber"), ("p2-k-out", "package-x", "red")}
             Dim key = m.Item1
             Dim c = _cards.Add(New ProdStatCard(m.Item2, m.Item3))

@@ -12,9 +12,9 @@ Public Class PushPage
     Inherits ScrollPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("push_manager2_display")
-    Private ReadOnly _exportBtn As WButton = Ui.Btn("Export", ChrW(&HE896), outline:=True)
-    Private ReadOnly _importBtn As WButton = Ui.Btn("Import", ChrW(&HE898), outline:=True)
-    Private ReadOnly _newBtn As WButton = Ui.Btn("New Push", Theme.IcAdd, Theme.Blue)
+    Private ReadOnly _exportBtn As New HeadButton("Export", "download")
+    Private ReadOnly _importBtn As New HeadButton("Import", "upload")
+    Private ReadOnly _newBtn As New HeadButton("New Push", "plus", Web.Blue)
     Private ReadOnly _tabs As New Tabs("compose|Compose", "history|History", "subscribers|Subscribers", "settings|Settings")
     Private ReadOnly _url As WInput = WInput.Make("https://example.com/my-page")
     Private ReadOnly _title As WInput = WInput.Make("Notification Title")

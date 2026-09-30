@@ -46,7 +46,7 @@ Public Class BarcodesPage
     Public Shared Pending As List(Of Integer)
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_barcodes2_display")
-    Private ReadOnly _printTop As WButton = Ui.Btn("Print 0 labels", Theme.IcPrint, Theme.Blue)
+    Private ReadOnly _printTop As New HeadButton("Print 0 labels", "printer", Web.Blue)
     Private ReadOnly _range As New RangeBar("today,yesterday,7d,this_month,custom", "today")
     Private ReadOnly _top As New Columns(2, 480, 12) With {.Stretch = False}
     Private ReadOnly _preview As New CardBox("Label Preview", Theme.IcBarcode) With {.Accent = Theme.Blue}
@@ -69,7 +69,7 @@ Public Class BarcodesPage
     Private _started As Boolean
 
     Public Overrides ReadOnly Property PageTitle As String = "Print Barcodes"
-    Public Overrides ReadOnly Property PageSubtitle As String = "Price labels for the products you added or restocked"
+    Public Overrides ReadOnly Property PageSubtitle As String = "Print price labels for the products you added or restocked"
     Public Overrides ReadOnly Property Actions As Control()
         Get
             Return {_display.Button, _printTop}
@@ -273,9 +273,10 @@ Public Class BarcodesPage
         _lines.Rows = lines
         _lines.Invalidate()
         Dim txt = "Print " & total & " label" & If(total = 1, "", "s")
-        For Each b In {_printTop, _printList}
-            b.Text = txt : b.Width = b.PreferredWidth() : b.Enabled = total > 0 : b.Invalidate()
+        For Each b As Control In {CType(_printTop, Control), _printList}
+            b.Text = txt : b.Enabled = total > 0 : b.Invalidate()
         Next
+        _printList.Width = _printList.PreferredWidth()
         _listCard.Title = "Print List (" & lines.Count & ")"
         _listCard.Invalidate()
         Kit.Show(_clear, lines.Count > 0)

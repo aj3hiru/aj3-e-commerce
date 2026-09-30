@@ -9,7 +9,7 @@ Public Class TaxPage
     Inherits ScrollPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_tax_settings2_display")
-    Private ReadOnly _add As WButton = Ui.Btn("Add GST Slab", Theme.IcAdd, Theme.Blue)
+    Private ReadOnly _add As New HeadButton("Add Slab", "plus", Web.Blue)
     Private ReadOnly _modes As New Columns(2, 260, 12)
     Private ReadOnly _incl As New ChoiceCard("Prices include GST", "₹118 at 18% → customer pays ₹118", ChrW(&HE73E)) With {.Height = 64}
     Private ReadOnly _excl As New ChoiceCard("GST added on top", "₹100 at 18% → customer pays ₹118", ChrW(&HE710)) With {.Height = 64}
@@ -18,7 +18,7 @@ Public Class TaxPage
     Private ReadOnly _list As New ListCard("tax")
 
     Public Overrides ReadOnly Property PageTitle As String = "Tax Settings"
-    Public Overrides ReadOnly Property PageSubtitle As String = "GST slabs and how prices include tax"
+    Public Overrides ReadOnly Property PageSubtitle As String = "GST / tax rates used across products, billing and checkout"
     Public Overrides ReadOnly Property Actions As Control()
         Get
             Return {_display.Button, _add}

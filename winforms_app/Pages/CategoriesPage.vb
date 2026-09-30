@@ -9,8 +9,9 @@ Public Class CategoriesPage
     Inherits ScrollPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_categories2_display")
-    Private ReadOnly _export As WButton = Ui.Btn("Export", ChrW(&HE896), outline:=True)
-    Private ReadOnly _add As WButton = Ui.Btn("Add Category", Theme.IcAdd, Theme.Blue)
+    Private ReadOnly _import As New HeadButton("Import", "upload")
+    Private ReadOnly _export As New HeadButton("Export", "download")
+    Private ReadOnly _add As New HeadButton("Add Category", "plus", Web.Blue)
     Private ReadOnly _cards As New Columns(4, 200, 14)
     Private ReadOnly _m As New Dictionary(Of String, MiniStat)
     Private ReadOnly _filters As New FilterCard()
@@ -24,7 +25,7 @@ Public Class CategoriesPage
     Public Overrides ReadOnly Property PageSubtitle As String = "Manage and organize your product catalog"
     Public Overrides ReadOnly Property Actions As Control()
         Get
-            Return {_display.Button, _export, _add}
+            Return {_display.Button, _import, _export, _add}
         End Get
     End Property
 
@@ -52,6 +53,7 @@ Public Class CategoriesPage
         _list.Search.Box.PlaceholderText = "Search categories…"
         _list.BulkItems.AddRange({"active|Activate", "inactive|Deactivate", "export|Export selected (Excel)", "-", "!delete|Delete"})
         Body.Add(_list)
+        AddHandler _import.Click, Sub() ImportCsv()
         AddHandler _list.SearchChanged, Sub() Refresh_()
         AddHandler _list.ClearFilters, Sub()
                                            _list.Search.Text = ""
@@ -76,6 +78,11 @@ Public Class CategoriesPage
         AddHandler _list.Table.ActionClick, Async Sub(c, k)
                                                 Select Case k
                                                     Case "edit" : Edit(c)
+                                                    Case "more"
+                                                        WebMenu.Show(_list.Table, {"products|View products|package", "-", "!delete|Delete|trash-2"},
+                                                                     Async Sub(k2)
+                                                                         If k2 = "products" Then ViewProducts(c) Else Await DeleteAsync({c}.ToList())
+                                                                     End Sub, Cursor.Position + New Size(-10, 14))
                                                     Case "products" : ViewProducts(c)
                                                     Case "delete" : Await DeleteAsync({c}.ToList())
                                                 End Select
@@ -119,9 +126,9 @@ Public Class CategoriesPage
             t.Cols.Add(New TCol("Status", Function(c) If(Js.Str(c, "status") = "active", "Active", "Inactive"), 0, CellKind.PillMenu) With {.Flex = 9, .Key = "status",
                 .Colour = Function(c) If(Js.Str(c, "status") = "active", Theme.Green, Theme.Grey)})
         End If
-        If col("c2-c-updated") Then t.Cols.Add(New TCol("Last Updated", Function(c) Fmt.Day(If(Js.Time(c, "updatedAt"), Js.Time(c, "createdAt"))), 0) With {.Flex = 10, .Colour = Function(c) Theme.G600, .Sort = Function(c) Updated(c)})
+        If col("c2-c-updated") Then t.Cols.Add(New TCol("Last Updated", Function(c) Fmt.IstStamp(If(Js.Time(c, "updatedAt"), Js.Time(c, "createdAt"))), 0) With {.Flex = 12, .Colour = Function(c) Theme.G600, .Sort = Function(c) Updated(c)})
         If col("c2-c-actions") Then
-            t.Cols.Add(New TCol("Actions", Nothing, 124, CellKind.Actions).Btn("edit", ChrW(&HE70F), "Edit", Color.FromArgb(&H4F, &H6E, &HF7)).Btn("products", Theme.IcPackage, "View products", Theme.G700).Btn("delete", Theme.IcDelete, "Delete", Color.FromArgb(&HDC, &H26, &H26)))
+            t.Cols.Add(New TCol("Actions", Nothing, 124, CellKind.Actions).Btn("edit", "square-pen", "Edit", Web.PillPrimary).Btn("more", "more-horizontal", "More actions", Web.PillSecondary))
         End If
         t.RowHeight = 62
         t.RowClickable = True
@@ -220,6 +227,42 @@ Public Class CategoriesPage
                        Return Nothing
                    End Function
         f.ShowDialog(FindForm())
+    End Sub
+
+    ''' <summary>Import (as on the website): a CSV of name[,slug][,serial][,status], header row optional. Adds new
+    ''' categories only — names that already exist are skipped, so it is safe to run again.</summary>
+    Private Async Sub ImportCsv()
+        Dim dlg As New OpenFileDialog With {.Filter = "CSV files (*.csv)|*.csv", .Title = "Import categories CSV"}
+        If dlg.ShowDialog(FindForm()) <> DialogResult.OK Then Return
+        Dim lines As List(Of String)
+        Try
+            lines = IO.File.ReadAllLines(dlg.FileName).Select(Function(l) l.Trim()).Where(Function(l) l <> "").ToList()
+        Catch
+            Toast("Couldn't read that file. Use a CSV with a name column.", True) : Return
+        End Try
+        If lines.Count > 0 AndAlso System.Text.RegularExpressions.Regex.IsMatch(lines(0), "^[""']?name[""']?\s*,", System.Text.RegularExpressions.RegexOptions.IgnoreCase) Then lines.RemoveAt(0)
+        Dim existing = AppState.I.List("categories").Select(Function(c) Js.Str(c, "name").ToLowerInvariant()).ToHashSet()
+        Dim created = 0, skipped = 0, failed = 0
+        _import.Enabled = False : _import.Text = "Importing…"
+        For Each ln In lines
+            Dim p = ln.Split(","c).Select(Function(x) x.Trim().Trim(""""c)).ToArray()
+            Dim name = If(p.Length > 0, p(0), "")
+            If name = "" Then Continue For
+            If existing.Contains(name.ToLowerInvariant()) Then skipped += 1 : Continue For
+            Dim fields As New Dictionary(Of String, String) From {{"name", name}, {"status", If(p.Length > 3 AndAlso p(3).ToLowerInvariant().Contains("inactive"), "inactive", "active")}}
+            If p.Length > 1 AndAlso p(1) <> "" Then fields("slug") = p(1)
+            If p.Length > 2 AndAlso p(2) <> "" Then fields("serial") = p(2)
+            Dim r = Await AppState.I.SendNowAsync(New OutboxItem With {.Method = "POST", .Path = "/api/ecommerce/categories2", .Multipart = True, .Fields = fields, .Files = New Dictionary(Of String, String),
+                .Label = "Import category: " & name, .Refresh = New List(Of String) From {"categories"}})
+            If r.IsOk Then
+                created += 1 : existing.Add(name.ToLowerInvariant())
+            Else
+                failed += 1
+            End If
+        Next
+        _import.Enabled = True : _import.Text = "Import"
+        Toast("Import finished: " & created & " added, " & skipped & " skipped (already exist)" & If(failed > 0, ", " & failed & " failed", "") & ".", failed > 0)
+        Refresh_()
     End Sub
 
     Private Sub DoExport(rows As List(Of JsonObject))

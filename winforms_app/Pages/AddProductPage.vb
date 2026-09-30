@@ -83,13 +83,15 @@ Public Class AddProductPage
             Return If(_productId = 0, "Fill in the details for your new product", Js.Str(_row, "name", "Change the details and save"))
         End Get
     End Property
+    Private ReadOnly _back As New HeadButton("Back to Products", "arrow-left")
     Public Overrides ReadOnly Property Actions As Control()
         Get
-            Return {_display.Button}
+            Return {_back, _display.Button}
         End Get
     End Property
 
     Public Sub New(Optional productId As Integer = 0)
+        AddHandler _back.Click, Sub() Main?.Pick("/admin/ecommerce/products")
         _productId = productId
         Controls.Add(_scroll)
         Ui.DoubleBuffer(_scroll)

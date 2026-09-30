@@ -10,7 +10,7 @@ Public Class DeliveriesPage
 
     Private ReadOnly _display As DisplayOptions = DisplayOptions.For("ecom_deliveries_display")
     Private ReadOnly _mode As New PillTabs("live|Live now|radio", "history|History|history", "report|Agent report|bar-chart-3")
-    Private ReadOnly _export As WButton = Ui.Btn("Export", ChrW(&HE896), outline:=True)
+    Private ReadOnly _export As New HeadButton("Export", "download")
     Private ReadOnly _range As New RangeBar("today,yesterday,week,7d,this_month,30d,custom", "today")
     Private ReadOnly _agent As ComboBox = Ui.Filter({"0|All delivery agents"}, 220)
     Private ReadOnly _status As New Tabs("all|All", "delivered|Delivered", "failed|Failed", "canceled|Cancelled", "active|Out now")

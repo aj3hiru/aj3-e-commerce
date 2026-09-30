@@ -16,7 +16,7 @@ Public Class AnalyticsPage
     Private ReadOnly _grain As ComboBox = Ui.Filter({"daily|Daily", "weekly|Weekly"}, 110)
 
     Public Overrides ReadOnly Property PageTitle As String = "Analytics"
-    Public Overrides ReadOnly Property PageSubtitle As String = "Sales performance from real orders"
+    Public Overrides ReadOnly Property PageSubtitle As String = "Track performance, analyze trends, and grow your sales"
     Public Overrides ReadOnly Property Actions As Control()
         Get
             Return {_display.Button}

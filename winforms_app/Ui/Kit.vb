@@ -359,7 +359,8 @@ Public MustInherit Class ScrollPage
         Controls.Add(Scroller)
         Scroller.Controls.Add(Body)
         Ui.DoubleBuffer(Scroller)
-        AddHandler Scroller.Resize, Sub() Relayout()
+        Dim relayoutSoon = Later.Debounced(Sub() Relayout())
+        AddHandler Scroller.Resize, Sub() relayoutSoon()
         AddHandler AppState.I.DataChanged, AddressOf OnData
     End Sub
 

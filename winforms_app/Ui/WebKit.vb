@@ -104,8 +104,8 @@ Public Class RangeChips
     Public Event Changed()
     Public From As Date = New Date(Date.Today.Year, Date.Today.Month, 1)
     Public [To] As Date = Date.Today
-    Private ReadOnly _from As New DateBox() With {.Width = 130}
-    Private ReadOnly _to As New DateBox() With {.Width = 130}
+    Private ReadOnly _from As New DateBox() With {.Width = 118}
+    Private ReadOnly _to As New DateBox() With {.Width = 118}
     Private ReadOnly _apply As New HeadButton("Apply", "", Web.Blue) With {.Height = 32}
     Private _chips As New List(Of (Key As String, R As Rectangle))
     Private _hover As String = ""
@@ -142,7 +142,7 @@ Public Class RangeChips
         Return w
     End Function
     Private Function DatesWidth() As Integer
-        Return 16 + 130 + 8 + 18 + 8 + 130 + 8 + _apply.Width + 16
+        Return 16 + 118 + 8 + 18 + 8 + 118 + 8 + _apply.Width + 16
     End Function
     Public Function HeightFor(width As Integer) As Integer Implements IFlowHeight.HeightFor
         Return If(ChipsWidth() + DatesWidth() > width, 100, 58) + If(Note = "", 0, 20)
@@ -188,7 +188,7 @@ Public Class RangeChips
     End Property
 
     Public Shared Function LongDate(d As Date) As String
-        Return d.ToString("dd MMM yyyy", Globalization.CultureInfo.GetCultureInfo("en-GB"))
+        Return d.ToString("dd MMM yyyy", Globalization.CultureInfo.InvariantCulture)
     End Function
 
     Public ReadOnly Property Showing As String
@@ -212,8 +212,8 @@ Public Class RangeChips
         Dim y = If(Height - If(Note = "", 0, 20) > 70, 58, 13)
         Dim x = Width - 16 - _apply.Width
         _apply.SetBounds(x, y, _apply.Width, 32)
-        x -= 8 + 130 : _to.SetBounds(x, y + 2, 130, 28)
-        x -= 8 + 18 + 8 + 130 : _from.SetBounds(x, y + 2, 130, 28)
+        x -= 8 + 118 : _to.SetBounds(x, y + 2, 118, 28)
+        x -= 8 + 18 + 8 + 118 : _from.SetBounds(x, y + 2, 118, 28)
     End Sub
 
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
@@ -505,18 +505,34 @@ Public Class SearchField
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
         BackColor = Color.White
         Box.Font = Theme.Px(14)
-        Box.PlaceholderText = placeholder
         Height = 36 : Me.Width = width
+        ' The grey hint is our own label over the box (a borderless TextBox doesn't draw PlaceholderText reliably).
+        _hint.Text = placeholder
+        _hint.Font = Box.Font
+        Controls.Add(_hint)
         Controls.Add(Box)
-        AddHandler Box.GotFocus, Sub() Invalidate()
-        AddHandler Box.LostFocus, Sub() Invalidate()
+        _hint.BringToFront()
+        AddHandler _hint.Click, Sub() Box.Focus()
+        AddHandler Box.GotFocus, Sub()
+                                     UpdateHint() : Invalidate()
+                                 End Sub
+        AddHandler Box.LostFocus, Sub()
+                                      UpdateHint() : Invalidate()
+                                  End Sub
         AddHandler Box.TextChanged, Sub()
+                                        UpdateHint()
                                         _debounce.Stop() : _debounce.Start()
                                     End Sub
         AddHandler _debounce.Tick, Sub()
                                        _debounce.Stop()
                                        RaiseEvent Changed()
                                    End Sub
+    End Sub
+
+    Private ReadOnly _hint As New Label With {.AutoSize = False, .ForeColor = Theme.G400, .BackColor = Color.White, .TextAlign = ContentAlignment.MiddleLeft, .Cursor = Cursors.IBeam}
+    Private Sub UpdateHint()
+        If Box.PlaceholderText <> "" Then _hint.Text = Box.PlaceholderText : Box.PlaceholderText = "" ' pages that set the box's own hint
+        _hint.Visible = Box.Text = "" AndAlso Not Box.Focused AndAlso _hint.Text <> ""
     End Sub
 
     Public Overrides Property Text As String
@@ -531,6 +547,8 @@ Public Class SearchField
     Protected Overrides Sub OnLayout(e As LayoutEventArgs)
         MyBase.OnLayout(e)
         Box.SetBounds(32, (Height - Box.PreferredHeight) \ 2, Width - 32 - 10, Box.PreferredHeight)
+        _hint.SetBounds(32, 4, Width - 32 - 10, Height - 8)
+        UpdateHint()
     End Sub
 
     Protected Overrides Sub OnPaint(e As PaintEventArgs)

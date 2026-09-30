@@ -915,9 +915,19 @@ Public Class WebTable
         Dim fixedW = If(Selectable, 44, 0) + all.Where(Function(c) c.Width > 0).Sum(Function(c) c.Width)
         Dim flex = Math.Max(1, all.Where(Function(c) c.Width = 0).Sum(Function(c) c.Flex))
         Dim rest = Math.Max(0, Width - fixedW)
+        ' Like the website under 1500px: when the stretchy column (Name, Customer…) would get squeezed, the fixed
+        ' columns give up to a fifth of their width so it keeps room to read.
+        Dim scale = 1.0
+        Dim flexCols = all.Where(Function(c) c.Width = 0).Count()
+        Dim wantFlex = flexCols * 190
+        Dim fixedCols = fixedW - If(Selectable, 44, 0)
+        If flexCols > 0 AndAlso rest < wantFlex AndAlso fixedCols > 0 Then
+            scale = Math.Max(0.8, (Width - If(Selectable, 44, 0) - wantFlex) / CDbl(fixedCols))
+            rest = Math.Max(0, Width - If(Selectable, 44, 0) - all.Where(Function(c) c.Width > 0).Sum(Function(c) CInt(c.Width * scale)))
+        End If
         Dim res As New List(Of Integer)
         For Each c In all
-            res.Add(If(c.Width > 0, c.Width, Math.Max(60, rest * c.Flex \ flex)))
+            res.Add(If(c.Width > 0, CInt(c.Width * If(scale < 1, scale, 1.0)), Math.Max(60, rest * c.Flex \ flex)))
         Next
         Return res
     End Function
@@ -1029,7 +1039,7 @@ Public Class WebTable
         End If
         For Each c In rects
             If Ledger Then
-                Tr.DrawText(g, c.Col.Header, If(Grid, _gridHead, _ledHead), New Rectangle(c.X + 12, 0, c.W - 36, HeadHeight), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+                Tr.DrawText(g, c.Col.Header, If(Grid, _gridHead, _ledHead), New Rectangle(c.X + 12, 0, c.W - If(c.Col.Sort Is Nothing, 16, 36), HeadHeight), Theme.G900, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
                 If c.Col.Sort IsNot Nothing Then
                     Dim ic = If(c.Col Is SortCol, If(SortAsc, "arrow-up", "arrow-down"), "chevrons-up-down")
                     Icons.Draw(g, ic, New RectangleF(c.X + c.W - 24, HeadHeight \ 2 - 7, 14, 14), If(c.Col Is SortCol, Theme.G600, Theme.G300))

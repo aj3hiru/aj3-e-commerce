@@ -500,7 +500,7 @@ Public Class RecentOrders
                 _spots.Add(("accept", o, ra)) : _spots.Add(("reject", o, rr))
             End If
             Dim d = Js.Time(o, "createdAt")
-            Tr.DrawText(g, If(d.HasValue, Fmt.ToIst(d.Value).ToString("dd MMM yyyy", Globalization.CultureInfo.GetCultureInfo("en-GB")), ""), _f, New Rectangle(cx(5), y + (h - 20) \ 2, Width - cx(5), 20), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            Tr.DrawText(g, If(d.HasValue, Fmt.ToIst(d.Value).ToString("dd MMM yyyy", Globalization.CultureInfo.InvariantCulture), ""), _f, New Rectangle(cx(5), y + (h - 20) \ 2, Width - cx(5), 20), Theme.G500, TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
             y += h
         Next
     End Sub

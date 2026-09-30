@@ -117,10 +117,31 @@ Public Class WInput
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
         BackColor = Color.White
         Height = 38
+        Controls.Add(_hint)
         Controls.Add(Box)
-        AddHandler Box.GotFocus, Sub() Invalidate()
-        AddHandler Box.LostFocus, Sub() Invalidate()
-        AddHandler Box.TextChanged, Sub() OnTextChanged(EventArgs.Empty)
+        _hint.BringToFront()
+        AddHandler _hint.Click, Sub() Box.Focus()
+        AddHandler Box.GotFocus, Sub()
+                                     UpdateHint() : Invalidate()
+                                 End Sub
+        AddHandler Box.LostFocus, Sub()
+                                      UpdateHint() : Invalidate()
+                                  End Sub
+        AddHandler Box.TextChanged, Sub()
+                                        UpdateHint()
+                                        OnTextChanged(EventArgs.Empty)
+                                    End Sub
+    End Sub
+    ' The grey hint is our own label over the box (a borderless TextBox doesn't draw PlaceholderText reliably);
+    ' whatever a page puts in Box.PlaceholderText moves here.
+    Private ReadOnly _hint As New Label With {.AutoSize = False, .ForeColor = Theme.G400, .BackColor = Color.White, .Cursor = Cursors.IBeam, .Visible = False}
+    Private _hintText As String = ""
+    Private Sub UpdateHint()
+        If Box.PlaceholderText <> "" Then _hintText = Box.PlaceholderText : Box.PlaceholderText = ""
+        _hint.Text = _hintText
+        _hint.Font = Box.Font
+        _hint.TextAlign = If(Box.Multiline, ContentAlignment.TopLeft, ContentAlignment.MiddleLeft)
+        _hint.Visible = Box.Text = "" AndAlso Not Box.Focused AndAlso _hintText <> "" AndAlso Box.Enabled
     End Sub
     Public Shared Function Make(Optional placeholder As String = "", Optional glyph As String = "", Optional multiline As Boolean = False) As WInput
         Dim w As New WInput With {.Glyph = glyph}
@@ -145,6 +166,8 @@ Public Class WInput
         Else
             Box.SetBounds(left, (Height - Box.PreferredHeight) \ 2, Width - left - 10, Box.PreferredHeight)
         End If
+        If Box.Multiline Then _hint.SetBounds(left, 8, Width - left - 8, 22) Else _hint.SetBounds(left, 3, Width - left - 10, Height - 6)
+        UpdateHint()
     End Sub
     Protected Overrides Sub OnPaint(e As PaintEventArgs)
         Dim g = e.Graphics

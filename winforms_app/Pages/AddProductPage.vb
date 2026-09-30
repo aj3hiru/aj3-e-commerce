@@ -19,6 +19,8 @@ Public Class AddProductPage
         New DisplayGroup("ap2-org", "Organization", "ap2-status|Status", "ap2-badge|Badge Tag", "ap2-itemtype|Item Type", "ap2-home|Show on Home"))
 
     Private ReadOnly _scroll As New Panel With {.Dock = DockStyle.Fill, .AutoScroll = True, .BackColor = Theme.Page}
+    ' the form lives in this inner panel; the outer one only scrolls it (so re-laying out never jumps to the top)
+    Private ReadOnly _content As New Panel With {.BackColor = Theme.Page, .Location = Point.Empty}
 
     ' fields
     Private ReadOnly _name As WInput = WInput.Make("e.g. Aashirvaad Atta 5kg")
@@ -94,11 +96,13 @@ Public Class AddProductPage
         AddHandler _back.Click, Sub() Main?.Pick("/admin/ecommerce/products")
         _productId = productId
         Controls.Add(_scroll)
+        _scroll.Controls.Add(_content)
         Ui.DoubleBuffer(_scroll)
+        Ui.DoubleBuffer(_content)
         For Each c In {_basic, _pricing, _catCard, _sizesCard, _specsCard, _images, _org}
-            _scroll.Controls.Add(c)
+            _content.Controls.Add(c)
         Next
-        _scroll.Controls.AddRange(New Control() {_saveAnother, _create, _error, _delete})
+        _content.Controls.AddRange(New Control() {_saveAnother, _create, _error, _delete})
         _delete.Visible = productId <> 0
         AddHandler _delete.Click, Async Sub() Await DeleteAsync()
         If productId <> 0 Then
@@ -556,6 +560,7 @@ Public Class AddProductPage
     Private Sub LayoutAll()
         If _scroll.Width < 300 Then Return
         _scroll.SuspendLayout()
+        _content.SuspendLayout()
         Dim on_ = Function(g As String, i As String) _display.IsOn(g, i)
         Dim pad = 22, gap = 18
         Dim w = _scroll.ClientSize.Width - pad * 2
@@ -623,7 +628,8 @@ Public Class AddProductPage
         _delete.SetBounds(pad, by, 120, 44)
         _saveAnother.SetBounds(pad + w - 380, by, 180, 44)
         _create.SetBounds(pad + w - 190, by, 190, 44)
-        _scroll.AutoScrollMinSize = New Size(0, by + 44 + pad)
+        _content.Size = New Size(_scroll.ClientSize.Width, by + 44 + pad) ' its place is kept by the scroll panel
+        _content.ResumeLayout()
         _scroll.ResumeLayout()
     End Sub
 

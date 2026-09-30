@@ -217,7 +217,7 @@ Public Class ProductsPage
         If col("p2-c-image") Then t.Cols.Add(New TCol("Image", Nothing, 58, CellKind.Custom) With {.Key = "image", .Draw = AddressOf DrawImage})
         If col("p2-c-name") Then t.Cols.Add(New TCol("Name", Nothing, 0, CellKind.Custom) With {.Key = "name", .Sort = Function(p) Js.Str(p, "name").ToLowerInvariant(), .Draw = AddressOf DrawName})
         If col("p2-c-stock") Then t.Cols.Add(New TCol("Stock", Nothing, 112, CellKind.Custom) With {.Key = "stock", .Sort = Function(p) If(Physical(p), If(Js.IsNull(p, "stock"), 0, Js.Int(p, "stock")), Integer.MaxValue), .Draw = AddressOf DrawStock})
-        If col("p2-c-category") Then t.Cols.Add(New TCol("Category", Nothing, 150, CellKind.Custom) With {.Key = "category", .Sort = Function(p) If(CatName(p) = "", ChrW(&HFFFF), CatName(p).ToLowerInvariant()), .Draw = AddressOf DrawCategory})
+        If col("p2-c-category") Then t.Cols.Add(New TCol("Category", Nothing, 150, CellKind.Custom) With {.Key = "category", .Sort = Function(p) If(CatName(p) = "", ChrW(&HFFFF).ToString(), CatName(p).ToLowerInvariant()), .Draw = AddressOf DrawCategory})
         If col("p2-c-price") Then t.Cols.Add(New TCol("Price", Nothing, 120, CellKind.Custom) With {.Key = "price", .Sort = Function(p) ProductActions.Price(p), .Draw = AddressOf DrawPrice})
         If col("p2-c-status") Then t.Cols.Add(New TCol("Status", Nothing, 150, CellKind.Custom) With {.Key = "status", .Sort = Function(p) Js.Str(p, "status"), .Draw = AddressOf DrawStatus})
         If col("p2-c-type") Then t.Cols.Add(New TCol("Type", Nothing, 116, CellKind.Custom) With {.Key = "type", .Sort = Function(p) TypeLabel(p).ToLowerInvariant(), .Draw = AddressOf DrawType})

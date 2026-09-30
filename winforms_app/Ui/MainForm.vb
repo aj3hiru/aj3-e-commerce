@@ -219,19 +219,33 @@ Public Class MainForm
         End If
     End Sub
 
+    Private Const WM_SETREDRAW As Integer = &HB
+    Private Declare Function SendMessageW Lib "user32" (hWnd As IntPtr, msg As Integer, wParam As IntPtr, lParam As IntPtr) As IntPtr
+
+    ''' <summary>Switching pages: the window stops drawing, the page is shown and filled, then everything is drawn
+    ''' once — no blink of a half-built or empty page.</summary>
     Private Sub Showing(p As PageBase)
-        SuspendLayout()
-        If _current IsNot Nothing AndAlso _current IsNot p Then _current.Visible = False
-        _current = p
-        Crash.CurrentPage = p.PageTitle
-        p.Visible = True
-        p.BringToFront()
-        _toast.BringToFront()
-        RefreshHeader()
-        ResumeLayout()
-        Hints.AttachAll(p)
-        Hints.AttachAll(_actions)
-        p.OnOpened()
+        Dim freeze = IsHandleCreated
+        If freeze Then SendMessageW(Handle, WM_SETREDRAW, IntPtr.Zero, IntPtr.Zero)
+        Try
+            SuspendLayout()
+            If _current IsNot Nothing AndAlso _current IsNot p Then _current.Visible = False
+            _current = p
+            Crash.CurrentPage = p.PageTitle
+            p.Visible = True
+            p.BringToFront()
+            _toast.BringToFront()
+            RefreshHeader()
+            ResumeLayout()
+            Hints.AttachAll(p)
+            Hints.AttachAll(_actions)
+            p.OnOpened()
+        Finally
+            If freeze Then
+                SendMessageW(Handle, WM_SETREDRAW, New IntPtr(1), IntPtr.Zero)
+                Refresh()
+            End If
+        End Try
     End Sub
 
     Public Sub RefreshHeader()

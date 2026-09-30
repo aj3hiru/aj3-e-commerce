@@ -110,6 +110,7 @@ Public Class AppState
     Private ReadOnly _rawPage As New Dictionary(Of String, String)
     Public SetupNeeded As Boolean
     Public Syncing As Boolean
+    Public Release As JsonObject
 
     ''' <summary>Data that pages show changed (raised on the UI thread, only when something really changed).</summary>
     Public Event DataChanged()
@@ -278,6 +279,7 @@ Public Class AppState
         End If
         If Not r.IsOk Then Return r.Message
         Dim newUser = TryCast(Js.Copy(Js.Field(r.Data, "user")), JsonObject)
+        Release = TryCast(Js.Copy(Js.Field(r.Data, "release")), JsonObject)
         Dim last2 = TryCast(Store.Read("user"), JsonObject)
         If last2 IsNot Nothing AndAlso Js.Int(last2, "id") <> Js.Int(newUser, "id") Then
             ' A different person: park the previous person's unsent changes (never deleted), start this person clean.
@@ -528,6 +530,8 @@ Public Class AppState
         If u IsNot Nothing Then SetUser(u) : Store.Write("user", User)
         Dim t = Js.Str(r.Data, "token")
         If t <> "" Then Api.Token = t : Store.WriteSecret("token", t)
+        Release = TryCast(Js.Copy(Js.Field(r.Data, "release")), JsonObject)
+        RaiseEvent MenuChanged()
         Await LoadMenuAsync()
     End Function
 

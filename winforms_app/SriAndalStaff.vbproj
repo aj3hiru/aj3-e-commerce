@@ -6,7 +6,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RootNamespace>SriAndalStaff</RootNamespace>
     <AssemblyName>SriAndalStaff</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <OptionStrict>On</OptionStrict>
     <OptionExplicit>On</OptionExplicit>
     <OptionInfer>On</OptionInfer>

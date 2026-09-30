@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getBusinessRow } from "@/lib/business-row";
 import { campaignSalePrices } from "@/lib/campaign-pricing";
 import { roleLabel } from "@/lib/roles";
+import { normalizePermissions } from "@/lib/permissions";
 import { cached } from "@/lib/cache";
 import type { AdminSession } from "@/lib/admin-auth";
 
@@ -205,7 +206,10 @@ const DEPS: Record<SetName, string[]> = {
 
 /** A set built once and shared by every device until its data changes (60 s at most). */
 function build(name: SetName, session: AdminSession): Promise<unknown> {
-  const key = name === "deliveries" ? `app-set:deliveries:${session.userId}` : `app-set:${name}`;
+  // staff: people who may change permissions also get each person's permissions, so they share a separate copy.
+  const key = name === "deliveries" ? `app-set:deliveries:${session.userId}`
+    : name === "staff" && has(session.permissions, "users", "manage_permissions") ? "app-set:staff:perms"
+    : `app-set:${name}`;
   return cached(key, DEPS[name], 60_000, () => buildFresh(name, session));
 }
 
@@ -224,7 +228,12 @@ async function buildFresh(name: SetName, session: AdminSession): Promise<unknown
     case "agents": return (await prisma.user.findMany({ where: { status: "active", OR: [{ role: "delivery_agent" }] }, orderBy: { username: "asc" }, select: { id: true, username: true, firstName: true, lastName: true, phone: true } }))
       .map((u) => ({ id: u.id, name: staffName(u), phone: u.phone }));
     case "staff": return (await prisma.user.findMany({ orderBy: { username: "asc" }, select: { id: true, username: true, firstName: true, lastName: true, email: true, phone: true, role: true, status: true, avatar: true, createdAt: true, permissions: true } }))
-      .map((u) => ({ id: u.id, username: u.username, name: staffName(u), email: u.email, phone: u.phone, role: u.role, roleLabel: roleLabel(u.role), status: u.status, avatar: u.avatar, since: iso(u.createdAt), permCount: countPerms(u.permissions) }));
+      .map((u) => ({
+        id: u.id, username: u.username, name: staffName(u), firstName: u.firstName, lastName: u.lastName, email: u.email, phone: u.phone, role: u.role, roleLabel: roleLabel(u.role), status: u.status,
+        avatar: u.avatar, since: iso(u.createdAt), permCount: countPerms(u.permissions),
+        // Each person's permissions, for the editor's "Advanced Access" — only to someone allowed to change them.
+        ...(has(session.permissions, "users", "manage_permissions") ? { permissions: normalizePermissions(u.permissions, u.role) } : {}),
+      }));
   }
 }
 

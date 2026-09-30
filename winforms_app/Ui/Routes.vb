@@ -29,6 +29,19 @@ Public Module Routes
             Case "/admin/file-manager" : Return New FilesPage()
             Case "/admin/activity-logs" : Return New ActivityPage()
             Case "/admin/cache-manager" : Return New CachePage()
+            Case "/admin/user-manager" : Return New StaffPage()
+            Case "/admin/my-profile" : Return New ProfilePage()
+            Case "/admin/backup" : Return New BackupPage()
+            Case "/admin/staff-app" : Return New StaffAppPage()
+            Case "/admin/ecommerce/business-settings" : Return New BusinessPage()
+            Case "app:deliveries" : Return New MyDeliveriesPage()
+            Case "/admin/ecommerce/payment-settings" : Return New BusinessPage("payment")
+            Case "/admin/ecommerce/login-settings" : Return New BusinessPage("login")
+            Case "/admin/ecommerce/campaign-offer", "/admin/ecommerce/coupons" : Return New OffersPage()
+            Case "/admin/customizer", "/admin/customizer?tab=home" : Return New CustomizerPage("home")
+            Case "/admin/customizer?tab=product" : Return New CustomizerPage("product")
+            Case "/admin/customizer?tab=header" : Return New CustomizerPage("header")
+            Case "/admin/customizer?tab=footer" : Return New CustomizerPage("footer")
         End Select
         Return Nothing
     End Function
@@ -51,6 +64,27 @@ Public Module Routes
         If perm = "offers.any" Then Return p.Has("ecommerce", "manage_products") OrElse p.Has("ecommerce", "manage_coupons")
         Dim parts = perm.Split("."c)
         Return p.Has(parts(0), parts(1))
+    End Function
+
+    ''' <summary>The menu to show: the website's (or the built-in copy), plus "My Deliveries" at the top of
+    ''' Sales for delivery agents (as in the Android app).</summary>
+    Public Function WithAppLinks(menu As JsonArray) As JsonArray
+        If menu Is Nothing OrElse menu.Count = 0 Then menu = FallbackMenu()
+        If Not AppState.I.Allowed.Contains("deliveries") Then Return menu
+        If Js.Objs(menu).Any(Function(sec) Js.Objs(Js.Arr(sec, "links")).Any(Function(l) Js.Str(l, "href") = "app:deliveries")) Then Return menu
+        Dim copy = TryCast(Js.Copy(menu), JsonArray)
+        Dim mine = Js.Obj("href", "app:deliveries", "label", "My Deliveries", "icon", "motorcycle")
+        Dim sales = Js.Objs(copy).FirstOrDefault(Function(sec) Js.Str(sec, "title").ToLowerInvariant() = "sales")
+        If sales IsNot Nothing Then
+            Dim links = TryCast(sales("links"), JsonArray)
+            If links Is Nothing Then links = New JsonArray() : sales("links") = links
+            links.Insert(0, mine)
+        Else
+            Dim sec = Js.Obj("title", "Delivery")
+            sec("links") = New JsonArray(mine)
+            copy.Insert(Math.Min(1, copy.Count), sec)
+        End If
+        Return copy
     End Function
 
     Public Function FallbackMenu() As JsonArray

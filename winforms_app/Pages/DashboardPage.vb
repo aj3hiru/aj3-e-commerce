@@ -42,7 +42,9 @@ Public Class DashboardPage
                        ("d2-on-canceled", "Canceled Orders", Theme.IcBlock, Theme.Red), ("d2-cust-online", "Total Online Customers", Theme.IcPeople, Theme.Primary),
                        ("d2-cust-offline", "Total Offline Customers", Theme.IcAddUser, Theme.Green), ("d2-sold-store", "Today Store Sold Product", Theme.IcShop, Theme.Primary),
                        ("d2-sold-online", "Today Online Sold Product", Theme.IcGlobe, Theme.Green)}
-            Dim sc As New StatCard With {.Caption = c.Item2, .Glyph = c.Item3, .Accent = c.Item4}
+            Dim sc As New StatCard With {.Caption = c.Item2, .Glyph = c.Item3, .Accent = c.Item4, .Cursor = Cursors.Hand}
+            Dim key = c.Item1
+            AddHandler sc.Click, Sub() OpenCard(key)
             _cards.Add((c.Item1, sc))
             _scroll.Controls.Add(sc)
         Next
@@ -57,7 +59,9 @@ Public Class DashboardPage
 
         _overCard.Controls.Add(New CardHeading("Store Overview", Theme.IcChart))
         For Each t In {("d2-products", "Products", Theme.IcPackage, Theme.Green), ("d2-categories", "Categories", Theme.IcGrid, Theme.Primary), ("d2-brands", "Brands", Theme.IcTag, Theme.Primary), ("d2-coupons", "Active Coupons", Theme.IcTicket, Theme.Green)}
-            Dim tl As New Tile With {.Caption = t.Item2, .Glyph = t.Item3, .Accent = t.Item4, .Stacked = True, .Height = 124}
+            Dim tl As New Tile With {.Caption = t.Item2, .Glyph = t.Item3, .Accent = t.Item4, .Stacked = True, .Height = 124, .Cursor = Cursors.Hand}
+            Dim key = t.Item1
+            AddHandler tl.Click, Sub() OpenCard(key)
             _over.Add((t.Item1, tl))
             _overCard.Controls.Add(tl)
         Next
@@ -69,6 +73,12 @@ Public Class DashboardPage
         _recentCard.Controls.Add(New CardHeading("Recent Orders", Theme.IcList))
         _recentCard.Controls.Add(_recent)
         AddHandler _recent.CellFormatting, AddressOf FormatRecent
+        _recent.Cursor = Cursors.Hand
+        AddHandler _recent.CellClick, Sub(s, e)
+                                          If e.RowIndex < 0 OrElse e.RowIndex >= _recent.Rows.Count Then Return
+                                          Dim tg = _recent.Rows(e.RowIndex).Tag
+                                          If TypeOf tg Is Integer AndAlso CInt(tg) > 0 Then Main?.Push(New OrderDetailPage(CInt(tg)))
+                                      End Sub
         _scroll.Controls.Add(_recentCard)
 
         _chartCard.Controls.Add(New CardHeading("Sales Overview", Theme.IcChart))
@@ -170,7 +180,8 @@ Public Class DashboardPage
         _recent.Rows.Clear()
         For Each o In orders.Where(Function(x) Js.Str(x, "type") = "online").Take(6)
             Dim d = Js.Time(o, "createdAt")
-            _recent.Rows.Add(Js.Str(o, "number"), Js.Str(o, "customer"), Theme.Money(Js.Num(o, "total")), If(Js.Str(o, "paymentStatus") = "Paid", "Paid", "Unpaid"), Js.Str(o, "status"), If(d.HasValue, d.Value.ToString("d MMM"), ""))
+            Dim rx = _recent.Rows.Add(Js.Str(o, "number"), Js.Str(o, "customer"), Theme.Money(Js.Num(o, "total")), If(Js.Str(o, "paymentStatus") = "Paid", "Paid", "Unpaid"), Js.Str(o, "status"), If(d.HasValue, d.Value.ToString("d MMM"), ""))
+            _recent.Rows(rx).Tag = Js.Int(o, "id")
         Next
         _recent.ResumeLayout()
 
@@ -192,6 +203,25 @@ Public Class DashboardPage
         End If
         _chart.Invalidate()
         LayoutAll()
+    End Sub
+
+    ''' <summary>Cards open the matching list, as on the website.</summary>
+    Private Sub OpenCard(key As String)
+        Dim m = Main
+        If m Is Nothing Then Return
+        Select Case key
+            Case "d2-on-total" : TryCast(m.Go("/admin/ecommerce/orders"), OrdersPage)?.ShowTab("all")
+            Case "d2-on-pending" : TryCast(m.Go("/admin/ecommerce/orders"), OrdersPage)?.ShowTab("Pending")
+            Case "d2-on-progress" : TryCast(m.Go("/admin/ecommerce/orders"), OrdersPage)?.ShowTab("In Progress")
+            Case "d2-on-delivered" : TryCast(m.Go("/admin/ecommerce/orders"), OrdersPage)?.ShowTab("Delivered")
+            Case "d2-on-canceled" : TryCast(m.Go("/admin/ecommerce/orders"), OrdersPage)?.ShowTab("Canceled")
+            Case "d2-cust-online", "d2-cust-offline" : m.Pick("/admin/ecommerce/customers")
+            Case "d2-sold-store", "d2-sold-online" : m.Pick("/admin/ecommerce/sales-history")
+            Case "d2-products" : TryCast(m.Go("/admin/ecommerce/products"), ProductsPage)?.ShowFilter()
+            Case "d2-categories" : m.Pick("/admin/ecommerce/categories")
+            Case "d2-brands" : m.Pick("/admin/ecommerce/brands")
+            Case "d2-coupons" : m.Pick("/admin/ecommerce/offers")
+        End Select
     End Sub
 
     Private Sub FormatRecent(sender As Object, e As DataGridViewCellFormattingEventArgs)

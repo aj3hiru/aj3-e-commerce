@@ -108,7 +108,7 @@ Public Class BillingPage
     Private _paysEdited As Boolean
     Private ReadOnly _promised As New DateTimePicker With {.Format = DateTimePickerFormat.Custom, .CustomFormat = "d MMM yyyy", .ShowCheckBox = True, .Checked = False, .Font = Theme.Body}
     Private ReadOnly _payNow As WButton = WButton.Make("Pay Now", Theme.IcCard, Theme.Coral)
-    Private ReadOnly _print As New CheckBox With {.Text = "Print receipt", .Checked = True, .Font = Theme.Body, .ForeColor = Theme.G700, .AutoSize = True, .BackColor = Color.White}
+    Private ReadOnly _print As New CheckBox With {.Text = "Print receipt", .Checked = PrintPrefs.AutoPrint(), .Font = Theme.Body, .ForeColor = Theme.G700, .AutoSize = True, .BackColor = Color.White}
     Private ReadOnly _keysNote As New Label With {.Text = "F2 Pay Now  ·  F4 New bill", .AutoSize = False, .Font = Theme.Small, .ForeColor = Theme.G500, .TextAlign = ContentAlignment.MiddleCenter, .BackColor = Color.White}
     Private _busy As Boolean
 
@@ -538,7 +538,7 @@ Public Class BillingPage
                     AppState.I.AddLocal("orders", New JsonObject From {{"id", -DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}, {"localRef", ref}, {"number", "Offline"}, {"type", "offline"}, {"status", "Delivered"},
                         {"paymentStatus", If(due > 0.004, "Unpaid", "Paid")}, {"customer", If(customerName = "", "Walk-in Customer", customerName)}, {"total", total}, {"due", Math.Max(0, due)}, {"createdAt", soldAt.ToString("o")}, {"items", its}})
                 End If
-                If _print.Checked Then PrintReceipt(number, receiptLines, sub_, disc, gst_, total, paidNow, If(customerName = "", "Walk-in Customer", customerName))
+                If _print.Checked Then PrintReceipt(number, receiptLines, sub_, disc, gst_, total, paidNow, If(customerName = "", "Walk-in Customer", customerName), pays, If(_guest.Checked, "", _phone.Text.Trim()))
                 Toast(If(r.IsOk, "Bill " & number & " saved.", "Bill saved on this computer — it goes to the server when the internet is back."))
                 NewBill()
             Else
@@ -549,45 +549,15 @@ Public Class BillingPage
         End Try
     End Function
 
-    ''' <summary>A thermal-style receipt on the default printer (80 mm).</summary>
-    Private Sub PrintReceipt(number As String, lines As List(Of (Name As String, Qty As Integer, Price As Double, Unit As String)), sub_ As Double, disc As Double, gst_ As Double, total As Double, paid As Double, customer As String)
-        Dim settings = AppState.I.Settings
-        Dim doc As New PrintDocument()
-        doc.DefaultPageSettings.PaperSize = New PaperSize("Receipt", 315, 1100)
-        doc.DefaultPageSettings.Margins = New Margins(8, 8, 8, 8)
-        AddHandler doc.PrintPage, Sub(s, e)
-                                      Dim g = e.Graphics
-                                      Dim w = e.MarginBounds.Width, x = e.MarginBounds.Left
-                                      Dim y = CSng(e.MarginBounds.Top)
-                                      Dim center As New StringFormat With {.Alignment = StringAlignment.Center}
-                                      Dim right As New StringFormat With {.Alignment = StringAlignment.Far}
-                                      Using fb As New Font("Segoe UI", 11, FontStyle.Bold), f As New Font("Segoe UI", 8), fbs As New Font("Segoe UI", 8, FontStyle.Bold)
-                                          g.DrawString(Js.Str(settings, "businessName", "Sri Andal Traders"), fb, Brushes.Black, New RectangleF(x, y, w, 22), center) : y += 22
-                                          Dim addr = Js.Str(settings, "address")
-                                          If addr <> "" Then g.DrawString(addr, f, Brushes.Black, New RectangleF(x, y, w, 30), center) : y += 30
-                                          g.DrawString("Bill " & number & "   " & DateTime.Now.ToString("d MMM yyyy, h:mm tt"), f, Brushes.Black, x, y) : y += 16
-                                          g.DrawString(customer, f, Brushes.Black, x, y) : y += 18
-                                          g.DrawLine(Pens.Black, x, y, x + w, y) : y += 4
-                                          For Each l In lines
-                                              g.DrawString(l.Name, fbs, Brushes.Black, New RectangleF(x, y, w, 16)) : y += 15
-                                              g.DrawString(l.Qty & " × " & l.Price.ToString("0.00") & If(l.Unit <> "", " (" & l.Unit & ")", ""), f, Brushes.Black, x, y)
-                                              g.DrawString((l.Qty * l.Price).ToString("0.00"), f, Brushes.Black, New RectangleF(x, y, w, 16), right) : y += 17
-                                          Next
-                                          g.DrawLine(Pens.Black, x, y, x + w, y) : y += 4
-                                          For Each t In {("Subtotal", sub_), ("Discount", -disc), ("GST", gst_)}
-                                              If t.Item2 = 0 Then Continue For
-                                              g.DrawString(t.Item1, f, Brushes.Black, x, y) : g.DrawString(t.Item2.ToString("0.00"), f, Brushes.Black, New RectangleF(x, y, w, 16), right) : y += 16
-                                          Next
-                                          g.DrawString("TOTAL", fb, Brushes.Black, x, y) : g.DrawString(total.ToString("0.00"), fb, Brushes.Black, New RectangleF(x, y, w, 22), right) : y += 24
-                                          g.DrawString("Paid " & paid.ToString("0.00") & If(total - paid > 0.004, "   Due " & (total - paid).ToString("0.00"), ""), f, Brushes.Black, x, y) : y += 22
-                                          g.DrawString("Thank you, visit again!", f, Brushes.Black, New RectangleF(x, y, w, 16), center)
-                                      End Using
-                                  End Sub
-        Try
-            doc.Print()
-        Catch ex As Exception
-            Toast("Could not print: " & ex.Message, True)
-        End Try
+    ''' <summary>The receipt on this computer's bill paper and printer (My Profile → Printing).</summary>
+    Private Sub PrintReceipt(number As String, lines As List(Of (Name As String, Qty As Integer, Price As Double, Unit As String)), sub_ As Double, disc As Double, gst_ As Double, total As Double, paid As Double, customer As String, pays As JsonArray, phone As String)
+        Dim r As New ReceiptData With {.Number = number, .At = DateTime.Now, .Customer = customer, .Phone = phone, .Subtotal = sub_, .Discount = disc, .Gst = gst_, .Total = total, .Due = Math.Max(0, Math.Round(total - paid, 2)), .Offline = number = "Offline"}
+        For Each l In lines : r.Lines.Add((l.Name, CDbl(l.Qty), l.Price, l.Unit)) : Next
+        For Each p In Js.Objs(pays) : r.Payments.Add((Js.Str(p, "method"), Js.Num(p, "amount"))) : Next
+        Dim preview = False
+        Dim size = PrintPrefs.Choose(Me, "Print bill " & number, preview)
+        If size Is Nothing Then Return
+        Receipts.Print(r, size, Me, preview)
     End Sub
 
     ' ───────── layout ─────────

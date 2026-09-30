@@ -159,18 +159,8 @@ Public Module OrderActions
 
     ''' <summary>Print an order's bill on the paper chosen in Business Settings (thermal 58 / 80 mm or A4).</summary>
     Public Sub PrintOrder(o As JsonObject, owner As Control, Optional preview As Boolean = False)
-        Dim s = AppState.I.Settings
-        Dim size = Js.Str(s, "printerFormat", "thermal_80")
-        Dim mode = Js.Str(s, "posPrintMode", "both")
-        If mode = "a4" Then size = "a4"
-        If mode = "both" Then
-            Dim f As New FormDialog("Print " & Js.Str(o, "number", "bill"), 420, "Print")
-            f.AddPick("size", "Paper", {"thermal_80|Thermal 80 mm", "thermal_58|Thermal 58 mm", "a4|A4 invoice"}, size)
-            f.AddCheck("preview", "Show a preview first", preview)
-            If f.ShowDialog(owner?.FindForm()) <> DialogResult.OK Then Return
-            size = f.Val("size")
-            preview = f.Bool("preview")
-        End If
+        Dim size = PrintPrefs.Choose(owner, "Print " & Js.Str(o, "number", "bill"), preview)
+        If size Is Nothing Then Return
         Receipts.Print(Receipts.FromOrder(o), size, owner, preview)
     End Sub
 End Module
@@ -208,6 +198,7 @@ Public Module Receipts
     Public Sub Print(r As ReceiptData, size As String, owner As Control, Optional preview As Boolean = False)
         Dim shop = AppState.I.Settings
         Dim doc As New PrintDocument With {.DocumentName = "Bill " & r.Number}
+        If PrintPrefs.Printer() <> "" Then doc.PrinterSettings.PrinterName = PrintPrefs.Printer()
         Dim a4 = size = "a4"
         Dim widthIn = If(size = "thermal_58", 2.28, 3.15)
         If Not a4 Then

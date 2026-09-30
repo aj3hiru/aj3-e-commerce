@@ -140,6 +140,12 @@ Public Class MainForm
 
     ''' <summary>Open a menu page (by the website link).</summary>
     Public Sub Pick(key As String)
+        If key = "logout-now" Then
+            AppState.I.Logout()
+            LoggedOut = True
+            Close()
+            Return
+        End If
         If key = "logout" OrElse key = "/api/auth/logout" Then
             AskLogout()
             Return
@@ -404,8 +410,7 @@ Public Class Sidebar
     ''' <summary>Builds the menu from the website's menu for this person (or a built-in copy before the first download).</summary>
     Public Sub Build()
         _items.Clear()
-        Dim menu = AppState.I.Menu
-        If menu Is Nothing OrElse menu.Count = 0 Then menu = Routes.FallbackMenu()
+        Dim menu = Routes.WithAppLinks(AppState.I.Menu)
         For Each sec In Js.Objs(menu)
             Dim title = Js.Str(sec, "title").ToUpperInvariant()
             For Each l In Js.Objs(Js.Arr(sec, "links"))
@@ -674,8 +679,7 @@ Public Class QuickFind
     Private Sub Search()
         Dim q = _q.Text.Trim().ToLowerInvariant()
         _hits = New List(Of (String, String, String, Action))
-        Dim menu = AppState.I.Menu
-        If menu.Count = 0 Then menu = Routes.FallbackMenu()
+        Dim menu = Routes.WithAppLinks(AppState.I.Menu)
         For Each sec In Js.Objs(menu)
             For Each l In Js.Objs(Js.Arr(sec, "links")).Concat(Js.Objs(Js.Arr(sec, "links")).SelectMany(Function(x) Js.Objs(Js.Arr(x, "submenu"))))
                 Dim label = Js.Str(l, "label"), href = Js.Str(l, "href")

@@ -1,0 +1,46 @@
+# VB.NET + WinForms Windows software (trial: Dashboard, Billing, Add Product).
+# Builds one self-contained SriAndalStaff-Windows.exe (no install needed) and publishes it as a
+# GitHub pre-release "winforms-v<version>.<run>". The website's app download (staff-app-v*) is not affected.
+name: Windows software (WinForms)
+
+on:
+  push:
+    branches: [main]
+    paths: ["winforms_app/**", ".github/workflows/winforms-app.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: winforms_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Version
+        id: v
+        shell: pwsh
+        run: |
+          [xml]$p = Get-Content SriAndalStaff.vbproj
+          $ver = ($p.Project.PropertyGroup.Version | Where-Object { $_ })[0]
+          "version=$ver.${{ github.run_number }}" >> $env:GITHUB_OUTPUT
+      - name: Publish
+        run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:Version=${{ steps.v.outputs.version }} -o out
+      - name: Rename
+        shell: pwsh
+        run: Copy-Item out/SriAndalStaff.exe "SriAndalStaff-Windows-${{ steps.v.outputs.version }}.exe"
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: winforms-v${{ steps.v.outputs.version }}
+          name: Windows software (WinForms) ${{ steps.v.outputs.version }}
+          prerelease: true
+          files: winforms_app/SriAndalStaff-Windows-${{ steps.v.outputs.version }}.exe
+          body: |
+            Trial of the VB.NET + WinForms Windows software: Dashboard, Billing / POS, Add Product.
+            Download the .exe and run it — no installation needed. Log in with your staff username and password.

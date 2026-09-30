@@ -1,6 +1,9 @@
-# VB.NET + WinForms Windows software (trial: Dashboard, Billing, Add Product).
-# Builds one self-contained SriAndalStaff-Windows.exe (no install needed) and publishes it as a
-# GitHub pre-release "winforms-v<version>.<run>". The website's app download (staff-app-v*) is not affected.
+# VB.NET + WinForms Windows software.
+# 1. Builds one self-contained SriAndalStaff.exe.
+# 2. Test run: opens every page with made-up data (winforms_app/smoke — admin, delivery agent, cashier),
+#    every Display Option off and on; results + a picture of each page go to the "winforms-smoke" pre-release.
+# 3. Only when the test run has no errors: an installer (Start menu + Desktop shortcut) and the plain .exe
+#    are published as the GitHub pre-release "winforms-v<version>.<run>".
 name: Windows software (WinForms)
 
 on:
@@ -32,15 +35,58 @@ jobs:
           "version=$ver.${{ github.run_number }}" >> $env:GITHUB_OUTPUT
       - name: Publish
         run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:Version=${{ steps.v.outputs.version }} -o out
-      - name: Rename
+      - name: Test run (every page)
+        id: smoke
         shell: pwsh
-        run: Copy-Item out/SriAndalStaff.exe "SriAndalStaff-Windows-${{ steps.v.outputs.version }}.exe"
+        run: |
+          $ok = $true
+          New-Item -ItemType Directory -Force smoke-out | Out-Null
+          foreach ($role in @("admin", "agent1", "cashier")) {
+            $store = Join-Path $env:RUNNER_TEMP "store-$role"
+            Copy-Item -Recurse -Force "smoke/$role" $store
+            $env:SRI_STORE = $store
+            $dir = Join-Path (Resolve-Path smoke-out) $role
+            $p = Start-Process -FilePath "out/SriAndalStaff.exe" -ArgumentList @("--smoke", $dir) -PassThru -Wait
+            Write-Host "== $role exit $($p.ExitCode)"
+            if (Test-Path "$dir/report.txt") { Get-Content "$dir/report.txt" | Select-String -Pattern "^(OK|FAILED|DONE|User|Menu|TIMEOUT)" | ForEach-Object { Write-Host $_ } }
+            if ($p.ExitCode -ne 0) { $ok = $false }
+          }
+          Compress-Archive -Path smoke-out/* -DestinationPath smoke-results.zip -Force
+          "passed=$ok" >> $env:GITHUB_OUTPUT
+      - name: Share test results
+        if: always()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: winforms-smoke
+          name: Windows software — latest test run
+          prerelease: true
+          files: winforms_app/smoke-results.zip
+          body: |
+            Automatic test run of the Windows software with made-up data (not a release to install).
+            Build ${{ steps.v.outputs.version }} · commit ${{ github.sha }} · passed: ${{ steps.smoke.outputs.passed }}
+      - name: Stop when the test run found errors
+        if: steps.smoke.outputs.passed != 'True'
+        shell: pwsh
+        run: |
+          Get-ChildItem smoke-out -Recurse -Filter report.txt | ForEach-Object { Get-Content $_ | Select-String "ERROR" | Select-Object -First 20 | ForEach-Object { Write-Host $_ } }
+          exit 1
+      - name: Installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          & $iscc "/DAppVersion=${{ steps.v.outputs.version }}" "/DSourceExe=out\SriAndalStaff.exe" installer.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Copy-Item out/SriAndalStaff.exe "SriAndalStaff-Windows-${{ steps.v.outputs.version }}.exe"
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: winforms-v${{ steps.v.outputs.version }}
           name: Windows software (WinForms) ${{ steps.v.outputs.version }}
           prerelease: true
-          files: winforms_app/SriAndalStaff-Windows-${{ steps.v.outputs.version }}.exe
+          files: |
+            winforms_app/SriAndalStaff-Setup-${{ steps.v.outputs.version }}.exe
+            winforms_app/SriAndalStaff-Windows-${{ steps.v.outputs.version }}.exe
           body: |
-            Trial of the VB.NET + WinForms Windows software: Dashboard, Billing / POS, Add Product.
-            Download the .exe and run it — no installation needed. Log in with your staff username and password.
+            **Install:** download SriAndalStaff-Setup-${{ steps.v.outputs.version }}.exe and open it — it adds Sri Andal Staff to the Start menu and the Desktop. Updating: run the newer Setup; your data stays.
+            Portable: SriAndalStaff-Windows-${{ steps.v.outputs.version }}.exe runs without installing.
+            Log in with your staff username and password.

@@ -13,6 +13,7 @@ Public Class LoginForm
     Private ReadOnly _card As New Panel With {.BackColor = Color.White}
 
     Public Sub New()
+        Icon = Theme.AppIcon
         Text = "Sri Andal Staff — Log in"
         StartPosition = FormStartPosition.CenterScreen
         ClientSize = New Size(520, 560)

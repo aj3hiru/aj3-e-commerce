@@ -109,7 +109,13 @@ Public Module Theme
         Return ChrW(&H20B9) & v.ToString("N2", India)
     End Function
 
+    ''' <summary>Corner radius of every box, button, input, card and menu (owner's choice: 5).</summary>
+    Public Const Radius As Single = 5
+
+    ''' <summary>A rounded box. Every corner is <see cref="Radius"/>; only pills and circles (radius = half the
+    ''' height or more) stay fully round.</summary>
     Public Function RoundRect(r As RectangleF, radius As Single) As GraphicsPath
+        If radius > 0 AndAlso radius < Math.Min(r.Width, r.Height) / 2 - 0.5F Then radius = Theme.Radius
         Dim p As New GraphicsPath()
         Dim d = Math.Min(radius * 2, Math.Min(r.Width, r.Height))
         If d <= 0 Then p.AddRectangle(r) : Return p
@@ -139,4 +145,17 @@ Public Module Theme
     Public Sub DrawCentered(g As Graphics, text As String, f As Font, c As Color, r As Rectangle)
         TextRenderer.DrawText(g, text, f, r, c, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
     End Sub
+    Private _appIcon As Icon
+    ''' <summary>The software's icon (from the .exe) for every window's title bar and the taskbar.</summary>
+    Public ReadOnly Property AppIcon As Icon
+        Get
+            If _appIcon Is Nothing Then
+                Try
+                    _appIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath)
+                Catch
+                End Try
+            End If
+            Return _appIcon
+        End Get
+    End Property
 End Module

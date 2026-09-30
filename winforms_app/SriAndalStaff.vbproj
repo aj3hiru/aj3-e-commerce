@@ -14,7 +14,12 @@
     <ApplicationVisualStyles>true</ApplicationVisualStyles>
     <StartupObject>SriAndalStaff.Program</StartupObject>
     <Nullable>disable</Nullable>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="smoke\**" />
+    <None Remove="smoke-out\**" />
+  </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>

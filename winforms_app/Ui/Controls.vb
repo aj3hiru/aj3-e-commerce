@@ -411,7 +411,7 @@ Public Class DisplayOptions
     Public ReadOnly Key As String
     Public ReadOnly Hidden As New HashSet(Of String)
     Public Event Changed()
-    Public ReadOnly Button As WButton
+    Public ReadOnly Button As DisplayButton
     Private ReadOnly _groups As List(Of DisplayGroup)
     Private ReadOnly _singles As New List(Of (Key As String, Label As String))
 
@@ -436,9 +436,29 @@ Public Class DisplayOptions
                 For Each h In def : Hidden.Add(h) : Next
             End If
         End If
-        Button = WButton.Make("Display Options", Theme.IcOptions, Theme.Primary, outline:=True)
-        Button.Width += 6
+        Button = New DisplayButton()
         AddHandler Button.Click, AddressOf ShowMenu
+    End Sub
+
+    Friend ReadOnly Property Groups As List(Of DisplayGroup)
+        Get
+            Return _groups
+        End Get
+    End Property
+
+    Friend ReadOnly Property Singles As List(Of (Key As String, Label As String))
+        Get
+            Return _singles
+        End Get
+    End Property
+
+    ''' <summary>Groups opened in the panel (stay open while the software runs).</summary>
+    Friend ReadOnly Expanded As New HashSet(Of String)
+
+    Friend Sub SetOn(k As String, on_ As Boolean)
+        If on_ Then Hidden.Remove(k) Else Hidden.Add(k)
+        Save()
+        RaiseEvent Changed()
     End Sub
 
     Public Function IsOn(group As String, Optional item As String = Nothing) As Boolean
@@ -449,6 +469,19 @@ Public Class DisplayOptions
     Public Function Item(k As String) As Boolean
         Return Not Hidden.Contains(k)
     End Function
+
+    ''' <summary>Everything hidden (True) or everything shown (False) — used by the test run.</summary>
+    Public Sub SetAll(hide As Boolean)
+        Hidden.Clear()
+        If hide Then
+            For Each g In _groups
+                Hidden.Add(g.Key)
+                For Each it In g.Items : Hidden.Add(it.Key) : Next
+            Next
+            For Each s In _singles : Hidden.Add(s.Key) : Next
+        End If
+        RaiseEvent Changed()
+    End Sub
 
     Private Sub Toggle(k As String)
         If Hidden.Contains(k) Then Hidden.Remove(k) Else Hidden.Add(k)
@@ -463,53 +496,201 @@ Public Class DisplayOptions
     End Sub
 
     Private Sub ShowMenu(sender As Object, e As EventArgs)
-        Dim m As New ContextMenuStrip With {.ShowCheckMargin = True, .ShowImageMargin = False, .Font = Theme.Body}
-        Dim children As New Dictionary(Of String, List(Of ToolStripMenuItem))
-        For Each s In _singles
-            Dim si As New ToolStripMenuItem(s.Label) With {.Checked = Not Hidden.Contains(s.Key), .Font = Theme.BodyBold, .Tag = s.Key}
-            m.Items.Add(si)
-        Next
-        If _singles.Count > 0 AndAlso _groups.Count > 0 Then m.Items.Add(New ToolStripSeparator())
-        For Each g In _groups
-            Dim gi As New ToolStripMenuItem(g.Label) With {.Checked = Not Hidden.Contains(g.Key), .Font = Theme.BodyBold, .Tag = g.Key}
-            m.Items.Add(gi)
-            children(g.Key) = New List(Of ToolStripMenuItem)
-            For Each it In g.Items
-                Dim ii As New ToolStripMenuItem("      " & it.Label) With {.Checked = Not Hidden.Contains(it.Key), .Enabled = Not Hidden.Contains(g.Key), .Tag = it.Key}
-                m.Items.Add(ii)
-                children(g.Key).Add(ii)
-            Next
-            m.Items.Add(New ToolStripSeparator())
-        Next
-        If m.Items.Count > 0 AndAlso TypeOf m.Items(m.Items.Count - 1) Is ToolStripSeparator Then m.Items.RemoveAt(m.Items.Count - 1)
-        Dim reset As New ToolStripMenuItem("Show everything") With {.ForeColor = Theme.Primary, .Tag = ""}
-        m.Items.Add(New ToolStripSeparator())
-        m.Items.Add(reset)
-        AddHandler m.ItemClicked, Sub(s2, e2)
-                                      Dim mi = TryCast(e2.ClickedItem, ToolStripMenuItem)
-                                      If mi Is Nothing OrElse Not mi.Enabled Then Return
-                                      If mi Is reset Then
-                                          Hidden.Clear()
-                                          Save()
-                                          For Each x In m.Items.OfType(Of ToolStripMenuItem)()
-                                              If x IsNot reset Then x.Checked = True : x.Enabled = True
-                                          Next
-                                          RaiseEvent Changed()
-                                          Return
-                                      End If
-                                      Dim k = CStr(mi.Tag)
-                                      Toggle(k)
-                                      mi.Checked = Not Hidden.Contains(k)
-                                      Dim kids As List(Of ToolStripMenuItem) = Nothing
-                                      If children.TryGetValue(k, kids) Then
-                                          For Each c In kids : c.Enabled = mi.Checked : Next
-                                      End If
-                                  End Sub
-        AddHandler m.Closing, Sub(s2, e2)
-                                  If e2.CloseReason = ToolStripDropDownCloseReason.ItemClicked Then e2.Cancel = True
+        DisplayPanel.Open(Me, Button)
+    End Sub
+End Class
+
+''' <summary>The website's "Display Options" button (header variant): white, grey hairline border,
+''' sliders icon + label + chevron.</summary>
+Public Class DisplayButton
+    Inherits Control
+    Private _hover As Boolean
+    Public Property Open As Boolean
+    Public Sub New()
+        SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw Or ControlStyles.SupportsTransparentBackColor, True)
+        BackColor = Color.Transparent
+        Cursor = Cursors.Hand
+        Text = "Display Options"
+        Font = Theme.UiFont(9.75F)
+        Height = 36
+        Width = PreferredWidth()
+    End Sub
+    Public Function PreferredWidth() As Integer
+        Return 12 + 14 + 8 + TextRenderer.MeasureText(Text, Font).Width + 8 + 12 + 12
+    End Function
+    Protected Overrides Sub OnMouseEnter(e As EventArgs)
+        _hover = True : Invalidate() : MyBase.OnMouseEnter(e)
+    End Sub
+    Protected Overrides Sub OnMouseLeave(e As EventArgs)
+        _hover = False : Invalidate() : MyBase.OnMouseLeave(e)
+    End Sub
+    Protected Overrides Sub OnPaint(e As PaintEventArgs)
+        Dim g = e.Graphics
+        Theme.Smooth(g)
+        Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
+            Using b As New SolidBrush(If(_hover OrElse Open, Theme.G50, Color.White)) : g.FillPath(b, p) : End Using
+            Using pen As New Pen(Theme.G200) : g.DrawPath(pen, p) : End Using
+        End Using
+        Icons.Draw(g, "sliders-horizontal", New RectangleF(12, (Height - 14) / 2.0F, 14, 14), Theme.G700)
+        Dim tw = TextRenderer.MeasureText(Text, Font).Width
+        TextRenderer.DrawText(g, Text, Font, New Rectangle(12 + 14 + 8, 0, tw + 2, Height), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+        Icons.Draw(g, If(Open, "chevron-up", "chevron-down"), New RectangleF(12 + 14 + 8 + tw + 8, (Height - 12) / 2.0F, 12, 12), Theme.G700)
+    End Sub
+End Class
+
+''' <summary>The website's Display Options panel: "SECTIONS", each section with its checkbox and a chevron that
+''' opens its parts (in a light grey box), then the single options. Stays open while ticking.</summary>
+Public Class DisplayPanel
+    Inherits Control
+    Private Const RowH As Integer = 34
+    Private Const Pad As Integer = 12
+    Private ReadOnly _opt As DisplayOptions
+    Private _rows As New List(Of Row)
+    Private _hover As Integer = -1
+    Public Relayout As Action
+
+    Private Class Row
+        Public Kind As String ' head | group | item | single
+        Public Key As String
+        Public Label As String
+        Public Y As Integer
+        Public H As Integer
+        Public Chevron As Rectangle
+    End Class
+
+    Public Shared Sub Open(opt As DisplayOptions, anchor As DisplayButton)
+        Dim panel As New DisplayPanel(opt)
+        Dim host As New ToolStripControlHost(panel) With {.Margin = Padding.Empty, .Padding = Padding.Empty, .AutoSize = False, .Size = panel.Size}
+        Dim dd As New ToolStripDropDown With {.Padding = Padding.Empty, .DropShadowEnabled = True, .AutoClose = True, .BackColor = Color.White}
+        dd.Items.Add(host)
+        panel.Relayout = Sub()
+                             panel.Build()
+                             host.Size = panel.Size
+                             dd.Size = panel.Size
+                         End Sub
+        AddHandler dd.Closed, Sub()
+                                  anchor.Open = False
+                                  anchor.Invalidate()
+                                  dd.BeginInvoke(Sub() dd.Dispose())
                               End Sub
-        AddHandler m.Closed, Sub() m.BeginInvoke(Sub() m.Dispose())
-        m.Show(Button, New Point(0, Button.Height + 2))
+        anchor.Open = True
+        anchor.Invalidate()
+        ' right-aligned under the button, like the website
+        dd.Show(anchor, New Point(anchor.Width - panel.Width, anchor.Height + 6))
+    End Sub
+
+    Public Sub New(opt As DisplayOptions)
+        SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
+        _opt = opt
+        BackColor = Color.White
+        Font = Theme.UiFont(9.75F)
+        Cursor = Cursors.Hand
+        Build()
+    End Sub
+
+    Friend Sub Build()
+        _rows = New List(Of Row)
+        Dim y = Pad
+        Dim w = 240
+        Dim add = Sub(kind As String, key As String, label As String, h As Integer)
+                      _rows.Add(New Row With {.Kind = kind, .Key = key, .Label = label, .Y = y, .H = h})
+                      y += h + 2
+                  End Sub
+        If _opt.Groups.Count > 0 Then add("head", "", "SECTIONS", 24)
+        For Each g In _opt.Groups
+            add("group", g.Key, g.Label, RowH)
+            If _opt.Expanded.Contains(g.Key) Then
+                For Each it In g.Items : add("item", it.Key, it.Label, RowH) : Next
+            End If
+        Next
+        For Each s In _opt.Singles : add("single", s.Key, s.Label, RowH) : Next
+        For Each r In _rows
+            Dim tw = TextRenderer.MeasureText(r.Label, Font).Width
+            w = Math.Max(w, tw + 15 + 10 + 10 + 30 + Pad * 2 + If(r.Kind = "item", 40, 0))
+        Next
+        Dim maxH = CInt(Screen.PrimaryScreen.WorkingArea.Height * 0.7)
+        Size = New Size(Math.Min(w, 460), Math.Min(y + Pad - 2, maxH))
+        Invalidate()
+    End Sub
+
+    Private Function IsOnKey(k As String) As Boolean
+        Return Not _opt.Hidden.Contains(k)
+    End Function
+
+    Protected Overrides Sub OnPaint(e As PaintEventArgs)
+        Dim g = e.Graphics
+        Theme.Smooth(g)
+        g.Clear(Color.White)
+        Using pen As New Pen(Theme.G200) : g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1) : End Using
+        ' a light grey box behind each opened section's parts
+        Dim ix = 0
+        While ix < _rows.Count
+            If _rows(ix).Kind = "item" Then
+                Dim j = ix
+                While j + 1 < _rows.Count AndAlso _rows(j + 1).Kind = "item" : j += 1 : End While
+                Using p = Theme.RoundRect(New RectangleF(Pad + 4, _rows(ix).Y - 2, Width - Pad * 2 - 8, _rows(j).Y + _rows(j).H - _rows(ix).Y + 4), Theme.Radius)
+                    Using b As New SolidBrush(Theme.G50) : g.FillPath(b, p) : End Using
+                End Using
+                ix = j + 1
+            Else
+                ix += 1
+            End If
+        End While
+        For k = 0 To _rows.Count - 1
+            Dim r = _rows(k)
+            If r.Kind = "head" Then
+                TextRenderer.DrawText(g, r.Label, Theme.UiFont(8.0F, FontStyle.Bold), New Rectangle(Pad + 10, r.Y, Width, r.H - 4), Theme.G400, TextFormatFlags.Bottom Or TextFormatFlags.NoPadding)
+                Continue For
+            End If
+            Dim inset = If(r.Kind = "item", 4, 0)
+            Dim rr As New Rectangle(Pad + inset, r.Y, Width - Pad * 2 - inset * 2, r.H)
+            If k = _hover Then
+                Using p = Theme.RoundRect(New RectangleF(rr.X, rr.Y, rr.Width, rr.Height), Theme.Radius)
+                    Using b As New SolidBrush(If(r.Kind = "item", Theme.G100, Theme.G50)) : g.FillPath(b, p) : End Using
+                End Using
+            End If
+            Dim tw = TextRenderer.MeasureText(r.Label, Font).Width
+            Dim x = rr.X + 10
+            If r.Kind = "item" Then x = rr.X + Math.Max(24, (rr.Width - (15 + 10 + tw)) \ 2)
+            Gfx.Check(g, New Rectangle(x, rr.Y + (rr.Height - 15) \ 2, 15, 15), IsOnKey(r.Key))
+            TextRenderer.DrawText(g, r.Label, Font, New Rectangle(x + 25, rr.Y, rr.Right - x - 25 - If(r.Kind = "group", 28, 4), rr.Height), Theme.G800, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
+            If r.Kind = "group" Then
+                r.Chevron = New Rectangle(rr.Right - 28, rr.Y + (rr.Height - 20) \ 2, 20, 20)
+                Icons.Draw(g, If(_opt.Expanded.Contains(r.Key), "chevron-up", "chevron-down"), New RectangleF(r.Chevron.X + 4, r.Chevron.Y + 4, 12, 12), Theme.G400)
+            End If
+        Next
+    End Sub
+
+    Private Function RowAt(p As Point) As Integer
+        For k = 0 To _rows.Count - 1
+            If _rows(k).Kind <> "head" AndAlso p.Y >= _rows(k).Y AndAlso p.Y < _rows(k).Y + _rows(k).H Then Return k
+        Next
+        Return -1
+    End Function
+
+    Protected Overrides Sub OnMouseMove(e As MouseEventArgs)
+        MyBase.OnMouseMove(e)
+        Dim k = RowAt(e.Location)
+        If k <> _hover Then _hover = k : Invalidate()
+    End Sub
+
+    Protected Overrides Sub OnMouseLeave(e As EventArgs)
+        MyBase.OnMouseLeave(e)
+        _hover = -1 : Invalidate()
+    End Sub
+
+    Protected Overrides Sub OnMouseClick(e As MouseEventArgs)
+        MyBase.OnMouseClick(e)
+        Dim k = RowAt(e.Location)
+        If k < 0 Then Return
+        Dim r = _rows(k)
+        If r.Kind = "group" AndAlso Rectangle.Inflate(r.Chevron, 6, 6).Contains(e.Location) Then
+            If Not _opt.Expanded.Remove(r.Key) Then _opt.Expanded.Add(r.Key)
+            Relayout?.Invoke()
+            Return
+        End If
+        _opt.SetOn(r.Key, Not IsOnKey(r.Key))
+        Invalidate()
     End Sub
 End Class
 

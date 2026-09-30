@@ -2,49 +2,57 @@ Imports System.Text.Json.Nodes
 
 ''' <summary>Which page each website menu link opens in the software.</summary>
 Public Module Routes
+    ''' <summary>Every page in the software, by the website's link.</summary>
+    Public ReadOnly Table As New Dictionary(Of String, Func(Of PageBase)) From {
+        {"/admin/dashboard", Function() New DashboardPage()},
+        {"/admin/ecommerce/billing", Function() New BillingPage()},
+        {"/admin/ecommerce/products/add", Function() New AddProductPage()},
+        {"/admin/ecommerce/orders", Function() New OrdersPage()},
+        {"/admin/ecommerce/customers", Function() New CustomersPage()},
+        {"/admin/ecommerce/products", Function() New ProductsPage()},
+        {"/admin/ecommerce/barcode-print", Function() New BarcodesPage()},
+        {"/admin/deliveries?view=all", Function() New DeliveriesPage()},
+        {"/admin/ecommerce/due", Function() New DuesPage()},
+        {"/admin/ecommerce/sales-history", Function() New SalesHistoryPage()},
+        {"/admin/ecommerce/categories", Function() New CategoriesPage()},
+        {"/admin/ecommerce/brands", Function() New BrandsPage()},
+        {"/admin/ecommerce/product-tags", Function() New TagsPage()},
+        {"/admin/ecommerce/product-reviews", Function() New ReviewsPage()},
+        {"/admin/ecommerce/stock-out-products", Function() New StockOutPage()},
+        {"/admin/ecommerce/offers", Function() New OffersPage()},
+        {"/push-notifications/push-manager2", Function() New PushPage()},
+        {"/admin/ecommerce/reports", Function() New ReportsPage()},
+        {"/admin/ecommerce/analytics", Function() New AnalyticsPage()},
+        {"/admin/ecommerce/gst-report", Function() New GstPage()},
+        {"/admin/ecommerce/tax-settings", Function() New TaxPage()},
+        {"/admin/file-manager", Function() New FilesPage()},
+        {"/admin/activity-logs", Function() New ActivityPage()},
+        {"/admin/cache-manager", Function() New CachePage()},
+        {"/admin/user-manager", Function() New StaffPage()},
+        {"/admin/my-profile", Function() New ProfilePage()},
+        {"/admin/backup", Function() New BackupPage()},
+        {"/admin/staff-app", Function() New StaffAppPage()},
+        {"/admin/ecommerce/business-settings", Function() New BusinessPage()},
+        {"app:deliveries", Function() New MyDeliveriesPage()},
+        {"/admin/ecommerce/payment-settings", Function() New BusinessPage("payment")},
+        {"/admin/ecommerce/login-settings", Function() New BusinessPage("login")},
+        {"/admin/ecommerce/campaign-offer", Function() New OffersPage()},
+        {"/admin/ecommerce/coupons", Function() New OffersPage()},
+        {"/admin/customizer", Function() New CustomizerPage("home")},
+        {"/admin/customizer?tab=home", Function() New CustomizerPage("home")},
+        {"/admin/customizer?tab=product", Function() New CustomizerPage("product")},
+        {"/admin/customizer?tab=header", Function() New CustomizerPage("header")},
+        {"/admin/customizer?tab=footer", Function() New CustomizerPage("footer")}
+    }
+
     Public Function Make(href As String) As PageBase
-        Select Case href
-            Case "/admin/dashboard" : Return New DashboardPage()
-            Case "/admin/ecommerce/billing" : Return New BillingPage()
-            Case "/admin/ecommerce/products/add" : Return New AddProductPage()
-            Case "/admin/ecommerce/orders" : Return New OrdersPage()
-            Case "/admin/ecommerce/customers" : Return New CustomersPage()
-            Case "/admin/ecommerce/products" : Return New ProductsPage()
-            Case "/admin/ecommerce/barcode-print" : Return New BarcodesPage()
-            Case "/admin/deliveries?view=all" : Return New DeliveriesPage()
-            Case "/admin/ecommerce/due" : Return New DuesPage()
-            Case "/admin/ecommerce/sales-history" : Return New SalesHistoryPage()
-            Case "/admin/ecommerce/categories" : Return New CategoriesPage()
-            Case "/admin/ecommerce/brands" : Return New BrandsPage()
-            Case "/admin/ecommerce/product-tags" : Return New TagsPage()
-            Case "/admin/ecommerce/product-reviews" : Return New ReviewsPage()
-            Case "/admin/ecommerce/stock-out-products" : Return New StockOutPage()
-            Case "/admin/ecommerce/offers" : Return New OffersPage()
-            Case "/push-notifications/push-manager2" : Return New PushPage()
-            Case "/admin/ecommerce/reports" : Return New ReportsPage()
-            Case "/admin/ecommerce/analytics" : Return New AnalyticsPage()
-            Case "/admin/ecommerce/gst-report" : Return New GstPage()
-            Case "/admin/ecommerce/tax-settings" : Return New TaxPage()
-            Case "/admin/pages" : Return New StaticPagesPage()
-            Case "/admin/file-manager" : Return New FilesPage()
-            Case "/admin/activity-logs" : Return New ActivityPage()
-            Case "/admin/cache-manager" : Return New CachePage()
-            Case "/admin/user-manager" : Return New StaffPage()
-            Case "/admin/my-profile" : Return New ProfilePage()
-            Case "/admin/backup" : Return New BackupPage()
-            Case "/admin/staff-app" : Return New StaffAppPage()
-            Case "/admin/ecommerce/business-settings" : Return New BusinessPage()
-            Case "app:deliveries" : Return New MyDeliveriesPage()
-            Case "/admin/ecommerce/payment-settings" : Return New BusinessPage("payment")
-            Case "/admin/ecommerce/login-settings" : Return New BusinessPage("login")
-            Case "/admin/ecommerce/campaign-offer", "/admin/ecommerce/coupons" : Return New OffersPage()
-            Case "/admin/customizer", "/admin/customizer?tab=home" : Return New CustomizerPage("home")
-            Case "/admin/customizer?tab=product" : Return New CustomizerPage("product")
-            Case "/admin/customizer?tab=header" : Return New CustomizerPage("header")
-            Case "/admin/customizer?tab=footer" : Return New CustomizerPage("footer")
-        End Select
+        Dim f As Func(Of PageBase) = Nothing
+        If Table.TryGetValue(href, f) Then Return f()
         Return Nothing
     End Function
+
+    ''' <summary>Links the software leaves out of the website's menu (Static Pages stay on the website).</summary>
+    Private ReadOnly Skip As New HashSet(Of String) From {"/admin/pages"}
 
     ''' <summary>The website's admin menu (used before the first download; afterwards the website's own copy is used).</summary>
     Private Const NavJson As String = "[" &
@@ -70,9 +78,23 @@ Public Module Routes
     ''' Sales for delivery agents (as in the Android app).</summary>
     Public Function WithAppLinks(menu As JsonArray) As JsonArray
         If menu Is Nothing OrElse menu.Count = 0 Then menu = FallbackMenu()
+        menu = TryCast(Js.Copy(menu), JsonArray)
+        For Each sec In Js.Objs(menu)
+            Dim links = TryCast(sec("links"), JsonArray)
+            If links Is Nothing Then Continue For
+            For Each l In Js.Objs(links).ToList()
+                If Skip.Contains(Js.Str(l, "href")) Then links.Remove(l) : Continue For
+                Dim subs = TryCast(l("submenu"), JsonArray)
+                If subs IsNot Nothing Then
+                    For Each x In Js.Objs(subs).ToList()
+                        If Skip.Contains(Js.Str(x, "href")) Then subs.Remove(x)
+                    Next
+                End If
+            Next
+        Next
         If Not AppState.I.Allowed.Contains("deliveries") Then Return menu
         If Js.Objs(menu).Any(Function(sec) Js.Objs(Js.Arr(sec, "links")).Any(Function(l) Js.Str(l, "href") = "app:deliveries")) Then Return menu
-        Dim copy = TryCast(Js.Copy(menu), JsonArray)
+        Dim copy = menu
         Dim mine = Js.Obj("href", "app:deliveries", "label", "My Deliveries", "icon", "motorcycle")
         Dim sales = Js.Objs(copy).FirstOrDefault(Function(sec) Js.Str(sec, "title").ToLowerInvariant() = "sales")
         If sales IsNot Nothing Then

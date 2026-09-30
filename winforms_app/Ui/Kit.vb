@@ -387,6 +387,10 @@ Public MustInherit Class ScrollPage
         Relayout()
     End Sub
 
+    Public Overrides Function ContentHeight() As Integer
+        Return Body.Height
+    End Function
+
     ''' <summary>Empties the page (for pages rebuilt on every change). Controls in keep are detached, not destroyed.</summary>
     Protected Sub ClearBody(ParamArray keep As Control())
         For Each k In keep
@@ -1905,6 +1909,7 @@ Public Class FormDialog
     Private ReadOnly _title As String
 
     Public Sub New(title As String, Optional width As Integer = 560, Optional saveText As String = "Save")
+        Icon = Theme.AppIcon
         _title = title
         Text = title
         FormBorderStyle = FormBorderStyle.FixedDialog

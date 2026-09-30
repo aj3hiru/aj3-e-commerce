@@ -8,7 +8,7 @@ Imports System.Text.RegularExpressions
 ''' to be sent, photos picked offline. Written to a temp file then renamed, so a power cut never leaves a
 ''' half-written file. Secrets (login) are encrypted with Windows' own protection (DPAPI).</summary>
 Public Module Store
-    Public ReadOnly Folder As String = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SriAndalStaff")
+    Public ReadOnly Folder As String = If(Environment.GetEnvironmentVariable("SRI_STORE"), Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SriAndalStaff"))
     Public ReadOnly DataDir As String = Path.Combine(Folder, "data")
     Public ReadOnly FilesDir As String = Path.Combine(Folder, "files")
     Private ReadOnly Cache As New Dictionary(Of String, JsonNode)

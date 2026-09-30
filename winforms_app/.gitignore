@@ -1,2 +1,6 @@
 bin/
 obj/
+out/
+smoke-out/
+smoke-results.zip
+*.exe

@@ -33,6 +33,10 @@ Public MustInherit Class PageBase
             Return TryCast(FindForm(), MainForm)
         End Get
     End Property
+    ''' <summary>How tall the page's content is (for full-length pictures in the test run); 0 = fits the window.</summary>
+    Public Overridable Function ContentHeight() As Integer
+        Return 0
+    End Function
     ''' <summary>Tell the header the title / buttons changed.</summary>
     Protected Sub HeaderChanged()
         Main?.RefreshHeader()
@@ -52,6 +56,18 @@ Public Class MainForm
     Private ReadOnly _pages As New Dictionary(Of String, PageBase)
     Private _current As PageBase
     Private _currentKey As String = ""
+
+    Public ReadOnly Property CurrentPage As PageBase
+        Get
+            Return _current
+        End Get
+    End Property
+
+    Public ReadOnly Property HeaderHeight As Integer
+        Get
+            Return _header.Height
+        End Get
+    End Property
     ''' <summary>Detail pages opened from a list (order, customer…): Back returns to the one before.</summary>
     Private ReadOnly _stack As New List(Of (Key As String, Page As PageBase))
     Private ReadOnly _toast As New Label With {.AutoSize = False, .Visible = False, .Font = Theme.BodyBold, .ForeColor = Color.White, .TextAlign = ContentAlignment.MiddleLeft, .Padding = New Padding(14, 0, 14, 0)}
@@ -61,6 +77,7 @@ Public Class MainForm
     Private _titleLeft As Integer = 22
 
     Public Sub New()
+        Icon = Theme.AppIcon
         Text = "Sri Andal Staff"
         StartPosition = FormStartPosition.CenterScreen
         MinimumSize = New Size(1100, 700)
@@ -194,6 +211,7 @@ Public Class MainForm
         SuspendLayout()
         If _current IsNot Nothing AndAlso _current IsNot p Then _current.Visible = False
         _current = p
+        Crash.CurrentPage = p.PageTitle
         p.Visible = True
         p.BringToFront()
         _toast.BringToFront()
@@ -566,6 +584,7 @@ Public Class SyncCenter
     Private ReadOnly _scroll As New Panel With {.AutoScroll = True, .BackColor = Color.White}
 
     Public Sub New()
+        Icon = Theme.AppIcon
         Text = "Changes waiting to be sent"
         StartPosition = FormStartPosition.CenterParent
         ClientSize = New Size(860, 560)
@@ -630,6 +649,7 @@ Public Class QuickFind
     Private _hits As New List(Of (Kind As String, Label As String, [Sub] As String, Go As Action))
 
     Public Sub New(main As MainForm)
+        Icon = Theme.AppIcon
         _main = main
         FormBorderStyle = FormBorderStyle.None
         StartPosition = FormStartPosition.CenterParent
@@ -730,6 +750,7 @@ Public Class SetupForm
     Private ReadOnly _retry As New Timer With {.Interval = 5000}
 
     Public Sub New()
+        Icon = Theme.AppIcon
         Text = "Sri Andal Staff"
         FormBorderStyle = FormBorderStyle.FixedSingle
         MaximizeBox = False

@@ -405,7 +405,8 @@ Public Module DueActions
     Public Sub Collect(owner As Control, dues As List(Of JsonObject))
         If dues.Count = 0 Then Return
         Dim customer = Js.Str(dues(0), "customer")
-        Dim f As New FormDialog("Collect due · " & customer, 560, "Receive")
+        Dim many = dues.Select(Function(d) Js.Str(d, "customer")).Distinct().Count() > 1
+        Dim f As New FormDialog(If(dues.Count = 1, "Collect from " & customer, "Collect from " & dues.Count & " dues"), 560, "Receive")
         Dim rows As New List(Of (Due As JsonObject, OnOff As Switch, Amount As WInput))
         For Each d In dues
             Dim row As New Panel With {.Height = 46, .BackColor = Color.White}
@@ -429,6 +430,7 @@ Public Module DueActions
             f.AddControl(row)
         Next
         f.AddPick("method", "Payment method", {"Cash|Cash", "UPI|UPI", "Card|Card", "Other|Other"}, "Cash")
+        If dues.Count > 1 Then f.AddCheck("combine", "One receipt number for all of these", True)
         f.AddCheck("print", "Print receipt", True)
         UpdateTotal(f, rows)
         f.OnSave = Async Function(dlg)
@@ -439,13 +441,13 @@ Public Module DueActions
                            If Not r.OnOff.Checked OrElse a <= 0 Then Continue For
                            a = Math.Min(a, Js.Num(r.Due, "balance")) ' never more than owed
                            ids.Add(Js.Int(r.Due, "id")) : amounts.Add(a) : map(Js.Int(r.Due, "id").ToString()) = a
-                           lines.Add(("Due for " & Js.Str(r.Due, "orderNumber"), a))
+                           lines.Add(("Due for " & Js.Str(r.Due, "orderNumber") & If(many, " (" & Js.Str(r.Due, "customer") & ")", ""), a))
                        Next
                        If ids.Count = 0 Then Return "Enter an amount."
                        Dim method = dlg.Val("method")
                        Dim total = lines.Sum(Function(l) l.Item2)
-                       Dim item As New OutboxItem With {.Method = "POST", .Path = "/api/ecommerce/due-payment", .Label = "Due collected · " & Theme.Money(total) & " · " & customer,
-                           .Body = New JsonObject From {{"creditIds", ids}, {"amounts", amounts}, {"paymentMethod", method}, {"combineReceipt", True}},
+                       Dim item As New OutboxItem With {.Method = "POST", .Path = "/api/ecommerce/due-payment", .Label = "Due collected · " & Theme.Money(total) & " · " & If(many, dues.Count & " dues", customer),
+                           .Body = New JsonObject From {{"creditIds", ids}, {"amounts", amounts}, {"paymentMethod", method}, {"combineReceipt", dues.Count = 1 OrElse dlg.Bool("combine")}},
                            .Effect = New JsonObject From {{"kind", "due_payment"}, {"method", method}, {"amounts", map}}, .Refresh = New List(Of String) From {"dues", "customers", "orders"}}
                        Dim res = Await AppState.I.SendNowAsync(item)
                        If res.Outcome = ApiOutcome.Rejected OrElse res.Outcome = ApiOutcome.Forbidden Then Return res.Message

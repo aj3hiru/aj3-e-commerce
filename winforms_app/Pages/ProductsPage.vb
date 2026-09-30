@@ -548,6 +548,8 @@ Public Class LabelSelect
     Private _value As String = "all"
     Private _hover As Boolean
     Public Dot As Color = Color.Empty
+    ''' <summary>Blue border, light blue fill and blue icon while it filters (Due page style).</summary>
+    Public Highlight As Boolean
     Public Sub New(icon As String, label As String)
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
         _icon = icon : _label = label
@@ -590,10 +592,10 @@ Public Class LabelSelect
         g.Clear(Theme.Behind(Me))
         Theme.Smooth(g)
         Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
-            Using b As New SolidBrush(Color.White) : g.FillPath(b, p) : End Using
-            Using pen As New Pen(If(_hover, Theme.G300, Theme.G200)) : g.DrawPath(pen, p) : End Using
+            Using b As New SolidBrush(If(Highlight, Color.FromArgb(&HF5, &HF9, &HFF), Color.White)) : g.FillPath(b, p) : End Using
+            Using pen As New Pen(If(Highlight, Color.FromArgb(&H9C, &HBD, &HF5), If(_hover, Theme.G300, Theme.G200))) : g.DrawPath(pen, p) : End Using
         End Using
-        Icons.Draw(g, _icon, New RectangleF(12, (Height - 16) / 2.0F, 16, 16), Theme.G500)
+        Icons.Draw(g, _icon, New RectangleF(12, (Height - 16) / 2.0F, 16, 16), If(Highlight, Web.Blue, Theme.G500))
         Dim x = 38
         Tr.DrawText(g, _label, Theme.Px(12), New Point(x, 7), Theme.G500, TextFormatFlags.NoPadding)
         Dim vx = x

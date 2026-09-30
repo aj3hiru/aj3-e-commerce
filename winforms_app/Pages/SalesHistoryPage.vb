@@ -882,6 +882,8 @@ Public Class LedgerFooter
     Implements IFlowHeight
     Public ReadOnly Pager As New Pager()
     Public Text_ As String = "", Total As String = "", Due As String = ""
+    ''' <summary>Due page: "· Balance shown: ₹…" (no bar, red amount) instead of "| Total ₹…".</summary>
+    Public BalanceStyle As Boolean
     Private ReadOnly _f As Font, _fb As Font
     Public Sub New(Optional size As Integer = 13)
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
@@ -906,6 +908,11 @@ Public Class LedgerFooter
                    End Sub
         part(Text_, _f, Theme.G600)
         If Total = "" Then Return
+        If BalanceStyle Then
+            part("  · Balance shown: ", _f, Theme.G800)
+            part(Total, _fb, Color.FromArgb(&HDC, &H35, &H45))
+            Return
+        End If
         x += 10
         Using pen As New Pen(Theme.G300) : g.DrawLine(pen, x, y, x, y + 16) : End Using
         x += 10

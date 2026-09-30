@@ -114,6 +114,10 @@ Public Class RangeChips
     Private ReadOnly _f14b As Font = Theme.Px(14, 700)
 
     Public Shared ReadOnly Presets As String() = {"today|Today", "yesterday|Yesterday", "7days|7 Days", "this_month|This Month", "prev_month|Previous Month"}
+    ''' <summary>White bordered preset buttons (Due page) instead of grey chips.</summary>
+    Public Outline As Boolean
+    ''' <summary>A grey hint line under the bar ("→ To filter the table by these dates…").</summary>
+    Public Note As String = ""
 
     Public Sub New()
         SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
@@ -141,7 +145,7 @@ Public Class RangeChips
         Return 16 + 130 + 8 + 18 + 8 + 130 + 8 + _apply.Width + 16
     End Function
     Public Function HeightFor(width As Integer) As Integer Implements IFlowHeight.HeightFor
-        Return If(ChipsWidth() + DatesWidth() > width, 100, 58)
+        Return If(ChipsWidth() + DatesWidth() > width, 100, 58) + If(Note = "", 0, 20)
     End Function
 
     Private Sub UpdateApply()
@@ -205,7 +209,7 @@ Public Class RangeChips
 
     Protected Overrides Sub OnLayout(levent As LayoutEventArgs)
         MyBase.OnLayout(levent)
-        Dim y = If(Height > 70, 58, 13)
+        Dim y = If(Height - If(Note = "", 0, 20) > 70, 58, 13)
         Dim x = Width - 16 - _apply.Width
         _apply.SetBounds(x, y, _apply.Width, 32)
         x -= 8 + 130 : _to.SetBounds(x, y + 2, 130, 28)
@@ -232,12 +236,21 @@ Public Class RangeChips
             Dim r As New Rectangle(x, cy - 16, w, 32)
             Dim on_ = kl(0) = act
             Using path = Theme.RoundRect(New RectangleF(r.X, r.Y, r.Width, r.Height), Theme.Radius)
-                Using b As New SolidBrush(If(on_, Web.Blue, If(_hover = kl(0), Theme.G200, Theme.G100))) : g.FillPath(b, path) : End Using
+                If Outline Then
+                    Using b As New SolidBrush(If(on_, Web.Blue, If(_hover = kl(0), Theme.G50, Color.White))) : g.FillPath(b, path) : End Using
+                    If Not on_ Then Using pen As New Pen(Theme.G200) : g.DrawPath(pen, path) : End Using
+                Else
+                    Using b As New SolidBrush(If(on_, Web.Blue, If(_hover = kl(0), Theme.G200, Theme.G100))) : g.FillPath(b, path) : End Using
+                End If
             End Using
             Tr.DrawText(g, kl(1), _chipFont, r, If(on_, Color.White, Theme.G700), TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
             _chips.Add((kl(0), r))
             x += w + 6
         Next
+        If Note <> "" Then
+            Icons.Draw(g, "arrow-right", New RectangleF(16, Height - 21, 12, 12), Theme.G500)
+            Tr.DrawText(g, Note, Theme.Px(12), New Point(34, Height - 23), Theme.G500, TextFormatFlags.NoPadding)
+        End If
         ' "to" between the dates
         Tr.DrawText(g, "to", _f14, New Rectangle(_from.Right, _from.Top, _to.Left - _from.Right, _from.Height), Theme.G500, TextFormatFlags.HorizontalCenter Or TextFormatFlags.VerticalCenter)
     End Sub

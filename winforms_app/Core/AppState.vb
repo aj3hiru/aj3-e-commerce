@@ -346,19 +346,32 @@ Public Class AppState
         Store.Write("outbox", a)
     End Sub
 
-    Private Sub SaveSets()
-        Dim o As New JsonObject()
-        For Each kv In Sets : o(kv.Key) = Js.Copy(kv.Value) : Next
-        Store.Write("sets", o)
+    Private _savedHashes As String = ""
+    Private Sub SaveSets(Optional onlyIfChanged As Boolean = False)
         Dim h As New JsonObject()
         For Each kv In Hashes : h(kv.Key) = kv.Value : Next
+        Dim hs = h.ToJsonString()
+        If onlyIfChanged AndAlso hs = _savedHashes Then Return ' nothing new from the server: no disk work
+        _savedHashes = hs
+        ' the text is built from each list directly (no deep copy of every product / order)
+        Dim sb As New System.Text.StringBuilder("{")
+        Dim first = True
+        For Each kv In Sets
+            If Not first Then sb.Append(","c)
+            first = False
+            sb.Append(System.Text.Json.JsonSerializer.Serialize(kv.Key)).Append(":"c).Append(If(kv.Value Is Nothing, "null", kv.Value.ToJsonString()))
+        Next
+        sb.Append("}"c)
+        Store.WriteText("sets", Nothing, sb.ToString())
         Store.Write("hashes", h)
     End Sub
 
     Private Sub SavePage(name As String)
         Dim at As DateTime = DateTime.UtcNow
         PageAt.TryGetValue(name, at)
-        Store.Write("page_" & name, New JsonObject From {{"data", Js.Copy(Page(name))}, {"at", at.ToUniversalTime().ToString("o")}})
+        ' text built directly (no deep copy of the page's rows); written in the background
+        Dim d = Page(name)
+        Store.WriteText("page_" & name, Nothing, "{""data"":" & If(d Is Nothing, "null", d.ToJsonString()) & ",""at"":""" & at.ToUniversalTime().ToString("o") & """}")
     End Sub
 
     ''' <summary>Records a change: it shows in the software at once and is sent when possible (never lost).</summary>
@@ -516,7 +529,7 @@ Public Class AppState
             _changed = True
             ApplyEffects(setsOnly:=True) ' changes not sent yet stay visible
         End If
-        SaveSets()
+        SaveSets(onlyIfChanged:=Not changed)
         LastSync = DateTime.Now
         Store.Write("last_sync_box", New JsonObject From {{"at", DateTime.UtcNow.ToString("o")}})
     End Function

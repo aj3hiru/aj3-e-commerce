@@ -114,7 +114,8 @@ Public Class ApiClient
         Dim data As JsonObject = Nothing
         Try
             Dim text = Await res.Content.ReadAsStringAsync().ConfigureAwait(True)
-            Dim n = JsonNode.Parse(text)
+            ' big answers (sync, page data) are parsed off the window's thread
+            Dim n = If(text.Length > 20000, Await Task.Run(Function() JsonNode.Parse(text)), JsonNode.Parse(text))
             data = TryCast(n, JsonObject)
             If data Is Nothing AndAlso n IsNot Nothing Then data = New JsonObject From {{"data", n}}
         Catch

@@ -104,8 +104,8 @@ Public Class RangeChips
     Public Event Changed()
     Public From As Date = New Date(Date.Today.Year, Date.Today.Month, 1)
     Public [To] As Date = Date.Today
-    Private ReadOnly _from As New DateTimePicker With {.Format = DateTimePickerFormat.Custom, .CustomFormat = "dd/MM/yyyy", .Width = 130}
-    Private ReadOnly _to As New DateTimePicker With {.Format = DateTimePickerFormat.Custom, .CustomFormat = "dd/MM/yyyy", .Width = 130}
+    Private ReadOnly _from As New DateBox() With {.Width = 130}
+    Private ReadOnly _to As New DateBox() With {.Width = 130}
     Private ReadOnly _apply As New HeadButton("Apply", "", Web.Blue) With {.Height = 32}
     Private _chips As New List(Of (Key As String, R As Rectangle))
     Private _hover As String = ""
@@ -984,5 +984,65 @@ Public Class WebCombo
         Dim t = If(SelectedIndex >= 0, GetItemText(SelectedItem), "")
         Tr.DrawText(g, t, Font, New Rectangle(10, 0, Width - 10 - 28, Height), If(Enabled, Theme.G800, Theme.G400), TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding Or TextFormatFlags.EndEllipsis)
         Icons.Draw(g, "chevron-down", New RectangleF(Width - 24, (Height - 14) / 2.0F, 14, 14), Theme.G500)
+    End Sub
+End Class
+
+''' <summary>The website's date input: white box, 5px corners, "30/09/2026" and a calendar icon; a click opens a
+''' month calendar under it. Replaces the Windows date picker, whose look didn't match.</summary>
+Public Class DateBox
+    Inherits Control
+    Public Event ValueChanged()
+    Private _value As Date = Date.Today
+    Private _hover As Boolean, _open As Boolean
+    Public Sub New()
+        SetStyle(ControlStyles.AllPaintingInWmPaint Or ControlStyles.OptimizedDoubleBuffer Or ControlStyles.UserPaint Or ControlStyles.ResizeRedraw, True)
+        Font = Theme.Px(13)
+        Height = 31 : Width = 132
+        Cursor = Cursors.Hand
+    End Sub
+    Public Property Value As Date
+        Get
+            Return _value
+        End Get
+        Set(v As Date)
+            If v.Date = _value Then Return
+            _value = v.Date
+            Invalidate()
+            RaiseEvent ValueChanged()
+        End Set
+    End Property
+    Protected Overrides Sub OnMouseEnter(e As EventArgs)
+        _hover = True : Invalidate() : MyBase.OnMouseEnter(e)
+    End Sub
+    Protected Overrides Sub OnMouseLeave(e As EventArgs)
+        _hover = False : Invalidate() : MyBase.OnMouseLeave(e)
+    End Sub
+    Protected Overrides Sub OnClick(e As EventArgs)
+        MyBase.OnClick(e)
+        Dim cal As New MonthCalendar With {.MaxSelectionCount = 1, .SelectionStart = _value, .ShowTodayCircle = True}
+        Dim host As New ToolStripControlHost(cal) With {.Margin = Padding.Empty, .Padding = Padding.Empty, .AutoSize = False, .Size = cal.Size}
+        Dim dd As New ToolStripDropDown With {.Padding = New Padding(1), .DropShadowEnabled = True}
+        dd.Items.Add(host)
+        AddHandler cal.DateSelected, Sub()
+                                         Value = cal.SelectionStart
+                                         dd.Close()
+                                     End Sub
+        AddHandler dd.Closed, Sub()
+                                  _open = False : Invalidate()
+                                  dd.Dispose()
+                              End Sub
+        _open = True : Invalidate()
+        dd.Show(Me, New Point(0, Height + 2))
+    End Sub
+    Protected Overrides Sub OnPaint(e As PaintEventArgs)
+        Dim g = e.Graphics
+        g.Clear(Theme.Behind(Me))
+        Theme.Smooth(g)
+        Using p = Theme.RoundRect(New RectangleF(0.5F, 0.5F, Width - 1.5F, Height - 1.5F), Theme.Radius)
+            Using b As New SolidBrush(Color.White) : g.FillPath(b, p) : End Using
+            Using pen As New Pen(If(_open, Theme.Primary, If(_hover, Theme.G400, Theme.G300))) : g.DrawPath(pen, p) : End Using
+        End Using
+        Tr.DrawText(g, _value.ToString("dd/MM/yyyy"), Font, New Rectangle(10, 0, Width - 36, Height), Theme.G700, TextFormatFlags.VerticalCenter Or TextFormatFlags.NoPadding)
+        Icons.Draw(g, "calendar", New RectangleF(Width - 24, (Height - 14) / 2.0F, 14, 14), Theme.G600)
     End Sub
 End Class

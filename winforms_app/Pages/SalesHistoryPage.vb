@@ -701,8 +701,8 @@ Public Class SalesFilterBar
     Private ReadOnly _payment As ComboBox = Ui.Filter({"all|All Payments", "paid|Paid", "due|Due", "due_cleared|Due Cleared"}, 150)
     Private ReadOnly _customer As ComboBox = Ui.Filter({"|All Customers", "guest|Guest (no customer)"}, 150)
     Private ReadOnly _product As ComboBox = Ui.Filter({"|All Products"}, 150)
-    Private ReadOnly _from As New DateTimePicker With {.Format = DateTimePickerFormat.Custom, .CustomFormat = "dd/MM/yyyy"}
-    Private ReadOnly _to As New DateTimePicker With {.Format = DateTimePickerFormat.Custom, .CustomFormat = "dd/MM/yyyy"}
+    Private ReadOnly _from As New DateBox()
+    Private ReadOnly _to As New DateBox()
     Private ReadOnly _apply As New HeadButton("Apply", "", Color.FromArgb(&H6C, &H75, &H7D)) With {.Height = 31}
     Private _btns As New List(Of (Key As String, R As Rectangle))
     Private _hover As String = ""

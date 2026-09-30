@@ -917,14 +917,17 @@ Public Class WebTable
         Dim scale = 1.0
         Dim flexCols = all.Where(Function(c) c.Width = 0).Count()
         Dim wantFlex = flexCols * 190
-        Dim fixedCols = fixedW - If(Selectable, 44, 0)
+        ' buttons never shrink (they'd be cut off)
+        Dim shrinks = Function(c As TCol) c.Width > 0 AndAlso c.Kind <> CellKind.Actions AndAlso c.Key <> "actions"
+        Dim fixedCols = all.Where(shrinks).Sum(Function(c) c.Width)
         If flexCols > 0 AndAlso rest < wantFlex AndAlso fixedCols > 0 Then
-            scale = Math.Max(0.8, (Width - If(Selectable, 44, 0) - wantFlex) / CDbl(fixedCols))
-            rest = Math.Max(0, Width - If(Selectable, 44, 0) - all.Where(Function(c) c.Width > 0).Sum(Function(c) CInt(c.Width * scale)))
+            Dim keep = fixedW - If(Selectable, 44, 0) - fixedCols
+            scale = Math.Max(0.8, (Width - If(Selectable, 44, 0) - keep - wantFlex) / CDbl(fixedCols))
+            rest = Math.Max(0, Width - If(Selectable, 44, 0) - keep - all.Where(shrinks).Sum(Function(c) CInt(c.Width * scale)))
         End If
         Dim res As New List(Of Integer)
         For Each c In all
-            res.Add(If(c.Width > 0, CInt(c.Width * If(scale < 1, scale, 1.0)), Math.Max(60, rest * c.Flex \ flex)))
+            res.Add(If(c.Width > 0, If(shrinks(c), CInt(c.Width * If(scale < 1, scale, 1.0)), c.Width), Math.Max(60, rest * c.Flex \ flex)))
         Next
         Return res
     End Function
@@ -1324,7 +1327,7 @@ Public Class ListCard
     Private _all As New List(Of JsonObject)
     Private _total As Integer
     Private _page As Integer
-    Private _perN As Integer = 25
+    Private _perN As Integer = 10
     Private _filtersOn As Boolean
     Private _searchOn As Boolean = True
     Private _building As Boolean
@@ -1347,9 +1350,9 @@ Public Class ListCard
                                            _page = _pager.Page - 1
                                            Rebuild()
                                        End Sub
-        _per.SelectedIndex = 1
+        _per.SelectedIndex = 0
         If stateKey IsNot Nothing Then
-            Dim saved = Js.Int(Store.Read("list_" & stateKey), "per", 25)
+            Dim saved = Js.Int(Store.Read("list_" & stateKey), "per", 10)
             _perN = saved
             _per.SelectedIndex = Math.Max(0, Array.IndexOf({10, 25, 50, 100, 0}, saved))
         End If
@@ -2427,7 +2430,10 @@ Public Class FilterCard
     Public Function Add(Of T As Control)(key As String, label As String, input As T) As T
         ' drop-downs become the website's labelled filter boxes (caption inside the box)
         Dim wc = TryCast(input, WebCombo)
-        If wc IsNot Nothing Then wc.Caption = label : label = ""
+        If wc IsNot Nothing Then
+            If wc.CaptionIcon = "" Then wc.CaptionIcon = FilterIcon(label)
+            wc.Caption = label : label = ""
+        End If
         Dim f As New Field(label, input)
         Fields(key) = f
         Grid.Add(f)
@@ -2435,6 +2441,25 @@ Public Class FilterCard
         If cb IsNot Nothing Then AddHandler cb.SelectedIndexChanged, Sub() RaiseEvent Changed()
         Return input
     End Function
+    ''' <summary>The website's icon for a filter, by its label.</summary>
+    Public Shared Function FilterIcon(label As String) As String
+        Dim l = label.ToLowerInvariant()
+        If l.Contains("date") Then Return "calendar-days"
+        If l.Contains("status") Then Return "circle-dot"
+        If l.Contains("categor") Then Return "folder-tree"
+        If l.Contains("popular") OrElse l.Contains("rating") OrElse l.Contains("star") Then Return "star"
+        If l.Contains("logo") OrElse l.Contains("image") OrElse l.Contains("photo") Then Return "image"
+        If l.Contains("stock") OrElse l.Contains("product") Then Return "boxes"
+        If l.Contains("unit") Then Return "layers"
+        If l.Contains("type") Then Return "tag"
+        If l.Contains("customer") OrElse l.Contains("user") OrElse l.Contains("role") OrElse l.Contains("staff") Then Return "users"
+        If l.Contains("due") OrElse l.Contains("pay") Then Return "wallet"
+        If l.Contains("brand") Then Return "badge-check"
+        If l.Contains("source") OrElse l.Contains("channel") OrElse l.Contains("order") Then Return "package"
+        If l.Contains("action") OrElse l.Contains("event") Then Return "activity"
+        Return "list-filter"
+    End Function
+
     ''' <summary>Shows the filters the page's Display Options allow; hides the card when none are left.</summary>
     Public Sub Apply(display As DisplayOptions, group As String)
         Dim n = 0

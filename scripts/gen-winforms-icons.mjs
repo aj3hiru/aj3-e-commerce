@@ -57,9 +57,12 @@ for (const name of [...lucide].sort()) {
   out.push(`        {"${name}", "L|24|24|${esc(els.join(";"))}"}`);
 }
 const solid = require("@fortawesome/free-solid-svg-icons");
+const seen = new Set();
 for (const n of [...fa].sort()) {
   const ic = solid[n];
   if (!ic) { missing.push(n); continue; }
+  if (seen.has(ic.iconName)) continue; // faPercent / faPercentage are the same icon
+  seen.add(ic.iconName);
   const [w, h, , , d] = ic.icon;
   out.push(`        {"fa-${ic.iconName}", "F|${w}|${h}|${esc(Array.isArray(d) ? d.join(" ") : d)}"}`);
 }

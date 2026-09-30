@@ -8,10 +8,14 @@ Imports System.Windows.Forms
 Public Class Card
     Inherits Panel
     Public Sub New()
+        ' No layout while the card is being made: subclasses (CardBox, ListCard, FilterCard) lay out their own
+        ' parts, which don't exist yet at this point (this was the "Object reference not set" error).
+        SuspendLayout()
         DoubleBuffered = True
         ResizeRedraw = True
         BackColor = Color.White
         Padding = New Padding(18)
+        ResumeLayout(False)
     End Sub
     Protected Overrides Sub OnPaintBackground(e As PaintEventArgs)
         Dim g = e.Graphics

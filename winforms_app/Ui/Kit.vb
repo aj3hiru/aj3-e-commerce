@@ -232,6 +232,7 @@ Public Class CardBox
         Return Top_ + Body.HeightFor(width - Padding.Horizontal) + Padding.Bottom
     End Function
     Protected Overrides Sub OnLayout(levent As LayoutEventArgs)
+        If Body Is Nothing OrElse Tools Is Nothing Then Return
         Dim w = Width - Padding.Horizontal
         If Not String.IsNullOrEmpty(Title) Then
             Dim tw = Math.Min(w \ 2 + 80, Tools.Controls.Cast(Of Control)().Where(Function(c) Kit.WantsVisible(c)).Sum(Function(c) c.Width + 8))
@@ -1354,6 +1355,7 @@ Public Class ListCard
     End Function
 
     Protected Overrides Sub OnLayout(levent As LayoutEventArgs)
+        If Table Is Nothing Then Return
         If _building Then Return
         Dim w = Width - Padding.Horizontal
         Dim x = Padding.Left, y = Padding.Top
@@ -2269,6 +2271,7 @@ Public Class FilterCard
         Return Padding.Vertical + Grid.HeightFor(width - Padding.Horizontal)
     End Function
     Protected Overrides Sub OnLayout(levent As LayoutEventArgs)
+        If Grid Is Nothing Then Return
         Dim w = Width - Padding.Horizontal
         Grid.SetBounds(Padding.Left, Padding.Top, w, Grid.HeightFor(w))
         Grid.PerformLayout()

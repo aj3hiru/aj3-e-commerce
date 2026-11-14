@@ -150,7 +150,7 @@ class AppState extends ChangeNotifier {
     } catch (_) {}
     deviceId = (await _store.read('device')) as String? ?? newId();
     await _store.write('device', deviceId);
-    api.server = await _secure.read(key: 'server') ?? AppConfig.defaultServer;
+    api.server = AppConfig.upgradeServer(await _secure.read(key: 'server') ?? AppConfig.defaultServer);
     api.token = await _secure.read(key: 'token');
     final cachedUser = await _store.read('user');
     if (cachedUser is Map) _setUser(Map<String, dynamic>.from(cachedUser));
@@ -258,7 +258,7 @@ class AppState extends ChangeNotifier {
   String _loginCheck(String identity, String password) => sha256.convert(utf8.encode('${identity.trim().toLowerCase()}|$password|$deviceId')).toString();
 
   Future<String?> login(String identity, String password, {String? server, bool remember = true}) async {
-    if (server != null && server.trim().isNotEmpty) api.server = server.trim().replaceAll(RegExp(r'/+$'), '');
+    if (server != null && server.trim().isNotEmpty) api.server = AppConfig.upgradeServer(server.trim().replaceAll(RegExp(r'/+$'), ''));
     api.token = null;
     final r = await api.send('POST', '/api/app/v1/login', body: {
       'identity': identity.trim(), 'password': password, 'device': deviceId, 'platform': Platform.isAndroid ? 'android' : Platform.operatingSystem,

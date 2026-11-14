@@ -232,7 +232,8 @@ Public Class AppState
             Store.Write("device_box", New JsonObject From {{"id", DeviceId}})
         End If
         Dim srv = Store.ReadSecret("server")
-        If Not String.IsNullOrEmpty(srv) Then Api.Server = srv
+        ' the store is on one domain now: an address saved on an old subdomain (login. / admin. / delivery.) becomes the main domain
+        If Not String.IsNullOrEmpty(srv) Then Api.Server = System.Text.RegularExpressions.Regex.Replace(srv, "^(https?://)(?:login|admin|delivery)\.(sriandaltraders\.co\.in)", "$1$2", System.Text.RegularExpressions.RegexOptions.IgnoreCase)
         Api.Token = Store.ReadSecret("token")
         SetUser(TryCast(Store.Read("user"), JsonObject))
         Dim sets = TryCast(Store.Read("sets"), JsonObject)

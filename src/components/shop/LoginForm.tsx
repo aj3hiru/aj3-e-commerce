@@ -16,7 +16,7 @@ interface LoginFormProps {
   bare?: boolean;
 }
 
-/** Customer login: email / mobile + password. Staff log in on the staff login host. */
+/** Customer login: email / mobile + password. Staff log in at /staff/login. */
 export function LoginForm({ redirectTo, storeName = "our store", bare = false }: LoginFormProps) {
   const router = useRouter();
   const [identity, setIdentity] = useState("");

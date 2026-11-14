@@ -45,7 +45,7 @@ End Class
 ''' <summary>Talks to the website's staff API (the same one the Android app uses). Every call has a time
 ''' limit, so the software never hangs on a bad connection — it reports Offline and the change waits.</summary>
 Public Class ApiClient
-    Public Server As String = "https://admin.sriandaltraders.co.in"
+    Public Server As String = "https://sriandaltraders.co.in"
     Public Token As String
 
     Private Shared ReadOnly Http As New HttpClient(New SocketsHttpHandler With {.PooledConnectionLifetime = TimeSpan.FromMinutes(5), .AutomaticDecompression = DecompressionMethods.All}) With {.Timeout = TimeSpan.FromSeconds(120)}

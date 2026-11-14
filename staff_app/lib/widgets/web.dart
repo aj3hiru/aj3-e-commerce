@@ -10,7 +10,7 @@ import '../ds/ds.dart';
 
 /// Windows / wide-screen pieces copied from the website admin (tailwind.config.ts,
 /// AdminShell / AdminHeader / StatCard and the list pages), so the desktop app
-/// looks exactly like admin.sriandaltraders.co.in on a computer.
+/// looks exactly like the website's admin (sriandaltraders.co.in/admin) on a computer.
 class W {
   // admin theme
   static const primary = Color(0xFF7C3AED);

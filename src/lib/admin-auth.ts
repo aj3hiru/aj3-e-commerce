@@ -1,10 +1,9 @@
 import { cache } from "react";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { prisma } from "./db";
 import { sessionVersion } from "./session-cookies";
 import { normalizePermissions } from "./permissions";
-import { readAppToken } from "./app-token";
 
 export interface AdminSession {
   userId: number;
@@ -34,10 +33,6 @@ async function loadAdminSession(): Promise<AdminSession | null> {
     } catch {
       payload = null;
     }
-  } else {
-    // The staff app signs in with "Authorization: Bearer <app token>" instead of a cookie.
-    const auth = (await headers()).get("authorization") ?? "";
-    if (auth.startsWith("Bearer ")) payload = readAppToken(auth.slice(7).trim());
   }
   if (!payload) return null;
 

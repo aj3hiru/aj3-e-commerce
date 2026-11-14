@@ -52,6 +52,8 @@ export async function middleware(req: NextRequest) {
   const label = oldStaffLabel(hostname);
   if (label) return to(storeHostOf(hostname), oldHostTarget(label, pathname) + search);
 
+  // The back office's front page is /admin (the dashboard).
+  if (pathname === "/admin" || pathname === "/admin/") return NextResponse.rewrite(new URL(`/admin/dashboard${search}`, req.url));
   // Customers' domain.
   if (/^\/shop(\/|$)/.test(pathname)) return to(hostname, (pathname.replace(/^\/shop/, "") || "/") + search);
   if (!STAFF_PATHS.test(pathname) && isCacheable(req)) {

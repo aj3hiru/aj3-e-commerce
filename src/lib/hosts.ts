@@ -61,6 +61,7 @@ export function oldHostTarget(label: "login" | "admin" | "delivery", path: strin
   if (/^\/(admin|agent|staff|push-notifications)(\/|$)/.test(path)) return path; // already a full path
   if (label === "login") return path === "/" ? "/staff/login" : path;
   if (label === "delivery") return /^\/order\/\d+/.test(path) || !STORE_PATHS.test(path) ? toInternalPath(path, "delivery") : path;
+  if (path === "/" || path === "/dashboard") return "/admin"; // the back office's front page
   return STORE_PATHS.test(path) ? path : toInternalPath(path, "admin");
 }
 

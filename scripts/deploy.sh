@@ -8,6 +8,9 @@ set -a; . ./.env.production; set +a
 for f in prisma/*.sql; do :; done
 npx prisma generate > /dev/null 2>&1
 rm -rf .next-build
+# The live build's route types (.next/types) are only for the type check; after a page is removed they point at a
+# file that is gone and fail the build — the running site never reads them.
+rm -rf .next/types
 if ! NEXT_DIST_DIR=.next-build npx next build > /tmp/nb.log 2>&1; then
   tail -30 /tmp/nb.log; echo "BUILD FAILED — live site untouched"; rm -rf .next-build; exit 1
 fi
